@@ -3,6 +3,7 @@ dist/
 build/
 .env
 .env.local
+.env.*.local
 .env.production
 coverage/
 backend/generated/
