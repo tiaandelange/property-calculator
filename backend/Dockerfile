@@ -49,10 +49,19 @@ COPY backend/package*.json ./
 COPY backend/prisma ./prisma
 RUN npm ci --no-audit --no-fund
 
-# Now bring in the source and compile.
-COPY backend/tsconfig.json ./tsconfig.json
+# Now bring in the source and compile. We copy:
+#   * tsconfig*.json     — both the base (IDE/test) config and tsconfig.build.json
+#                          (used by `npm run build` to pin rootDir=src and emit
+#                          `dist/server.js` directly, matching the CMD below).
+#   * src/               — TS sources.
+#   * scripts/           — build-time helpers (e.g. extract-pdfmake-fonts.mjs).
+#   * assets/            — static files (Roboto TTFs read by pdfMakePrinter,
+#                          placeholder images for PDFs). Must be present at
+#                          runtime too — see the runtime-stage COPY below.
+COPY backend/tsconfig*.json ./
 COPY backend/src ./src
 COPY backend/scripts ./scripts
+COPY backend/assets ./assets
 
 RUN npx prisma generate \
  && npm run build
@@ -103,12 +112,15 @@ RUN groupadd --system --gid 10001 nodeapp \
 
 # Bring forward only the files needed to run the server. We intentionally do
 # NOT copy `scripts/`, `tests/`, `src/`, `tsconfig.json`, `.env*`, jest config,
-# or any other build/dev artefact.
+# or any other build/dev artefact. We DO bring forward `assets/` because
+# `pdfMakePrinter.ts` reads the Roboto TTFs from `backend/assets/fonts/` at
+# runtime; without this the PDF service would crash on first invocation.
 COPY --from=builder --chown=nodeapp:nodeapp /app/package.json      ./package.json
 COPY --from=builder --chown=nodeapp:nodeapp /app/package-lock.json ./package-lock.json
 COPY --from=builder --chown=nodeapp:nodeapp /app/node_modules      ./node_modules
 COPY --from=builder --chown=nodeapp:nodeapp /app/dist              ./dist
 COPY --from=builder --chown=nodeapp:nodeapp /app/prisma            ./prisma
+COPY --from=builder --chown=nodeapp:nodeapp /app/assets            ./assets
 
 USER nodeapp
 

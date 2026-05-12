@@ -1,0 +1,13 @@
+{
+  "// purpose": "Production build config used by `npm run build`. It mirrors the base tsconfig but pins rootDir to `src/` so that tsc emits `dist/server.js` (not `dist/src/server.js`). The default tsconfig.json still includes tests/ so the IDE and ts-jest see them; this file is build-only.",
+
+  "extends": "./tsconfig.json",
+
+  "compilerOptions": {
+    "rootDir": "./src",
+    "noEmitOnError": true
+  },
+
+  "include": ["src"],
+  "exclude": ["tests", "scripts", "**/*.test.ts"]
+}

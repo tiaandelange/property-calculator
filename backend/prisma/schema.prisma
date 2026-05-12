@@ -1,5 +1,11 @@
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  // `native`               => the local dev machine (whatever OS the dev runs).
+  // `debian-openssl-3.0.x` => the Render runtime image (node:20-bookworm-slim,
+  //                           Debian 12 / OpenSSL 3.x). Without this binary,
+  //                           Prisma boots locally but fails at runtime on
+  //                           Render with "Could not locate the binary engine".
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
 }
 
 datasource db {
