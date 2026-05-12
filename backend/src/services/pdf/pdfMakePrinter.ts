@@ -3,25 +3,22 @@ import { createRequire } from "node:module";
 import { dirname, join, resolve } from "node:path";
 import PdfPrinter from "pdfmake";
 
-// We deliberately do NOT touch `pdfmake/build/vfs_fonts.js`:
+// Why this file no longer touches pdfmake's bundled virtual-font-system file
+// (the one under pdfmake/build/...): it is a browser/UMD bundle that we used
+// to load via a runtime createRequire(...). Static bundlers (Vercel's
+// node-file-trace, esbuild, ncc, ...) cannot trace that dynamic require, so
+// on Vercel the file gets stripped from the function bundle and the runtime
+// throws the now-famous "Cannot find module" error at startup.
 //
-//   * It is a browser/UMD bundle that we previously loaded via a runtime
-//     `createRequire(...)`. Static bundlers (Vercel's node-file-trace, esbuild,
-//     ncc, etc.) cannot trace that dynamic require, so on Vercel the file gets
-//     stripped from the function bundle and the runtime throws:
-//
-//       Cannot find module 'pdfmake/build/vfs_fonts'
-//
-//   * pdfmake's npm distribution does NOT ship `examples/fonts`, so we can't
-//     fall back to its on-disk fonts either.
+// pdfmake's npm distribution also does NOT ship `examples/fonts`, so we can't
+// fall back to its on-disk fonts either.
 //
 // Instead we ship the four Roboto TTFs we need under `backend/assets/fonts/`.
-// They were extracted once from the same vfs bundle via
-// `backend/scripts/extract-pdfmake-fonts.mjs`; PdfPrinter loads them straight
-// from disk, no virtual file system involved.
+// They were extracted once via `backend/scripts/extract-pdfmake-fonts.mjs`;
+// PdfPrinter loads them straight from disk — no virtual file system involved.
 //
 // We deliberately avoid `import.meta.url` here because the test harness
-// (`ts-jest`) compiles this file to CommonJS, which forbids `import.meta`.
+// (ts-jest) compiles this file to CommonJS, which forbids `import.meta`.
 // `createRequire` works identically in ESM (runtime) and CJS (jest), so we
 // use it to anchor against the installed pdfmake package. From pdfmake's
 // `package.json` location we can climb out of `node_modules` to find the

@@ -1,0 +1,15 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+
+  "functions": {
+    "dist/**/*.js": {
+      "includeFiles": "assets/fonts/**"
+    },
+    "api/**/*.ts": {
+      "includeFiles": "assets/fonts/**"
+    },
+    "api/**/*.js": {
+      "includeFiles": "assets/fonts/**"
+    }
+  }
+}
