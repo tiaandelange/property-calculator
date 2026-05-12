@@ -6,6 +6,8 @@ import { Section } from "../components/ui/Section";
 import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
 import { cancelLease, deleteTenant, getTenant } from "../api/ownedProperties";
+import { PageBreadcrumb } from "../components/nav/PageBreadcrumb";
+import { workspaceTenants } from "../nav/workspaceBreadcrumbs";
 
 export function TenantDetailPage() {
   const { id } = useParams();
@@ -56,6 +58,11 @@ export function TenantDetailPage() {
     <Section>
       <Helmet><title>Tenant | The Property Guy</title></Helmet>
       <Container>
+        <PageBreadcrumb
+          items={workspaceTenants(
+            tenant ? `${tenant.firstName} ${tenant.lastName}`.trim() || "Tenant" : "Tenant"
+          )}
+        />
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
           <h1 className="pg-h2" style={{ margin: 0 }}>{tenant ? `${tenant.firstName} ${tenant.lastName}` : "Tenant"}</h1>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>

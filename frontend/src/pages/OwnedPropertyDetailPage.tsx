@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { Container } from "../components/ui/Container";
@@ -6,25 +6,44 @@ import { Section } from "../components/ui/Section";
 import { Card } from "../components/ui/Card";
 import { Input } from "../components/ui/Input";
 import { api, authHeader } from "../api/client";
-import { Line, Doughnut } from "react-chartjs-2";
-import { Chart as ChartJS, ArcElement, CategoryScale, Legend, LinearScale, LineElement, PointElement, Tooltip } from "chart.js";
 import {
   cancelLease,
   createPropertyTenant,
   deleteLease,
-  deletePropertyExpense,
-  deletePropertyIncome,
   getProperty,
+  getPropertyStatement,
+  getPropertyWorkspaceReports,
   getTenants,
   getPortfolioDashboardSummary,
   linkTenantToProperty,
-  updatePropertyIncome,
   updateLease,
   unlinkTenantFromProperty
 } from "../api/ownedProperties";
 import { WorkspaceTabs } from "../components/workspace/WorkspaceTabs";
+import { invalidatePropertyWorkspace } from "../features/properties/invalidate";
+import { usePropertyWorkspaceRefresh } from "../features/properties/usePropertyWorkspaceRefresh";
+import { WorkspaceFinancialsTab } from "../features/properties/workspace/WorkspaceFinancialsTab";
+import { WorkspaceOverviewTab } from "../features/properties/workspace/WorkspaceOverviewTab";
+import { PageBreadcrumb } from "../components/nav/PageBreadcrumb";
+import { workspaceMyProperties } from "../nav/workspaceBreadcrumbs";
 
-ChartJS.register(ArcElement, CategoryScale, LinearScale, Legend, Tooltip, PointElement, LineElement);
+/** YYYY-MM in the user's local calendar (avoid UTC drift from `toISOString().slice(0, 7)`). */
+function localCalendarMonth(d = new Date()) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+const INV_SHORT: Record<string, string> = {
+  LONG_TERM_RENTAL: "Long-term rental",
+  SHORT_TERM_RENTAL: "Short-term rental",
+  VACANT_LAND: "Vacant land",
+  BRRRR: "BRRRR",
+  FLIP: "Flip",
+  PRIMARY_RESIDENCE: "Primary residence",
+  COMMERCIAL: "Commercial",
+  HOUSE_HACK: "House hack",
+  MIXED_USE: "Mixed use",
+  OTHER: "Other"
+};
 
 export function OwnedPropertyDetailPage() {
   const { id } = useParams();
@@ -36,72 +55,138 @@ export function OwnedPropertyDetailPage() {
   const [perf, setPerf] = useState<any>(null);
   const [linkTenantId, setLinkTenantId] = useState<number | "">("");
   const [newTenant, setNewTenant] = useState<any>({ firstName: "", lastName: "", email: "", phone: "", idNumber: "" });
+  const [stmt, setStmt] = useState<any>(null);
+  const [stmtLoading, setStmtLoading] = useState(false);
+  const [reportsCatalog, setReportsCatalog] = useState<any>(null);
+  const [reportsLoading, setReportsLoading] = useState(false);
   const tabRaw = useMemo(() => new URLSearchParams(search).get("tab") ?? "overview", [search]);
-  const tab = tabRaw === "lease" ? "leases" : tabRaw; // legacy alias
-  const monthBounds = useMemo(() => {
-    const now = new Date();
-    return {
-      start: new Date(now.getFullYear(), now.getMonth(), 1),
-      end: new Date(now.getFullYear(), now.getMonth() + 1, 1)
-    };
-  }, []);
+  const tab = tabRaw === "lease" ? "leases" : tabRaw === "performance" ? "reports" : tabRaw;
+  const finSub = useMemo(() => new URLSearchParams(search).get("fin") ?? "statement", [search]);
+  const prevTabRef = useRef<string | null>(null);
+  /** Ignore out-of-order responses when multiple loadAll() runs overlap (fixes stale Overview after Financials edits). */
+  const loadSeqRef = useRef(0);
 
-  const reload = async () => {
+  const currentLeases = useMemo(() => {
+    if (!data) return [];
+    const raw = data.currentLeases;
+    if (Array.isArray(raw) && raw.length) return raw;
+    if (data.currentLease) return [data.currentLease];
+    return (data.leases ?? []).filter((l: any) => {
+      const st = l.displayStatus ?? l.status;
+      return st === "ACTIVE" || st === "MONTH_TO_MONTH";
+    });
+  }, [data]);
+
+  const currentLeaseIdSet = useMemo(() => new Set(currentLeases.map((l: any) => Number(l.id))), [currentLeases]);
+
+  const combinedContractRent = useMemo(() => {
+    const v = data?.combinedMonthlyRentFromLeases;
+    if (typeof v === "number" && !Number.isNaN(v)) return v;
+    return currentLeases.reduce((a: number, l: any) => a + Number(l.monthlyRent ?? 0), 0);
+  }, [data, currentLeases]);
+
+  const occupancySubtitle = useMemo(() => {
+    if (!data) return "";
+    const inv = data.investmentType as string | undefined;
+    if (inv === "VACANT_LAND") return "Vacant land · No tenant required";
+    if (inv === "SHORT_TERM_RENTAL") return "Short-term rental";
+    if (inv === "FLIP") return "Flip / renovation project";
+    if (currentLeases.length === 0) return "Vacant";
+    const m2m = currentLeases.some((l: any) => (l.displayStatus ?? l.status) === "MONTH_TO_MONTH");
+    if (m2m) return "Occupied · Month-to-month";
+    return "Occupied · Active lease";
+  }, [data, currentLeases]);
+
+  const tenantIdsWithCurrentLease = useMemo(
+    () => new Set(currentLeases.map((l: any) => Number(l.tenantId)).filter((n: number) => !Number.isNaN(n))),
+    [currentLeases]
+  );
+
+  const titleAddress = useMemo(() => {
+    if (!data) return "";
+    const line = [data.addressLine1, data.city].filter(Boolean).join(", ");
+    return line || data.name || "";
+  }, [data]);
+
+  const loadAll = useCallback(async () => {
     if (!id) return;
+    const seq = ++loadSeqRef.current;
     try {
-      setData(await getProperty(id));
+      setError("");
+      setStmtLoading(true);
+      const summaryMonth = localCalendarMonth();
+      const ledgerOutcomePromise = getPropertyStatement(id, { bustCache: true, month: summaryMonth }).then(
+        (ledger) => ({ ok: true as const, ledger }),
+        () => ({ ok: false as const })
+      );
+      const dashPromise = getPortfolioDashboardSummary({
+        propertyId: Number(id),
+        month: summaryMonth,
+        bustCache: true
+      });
+      const [prop, tenants, dash, ledgerOutcome] = await Promise.all([
+        getProperty(id, { bustCache: true, month: summaryMonth }),
+        getTenants(),
+        dashPromise,
+        ledgerOutcomePromise
+      ]);
+      if (seq !== loadSeqRef.current) return;
+      setData(prop);
+      setAllTenants(tenants);
+      setPerf(dash);
+      setStmt((prev: any) => (ledgerOutcome.ok ? ledgerOutcome.ledger : prev));
     } catch (e: any) {
+      if (seq !== loadSeqRef.current) return;
       setError(e?.response?.data?.message ?? "Failed to load property.");
+    } finally {
+      if (seq === loadSeqRef.current) setStmtLoading(false);
     }
-  };
-
-  useEffect(() => {
-    async function load() {
-      if (!id) return;
-      try {
-        setData(await getProperty(id));
-        setAllTenants(await getTenants());
-        setPerf(await getPortfolioDashboardSummary({ propertyId: Number(id), month: new Date().toISOString().slice(0, 7) }));
-      } catch (e: any) {
-        setError(e?.response?.data?.message ?? "Failed to load property.");
-      }
-    }
-    void load();
   }, [id]);
 
-  const onCancelLease = async () => {
-    if (!data?.currentLease?.id) return;
+  useEffect(() => {
+    prevTabRef.current = null;
+  }, [id]);
+
+  useEffect(() => {
+    void loadAll();
+  }, [loadAll]);
+
+  useEffect(() => {
+    if (!id) return;
+    const prev = prevTabRef.current;
+    prevTabRef.current = tab;
+    if (tab === "overview" && prev !== null && prev !== "overview") {
+      void loadAll();
+    }
+  }, [id, tab, loadAll]);
+
+  useEffect(() => {
+    if (!id || tab !== "reports") return;
+    setReportsLoading(true);
+    void (async () => {
+      try {
+        setReportsCatalog(await getPropertyWorkspaceReports(id));
+      } catch {
+        setReportsCatalog(null);
+      } finally {
+        setReportsLoading(false);
+      }
+    })();
+  }, [id, tab]);
+
+  usePropertyWorkspaceRefresh({ propertyId: id, onRefresh: () => void loadAll() });
+
+  const refreshAfterMutation = async () => {
+    await loadAll();
+    if (id) invalidatePropertyWorkspace(id);
+  };
+
+  const onCancelLease = async (lease: { id: number }) => {
     const cancellationDate = window.prompt("Cancellation date (YYYY-MM-DD)", new Date().toISOString().slice(0, 10));
     if (!cancellationDate) return;
     const cancellationReason = window.prompt("Cancellation reason (optional)", "") ?? undefined;
-    await cancelLease(data.currentLease.id, { cancellationDate, cancellationReason, cancelledBy: "LANDLORD" });
-    await reload();
-  };
-
-  const onDeleteExpense = async (expenseId: number) => {
-    if (!window.confirm("Delete this expense entry?")) return;
-    await deletePropertyExpense(expenseId);
-    await reload();
-  };
-
-  const onDeleteIncome = async (incomeId: number) => {
-    if (!window.confirm("Delete this income entry?")) return;
-    await deletePropertyIncome(incomeId);
-    await reload();
-  };
-
-  const onEditIncome = async (inc: any) => {
-    const amount = window.prompt("Amount (number)", String(inc.amount ?? 0));
-    if (amount == null) return;
-    const incomeDate = window.prompt("Income date (YYYY-MM-DD)", inc.incomeDate ? String(inc.incomeDate).slice(0, 10) : new Date().toISOString().slice(0, 10));
-    if (!incomeDate) return;
-    const description = window.prompt("Description", inc.description ?? "") ?? inc.description;
-    try {
-      await updatePropertyIncome(inc.id, { amount: Number(amount), incomeDate, description });
-      await reload();
-    } catch (e: any) {
-      window.alert(e?.response?.data?.message ?? "Failed to update income.");
-    }
+    await cancelLease(lease.id, { cancellationDate, cancellationReason, cancelledBy: "LANDLORD" });
+    await refreshAfterMutation();
   };
 
   const onUnlinkTenant = async (tenantId: number) => {
@@ -109,7 +194,7 @@ export function OwnedPropertyDetailPage() {
     if (!window.confirm("Unlink this tenant from the property? (Active leases may block this.)")) return;
     try {
       await unlinkTenantFromProperty(id, tenantId);
-      await reload();
+      await refreshAfterMutation();
     } catch (e: any) {
       window.alert(e?.response?.data?.message ?? "Failed to unlink tenant.");
     }
@@ -119,7 +204,7 @@ export function OwnedPropertyDetailPage() {
     if (!id || !linkTenantId) return;
     await linkTenantToProperty(id, linkTenantId);
     setLinkTenantId("");
-    await reload();
+    await refreshAfterMutation();
   };
 
   const onAddNewTenant = async () => {
@@ -134,13 +219,13 @@ export function OwnedPropertyDetailPage() {
       status: "ACTIVE"
     });
     setNewTenant({ firstName: "", lastName: "", email: "", phone: "", idNumber: "" });
-    await reload();
+    await refreshAfterMutation();
   };
 
   const onArchiveLease = async (leaseId: number) => {
     if (!window.confirm("Archive this lease? (Historical record is kept.)")) return;
     await deleteLease(leaseId);
-    await reload();
+    await refreshAfterMutation();
   };
 
   const onEditLease = async (lease: any) => {
@@ -175,7 +260,7 @@ export function OwnedPropertyDetailPage() {
         rentDueDay: Number(rentDueDay),
         notes
       });
-      await reload();
+      await refreshAfterMutation();
     } catch (e: any) {
       window.alert(e?.response?.data?.message ?? "Failed to update lease.");
     }
@@ -193,7 +278,7 @@ export function OwnedPropertyDetailPage() {
         { tenantId, category: "RENT", description: "Rent received", amount: Number(amount), incomeDate, source: "MANUAL_FINANCIAL_ENTRY", status: "RECEIVED" },
         { headers: authHeader() }
       );
-      await reload();
+      await refreshAfterMutation();
     } catch (e: any) {
       window.alert(e?.response?.data?.message ?? "Failed to add income.");
     }
@@ -201,105 +286,95 @@ export function OwnedPropertyDetailPage() {
 
   return (
     <Section>
-      <Helmet><title>Property Detail | The Property Guy</title></Helmet>
+      <Helmet>
+        <title>{data?.name ? `${data.name} | Property` : "Property Detail | The Property Guy"}</title>
+      </Helmet>
       <Container>
         {error ? <div className="pg-alert pg-alert-error">{error}</div> : null}
         {data ? (
           <>
-            <h1 className="pg-h2" style={{ marginTop: 0 }}>{data.name}</h1>
-            <div className="pg-muted" style={{ margin: "6px 0 12px" }}>
-              Manage this asset’s financials, leases, tenants and documents in one workspace.
+            <PageBreadcrumb items={workspaceMyProperties(data.name)} />
+
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 12,
+                marginTop: 8,
+                rowGap: 8
+              }}
+            >
+              <h1 className="pg-workspace-title" style={{ margin: 0 }}>
+                {data.name}
+              </h1>
+              <Link className="pg-btn pg-btn-secondary" to={`/owned-properties/${id}/edit`}>
+                Edit Property
+              </Link>
             </div>
+            <div className="pg-workspace-subtitle pg-muted" style={{ marginTop: 6, marginBottom: 14 }}>
+              {titleAddress !== data.name ? <span>{titleAddress}</span> : null}
+              {titleAddress !== data.name ? <span> · </span> : null}
+              {(INV_SHORT[data.investmentType] ?? data.investmentType) ?? "Property"}
+              {" · "}
+              {occupancySubtitle}
+            </div>
+
             <WorkspaceTabs
               basePath={`/owned-properties/${id}`}
               active={tab}
               tabs={[
                 { key: "overview", label: "Overview" },
                 { key: "financials", label: "Financials" },
-                { key: "leases", label: "Leases" },
                 { key: "tenants", label: "Tenants" },
+                { key: "leases", label: "Leases" },
                 { key: "documents", label: "Documents" },
-                { key: "performance", label: "Performance" }
+                { key: "reports", label: "Reports" }
               ]}
+              extraQueryForTab={{ financials: `fin=${encodeURIComponent(finSub)}` }}
             />
-            <Card>
-              {tab === "overview" ? (
-                <div style={{ display: "grid", gap: 12 }}>
-                  <div style={{ display: "grid", gap: 8 }}>
-                    <div>Address: {data.addressLine1}, {data.city}</div>
-                    <div>Purchase price: {Number(data.purchasePrice ?? 0).toLocaleString()}</div>
-                    <div>Current value: {data.currentEstimatedValue == null ? <span className="pg-muted">Missing</span> : Number(data.currentEstimatedValue).toLocaleString()}</div>
-                  </div>
 
-                  <Card title="Tenant & Lease">
-                    {data.currentTenant ? (
-                      <div style={{ display: "grid", gap: 6 }}>
-                        {(data.tenants?.length ?? 0) > 1 ? (
-                          <div className="pg-muted">
-                            <strong>All linked tenants</strong>:{" "}
-                            {data.tenants.map((t: any) => (
-                              <span key={t.id}>
-                                <Link to={`/tenants/${t.id}`} className="pg-link">{t.firstName} {t.lastName}</Link>{" "}
-                              </span>
-                            ))}
-                          </div>
-                        ) : null}
-                        <div>
-                          <strong>Tenant</strong>:{" "}
-                          <Link to={`/tenants/${data.currentTenant.id}`} className="pg-link">
-                            {data.currentTenant.firstName} {data.currentTenant.lastName}
-                          </Link>
-                        </div>
-                        <div className="pg-muted">
-                          {data.currentTenant.phone ? `Phone: ${data.currentTenant.phone}` : "Phone: -"}{" "}
-                          {data.currentTenant.email ? `| Email: ${data.currentTenant.email}` : ""}
-                        </div>
-                        {data.currentLease ? (
-                          <div style={{ display: "grid", gap: 4, marginTop: 6 }}>
-                            <div><strong>Lease status</strong>: {data.currentLease.displayStatus ?? data.currentLease.status}</div>
-                            <div><strong>Lease type</strong>: {data.currentLease.leaseType}</div>
-                            <div><strong>Start date</strong>: {new Date(data.currentLease.startDate).toLocaleDateString()}</div>
-                            <div><strong>Fixed term end</strong>: {data.currentLease.fixedTermEndDate ? new Date(data.currentLease.fixedTermEndDate).toLocaleDateString() : <span className="pg-muted">Month-to-month</span>}</div>
-                            <div><strong>Monthly rent</strong>: R {Number(data.currentLease.monthlyRent ?? 0).toLocaleString()}</div>
-                            <div><strong>Deposit held</strong>: R {Number(data.currentLease.depositAmount ?? 0).toLocaleString()}</div>
-                            <div><strong>Rent due day</strong>: {data.currentLease.rentDueDay}</div>
-                          </div>
-                        ) : (
-                          <div className="pg-muted" style={{ marginTop: 6 }}>No current lease linked.</div>
-                        )}
-                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
-                          <button className="pg-btn pg-btn-ghost" type="button" onClick={() => navigate(`/tenants/${data.currentTenant.id}/edit`)}>Edit Tenant</button>
-                          <Link className="pg-btn pg-btn-ghost" to={`/owned-properties/${id}/edit`}>Edit Property</Link>
-                          <Link className="pg-btn pg-btn-ghost" to={`/leases`}>Create Lease</Link>
-                          {data.currentLease ? (
-                            <button className="pg-btn pg-btn-secondary" type="button" onClick={() => void onCancelLease()}>
-                              Cancel Lease
-                            </button>
-                          ) : null}
-                        </div>
-                      </div>
-                    ) : (
-                      <div style={{ display: "grid", gap: 8 }}>
-                        <div className="pg-muted">No tenant linked to this property.</div>
-                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                          <Link className="pg-btn pg-btn-ghost" to={`/owned-properties/${id}/edit`}>Link Existing Tenant</Link>
-                          <Link className="pg-btn pg-btn-primary" to={`/owned-properties/${id}/edit`}>Add New Tenant</Link>
-                        </div>
-                      </div>
-                    )}
-                  </Card>
-                </div>
+            <div className="pg-workspace-panel">
+              {tab === "overview" ? (
+                <WorkspaceOverviewTab
+                  data={data}
+                  statement={stmt}
+                  perf={perf}
+                  propertyId={id!}
+                  navigate={(path) => navigate(path)}
+                  currentLeases={currentLeases}
+                  combinedContractRent={combinedContractRent}
+                />
               ) : null}
+
+              {tab === "financials" && id ? (
+                <WorkspaceFinancialsTab
+                  propertyId={id}
+                  finSub={finSub}
+                  statement={stmt}
+                  loading={stmtLoading}
+                  onReload={refreshAfterMutation}
+                  currentLeases={currentLeases}
+                  propertyInvoices={data?.invoices ?? []}
+                  propertyDetail={data ?? null}
+                />
+              ) : null}
+
               {tab === "tenants" ? (
                 <div style={{ display: "grid", gap: 10 }}>
                   <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                    <Link className="pg-btn pg-btn-ghost" to="/tenants">Open Tenant Directory</Link>
+                    <Link className="pg-btn pg-btn-ghost" to="/tenants">
+                      Open Tenant Directory
+                    </Link>
                   </div>
 
                   <Card title="Add tenant to this property">
                     <div style={{ display: "grid", gap: 10 }}>
                       <div>
-                        <div className="pg-muted" style={{ marginBottom: 6 }}>Link existing tenant</div>
+                        <div className="pg-muted" style={{ marginBottom: 6 }}>
+                          Link existing tenant
+                        </div>
                         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                           <select className="pg-input" value={linkTenantId} onChange={(e) => setLinkTenantId(e.target.value === "" ? "" : Number(e.target.value))}>
                             <option value="">Select tenant</option>
@@ -317,7 +392,9 @@ export function OwnedPropertyDetailPage() {
                         </div>
                       </div>
                       <div>
-                        <div className="pg-muted" style={{ marginBottom: 6 }}>Create new tenant</div>
+                        <div className="pg-muted" style={{ marginBottom: 6 }}>
+                          Create new tenant
+                        </div>
                         <div style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}>
                           <Input placeholder="First name" value={newTenant.firstName} onChange={(e) => setNewTenant({ ...newTenant, firstName: e.target.value })} />
                           <Input placeholder="Last name" value={newTenant.lastName} onChange={(e) => setNewTenant({ ...newTenant, lastName: e.target.value })} />
@@ -340,69 +417,119 @@ export function OwnedPropertyDetailPage() {
                           <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
                             <div>
                               <div>
-                                <Link to={`/tenants/${t.id}`} className="pg-link"><strong>{t.firstName} {t.lastName}</strong></Link>
-                                <span className="pg-muted">{" "}({t.status})</span>
+                                <Link to={`/tenants/${t.id}`} className="pg-link">
+                                  <strong>
+                                    {t.firstName} {t.lastName}
+                                  </strong>
+                                </Link>
+                                <span className="pg-muted"> ({t.status})</span>
                               </div>
-                              <div className="pg-muted">{t.phone ? `Phone: ${t.phone}` : "Phone: -"} {t.email ? `| Email: ${t.email}` : ""}</div>
+                              <div className="pg-muted">
+                                {t.phone ? `Phone: ${t.phone}` : "Phone: -"} {t.email ? `| Email: ${t.email}` : ""}
+                              </div>
                             </div>
                             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                              <button className="pg-btn pg-btn-ghost" type="button" onClick={() => void onAddReceivedIncomeForTenant(t.id)}>Add received income</button>
-                              <button className="pg-btn pg-btn-ghost" type="button" onClick={() => void onUnlinkTenant(t.id)}>Unlink</button>
-                              <Link className="pg-btn pg-btn-ghost" to={`/tenants/${t.id}/edit`}>Edit</Link>
+                              <button className="pg-btn pg-btn-ghost" type="button" onClick={() => void onAddReceivedIncomeForTenant(t.id)}>
+                                Add payment
+                              </button>
+                              <Link className="pg-btn pg-btn-ghost" to={`/owned-properties/${id}?tab=financials&fin=invoice`}>
+                                Create invoice
+                              </Link>
+                              <button
+                                className="pg-btn pg-btn-ghost"
+                                type="button"
+                                disabled={tenantIdsWithCurrentLease.has(Number(t.id))}
+                                title={
+                                  tenantIdsWithCurrentLease.has(Number(t.id))
+                                    ? "Cancel the current lease before unlinking this tenant."
+                                    : undefined
+                                }
+                                onClick={() => void onUnlinkTenant(t.id)}
+                              >
+                                Unlink
+                              </button>
+                              <Link className="pg-btn pg-btn-ghost" to={`/tenants/${t.id}/edit`}>
+                                Edit
+                              </Link>
                             </div>
                           </div>
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <div className="pg-muted">No tenants linked to this property yet.</div>
+                    <div className="pg-muted">No tenant linked to this property.</div>
                   )}
                 </div>
               ) : null}
 
               {tab === "leases" ? (
                 <div style={{ display: "grid", gap: 10 }}>
-                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                    <Link className="pg-btn pg-btn-ghost" to="/leases">Create Lease</Link>
-                    {data.currentLease ? (
-                      <button className="pg-btn pg-btn-secondary" type="button" onClick={() => void onCancelLease()}>Cancel Current Lease</button>
-                    ) : null}
-                    {data.currentLease ? (
-                      <button className="pg-btn pg-btn-ghost" type="button" onClick={() => void onEditLease(data.currentLease)}>
-                        Edit Current Lease
-                      </button>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                    <Link className="pg-btn pg-btn-primary" to="/leases">
+                      {currentLeases.length === 0 ? "Create lease" : "Add another lease"}
+                    </Link>
+                    {currentLeases.length > 0 ? (
+                      <span className="pg-muted">
+                        Combined contractual rent: <strong>R {combinedContractRent.toLocaleString()}</strong>/mo ({currentLeases.length} active)
+                      </span>
                     ) : null}
                   </div>
-                  {data.currentLease ? (
-                    <Card title="Current lease">
-                      <div className="pg-muted" style={{ marginBottom: 6 }}>
-                        Tenant:{" "}
-                        {data.currentTenant?.id ? (
-                          <Link className="pg-link" to={`/tenants/${data.currentTenant.id}`}>
-                            {data.currentTenant.firstName} {data.currentTenant.lastName}
-                          </Link>
-                        ) : (
-                          <span className="pg-muted">Unknown</span>
-                        )}
-                      </div>
-                      <div><strong>{data.currentLease.leaseType}</strong> <span className="pg-muted">({data.currentLease.displayStatus ?? data.currentLease.status})</span></div>
-                      <div className="pg-muted" style={{ marginTop: 4 }}>
-                        Start: {data.currentLease.startDate ? new Date(data.currentLease.startDate).toLocaleDateString() : "-"}{" "}
-                        | End: {data.currentLease.fixedTermEndDate ? new Date(data.currentLease.fixedTermEndDate).toLocaleDateString() : "Month-to-month"}
-                      </div>
-                      <div style={{ marginTop: 4 }}>Rent: R {Number(data.currentLease.monthlyRent ?? 0).toLocaleString()} | Deposit: R {Number(data.currentLease.depositAmount ?? 0).toLocaleString()}</div>
-                    </Card>
+                  {currentLeases.length > 0 ? (
+                    <div style={{ display: "grid", gap: 10 }}>
+                      {currentLeases.map((lease: any) => {
+                        const tn = lease.tenant ?? data.tenants?.find((t: any) => t.id === lease.tenantId);
+                        return (
+                          <Card key={lease.id} title={`Current lease #${lease.id}`}>
+                            <div className="pg-muted" style={{ marginBottom: 6 }}>
+                              Tenant:{" "}
+                              {tn?.id ? (
+                                <Link className="pg-link" to={`/tenants/${tn.id}`}>
+                                  {tn.firstName} {tn.lastName}
+                                </Link>
+                              ) : (
+                                <span className="pg-muted">Unknown</span>
+                              )}
+                            </div>
+                            <div>
+                              <strong>{lease.leaseType}</strong> <span className="pg-muted">({lease.displayStatus ?? lease.status})</span>
+                            </div>
+                            <div className="pg-muted" style={{ marginTop: 4 }}>
+                              Start: {lease.startDate ? new Date(lease.startDate).toLocaleDateString() : "-"}{" "}
+                              | End:{" "}
+                              {lease.fixedTermEndDate ? new Date(lease.fixedTermEndDate).toLocaleDateString() : <span className="pg-muted">Month-to-month</span>}
+                            </div>
+                            <div style={{ marginTop: 4 }}>
+                              Rent: R {Number(lease.monthlyRent ?? 0).toLocaleString()} | Deposit: R {Number(lease.depositAmount ?? 0).toLocaleString()}
+                            </div>
+                            <div style={{ marginTop: 4 }}>Rent due day: {lease.rentDueDay}</div>
+                            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
+                              <button className="pg-btn pg-btn-ghost" type="button" onClick={() => void onEditLease(lease)}>
+                                Edit lease
+                              </button>
+                              <button className="pg-btn pg-btn-secondary" type="button" onClick={() => void onCancelLease(lease)}>
+                                Cancel lease
+                              </button>
+                              <Link className="pg-btn pg-btn-primary" to={`/owned-properties/${id}?tab=financials&fin=invoice`}>
+                                Create invoice from lease
+                              </Link>
+                            </div>
+                          </Card>
+                        );
+                      })}
+                    </div>
                   ) : (
-                    <div className="pg-muted">No current lease.</div>
+                    <div className="pg-muted">No current lease linked to this property.</div>
                   )}
 
                   <details>
-                    <summary className="pg-muted" style={{ cursor: "pointer" }}>History / archived leases</summary>
+                    <summary className="pg-muted" style={{ cursor: "pointer" }}>
+                      Lease history
+                    </summary>
                     <div style={{ height: 10 }} />
-                    {(data.leases?.filter?.((l: any) => l.id !== data.currentLease?.id)?.length ?? 0) ? (
+                    {(data.leases?.filter?.((l: any) => !currentLeaseIdSet.has(Number(l.id)))?.length ?? 0) ? (
                       <div style={{ display: "grid", gap: 10 }}>
                         {data.leases
-                          .filter((l: any) => l.id !== data.currentLease?.id)
+                          .filter((l: any) => !currentLeaseIdSet.has(Number(l.id)))
                           .map((l: any) => (
                             <div key={l.id} style={{ border: "1px solid rgba(255,255,255,.08)", borderRadius: 10, padding: 10 }}>
                               <div className="pg-muted" style={{ marginBottom: 6 }}>
@@ -415,12 +542,16 @@ export function OwnedPropertyDetailPage() {
                                   <span className="pg-muted">Unknown</span>
                                 )}
                               </div>
-                              <div><strong>{l.leaseType}</strong> <span className="pg-muted">({l.status})</span></div>
+                              <div>
+                                <strong>{l.leaseType}</strong> <span className="pg-muted">({l.status})</span>
+                              </div>
                               <div className="pg-muted" style={{ marginTop: 4 }}>
                                 Start: {l.startDate ? new Date(l.startDate).toLocaleDateString() : "-"}{" "}
                                 | End: {l.fixedTermEndDate ? new Date(l.fixedTermEndDate).toLocaleDateString() : "Month-to-month"}
                               </div>
-                              <div style={{ marginTop: 4 }}>Rent: R {Number(l.monthlyRent ?? 0).toLocaleString()} | Deposit: R {Number(l.depositAmount ?? 0).toLocaleString()}</div>
+                              <div style={{ marginTop: 4 }}>
+                                Rent: R {Number(l.monthlyRent ?? 0).toLocaleString()} | Deposit: R {Number(l.depositAmount ?? 0).toLocaleString()}
+                              </div>
                               <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
                                 {!["CANCELLED", "TERMINATED", "ARCHIVED"].includes(l.status) ? (
                                   <button className="pg-btn pg-btn-ghost" type="button" onClick={() => void onEditLease(l)}>
@@ -443,132 +574,55 @@ export function OwnedPropertyDetailPage() {
                 </div>
               ) : null}
 
-              {tab === "financials" ? (
-                <div style={{ display: "grid", gap: 12 }}>
-                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                    <Link className="pg-btn pg-btn-primary" to={`/financials?propertyId=${id}&expenseType=recurring`}>Add recurring expense</Link>
-                    <Link className="pg-btn pg-btn-secondary" to={`/financials?propertyId=${id}&expenseType=once`}>Add once-off expense</Link>
-                    <Link className="pg-btn pg-btn-ghost" to={`/financials?propertyId=${id}`}>Add income</Link>
-                  </div>
-
-                  <Card title="This month (received income + active expenses)">
-                    {(() => {
-                      const inc = (data.incomeEntries ?? []).filter((r: any) => r.status === "RECEIVED" && new Date(r.incomeDate) >= monthBounds.start && new Date(r.incomeDate) < monthBounds.end).reduce((a: number, r: any) => a + Number(r.amount ?? 0), 0);
-                      const exp = (data.expenses ?? []).filter((r: any) => r.status === "ACTIVE" && new Date(r.expenseDate) >= monthBounds.start && new Date(r.expenseDate) < monthBounds.end).reduce((a: number, r: any) => a + Number(r.amount ?? 0), 0);
-                      return (
-                        <div style={{ display: "grid", gap: 6 }}>
-                          <div>Income received: <strong>R {inc.toLocaleString()}</strong></div>
-                          <div>Expenses (active): <strong>R {exp.toLocaleString()}</strong></div>
-                          <div>Net cash flow: <strong style={{ color: inc - exp >= 0 ? "#20C997" : "#FF4D4F" }}>R {(inc - exp).toLocaleString()}</strong></div>
-                          <div className="pg-muted">Note: Lease “expected” rent is shown on the Financials page.</div>
-                        </div>
-                      );
-                    })()}
-                  </Card>
-
-                  <Card title="Income entries">
-                    {(data.incomeEntries?.length ?? 0) ? (
-                      <div style={{ display: "grid", gap: 8 }}>
-                        {data.incomeEntries.map((inc: any) => (
-                          <div key={inc.id} style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", border: "1px solid rgba(255,255,255,.08)", borderRadius: 10, padding: 10 }}>
-                            <div>
-                              <div><strong>{inc.category}</strong> — {inc.description}</div>
-                              <div className="pg-muted">{inc.incomeDate ? new Date(inc.incomeDate).toLocaleDateString() : "-"}</div>
-                            </div>
-                            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                              <div><strong>R {Number(inc.amount ?? 0).toLocaleString()}</strong></div>
-                              <button className="pg-btn pg-btn-ghost" type="button" onClick={() => void onEditIncome(inc)}>Edit</button>
-                              <button className="pg-btn pg-btn-ghost" type="button" onClick={() => void onDeleteIncome(inc.id)}>🗑</button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="pg-muted">No income entries yet.</div>
-                    )}
-                  </Card>
-
-                  <Card title="Expense entries">
-                    {(data.expenses?.length ?? 0) ? (
-                      <div style={{ display: "grid", gap: 8 }}>
-                        {data.expenses.map((ex: any) => (
-                          <div key={ex.id} style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", border: "1px solid rgba(255,255,255,.08)", borderRadius: 10, padding: 10 }}>
-                            <div>
-                              <div>
-                                <strong>{ex.category}</strong> — {ex.description}{" "}
-                                {ex.isRecurring ? <span className="pg-pill" style={{ marginLeft: 8 }}>recurring</span> : null}
-                              </div>
-                              <div className="pg-muted">{ex.expenseDate ? new Date(ex.expenseDate).toLocaleDateString() : "-"}</div>
-                            </div>
-                            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                              <div><strong>R {Number(ex.amount ?? 0).toLocaleString()}</strong></div>
-                              <button className="pg-btn pg-btn-ghost" type="button" onClick={() => void onDeleteExpense(ex.id)}>🗑</button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="pg-muted">No expense entries yet.</div>
-                    )}
-                  </Card>
-                </div>
-              ) : null}
-
               {tab === "documents" ? (
                 <div style={{ display: "grid", gap: 10 }}>
                   <div className="pg-muted">{data.documents?.length ?? 0} documents.</div>
-                  <Link className="pg-btn pg-btn-ghost" to={`/documents`}>Open documents</Link>
+                  <Link className="pg-btn pg-btn-ghost" to={`/documents`}>
+                    Open documents
+                  </Link>
                 </div>
               ) : null}
 
-              {tab === "performance" ? (
+              {tab === "reports" ? (
                 <div style={{ display: "grid", gap: 12 }}>
-                  <Card title="Monthly NOI trend">
-                    {perf?.charts?.monthlyNOITrend?.length ? (
-                      <Line
-                        data={{
-                          labels: perf.charts.monthlyNOITrend.map((r: any) => r.label),
-                          datasets: [
-                            {
-                              label: "Monthly NOI",
-                              data: perf.charts.monthlyNOITrend.map((r: any) => r.noi),
-                              borderColor: "#20C997",
-                              backgroundColor: "rgba(32,201,151,0.2)"
-                            }
-                          ]
-                        }}
-                      />
-                    ) : (
-                      <div className="pg-muted">No performance trend available yet.</div>
-                    )}
-                  </Card>
-                  <Card title="Expense mix (month)">
-                    {perf?.charts?.incomeExpenseComposition?.length ? (
-                      <Doughnut
-                        data={{
-                          labels: (perf.charts.incomeExpenseComposition as any[]).filter((r: any) => r.type === "expense").map((r: any) => r.category),
-                          datasets: [
-                            {
-                              data: (perf.charts.incomeExpenseComposition as any[]).filter((r: any) => r.type === "expense").map((r: any) => r.amount),
-                              backgroundColor: ["#FFB020", "#20C997", "#4D96FF", "#FF4D4F", "#9B59B6", "#00C2A8"]
-                            }
-                          ]
-                        }}
-                      />
-                    ) : (
-                      <div className="pg-muted">No expense data captured for this month.</div>
-                    )}
-                  </Card>
-                  <Card title="Actions">
-                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                      <Link className="pg-btn pg-btn-ghost" to={`/owned-properties/${id}?tab=financials`}>Review financials</Link>
-                      <Link className="pg-btn pg-btn-ghost" to={`/owned-properties/${id}?tab=leases`}>Review leases</Link>
-                      <Link className="pg-btn pg-btn-ghost" to={`/owned-properties/${id}?tab=documents`}>Review documents</Link>
+                  <Card title="Property-level reports">
+                    <div className="pg-muted" style={{ marginBottom: 12 }}>
+                      Uses the same canonical statement and aggregates as Overview and Financials.
                     </div>
+                    {reportsLoading ? (
+                      <div className="pg-muted">Loading catalog…</div>
+                    ) : (reportsCatalog?.reports ?? []).length ? (
+                      <ul style={{ margin: 0, paddingLeft: 0, listStyle: "none", display: "grid", gap: 10 }}>
+                        {reportsCatalog.reports.map((r: any) => (
+                          <li key={r.id} style={{ border: "1px solid rgba(255,255,255,.08)", borderRadius: 10, padding: 12 }}>
+                            <div style={{ fontWeight: 600 }}>{r.title}</div>
+                            <div className="pg-muted" style={{ fontSize: 13, marginTop: 4 }}>
+                              {r.description}
+                            </div>
+                            <div style={{ marginTop: 10 }}>
+                              {r.href ? (
+                                <Link className="pg-btn pg-btn-primary" to={r.href}>
+                                  Open
+                                </Link>
+                              ) : (
+                                <Link
+                                  className="pg-btn pg-btn-primary"
+                                  to={`/owned-properties/${id}?tab=${r.tab}${r.tab === "financials" ? "&fin=statement" : ""}`}
+                                >
+                                  Go to workspace
+                                </Link>
+                              )}
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <div className="pg-muted">Reports catalog unavailable.</div>
+                    )}
                   </Card>
                 </div>
               ) : null}
-            </Card>
+            </div>
           </>
         ) : null}
       </Container>

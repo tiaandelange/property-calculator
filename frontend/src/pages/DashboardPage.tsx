@@ -2,17 +2,21 @@ import { useMemo, useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { Link } from "react-router-dom";
 import { api, authHeader } from "../api/client";
+import { downloadAuthenticatedPdf, triggerPdfFileDownload } from "../api/pdfBlob";
 import { Card } from "../components/ui/Card";
 import { Container } from "../components/ui/Container";
 import { Grid } from "../components/ui/Grid";
 import { Section } from "../components/ui/Section";
 import { Button } from "../components/ui/Button";
+import { PageBreadcrumb } from "../components/nav/PageBreadcrumb";
+import { workspacePage } from "../nav/workspaceBreadcrumbs";
 
 type Report = {
   id: number;
   type: string;
   created_at: string;
   hasPdf: boolean;
+  reportId?: number | null;
   downloadUrl: string | null;
   input: Record<string, unknown>;
   result: Record<string, unknown>;
@@ -30,6 +34,8 @@ export function DashboardPage() {
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>("");
+  const [pdfBusyCalcId, setPdfBusyCalcId] = useState<number | null>(null);
+  const [pdfDownloadBusyKey, setPdfDownloadBusyKey] = useState<string | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -44,13 +50,31 @@ export function DashboardPage() {
     }
   };
 
-  const generate = async (id: number) => {
+  const generate = async (calculationId: number) => {
     setError("");
+    setPdfBusyCalcId(calculationId);
     try {
-      await api.post(`/reports/${id}/generate`, {}, { headers: authHeader() });
+      await api.post(`/reports/generate`, { reportType: "CALCULATION", calculationId }, { headers: authHeader() });
       await load();
     } catch (e: any) {
       setError(e?.response?.data?.message ?? "Failed to generate report.");
+    } finally {
+      setPdfBusyCalcId(null);
+    }
+  };
+
+  const downloadSavedReport = async (r: Report) => {
+    if (!r.downloadUrl) return;
+    const key = `${r.reportId ?? r.id}`;
+    setPdfDownloadBusyKey(key);
+    setError("");
+    try {
+      const blob = await downloadAuthenticatedPdf(r.downloadUrl);
+      triggerPdfFileDownload(blob, `report-${r.type}-${r.reportId ?? r.id}.pdf`);
+    } catch (e: any) {
+      setError(e?.message ?? "Failed to download PDF.");
+    } finally {
+      setPdfDownloadBusyKey(null);
     }
   };
 
@@ -76,6 +100,7 @@ export function DashboardPage() {
         <meta name="description" content="View, generate and download your saved property calculation reports." />
       </Helmet>
       <Container>
+        <PageBreadcrumb items={workspacePage("Saved reports")} />
         <div style={{ display: "flex", gap: 16, alignItems: "flex-end", justifyContent: "space-between", flexWrap: "wrap" }}>
           <div>
             <h1 className="pg-h2" style={{ margin: 0 }}>
@@ -146,11 +171,15 @@ export function DashboardPage() {
                         View
                       </Link>
                       {r.downloadUrl ? (
-                        <a className="pg-btn pg-btn-secondary" href={`${import.meta.env.VITE_API_URL ?? "http://localhost:4000/api"}${r.downloadUrl}`}>
-                          Download
-                        </a>
+                        <Button
+                          variant="secondary"
+                          loading={pdfDownloadBusyKey === `${r.reportId ?? r.id}`}
+                          onClick={() => void downloadSavedReport(r)}
+                        >
+                          Download PDF
+                        </Button>
                       ) : (
-                        <Button variant="secondary" onClick={() => generate(r.id)}>
+                        <Button variant="secondary" loading={pdfBusyCalcId === r.id} onClick={() => void generate(r.id)}>
                           Generate PDF
                         </Button>
                       )}

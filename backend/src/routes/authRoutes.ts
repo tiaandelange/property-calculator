@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import crypto from "node:crypto";
 import { db } from "../config/db.js";
+import { readInvoicePaymentDetails } from "../utils/invoicePaymentDetails.js";
 import { env } from "../config/env.js";
 import type { AuthJwtPayload } from "../middleware/auth.js";
 
@@ -10,7 +11,7 @@ export const authRoutes = Router();
 
 authRoutes.post("/register", async (req, res) => {
   const { email, password, name } = req.body;
-  const existing = await db.user.findUnique({ where: { email } });
+  const existing = await db.user.findUnique({ where: { email }, select: { id: true } });
   if (existing) return res.status(409).json({ message: "Email already in use" });
   const password_hash = await bcrypt.hash(password, 10);
   const confirmation_token = crypto.randomUUID();
@@ -21,7 +22,10 @@ authRoutes.post("/register", async (req, res) => {
 
 authRoutes.get("/confirm-email/:token", async (req, res) => {
   const { token } = req.params;
-  const user = await db.user.findFirst({ where: { confirmation_token: token } });
+  const user = await db.user.findFirst({
+    where: { confirmation_token: token },
+    select: { id: true }
+  });
   if (!user) return res.status(400).json({ message: "Invalid token" });
   await db.user.update({ where: { id: user.id }, data: { email_confirmed: true, confirmation_token: null } });
   return res.json({ message: "Email confirmed" });
@@ -29,7 +33,19 @@ authRoutes.get("/confirm-email/:token", async (req, res) => {
 
 authRoutes.post("/login", async (req, res) => {
   const { email, password } = req.body;
-  const user = await db.user.findUnique({ where: { email } });
+  const user = await db.user.findUnique({
+    where: { email },
+    select: {
+      id: true,
+      email: true,
+      name: true,
+      password_hash: true,
+      email_confirmed: true,
+      role: true,
+      subscription_status: true,
+      free_uses_remaining: true
+    }
+  });
   if (!user) return res.status(401).json({ message: "Invalid credentials" });
   if (!user.email_confirmed) {
     return res.status(403).json({ message: "Email address not confirmed. Please confirm your email first." });
@@ -62,8 +78,21 @@ authRoutes.get("/me", async (req, res) => {
   const token = header.replace("Bearer ", "");
   try {
     const payload = jwt.verify(token, env.JWT_SECRET) as AuthJwtPayload;
-    const user = await db.user.findUnique({ where: { id: Number(payload.sub) } });
+    const user = await db.user.findUnique({
+      where: { id: Number(payload.sub) },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        subscription_status: true,
+        free_uses_remaining: true,
+        email_confirmed: true,
+        uiColorScheme: true
+      }
+    });
     if (!user) return res.status(401).json({ message: "Unauthorized" });
+    const invoicePaymentDetails = await readInvoicePaymentDetails(user.id);
     return res.json({
       id: user.id,
       email: user.email,
@@ -71,7 +100,9 @@ authRoutes.get("/me", async (req, res) => {
       role: user.role,
       subscriptionStatus: user.subscription_status,
       freeUsesRemaining: user.free_uses_remaining,
-      emailConfirmed: user.email_confirmed
+      emailConfirmed: user.email_confirmed,
+      invoicePaymentDetails: invoicePaymentDetails ?? null,
+      uiColorScheme: user.uiColorScheme === "light" ? "light" : "dark"
     });
   } catch {
     return res.status(401).json({ message: "Invalid token" });

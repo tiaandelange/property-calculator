@@ -23,7 +23,15 @@ calculatorRoutes.post("/:type", optionalAuth, async (req: AuthRequest, res) => {
   }
 
   if (req.userId) {
-    const user = await db.user.findUnique({ where: { id: req.userId } });
+    const user = await db.user.findUnique({
+      where: { id: req.userId },
+      select: {
+        id: true,
+        role: true,
+        subscription_status: true,
+        free_uses_remaining: true
+      }
+    });
     const userRole = req.userRole ?? user?.role;
     const subscriptionStatus = req.userSubscriptionStatus ?? user?.subscription_status;
     const isAdmin = userRole === "ADMIN";

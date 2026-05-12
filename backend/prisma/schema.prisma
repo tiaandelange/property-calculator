@@ -120,12 +120,19 @@ enum RecurringFrequency {
   ANNUALLY
 }
 
+enum RecurringExpenseMonthAnchor {
+  FIRST_OF_MONTH
+  LAST_OF_MONTH
+  DAY_OF_MONTH
+}
+
 enum PropertyExpenseSource {
   PROPERTY_SETUP
   MANUAL_FINANCIAL_ENTRY
   INVOICE
   IMPORT
   SYSTEM
+  HISTORICAL_BACKFILL
 }
 
 enum PropertyExpenseStatus {
@@ -148,6 +155,7 @@ enum PropertyIncomeSource {
   INVOICE
   IMPORT
   SYSTEM
+  HISTORICAL_BACKFILL
 }
 
 enum PropertyIncomeStatus {
@@ -171,6 +179,14 @@ enum RecurringIncomeRuleStatus {
   CANCELLED
 }
 
+/// Singleton row (id = 1): global assumptions for projected portfolio IRR (admin-editable).
+model PortfolioProjectionDefaults {
+  id                               Int      @id @default(1)
+  rentalIncomeGrowthPercentAnnual  Float    @default(6)
+  totalExpensesGrowthPercentAnnual Float    @default(6)
+  updatedAt                        DateTime @updatedAt
+}
+
 model User {
   id                  Int                @id @default(autoincrement())
   email               String             @unique
@@ -184,7 +200,12 @@ model User {
   subscription_end    DateTime?
   email_confirmed     Boolean            @default(false)
   confirmation_token  String?
+  /// Landlord banking / payment instructions shown on generated invoice PDFs (editable in profile).
+  invoicePaymentDetails Json? @map("invoice_payment_details")
+  /// Web UI palette: `dark` (default) or `light` (warm off-white shell).
+  uiColorScheme         String   @default("dark") @map("ui_color_scheme")
   calculations        Calculation[]
+  storedReports       StoredReport[]
   subscriptions       Subscription[]
   properties          Property[]
   tenants             Tenant[]
@@ -198,16 +219,35 @@ model User {
 }
 
 model Calculation {
-  id          Int      @id @default(autoincrement())
-  user_id     Int
-  type        String
-  input_json  String
-  result_json String
-  created_at  DateTime @default(now())
-  pdf_path    String?
-  user        User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  id             Int            @id @default(autoincrement())
+  user_id        Int
+  type           String
+  input_json     String
+  result_json    String
+  created_at     DateTime       @default(now())
+  pdf_path       String?
+  user           User           @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  storedReports  StoredReport[]
 
   @@index([user_id])
+}
+
+model StoredReport {
+  id             Int          @id @default(autoincrement())
+  userId         Int          @map("user_id")
+  reportType     String       @map("report_type")
+  fileName       String       @map("file_name")
+  calculationId  Int?         @map("calculation_id")
+  propertyId     Int?         @map("property_id")
+  invoiceId      Int?         @map("invoice_id")
+  scenarioName   String?      @map("scenario_name")
+  createdAt      DateTime     @default(now()) @map("created_at")
+
+  owner          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  calculation    Calculation? @relation(fields: [calculationId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([calculationId])
 }
 
 model Subscription {
@@ -245,6 +285,17 @@ model Property {
   currentEstimatedValue  Float?
   outstandingBondBalance Float?
   monthlyBondPayment     Float?
+  /// Nominal annual interest rate % (e.g. 11.75). Used with balance + remaining term to estimate payment split.
+  bondAnnualInterestRatePercent Float?                   @map("bond_annual_interest_rate_percent")
+  /// Original bond term: 5 / 10 / … / 30 years (with bondStartDate drives remaining months).
+  bondTermYears                 Int?                     @map("bond_term_years")
+  bondStartDate                 DateTime?                @db.Date @map("bond_start_date")
+  /// Manual fallback when bondTermYears + bondStartDate are not set.
+  bondRemainingTermMonths       Int?                     @map("bond_remaining_term_months")
+  /// Optional: when the bank’s interest portion differs from the calculated split for the current period.
+  bondInterestPortionOverride   Float?                   @map("bond_interest_portion_override")
+  /// Optional: when principal portion differs from calculated (paired with monthlyBondPayment).
+  bondPrincipalPortionOverride  Float?                   @map("bond_principal_portion_override")
   totalCashInvested      Float?
   bondCosts              Float?
   transferCosts          Float?
@@ -337,6 +388,10 @@ model Lease {
   leaseType          LeaseType  @default(FIXED_TERM)
   monthlyRent        Float
   depositAmount      Float
+  /// Nominal annual % for semi-automatic deposit growth (monthly compound factor annual%/12).
+  depositAnnualGrowthPercent Float?
+  /// Last calendar month (YYYY-MM) through which monthly deposit growth was applied to depositAmount.
+  depositGrowthLastAppliedMonth String?
   rentDueDay         Int         @default(1)
   escalationPercent  Float?
   escalationDate     DateTime?
@@ -390,19 +445,33 @@ model PropertyExpense {
   category            PropertyExpenseCategory
   description         String
   amount              Float
+  /// Bond ledger rows — optional interest vs principal breakdown (total debit remains `amount`).
+  bondInterestAmount  Float?                @map("bond_interest_amount")
+  bondPrincipalAmount Float?                @map("bond_principal_amount")
   expenseDate         DateTime
   isRecurring         Boolean               @default(false)
   recurringFrequency  RecurringFrequency?
+  /// Parent schedule row when this row was auto-posted from a recurring template.
+  recurringScheduleParentId Int?                       @map("recurring_schedule_parent_id")
+  recurringStartDate       DateTime?                  @db.Date @map("recurring_start_date")
+  recurringEndDate         DateTime?                  @db.Date @map("recurring_end_date")
+  recurringOpenEnded       Boolean                   @default(false) @map("recurring_open_ended")
+  recurringMonthAnchor     RecurringExpenseMonthAnchor? @map("recurring_month_anchor")
+  /// 1–31 when recurringMonthAnchor is DAY_OF_MONTH (shorter months clamp on post).
+  recurringDayOfMonth      Int?                       @map("recurring_day_of_month")
   source              PropertyExpenseSource @default(MANUAL_FINANCIAL_ENTRY)
   status              PropertyExpenseStatus @default(ACTIVE)
   createdAt           DateTime              @default(now())
   updatedAt           DateTime              @updatedAt
   owner               User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
   property            Property              @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  recurringScheduleParent   PropertyExpense?  @relation("PropertyExpenseRecurringSchedule", fields: [recurringScheduleParentId], references: [id], onDelete: Cascade)
+  recurringScheduleChildren PropertyExpense[] @relation("PropertyExpenseRecurringSchedule")
 
   @@index([userId])
   @@index([propertyId])
   @@index([status])
+  @@index([recurringScheduleParentId])
 }
 
 model PropertyIncome {

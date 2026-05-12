@@ -2,11 +2,15 @@ import { FormEvent, useEffect, useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { api, authHeader } from "../api/client";
 import { getProperties } from "../api/ownedProperties";
+import { invalidatePropertyWorkspace } from "../features/properties/invalidate";
+import { usePropertyWorkspaceRefresh } from "../features/properties/usePropertyWorkspaceRefresh";
 import { Container } from "../components/ui/Container";
 import { Section } from "../components/ui/Section";
 import { Card } from "../components/ui/Card";
 import { Field, Input } from "../components/ui/Input";
 import { Button } from "../components/ui/Button";
+import { PageBreadcrumb } from "../components/nav/PageBreadcrumb";
+import { workspacePage } from "../nav/workspaceBreadcrumbs";
 
 export function OwnedDocumentsPage() {
   const [properties, setProperties] = useState<any[]>([]);
@@ -28,6 +32,14 @@ export function OwnedDocumentsPage() {
   useEffect(() => { void loadProperties(); }, []);
   useEffect(() => { if (propertyId) void loadDocs(Number(propertyId)); }, [propertyId]);
 
+  usePropertyWorkspaceRefresh({
+    propertyId: propertyId || undefined,
+    onRefresh: () => {
+      void loadProperties();
+      if (propertyId) void loadDocs(Number(propertyId));
+    }
+  });
+
   const upload = async (e: FormEvent) => {
     e.preventDefault();
     setError("");
@@ -39,6 +51,7 @@ export function OwnedDocumentsPage() {
       await api.post(`/properties/${propertyId}/documents/upload`, form, { headers: { ...authHeader(), "Content-Type": "multipart/form-data" } });
       setFile(null);
       await loadDocs(Number(propertyId));
+      invalidatePropertyWorkspace(Number(propertyId));
     } catch (err: any) {
       setError(err?.response?.data?.message ?? "Upload failed");
     }
@@ -46,13 +59,17 @@ export function OwnedDocumentsPage() {
 
   const remove = async (id: number) => {
     await api.delete(`/documents/${id}`, { headers: authHeader() });
-    if (propertyId) await loadDocs(Number(propertyId));
+    if (propertyId) {
+      await loadDocs(Number(propertyId));
+      invalidatePropertyWorkspace(Number(propertyId));
+    }
   };
 
   return (
     <Section>
       <Helmet><title>Documents | The Property Guy</title></Helmet>
       <Container>
+        <PageBreadcrumb items={workspacePage("Documents")} />
         <h1 className="pg-h2">Documents</h1>
         {error ? <div className="pg-alert pg-alert-error">{error}</div> : null}
         <Card>
@@ -72,7 +89,7 @@ export function OwnedDocumentsPage() {
               <div key={d.id} style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
                 <span>{d.fileName} ({d.documentType})</span>
                 <span style={{ display: "flex", gap: 8 }}>
-                  <a className="pg-btn pg-btn-ghost" href={`${import.meta.env.VITE_API_URL ?? "http://localhost:4000/api"}/documents/${d.id}/download`}>Download</a>
+                  <a className="pg-btn pg-btn-ghost" href={`${import.meta.env.VITE_API_BASE_URL ?? import.meta.env.VITE_API_URL ?? "http://localhost:4000/api"}/documents/${d.id}/download`}>Download</a>
                   <Button variant="ghost" onClick={() => remove(d.id)}>Delete</Button>
                 </span>
               </div>

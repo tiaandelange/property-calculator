@@ -33,22 +33,109 @@ export const calculators: CalculatorDef[] = [
   {
     slug: "transfer-bond-costs",
     name: "Transfer & Bond Costs (South Africa)",
-    description: "Estimate upfront purchase costs: transfer duty, attorney fees, deeds office fees and municipal provision.",
+    description:
+      "Estimate transfer duty, conveyancer fees (incl. VAT), Deeds Office fees, municipal clearance provision and typical disbursements before registration.",
     groups: [
       scenarioGroup,
       {
-        title: "Purchase details",
+        title: "Purchase",
         fields: [
           { key: "purchasePrice", label: "Purchase price (R)", type: "money", required: true },
-          { key: "depositAmount", label: "Deposit (optional, R)", type: "money", required: false },
-          { key: "bondAmount", label: "Bond amount (R)", type: "money", required: true }
+          {
+            key: "marketValue",
+            label: "Market / municipal value (optional, R)",
+            type: "money",
+            help: "If higher than the purchase price, transfer duty uses this value (fair value / consideration rule)."
+          },
+          { key: "bondAmount", label: "Bond amount (R)", type: "money", required: true, help: "Use 0 if no bond." },
+          { key: "depositAmount", label: "Deposit (optional, R)", type: "money" }
         ]
       },
       {
-        title: "Transaction flags",
+        title: "Transaction",
         fields: [
-          { key: "propertyIsVatTransaction", label: "VAT transaction (transfer duty = R0)", type: "checkbox" },
-          { key: "includeBondRegistration", label: "Include bond registration fees", type: "checkbox" }
+          {
+            key: "transactionType",
+            label: "Transaction type",
+            type: "select",
+            required: true,
+            options: [
+              { label: "Transfer duty applies", value: "TRANSFER_DUTY" },
+              { label: "VAT transaction (no transfer duty)", value: "VAT_TRANSACTION" }
+            ]
+          },
+          {
+            key: "buyerType",
+            label: "Buyer",
+            type: "select",
+            required: true,
+            options: [
+              { label: "Individual", value: "INDIVIDUAL" },
+              { label: "Company", value: "COMPANY" },
+              { label: "Trust", value: "TRUST" }
+            ]
+          },
+          { key: "includeBondRegistration", label: "Include bond registration costs", type: "checkbox" },
+          { key: "sellerVatRegistered", label: "Seller is VAT registered (informational)", type: "checkbox" },
+          {
+            key: "propertyUse",
+            label: "Property use",
+            type: "select",
+            options: [
+              { label: "Primary residence", value: "PRIMARY_RESIDENCE" },
+              { label: "Investment", value: "INVESTMENT" },
+              { label: "Commercial", value: "COMMERCIAL" },
+              { label: "Vacant land", value: "VACANT_LAND" },
+              { label: "Other", value: "OTHER" }
+            ]
+          },
+          { key: "province", label: "Province (optional)", type: "text", placeholder: "e.g. Western Cape" },
+          { key: "municipality", label: "Municipality (optional)", type: "text", placeholder: "e.g. City of Cape Town" }
+        ]
+      },
+      {
+        title: "Fees & provisions",
+        fields: [
+          {
+            key: "feeYear",
+            label: "Deeds Office fee schedule",
+            type: "select",
+            required: true,
+            options: [
+              { label: "1 Apr 2026 – 28 Feb 2027 (default)", value: "2026_2027" },
+              { label: "1 Apr 2025 – 28 Feb 2026", value: "2025_2026" }
+            ]
+          },
+          {
+            key: "attorneyFeeMode",
+            label: "Conveyancer fee mode",
+            type: "select",
+            required: true,
+            options: [
+              { label: "Estimated (recommended tariff, ex VAT)", value: "ESTIMATE" },
+              { label: "Manual (enter professional fees ex VAT)", value: "MANUAL" }
+            ]
+          },
+          { key: "manualTransferAttorneyFee", label: "Manual transfer attorney fee (ex VAT, R)", type: "money" },
+          { key: "manualBondAttorneyFee", label: "Manual bond attorney fee (ex VAT, R)", type: "money" },
+          { key: "vatRate", label: "VAT rate on professional fees (%)", type: "percent" },
+          { key: "municipalRatesClearanceProvision", label: "Municipal / rates clearance provision (R)", type: "money" },
+          { key: "postagesAndPettiesEstimate", label: "Postages & petties (R)", type: "money" },
+          { key: "ficaFeeEstimate", label: "FICA / compliance estimate (R)", type: "money" },
+          { key: "deedsSearchFeeEstimate", label: "Deeds search fee estimate (R)", type: "money" },
+          { key: "electronicInstructionFeeEstimate", label: "Electronic instruction fee estimate (R)", type: "money" }
+        ]
+      },
+      {
+        title: "Cash required",
+        fields: [
+          {
+            key: "includeDepositInCashRequired",
+            label: "Include deposit in “cash required including deposit”",
+            type: "checkbox",
+            help: "Deposit is not part of transfer/bond fees; only add it to that total when you want a combined cash figure."
+          },
+          { key: "isFirstTimeBuyer", label: "First-time buyer (informational only)", type: "checkbox" }
         ]
       }
     ]
@@ -155,30 +242,8 @@ export const calculators: CalculatorDef[] = [
     slug: "noi",
     name: "Net Operating Income (NOI)",
     description: "Income before financing and tax. Excludes bond repayment, tax, depreciation and capital improvements.",
-    groups: [
-      scenarioGroup,
-      {
-        title: "Income",
-        fields: [
-          { key: "grossMonthlyRent", label: "Gross monthly rent (R)", type: "money", required: true },
-          { key: "otherMonthlyIncome", label: "Other monthly income (R)", type: "money" },
-          { key: "vacancyRatePercent", label: "Vacancy rate (%)", type: "percent" }
-        ]
-      },
-      {
-        title: "Operating expenses (monthly)",
-        fields: [
-          { key: "ratesAndTaxes", label: "Rates & taxes (R)", type: "money" },
-          { key: "levies", label: "Levies (R)", type: "money" },
-          { key: "insurance", label: "Insurance (R)", type: "money" },
-          { key: "maintenance", label: "Maintenance (R)", type: "money" },
-          { key: "propertyManagement", label: "Property management (R)", type: "money" },
-          { key: "utilities", label: "Utilities (R)", type: "money" },
-          { key: "admin", label: "Admin (R)", type: "money" },
-          { key: "otherOperatingExpenses", label: "Other operating expenses (R)", type: "money" }
-        ]
-      }
-    ]
+    /** Inputs are rendered in `CalculatorPage` (annual rent, line-item opex, vacancy & maintenance %). */
+    groups: [scenarioGroup]
   },
   {
     slug: "cap-rate",
@@ -215,19 +280,38 @@ export const calculators: CalculatorDef[] = [
   {
     slug: "irr",
     name: "IRR",
-    description: "Annualised return considering timing of cash flows and sale proceeds.",
+    description:
+      "Annualised discount rate r where NPV = CF₀ + CF₁/(1+r)¹ + ⋯ + CFₙ/(1+r)ⁿ = 0. Use legacy mode (sale price + annual flows) or growth mode (current value × appreciation + bond).",
     groups: [
       scenarioGroup,
       {
-        title: "Hold period & cash flows",
+        title: "Growth mode (optional)",
         fields: [
-          { key: "initialCashInvested", label: "Initial cash invested (negative, R)", type: "money", required: true },
-          { key: "holdPeriodYears", label: "Hold period (years)", type: "number", required: true },
-          { key: "annualCashFlows", label: "Annual cash flows (comma-separated, R)", type: "text", help: "Example: 12000, 14000, 16000" }
+          {
+            key: "totalCashInvested",
+            label: "Total cash invested (R)",
+            type: "money",
+            help: "If set with current estimated value, exit value = value × (1+appreciation)ᴴ and CF₀ = −this amount."
+          },
+          { key: "currentEstimatedValue", label: "Current estimated value (R)", type: "money" },
+          { key: "annualCashFlowAfterExpensesAndDebt", label: "Annual net cash flow after debt (R)", type: "money" },
+          { key: "outstandingBondBalance", label: "Outstanding bond balance (R)", type: "money" },
+          { key: "expectedAnnualAppreciationPercent", label: "Expected annual appreciation (%)", type: "percent" },
+          { key: "estimatedSellingCostPercent", label: "Selling costs at exit (%)", type: "percent" },
+          { key: "projectedBondBalanceAtSale", label: "Projected bond at sale (R) (optional)", type: "money" },
+          { key: "cashFlowGrowthPercentAnnual", label: "Annual growth on net cash flow (%)", type: "percent" }
         ]
       },
       {
-        title: "Exit assumptions",
+        title: "Legacy: hold period & cash flows",
+        fields: [
+          { key: "initialCashInvested", label: "Initial cash invested (negative, R)", type: "money" },
+          { key: "holdPeriodYears", label: "Hold period (years)", type: "number", required: true },
+          { key: "annualCashFlows", label: "Annual cash flows (comma-separated, R)", type: "text", help: "Example: 12000, 14000, 16000 or a single value repeated." }
+        ]
+      },
+      {
+        title: "Legacy: exit",
         fields: [
           { key: "expectedSalePrice", label: "Expected sale price (R)", type: "money" },
           { key: "sellingCostsPercent", label: "Selling costs (%)", type: "percent" },

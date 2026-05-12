@@ -3,6 +3,8 @@ import { Link } from "react-router-dom";
 import { Container } from "../components/ui/Container";
 import { Section } from "../components/ui/Section";
 import { Card } from "../components/ui/Card";
+import { PageBreadcrumb } from "../components/nav/PageBreadcrumb";
+import { homeThen } from "../nav/workspaceBreadcrumbs";
 
 export function SubscriptionResultPage({ mode }: { mode: "success" | "cancel" }) {
   return (
@@ -12,6 +14,9 @@ export function SubscriptionResultPage({ mode }: { mode: "success" | "cancel" })
         <meta name="description" content="Subscription status." />
       </Helmet>
       <Container>
+        <PageBreadcrumb
+          items={homeThen(mode === "success" ? "Subscription successful" : "Subscription cancelled")}
+        />
         <div style={{ maxWidth: 820, margin: "0 auto" }}>
           <Card>
             <h1 className="pg-h2" style={{ marginTop: 0 }}>

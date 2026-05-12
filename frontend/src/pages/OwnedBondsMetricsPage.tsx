@@ -6,6 +6,8 @@ import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
 import { Input } from "../components/ui/Input";
 import { getEquityMetrics, updateEquityMetrics } from "../api/ownedProperties";
+import { PageBreadcrumb } from "../components/nav/PageBreadcrumb";
+import { workspacePage } from "../nav/workspaceBreadcrumbs";
 
 export function OwnedBondsMetricsPage() {
   const [rows, setRows] = useState<any[]>([]);
@@ -68,6 +70,7 @@ export function OwnedBondsMetricsPage() {
     <Section>
       <Helmet><title>Bonds | The Property Guy</title></Helmet>
       <Container>
+        <PageBreadcrumb items={workspacePage("Outstanding Bonds")} />
         <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
           <div>
             <h1 className="pg-h2" style={{ margin: 0 }}>Outstanding Bonds</h1>

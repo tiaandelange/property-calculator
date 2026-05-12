@@ -7,6 +7,8 @@ import { Card } from "../components/ui/Card";
 import { Field, Input } from "../components/ui/Input";
 import { Button } from "../components/ui/Button";
 import { createTenant, getProperties, getTenant, updateTenant } from "../api/ownedProperties";
+import { PageBreadcrumb } from "../components/nav/PageBreadcrumb";
+import { workspaceTenants } from "../nav/workspaceBreadcrumbs";
 
 export function TenantFormPage() {
   const { id } = useParams();
@@ -93,6 +95,13 @@ export function TenantFormPage() {
     <Section>
       <Helmet><title>{isEdit ? "Edit Tenant" : "Add Tenant"} | The Property Guy</title></Helmet>
       <Container>
+        <PageBreadcrumb
+          items={workspaceTenants(
+            isEdit
+              ? `${form.firstName} ${form.lastName}`.trim() || "Edit tenant"
+              : "Add tenant"
+          )}
+        />
         <Card>
           <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
             <h1 className="pg-h2" style={{ margin: 0 }}>{isEdit ? "Edit Tenant" : "Add Tenant"}</h1>
@@ -112,7 +121,7 @@ export function TenantFormPage() {
                 {["ACTIVE", "APPLICANT", "PAST"].map((s) => <option key={s} value={s}>{s}</option>)}
               </select>
             </Field>
-            <Field label="Linked property (only allowed if no current lease)">
+            <Field label="Linked property (optional)">
               <select className="pg-input" value={form.propertyId} onChange={(e) => setForm({ ...form, propertyId: e.target.value })}>
                 <option value="">None</option>
                 {properties.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}

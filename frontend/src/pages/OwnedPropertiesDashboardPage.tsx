@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { Bar, Doughnut, Line } from "react-chartjs-2";
@@ -8,6 +8,7 @@ import { Section } from "../components/ui/Section";
 import { Grid } from "../components/ui/Grid";
 import { Button } from "../components/ui/Button";
 import { getProperties, getProperty } from "../api/ownedProperties";
+import { PROPERTY_DATA_INVALIDATION } from "../features/properties/invalidate";
 import { AlertBanner, DashboardCard, EmptyState, MetricCard, StatCard, StatusPill } from "../components/ui/DashboardKit";
 
 ChartJS.register(ArcElement, BarElement, CategoryScale, LinearScale, Legend, Tooltip, PointElement, LineElement);
@@ -43,8 +44,17 @@ export function OwnedPropertiesDashboardPage() {
     }
   };
 
+  const loadRef = useRef(load);
+  loadRef.current = load;
+
   useEffect(() => {
     void load();
+  }, []);
+
+  useEffect(() => {
+    const handler = () => void loadRef.current();
+    window.addEventListener(PROPERTY_DATA_INVALIDATION, handler);
+    return () => window.removeEventListener(PROPERTY_DATA_INVALIDATION, handler);
   }, []);
 
   const stats = useMemo(() => {
@@ -52,13 +62,10 @@ export function OwnedPropertiesDashboardPage() {
     const occupied = details.filter((p) => (p.leases ?? []).some((l: any) => l.status === "ACTIVE")).length;
     const vacant = total - occupied;
     const occupancyRate = total > 0 ? (occupied / total) * 100 : 0;
-    const monthlyIncome = details.reduce((acc, p) => {
-      return acc + (p.incomeEntries ?? []).reduce((a: number, i: any) => a + Number(i.amount ?? 0), 0);
-    }, 0);
-    const monthlyExpenses = details.reduce((acc, p) => {
-      return acc + (p.expenses ?? []).reduce((a: number, i: any) => a + Number(i.amount ?? 0), 0);
-    }, 0);
-    const netCashFlow = monthlyIncome - monthlyExpenses;
+    /** Align with workspace Financials / statement: calendar-month totals + paid invoices (see computeFinancialSummary). */
+    const monthlyIncome = details.reduce((acc, p) => acc + Number(p.financialSummary?.monthly?.totalIncome ?? 0), 0);
+    const monthlyExpenses = details.reduce((acc, p) => acc + Number(p.financialSummary?.monthly?.totalExpenses ?? 0), 0);
+    const netCashFlow = details.reduce((acc, p) => acc + Number(p.financialSummary?.monthly?.netMonthlyCashFlow ?? 0), 0);
     const totalPropertyValue = details.reduce((a, p) => a + Number(p.currentEstimatedValue ?? 0), 0);
     const totalOutstandingBonds = details.reduce((a, p) => a + Number(p.outstandingBondBalance ?? 0), 0);
     const portfolioEquity = totalPropertyValue - totalOutstandingBonds;
@@ -132,9 +139,23 @@ export function OwnedPropertiesDashboardPage() {
 
   const expenseBreakdown = useMemo(() => {
     const map = new Map<string, number>();
-    details.forEach((p) =>
-      (p.expenses ?? []).forEach((e: any) => map.set(e.category, (map.get(e.category) ?? 0) + Number(e.amount ?? 0)))
-    );
+    const add = (label: string, v: number) => {
+      const n = Number(v);
+      if (!Number.isFinite(n) || n <= 0) return;
+      map.set(label, (map.get(label) ?? 0) + n);
+    };
+    details.forEach((p) => {
+      const m = p.financialSummary?.monthly;
+      if (!m) return;
+      add("Rates & Taxes", Number(m.totalRatesTaxes ?? 0));
+      add("Water", Number(m.totalWater ?? 0));
+      add("Electricity", Number(m.totalElectricity ?? 0));
+      add("Levies", Number(m.totalLevies ?? 0));
+      add("Insurance", Number(m.totalInsurance ?? 0));
+      add("Maintenance / Repairs", Number(m.totalMaintenance ?? 0));
+      add("Bond / Debt service", Number(m.totalBondPayment ?? 0));
+      add("Other", Number(m.totalOtherExpenses ?? 0));
+    });
     return Array.from(map.entries());
   }, [details]);
 
@@ -252,9 +273,9 @@ export function OwnedPropertiesDashboardPage() {
             <Grid cols={3}>
               {details.map((p) => {
                 const activeLease = (p.leases ?? []).find((l: any) => ["ACTIVE", "MONTH_TO_MONTH"].includes(l.status));
-                const monthlyIncome = (p.incomeEntries ?? []).reduce((a: number, i: any) => a + Number(i.amount ?? 0), 0);
-                const monthlyExpenses = (p.expenses ?? []).reduce((a: number, i: any) => a + Number(i.amount ?? 0), 0);
-                const cash = monthlyIncome - monthlyExpenses;
+                const monthlyIncome = Number(p.financialSummary?.monthly?.totalIncome ?? 0);
+                const monthlyExpenses = Number(p.financialSummary?.monthly?.totalExpenses ?? 0);
+                const cash = Number(p.financialSummary?.monthly?.netMonthlyCashFlow ?? monthlyIncome - monthlyExpenses);
                 const overdue = (p.invoices ?? []).some((i: any) => !["PAID", "CANCELLED"].includes(i.status) && new Date(i.dueDate) < new Date());
                 const status = overdue ? "Rent Overdue" : p.occupancyStatus === "OCCUPIED" ? "Occupied" : "Vacant";
                 const tone = overdue ? "danger" : activeLease ? "success" : "warning";

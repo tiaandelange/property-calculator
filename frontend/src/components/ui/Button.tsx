@@ -6,6 +6,7 @@ export function Button({
   children,
   variant = "primary",
   loading,
+  className,
   ...props
 }: React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant; loading?: boolean }) {
   const cls =
@@ -15,7 +16,11 @@ export function Button({
         ? "pg-btn pg-btn-secondary"
         : "pg-btn pg-btn-ghost";
   return (
-    <button className={cls} {...props} disabled={props.disabled || loading}>
+    <button
+      className={[cls, className].filter(Boolean).join(" ")}
+      {...props}
+      disabled={props.disabled || loading}
+    >
       {loading ? <span className="pg-spinner" aria-hidden="true" /> : null}
       {children}
     </button>
@@ -25,6 +30,7 @@ export function Button({
 export function ButtonLink({
   children,
   variant = "primary",
+  className,
   ...props
 }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { variant?: Variant }) {
   const cls =
@@ -34,7 +40,7 @@ export function ButtonLink({
         ? "pg-btn pg-btn-secondary"
         : "pg-btn pg-btn-ghost";
   return (
-    <a className={cls} {...props}>
+    <a className={[cls, className].filter(Boolean).join(" ")} {...props}>
       {children}
     </a>
   );

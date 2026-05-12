@@ -6,6 +6,8 @@ import { Container } from "../components/ui/Container";
 import { Section } from "../components/ui/Section";
 import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
+import { PageBreadcrumb } from "../components/nav/PageBreadcrumb";
+import { homeThen } from "../nav/workspaceBreadcrumbs";
 
 export function ConfirmEmailPage() {
   const { token } = useParams();
@@ -32,6 +34,7 @@ export function ConfirmEmailPage() {
         <meta name="description" content="Confirm your email for The Property Guy." />
       </Helmet>
       <Container>
+        <PageBreadcrumb items={homeThen("Confirm email")} />
         <div style={{ maxWidth: 620, margin: "0 auto" }}>
           <Card>
             <h1 className="pg-h2" style={{ marginTop: 0 }}>

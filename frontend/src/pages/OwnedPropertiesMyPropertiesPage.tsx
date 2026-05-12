@@ -7,7 +7,10 @@ import { Grid } from "../components/ui/Grid";
 import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
 import { getProperties } from "../api/ownedProperties";
+import { usePropertyWorkspaceRefresh } from "../features/properties/usePropertyWorkspaceRefresh";
 import { StatusPill } from "../components/ui/DashboardKit";
+import { PageBreadcrumb } from "../components/nav/PageBreadcrumb";
+import { workspacePage } from "../nav/workspaceBreadcrumbs";
 
 function displayType(t: string | null | undefined) {
   const map: Record<string, string> = {
@@ -53,6 +56,8 @@ export function OwnedPropertiesMyPropertiesPage() {
     void load();
   }, []);
 
+  usePropertyWorkspaceRefresh({ onRefresh: () => void load() });
+
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
     let next = [...rows];
@@ -96,6 +101,7 @@ export function OwnedPropertiesMyPropertiesPage() {
     <Section>
       <Helmet><title>My Properties | The Property Guy</title></Helmet>
       <Container>
+        <PageBreadcrumb items={workspacePage("My Properties")} />
         <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
           <div>
             <h1 className="pg-h2" style={{ margin: 0 }}>My Properties</h1>
@@ -144,10 +150,22 @@ export function OwnedPropertiesMyPropertiesPage() {
         </Card>
 
         <div style={{ height: 12 }} />
-        {view === "list" ? (
+        {!loading && !error && rows.length === 0 ? (
+          <Card title="Properties">
+            <p className="pg-muted" style={{ marginTop: 0 }}>
+              No properties were returned for your account. If you recently reset the database or ran migrations that recreate tables, your portfolio data may have been cleared—restore from a backup if you need it. Otherwise try{" "}
+              <strong>logging out and logging in again</strong> so your session matches the current user record.
+            </p>
+            <Link className="pg-btn pg-btn-primary" to="/owned-properties/new" style={{ marginTop: 12, display: "inline-block" }}>
+              Add a property
+            </Link>
+          </Card>
+        ) : view === "list" ? (
           <Card title="Properties">
             {filtered.length === 0 ? (
-              <div className="pg-muted">No properties match your filters.</div>
+              <div className="pg-muted">
+                {rows.length === 0 ? "No properties to show." : "No properties match your filters."}
+              </div>
             ) : (
               <div style={{ display: "grid", gap: 8 }}>
                 {filtered.map((p) => {
@@ -207,6 +225,11 @@ export function OwnedPropertiesMyPropertiesPage() {
           </Card>
         ) : (
           <Grid cols={3}>
+            {!loading && !error && rows.length > 0 && filtered.length === 0 ? (
+              <div className="pg-muted" style={{ gridColumn: "1 / -1" }}>
+                No properties match your filters. Clear filters or choose &quot;All&quot; for status and type.
+              </div>
+            ) : null}
             {filtered.map((p) => {
               const typeKey = p.investmentType ?? p.propertyType;
               const isLand = typeKey === "VACANT_LAND";

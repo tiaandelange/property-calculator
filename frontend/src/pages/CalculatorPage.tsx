@@ -1,16 +1,23 @@
-import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { Link, useParams } from "react-router-dom";
-import { Bar, Line } from "react-chartjs-2";
+import { Bar, Doughnut, Line } from "react-chartjs-2";
 import { Chart as ChartJS, ArcElement, BarElement, CategoryScale, Legend, LinearScale, LineElement, PointElement, Tooltip } from "chart.js";
-import { calculators } from "../data/calculators";
+import { calculators, type FieldDef } from "../data/calculators";
+import { getCalculatorDefaultValues } from "../data/calculatorDefaultValues";
+import { getCalculatorToolPage } from "../data/calculatorToolPageContent";
+import { getToolExplainer } from "../data/calculatorToolExplainerContent";
 import { api, authHeader } from "../api/client";
+import { downloadAuthenticatedPdf, openPdfBlobInNewTab } from "../api/pdfBlob";
+import { CalculatorToolHero } from "../components/calculators/CalculatorToolHero";
 import { Container } from "../components/ui/Container";
 import { Section } from "../components/ui/Section";
 import { Grid } from "../components/ui/Grid";
 import { Card } from "../components/ui/Card";
 import { Field, Input } from "../components/ui/Input";
 import { Button } from "../components/ui/Button";
+import { PageBreadcrumb } from "../components/nav/PageBreadcrumb";
+import { calculatorsTrail } from "../nav/workspaceBreadcrumbs";
 
 ChartJS.register(ArcElement, BarElement, CategoryScale, LinearScale, Legend, Tooltip, PointElement, LineElement);
 
@@ -23,8 +30,83 @@ function parseNumberList(text: string) {
     .filter((n) => Number.isFinite(n));
 }
 
+function selectFieldCoerceValue(field: FieldDef, raw: string): string | number {
+  if (raw === "") return "";
+  if (field.type !== "select") return Number(raw);
+  const stringSelectKeys = new Set([
+    "transactionType",
+    "buyerType",
+    "feeYear",
+    "attorneyFeeMode",
+    "propertyUse"
+  ]);
+  if (stringSelectKeys.has(field.key)) return raw;
+  return Number(raw);
+}
+
 function toPayload(slug: string, values: Record<string, any>) {
+  if (slug === "noi") {
+    const items = Array.isArray(values.expenseItems) ? values.expenseItems : [];
+    const rentG = Number(values.rentGrowthPercentAnnual);
+    const expG = Number(values.expenseGrowthPercentAnnual);
+    const out: Record<string, unknown> = {
+      rentalIncomeAnnual: Number(values.rentalIncomeAnnual),
+      otherIncomeAnnual: Number(values.otherIncomeAnnual) || 0,
+      vacancyRatePercent: Number(values.vacancyRatePercent) || 0,
+      maintenancePercentOfEffectiveGross: Number(values.maintenancePercentOfEffectiveGross) || 0,
+      rentGrowthPercentAnnual: Number.isFinite(rentG) ? rentG : 3,
+      expenseGrowthPercentAnnual: Number.isFinite(expG) ? expG : 3,
+      expenseItems: items.map((it: any) => ({
+        label: String(it?.label ?? "Expense").trim() || "Expense",
+        annualAmount: Math.max(0, Number(it?.annualAmount) || 0)
+      }))
+    };
+    const sn = values.scenarioName;
+    if (typeof sn === "string" && sn.trim()) out.scenarioName = sn.trim();
+    return out;
+  }
+
   const payload: Record<string, unknown> = { ...values };
+  if (payload.scenarioName === "" || payload.scenarioName === null || payload.scenarioName === undefined) {
+    delete payload.scenarioName;
+  }
+
+  if (slug === "transfer-bond-costs") {
+    const numKeys = new Set([
+      "purchasePrice",
+      "marketValue",
+      "bondAmount",
+      "depositAmount",
+      "manualTransferAttorneyFee",
+      "manualBondAttorneyFee",
+      "vatRate",
+      "municipalRatesClearanceProvision",
+      "postagesAndPettiesEstimate",
+      "ficaFeeEstimate",
+      "deedsSearchFeeEstimate",
+      "electronicInstructionFeeEstimate"
+    ]);
+    for (const k of numKeys) {
+      const v = payload[k];
+      if (v === "" || v === undefined || v === null) {
+        delete payload[k];
+        continue;
+      }
+      if (typeof v === "string" || typeof v === "number") {
+        const n = Number(v);
+        if (Number.isFinite(n)) payload[k] = n;
+      }
+    }
+    const boolKeys = [
+      "includeBondRegistration",
+      "includeDepositInCashRequired",
+      "sellerVatRegistered",
+      "isFirstTimeBuyer"
+    ] as const;
+    for (const k of boolKeys) {
+      payload[k] = Boolean(values[k]);
+    }
+  }
 
   if (slug === "irr" && typeof values.annualCashFlows === "string") {
     payload.annualCashFlows = parseNumberList(values.annualCashFlows);
@@ -43,14 +125,115 @@ function toPayload(slug: string, values: Record<string, any>) {
   return payload;
 }
 
-function formatValue(unit: string, formatted: string) {
-  return unit === "percent" ? formatted : formatted;
+function mergeNavyChartOptions(base: Record<string, unknown> | null | undefined): Record<string, unknown> {
+  const b = base && typeof base === "object" ? base : {};
+  const plugins = (b.plugins as Record<string, unknown> | undefined) ?? {};
+  const legend = (plugins.legend as Record<string, unknown> | undefined) ?? {};
+  const legendLabels = (legend.labels as Record<string, unknown> | undefined) ?? {};
+  const mergedPlugins = {
+    ...plugins,
+    legend: {
+      ...legend,
+      labels: { color: "#c9d4e8", ...legendLabels }
+    }
+  };
+  const scales = b.scales as Record<string, unknown> | undefined;
+  if (!scales || !Object.keys(scales).length) {
+    return { ...b, plugins: mergedPlugins };
+  }
+  const mergeAxis = (axis: Record<string, unknown> | undefined) => {
+    const a = axis ?? {};
+    const ticks = (a.ticks as Record<string, unknown> | undefined) ?? {};
+    const grid = (a.grid as Record<string, unknown> | undefined) ?? {};
+    return {
+      ...a,
+      ticks: { color: "#9aa8bd", ...ticks },
+      grid: { color: "rgba(255, 255, 255, 0.08)", ...grid }
+    };
+  };
+  return {
+    ...b,
+    plugins: mergedPlugins,
+    scales: {
+      ...scales,
+      x: scales.x != null ? mergeAxis(scales.x as Record<string, unknown>) : scales.x,
+      y: scales.y != null ? mergeAxis(scales.y as Record<string, unknown>) : scales.y
+    }
+  };
 }
+
+function buildIllustrativeFiveYearLineChart(metric: { label: string; value: number }) {
+  const growth = 0.03;
+  const series = [0, 1, 2, 3, 4].map((y) => Math.round(metric.value * (1 + growth) ** y));
+  return {
+    chartType: "line" as const,
+    title: "Five-year illustrative trend (3% p.a. — not a forecast)",
+    data: {
+      labels: ["Year 1", "Year 2", "Year 3", "Year 4", "Year 5"],
+      datasets: [
+        {
+          label: metric.label,
+          data: series,
+          borderColor: "#c99a5b",
+          backgroundColor: "rgba(201, 154, 91, 0.15)",
+          fill: true,
+          tension: 0.25
+        }
+      ]
+    },
+    options: {} as Record<string, unknown>
+  };
+}
+
+type SummaryMetricLike = {
+  unit?: string;
+  value?: unknown;
+  formatted?: string;
+};
+
+/** Results pane: ZAR without cents; percentages keep backend decimal formatting. */
+function formatResultsMetricDisplay(m: SummaryMetricLike): string {
+  const unit = m.unit ?? "";
+  const formatted = m.formatted ?? "—";
+  const raw = m.value;
+  if (raw == null || typeof raw !== "number" || !Number.isFinite(raw)) {
+    return formatted;
+  }
+  if (unit === "currency") {
+    return Math.round(raw).toLocaleString("en-ZA", {
+      style: "currency",
+      currency: "ZAR",
+      maximumFractionDigits: 0,
+      minimumFractionDigits: 0
+    });
+  }
+  if (unit === "percent") {
+    return formatted;
+  }
+  if (unit === "number") {
+    return Math.round(raw).toLocaleString("en-ZA", {
+      maximumFractionDigits: 0,
+      minimumFractionDigits: 0
+    });
+  }
+  return formatted;
+}
+
+function formatZarResultsAmount(n: number): string {
+  return Math.round(n).toLocaleString("en-ZA", {
+    style: "currency",
+    currency: "ZAR",
+    maximumFractionDigits: 0,
+    minimumFractionDigits: 0
+  });
+}
+
+const MONTHLY_PAYMENT_RELATED = ["transfer-bond-costs", "ltv", "cash-flow", "dscr"] as const;
 
 export function CalculatorPage() {
   const { slug } = useParams();
   const calc = useMemo(() => calculators.find((c) => c.slug === slug), [slug]);
-  const [values, setValues] = useState<Record<string, any>>({});
+  const [values, setValues] = useState<Record<string, any>>(() => getCalculatorDefaultValues(slug ?? ""));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState<any>(null);
@@ -59,10 +242,70 @@ export function CalculatorPage() {
   const [savedId, setSavedId] = useState<number | null>(null);
   const [pdfBusy, setPdfBusy] = useState(false);
 
+  const runWithValues = useCallback(async (targetSlug: string, payloadValues: Record<string, any>) => {
+    setError("");
+    setLoading(true);
+    setSavedId(null);
+    try {
+      const res = await api.post(`/calculations/${targetSlug}`, toPayload(targetSlug, payloadValues), { headers: authHeader() });
+      const calcResult = res.data?.result ?? res.data;
+      setResult(calcResult);
+      setSavedId(res.data?.id ?? null);
+      lastRunRef.current = JSON.stringify(payloadValues);
+    } catch (err: any) {
+      const msg = err?.response?.data?.message ?? "Calculation failed";
+      const issues = err?.response?.data?.issues;
+      setError(issues?.length ? `${msg}: ${issues.map((i: any) => i.message).join(" · ")}` : msg);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!slug) return;
+    const calcDef = calculators.find((c) => c.slug === slug);
+    if (!calcDef) return;
+    const defaults = getCalculatorDefaultValues(calcDef.slug);
+    setValues(defaults);
+    setResult(null);
+    setError("");
+    setSavedId(null);
+    lastRunRef.current = "";
+    if (calcDef.slug === "monthly-payment") return;
+    let cancelled = false;
+    void (async () => {
+      setError("");
+      setLoading(true);
+      setSavedId(null);
+      try {
+        const res = await api.post(
+          `/calculations/${calcDef.slug}`,
+          toPayload(calcDef.slug, defaults),
+          { headers: authHeader() }
+        );
+        if (cancelled) return;
+        setResult(res.data?.result ?? res.data);
+        setSavedId(res.data?.id ?? null);
+        lastRunRef.current = JSON.stringify(defaults);
+      } catch (err: any) {
+        if (cancelled) return;
+        const msg = err?.response?.data?.message ?? "Calculation failed";
+        const issues = err?.response?.data?.issues;
+        setError(issues?.length ? `${msg}: ${issues.map((i: any) => i.message).join(" · ")}` : msg);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [slug]);
+
   if (!calc) {
     return (
       <Section>
         <Container>
+          <PageBreadcrumb items={calculatorsTrail("Calculator not found")} />
           <Card>
             <h1 className="pg-h2" style={{ marginTop: 0 }}>
               Calculator not found
@@ -75,22 +318,7 @@ export function CalculatorPage() {
   }
 
   const run = async () => {
-    setError("");
-    setLoading(true);
-    setSavedId(null);
-    try {
-      const res = await api.post(`/calculations/${calc.slug}`, toPayload(calc.slug, values), { headers: authHeader() });
-      const calcResult = res.data?.result ?? res.data;
-      setResult(calcResult);
-      setSavedId(res.data?.id ?? null);
-      lastRunRef.current = JSON.stringify(values);
-    } catch (err: any) {
-      const msg = err?.response?.data?.message ?? "Calculation failed";
-      const issues = err?.response?.data?.issues;
-      setError(issues?.length ? `${msg}: ${issues.map((i: any) => i.message).join(" · ")}` : msg);
-    } finally {
-      setLoading(false);
-    }
+    await runWithValues(calc.slug, values);
   };
 
   const submit = async (e: FormEvent) => {
@@ -108,9 +336,16 @@ export function CalculatorPage() {
   );
 
   const hasAllRequired = useMemo(() => {
+    if (calc.slug === "noi") {
+      const rent = Number(values.rentalIncomeAnnual);
+      const items = values.expenseItems;
+      if (!Number.isFinite(rent) || rent <= 0) return false;
+      if (!Array.isArray(items) || items.length === 0) return false;
+      return true;
+    }
     if (!requiredKeys.length) return true;
     return requiredKeys.every((k) => values[k] !== undefined && values[k] !== null && String(values[k]).length > 0);
-  }, [requiredKeys, values]);
+  }, [calc.slug, requiredKeys, values]);
 
   useEffect(() => {
     if (!autoUpdate) return;
@@ -125,14 +360,29 @@ export function CalculatorPage() {
 
   const summary = result?.summary ?? [];
   const chartData = result?.chartData ?? [];
+  const firstMetric = summary[0];
+  const secondMetric = summary[1];
 
-  const firstChart = chartData[0] ?? null;
+  const chartsToRender = useMemo(() => {
+    const raw = (chartData ?? []) as Array<{ chartType: string; title?: string; data?: unknown; options?: unknown }>;
+    const hasLine = raw.some((c) => c.chartType === "line");
+    const cur = summary.find((m: any) => m.unit === "currency" && m.value != null && Number.isFinite(m.value)) as
+      | { label: string; value: number }
+      | undefined;
+    const illustration = !hasLine && cur ? [buildIllustrativeFiveYearLineChart(cur)] : [];
+    return [...illustration, ...raw];
+  }, [chartData, summary]);
 
   const reset = () => {
-    setValues({});
+    const defaults = getCalculatorDefaultValues(calc.slug);
+    setValues(defaults);
     setResult(null);
     setError("");
     setSavedId(null);
+    lastRunRef.current = "";
+    if (calc.slug !== "monthly-payment") {
+      void runWithValues(calc.slug, defaults);
+    }
   };
 
   const generateAndDownloadPdf = async () => {
@@ -140,127 +390,304 @@ export function CalculatorPage() {
     setPdfBusy(true);
     setError("");
     try {
-      await api.post(`/reports/${savedId}/generate`, {}, { headers: authHeader() });
-      window.open(`${import.meta.env.VITE_API_URL ?? "http://localhost:4000/api"}/reports/${savedId}`, "_blank");
+      const gen = await api.post(`/reports/generate`, { reportType: "CALCULATION", calculationId: savedId }, { headers: authHeader() });
+      const downloadUrl = gen.data?.downloadUrl as string | undefined;
+      if (!downloadUrl) throw new Error("No download URL returned.");
+      const blob = await downloadAuthenticatedPdf(downloadUrl);
+      openPdfBlobInNewTab(blob);
     } catch (e: any) {
-      setError(e?.response?.data?.message ?? "Failed to generate PDF.");
+      setError(e?.response?.data?.message ?? e?.message ?? "Failed to generate PDF.");
     } finally {
       setPdfBusy(false);
     }
   };
 
-  return (
-    <Section>
-      <Helmet>
-        <title>{calc.name} | The Property Guy</title>
-        <meta name="description" content={`${calc.name} calculator for South African property investors.`} />
-      </Helmet>
-      <Container>
-        <div style={{ display: "grid", gap: 10 }}>
-          <h1 className="pg-h2" style={{ margin: 0 }}>
-            {calc.name}
-          </h1>
-          <p className="pg-lead" style={{ margin: 0 }}>
-            {calc.description} Use this to evaluate deals quickly and save the result to your report library.
-          </p>
-        </div>
+  const themedPage = getCalculatorToolPage(calc.slug);
+  const isMortgageStandalone = calc.slug === "monthly-payment";
 
-        <div style={{ height: 20 }} />
+  const relatedSlugs = isMortgageStandalone
+    ? [...MONTHLY_PAYMENT_RELATED]
+    : (themedPage?.relatedSlugs ?? []).filter((s) => s !== calc.slug);
 
-        <Grid cols={2}>
-          {/* LEFT: inputs */}
-          <Card title="Inputs">
-            <form onSubmit={submit}>
-              {calc.groups.map((group) => (
-                <div key={group.title} style={{ marginBottom: 18 }}>
-                  <div className="pg-card-title" style={{ marginBottom: 10 }}>
-                    {group.title}
-                  </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0,1fr))", gap: 16 }}>
-                    {group.fields.map((f) => (
-                      <Field key={f.key} label={f.label} help={f.help ?? "Use realistic, conservative assumptions."}>
-                        {f.type === "select" ? (
-                          <select
-                            className="pg-input"
-                            value={values[f.key] ?? ""}
-                            required={Boolean(f.required)}
-                            onChange={(e) => setValues((v) => ({ ...v, [f.key]: Number(e.target.value) }))}
-                          >
-                            <option value="" disabled>
-                              Select…
+  const relatedLinks = relatedSlugs
+    .map((s) => calculators.find((c) => c.slug === s))
+    .filter(Boolean) as typeof calculators;
+
+  const calculatorDetailLayoutClass =
+    `pg-calculator-detail-layout${calc.slug !== "monthly-payment" ? " pg-calculator-detail-layout--split-4060" : ""}`;
+
+  const calculatorWorkspace = (
+    <Grid cols={2} className={calculatorDetailLayoutClass}>
+        <Card title="Inputs">
+          <form onSubmit={submit}>
+            {calc.groups.map((group) => (
+              <div key={group.title} style={{ marginBottom: 18 }}>
+                <div className="pg-card-title" style={{ marginBottom: 10 }}>
+                  {group.title}
+                </div>
+                <div className="pg-calculator-input-grid">
+                  {group.fields.map((f) => (
+                    <Field key={f.key} label={f.label} help={f.help ?? "Use realistic, conservative assumptions."}>
+                      {f.type === "select" ? (
+                        <select
+                          className="pg-input"
+                          value={values[f.key] ?? ""}
+                          required={Boolean(f.required)}
+                          onChange={(e) =>
+                            setValues((v) => ({ ...v, [f.key]: selectFieldCoerceValue(f, e.target.value) }))
+                          }
+                        >
+                          <option value="" disabled>
+                            Select…
+                          </option>
+                          {(f.options ?? []).map((o) => (
+                            <option key={String(o.value)} value={String(o.value)}>
+                              {o.label}
                             </option>
-                            {(f.options ?? []).map((o) => (
-                              <option key={String(o.value)} value={String(o.value)}>
-                                {o.label}
-                              </option>
-                            ))}
-                          </select>
-                        ) : f.type === "checkbox" ? (
-                          <label className="pg-pill" style={{ cursor: "pointer", justifyContent: "flex-start" }}>
-                            <input
-                              type="checkbox"
-                              checked={Boolean(values[f.key])}
-                              onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.checked }))}
-                              style={{ margin: 0 }}
-                            />
-                            {values[f.key] ? "Yes" : "No"}
-                          </label>
-                        ) : f.type === "text" ? (
-                          <Input
-                            type="text"
-                            placeholder={f.placeholder}
-                            value={values[f.key] ?? ""}
-                            required={Boolean(f.required)}
-                            onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))}
+                          ))}
+                        </select>
+                      ) : f.type === "checkbox" ? (
+                        <label className="pg-pill" style={{ cursor: "pointer", justifyContent: "flex-start" }}>
+                          <input
+                            type="checkbox"
+                            checked={Boolean(values[f.key])}
+                            onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.checked }))}
+                            style={{ margin: 0 }}
                           />
-                        ) : (
-                          <Input
-                            type="number"
-                            placeholder={f.placeholder}
-                            required={Boolean(f.required)}
-                            value={values[f.key] ?? ""}
-                            onChange={(e) => setValues((v) => ({ ...v, [f.key]: Number(e.target.value) }))}
-                          />
-                        )}
-                      </Field>
-                    ))}
+                          {values[f.key] ? "Yes" : "No"}
+                        </label>
+                      ) : f.type === "text" ? (
+                        <Input
+                          type="text"
+                          placeholder={f.placeholder}
+                          value={values[f.key] ?? ""}
+                          required={Boolean(f.required)}
+                          onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))}
+                        />
+                      ) : (
+                        <Input
+                          type="number"
+                          placeholder={f.placeholder}
+                          required={Boolean(f.required)}
+                          value={values[f.key] ?? ""}
+                          onChange={(e) => setValues((v) => ({ ...v, [f.key]: Number(e.target.value) }))}
+                        />
+                      )}
+                    </Field>
+                  ))}
+                </div>
+              </div>
+            ))}
+
+            {calc.slug === "noi" ? (
+              <>
+                <div style={{ marginBottom: 22 }}>
+                  <div className="pg-card-title" style={{ marginBottom: 12 }}>
+                    1. Income (annual)
+                  </div>
+                  <div className="pg-calculator-input-grid">
+                    <Field label="Rental income (annual) (R)" help="Gross potential rent before vacancy.">
+                      <Input
+                        type="number"
+                        required
+                        value={values.rentalIncomeAnnual ?? ""}
+                        onChange={(e) =>
+                          setValues((v) => ({
+                            ...v,
+                            rentalIncomeAnnual: e.target.value === "" ? "" : Number(e.target.value)
+                          }))
+                        }
+                      />
+                    </Field>
+                    <Field label="Other income (annual) (R)" help="Parking, storage, laundry, etc.">
+                      <Input
+                        type="number"
+                        value={values.otherIncomeAnnual ?? ""}
+                        onChange={(e) =>
+                          setValues((v) => ({
+                            ...v,
+                            otherIncomeAnnual: e.target.value === "" ? 0 : Number(e.target.value)
+                          }))
+                        }
+                      />
+                    </Field>
                   </div>
                 </div>
-              ))}
 
-              <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
-                <Button type="submit" loading={loading}>
-                  Calculate
-                </Button>
-                <Button type="button" variant="secondary" onClick={reset}>
-                  Reset
-                </Button>
-                <label className="pg-pill" style={{ cursor: "pointer" }}>
-                  <input
-                    type="checkbox"
-                    checked={autoUpdate}
-                    onChange={(e) => setAutoUpdate(e.target.checked)}
-                    style={{ margin: 0 }}
-                  />
-                  Live update
-                </label>
-                <Link className="pg-btn pg-btn-ghost" to="/dashboard">
-                  My Reports
-                </Link>
-                {savedId ? (
-                  <Button type="button" variant="ghost" onClick={generateAndDownloadPdf} loading={pdfBusy}>
-                    PDF
+                <div style={{ marginBottom: 22 }}>
+                  <div className="pg-card-title" style={{ marginBottom: 12 }}>
+                    2. Operating expenses (annual)
+                  </div>
+                  <div className="pg-noi-expense-list">
+                    {(Array.isArray(values.expenseItems) ? values.expenseItems : []).map(
+                      (row: { label: string; annualAmount: number }, idx: number) => {
+                        const items = (Array.isArray(values.expenseItems) ? values.expenseItems : []) as {
+                          label: string;
+                          annualAmount: number;
+                        }[];
+                        const expenseHeading = row.label.trim() || "Expense name";
+                        return (
+                          <div key={idx} className="pg-noi-expense-row">
+                            <Field label={expenseHeading}>
+                              <Input
+                                type="text"
+                                aria-label="Expense name"
+                                placeholder="e.g. Rates & levies"
+                                value={row.label}
+                                onChange={(e) => {
+                                  const next = [...items];
+                                  next[idx] = { ...next[idx], label: e.target.value };
+                                  setValues((v) => ({ ...v, expenseItems: next }));
+                                }}
+                              />
+                            </Field>
+                            <Field label="Annual amount (R)">
+                              <Input
+                                type="number"
+                                value={row.annualAmount === 0 ? "" : row.annualAmount}
+                                onChange={(e) => {
+                                  const n = e.target.value === "" ? 0 : Number(e.target.value);
+                                  const next = [...items];
+                                  next[idx] = { ...next[idx], annualAmount: Number.isFinite(n) ? Math.max(0, n) : 0 };
+                                  setValues((v) => ({ ...v, expenseItems: next }));
+                                }}
+                              />
+                            </Field>
+                            {items.length > 1 ? (
+                              <div className="pg-noi-expense-row-actions">
+                                <Button
+                                  type="button"
+                                  variant="secondary"
+                                  onClick={() => {
+                                    const next = items.filter((_, i) => i !== idx);
+                                    setValues((v) => ({ ...v, expenseItems: next }));
+                                  }}
+                                >
+                                  Remove
+                                </Button>
+                              </div>
+                            ) : null}
+                          </div>
+                        );
+                      }
+                    )}
+                  </div>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    style={{ marginTop: 12 }}
+                    onClick={() =>
+                      setValues((v) => ({
+                        ...v,
+                        expenseItems: [
+                          ...(Array.isArray(v.expenseItems) ? v.expenseItems : []),
+                          { label: "New expense", annualAmount: 0 }
+                        ]
+                      }))
+                    }
+                  >
+                    + Add another expense
                   </Button>
-                ) : null}
-              </div>
-              <div className="pg-muted" style={{ marginTop: 12, fontSize: 12 }}>
-                Estimates only — not financial, legal, or tax advice.
-              </div>
-            </form>
-          </Card>
+                </div>
 
-          {/* RIGHT: results */}
-          <Card title="Results">
+                <div style={{ marginBottom: 18 }}>
+                  <div className="pg-card-title" style={{ marginBottom: 12 }}>
+                    3. Vacancy &amp; maintenance
+                  </div>
+                  <div className="pg-calculator-input-grid">
+                    <Field label="Vacancy allowance (%)" help="Expected loss against gross potential income.">
+                      <Input
+                        type="number"
+                        value={values.vacancyRatePercent ?? ""}
+                        onChange={(e) =>
+                          setValues((v) => ({
+                            ...v,
+                            vacancyRatePercent: e.target.value === "" ? 0 : Number(e.target.value)
+                          }))
+                        }
+                      />
+                    </Field>
+                    <Field label="Maintenance (% of effective gross)" help="Applied after vacancy, each year in the projection.">
+                      <Input
+                        type="number"
+                        value={values.maintenancePercentOfEffectiveGross ?? ""}
+                        onChange={(e) =>
+                          setValues((v) => ({
+                            ...v,
+                            maintenancePercentOfEffectiveGross: e.target.value === "" ? 0 : Number(e.target.value)
+                          }))
+                        }
+                      />
+                    </Field>
+                  </div>
+                  <div className="pg-calculator-input-grid" style={{ marginTop: 14 }}>
+                    <Field label="Rent growth (% p.a.)" help="Drives the 5-year NOI projection.">
+                      <Input
+                        type="number"
+                        value={values.rentGrowthPercentAnnual ?? ""}
+                        onChange={(e) =>
+                          setValues((v) => ({
+                            ...v,
+                            rentGrowthPercentAnnual: e.target.value === "" ? 3 : Number(e.target.value)
+                          }))
+                        }
+                      />
+                    </Field>
+                    <Field label="Operating expense growth (% p.a.)">
+                      <Input
+                        type="number"
+                        value={values.expenseGrowthPercentAnnual ?? ""}
+                        onChange={(e) =>
+                          setValues((v) => ({
+                            ...v,
+                            expenseGrowthPercentAnnual: e.target.value === "" ? 3 : Number(e.target.value)
+                          }))
+                        }
+                      />
+                    </Field>
+                  </div>
+                </div>
+              </>
+            ) : null}
+
+            <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+              <Button type="submit" loading={loading}>
+                {calc.slug === "noi" ? "Calculate NOI" : "Calculate"}
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={reset}
+                className={calc.slug !== "monthly-payment" ? "pg-calculator-reset-btn" : undefined}
+              >
+                Reset
+              </Button>
+              <label className="pg-pill" style={{ cursor: "pointer" }}>
+                <input
+                  type="checkbox"
+                  checked={autoUpdate}
+                  onChange={(e) => setAutoUpdate(e.target.checked)}
+                  style={{ margin: 0 }}
+                />
+                Live update
+              </label>
+              <Link className="pg-btn pg-btn-ghost" to="/dashboard">
+                My Reports
+              </Link>
+              {savedId ? (
+                <Button type="button" variant="ghost" onClick={generateAndDownloadPdf} loading={pdfBusy}>
+                  PDF
+                </Button>
+              ) : null}
+            </div>
+            <div className="pg-muted" style={{ marginTop: 12, fontSize: 12 }}>
+              Estimates only — not financial, legal, or tax advice.
+            </div>
+          </form>
+        </Card>
+
+        <Card title="Results">
+          <div className="pg-calculator-results-stack">
             {!result && !error ? (
               <div className="pg-muted">Run the calculator to see key metrics and charts.</div>
             ) : null}
@@ -278,28 +705,103 @@ export function CalculatorPage() {
 
             {result ? (
               <div style={{ display: "grid", gap: 16 }}>
-                <Grid cols={4}>
-                  {summary.slice(0, 6).map((m: any) => (
-                    <Card key={m.key} pad={false} className="pg-card-pad">
+                <div className="pg-calculator-kpi-grid">
+                  {summary.map((m: any) => (
+                    <Card key={m.key} pad={false} className="pg-card-pad pg-calculator-kpi-card">
                       <div className="pg-kpi">
-                        <div className="pg-kpi-value">{formatValue(m.unit, m.formatted)}</div>
+                        <div className="pg-kpi-value">{formatResultsMetricDisplay(m)}</div>
                         <div className="pg-kpi-label">{m.label}</div>
                       </div>
                     </Card>
                   ))}
-                </Grid>
+                </div>
 
-                {firstChart ? (
-                  <Card title={firstChart.title}>
-                    {firstChart.chartType === "line" ? (
-                      <Line data={firstChart.data} options={firstChart.options as any} />
-                    ) : firstChart.chartType === "doughnut" ? (
-                      <Bar data={firstChart.data} options={firstChart.options as any} />
-                    ) : (
-                      <Bar data={firstChart.data} options={firstChart.options as any} />
-                    )}
+                {calc.slug === "transfer-bond-costs" && result?.breakdown?.transferCosts ? (
+                  <Card title="Detailed cost breakdown">
+                    <table
+                      className="pg-table pg-transfer-cost-breakdown"
+                      style={{ width: "100%", fontSize: 13, borderCollapse: "collapse" }}
+                    >
+                      <tbody>
+                        {(
+                          [
+                            ["Transfer duty", result.breakdown.transferCosts.transferDuty],
+                            ["Transfer attorney (ex VAT)", result.breakdown.transferCosts.transferAttorneyFee],
+                            ["VAT on transfer attorney", result.breakdown.transferCosts.transferAttorneyFeeVat],
+                            ["Deeds Office transfer fee", result.breakdown.transferCosts.deedsOfficeTransferFee],
+                            ["Municipal / rates clearance provision", result.breakdown.transferCosts.municipalRatesClearanceProvision],
+                            ["Postages & petties", result.breakdown.transferCosts.postagesAndPettiesEstimate],
+                            ["FICA estimate", result.breakdown.transferCosts.ficaFeeEstimate],
+                            ["Deeds search estimate", result.breakdown.transferCosts.deedsSearchFeeEstimate],
+                            ["Electronic instruction estimate", result.breakdown.transferCosts.electronicInstructionFeeEstimate]
+                          ] as [string, number][]
+                        ).map(([label, val]) => (
+                          <tr key={label} className="pg-transfer-cost-breakdown-row pg-transfer-cost-breakdown-row--detail">
+                            <td>{label}</td>
+                            <td className="pg-transfer-cost-breakdown-amount">
+                              {typeof val === "number" ? formatZarResultsAmount(val) : "—"}
+                            </td>
+                          </tr>
+                        ))}
+                        <tr className="pg-transfer-cost-breakdown-row pg-transfer-cost-breakdown-row--subtotal">
+                          <td>Transfer subtotal</td>
+                          <td className="pg-transfer-cost-breakdown-amount">
+                            {formatZarResultsAmount(result.breakdown.transferCosts.transferSubtotal)}
+                          </td>
+                        </tr>
+                        {(
+                          [
+                            ["Bond attorney (ex VAT)", result.breakdown.bondCosts.bondAttorneyFee],
+                            ["VAT on bond attorney", result.breakdown.bondCosts.bondAttorneyFeeVat],
+                            ["Deeds Office bond fee", result.breakdown.bondCosts.deedsOfficeBondFee]
+                          ] as [string, number][]
+                        ).map(([label, val]) => (
+                          <tr key={label} className="pg-transfer-cost-breakdown-row pg-transfer-cost-breakdown-row--detail">
+                            <td>{label}</td>
+                            <td className="pg-transfer-cost-breakdown-amount">
+                              {typeof val === "number" ? formatZarResultsAmount(val) : "—"}
+                            </td>
+                          </tr>
+                        ))}
+                        <tr className="pg-transfer-cost-breakdown-row pg-transfer-cost-breakdown-row--subtotal">
+                          <td>Bond subtotal</td>
+                          <td className="pg-transfer-cost-breakdown-amount">
+                            {formatZarResultsAmount(result.breakdown.bondCosts.bondSubtotal)}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
                   </Card>
                 ) : null}
+
+                {calc.slug === "transfer-bond-costs" && Array.isArray(result?.assumptionsUsed?.assumptions) ? (
+                  <Card title="Assumptions">
+                    <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, lineHeight: 1.5 }}>
+                      {(result.assumptionsUsed.assumptions as string[]).map((a: string) => (
+                        <li key={a}>{a}</li>
+                      ))}
+                    </ul>
+                  </Card>
+                ) : null}
+
+                {chartsToRender.map((ch, idx) => {
+                  const opts = isMortgageStandalone
+                    ? (ch.options as any)
+                    : (mergeNavyChartOptions(ch.options as Record<string, unknown>) as any);
+                  return (
+                    <Card key={`${ch.title ?? "chart"}-${idx}`} title={ch.title ?? "Chart"}>
+                      <div className="pg-calculator-chart-host">
+                        {ch.chartType === "line" ? (
+                          <Line data={ch.data as any} options={opts} />
+                        ) : ch.chartType === "doughnut" ? (
+                          <Doughnut data={ch.data as any} options={opts} />
+                        ) : (
+                          <Bar data={ch.data as any} options={opts} />
+                        )}
+                      </div>
+                    </Card>
+                  );
+                })}
 
                 {result?.interpretation?.text ? (
                   <Card title="Interpretation">
@@ -311,41 +813,174 @@ export function CalculatorPage() {
                     ) : null}
                   </Card>
                 ) : null}
+
+                {calc.slug === "transfer-bond-costs" && result?.assumptionsUsed?.disclaimer ? (
+                  <div className="pg-muted" style={{ fontSize: 12 }}>
+                    {String(result.assumptionsUsed.disclaimer)}
+                  </div>
+                ) : null}
               </div>
             ) : null}
-          </Card>
-        </Grid>
+          </div>
+        </Card>
+    </Grid>
+  );
 
-        <div style={{ height: 24 }} />
+  const calculatorFooterGrids = (
+    <>
+      <div style={{ height: 24 }} />
 
-        <Grid cols={2}>
-          <Card title="Tips">
-            <div style={{ display: "grid", gap: 10 }}>
-              <div className="pg-muted">Use multiple metrics to avoid blind spots.</div>
-              <div className="pg-muted">Stress-test assumptions (interest rate, vacancy, repairs).</div>
-              <div className="pg-muted">Save a report and compare versions as you learn more.</div>
-            </div>
-          </Card>
+      <Grid cols={2} className={calculatorDetailLayoutClass}>
+        <Card className="pg-home-light-card" title="Tips">
+          <div style={{ display: "grid", gap: 10 }}>
+            <div className="pg-muted">Use multiple metrics to avoid blind spots.</div>
+            <div className="pg-muted">Stress-test assumptions (interest rate, vacancy, repairs).</div>
+            <div className="pg-muted">Save a report and compare versions as you learn more.</div>
+          </div>
+        </Card>
 
-          <Card title="Related calculators">
+        <Card className="pg-home-light-card" title={relatedLinks.length ? "Related calculators" : "More calculators"}>
+          {relatedLinks.length ? (
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-              <Link className="pg-btn pg-btn-ghost" to="/calculators/noi">
-                NOI
-              </Link>
-              <Link className="pg-btn pg-btn-ghost" to="/calculators/cap-rate">
-                Cap Rate
-              </Link>
-              <Link className="pg-btn pg-btn-ghost" to="/calculators/dscr">
-                DSCR
-              </Link>
-              <Link className="pg-btn pg-btn-ghost" to="/calculators/cash-on-cash-return">
-                Cash-on-Cash
-              </Link>
+              {relatedLinks.map((c) => (
+                <Link key={c.slug} className="pg-btn pg-btn-ghost" to={`/calculators/${c.slug}`}>
+                  {c.name}
+                </Link>
+              ))}
             </div>
-          </Card>
-        </Grid>
+          ) : (
+            <Link className="pg-btn pg-btn-ghost" to="/calculators">
+              Browse all calculators
+            </Link>
+          )}
+        </Card>
+      </Grid>
+    </>
+  );
+
+  const transferBondSeo =
+    calc.slug === "transfer-bond-costs" ? (
+      <details className="pg-calculator-transfer-seo" style={{ marginBottom: 22 }}>
+        <summary style={{ cursor: "pointer", fontWeight: 700, fontSize: 15, color: "var(--text)" }}>
+          Transfer duty, transfer costs &amp; VAT — what&apos;s the difference?
+        </summary>
+        <div className="pg-muted" style={{ fontSize: 14, lineHeight: 1.55, display: "grid", gap: 10, marginTop: 12 }}>
+          <p style={{ margin: 0 }}>
+            <strong>What is transfer duty?</strong> A tax levied by SARS on property acquisitions (not the same as conveyancer fees).
+            It depends on the value / consideration and is not charged alongside transfer duty on qualifying VAT transactions.
+          </p>
+          <p style={{ margin: 0 }}>
+            <strong>What are transfer costs?</strong> Everything on the transfer attorney’s account: professional fees (plus VAT),
+            Deeds Office transfer fee, municipal clearance provision and typical disbursements.
+          </p>
+          <p style={{ margin: 0 }}>
+            <strong>What are bond registration costs?</strong> Bond attorney professional fees (plus VAT) and the Deeds Office bond
+            registration fee — separate from transfer duty and from transfer-side fees.
+          </p>
+          <p style={{ margin: 0 }}>
+            <strong>VAT transaction vs transfer duty:</strong> On a qualifying VAT transaction, transfer duty is generally not
+            payable; VAT treatment must still be confirmed with the seller and conveyancer.
+          </p>
+          <p style={{ margin: 0 }}>
+            <strong>Why invoices differ:</strong> Firms apply recommended tariffs differently, disbursements vary, and banks may add
+            their own charges — use this tool for planning, then confirm quotes in writing.
+          </p>
+        </div>
+      </details>
+    ) : null;
+
+  const toolExplainer = getToolExplainer(calc.slug, calc.description);
+
+  const calculatorExplainerBelow = (
+    <div className="pg-home-light-section pg-calculator-tool-explainer">
+      <Container className="pg-container--marketing-wide">
+        {transferBondSeo}
+        <p className="pg-lead pg-calculator-tool-explainer-lead">{toolExplainer.usageExplained}</p>
+        <div className="pg-calculator-tool-pros-cons">
+          <div className="pg-calculator-tool-pros-block">
+            <h2 className="pg-calculator-tool-explainer-h">Advantages</h2>
+            <ul className="pg-calculator-tool-explainer-list">
+              {toolExplainer.advantages.map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+            </ul>
+          </div>
+          <div className="pg-calculator-tool-cons-block">
+            <h2 className="pg-calculator-tool-explainer-h">Disadvantages &amp; limits</h2>
+            <ul className="pg-calculator-tool-explainer-list">
+              {toolExplainer.disadvantages.map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+            </ul>
+          </div>
+        </div>
+        {calculatorFooterGrids}
       </Container>
+    </div>
+  );
+
+  const helmet = (
+    <Helmet>
+      <title>
+        {calc.slug === "transfer-bond-costs"
+          ? "South African Transfer and Bond Cost Calculator | The Property Guy"
+          : `${calc.name} | The Property Guy`}
+      </title>
+      <meta
+        name="description"
+        content={
+          calc.slug === "transfer-bond-costs"
+            ? "Estimate transfer duty, conveyancing fees, Deeds Office fees and bond registration costs when buying property in South Africa."
+            : `${calc.name} calculator for South African property investors.`
+        }
+      />
+    </Helmet>
+  );
+
+  if (isMortgageStandalone) {
+    return (
+      <Section className="pg-calculator-detail-page">
+        {helmet}
+        <div className="pg-calc-hub-dark-band pg-calculator-tool-hero-band">
+          <div className="pg-calc-hub-hero-base" aria-hidden="true" />
+          <Container className="pg-container--marketing-wide pg-calc-hub-dark-band-inner">
+            <PageBreadcrumb items={calculatorsTrail(calc.name)} />
+            <div style={{ display: "grid", gap: 10, marginBottom: 8 }}>
+              <h1 className="pg-h2" style={{ margin: 0 }}>
+                {calc.name}
+              </h1>
+              <p className="pg-lead" style={{ margin: 0 }}>
+                {calc.description} Use this to evaluate deals quickly and save the result to your report library.
+              </p>
+            </div>
+            <div style={{ height: 16 }} />
+            <div className="pg-calculator-tool-header-workspace pg-calculator-tool-navy">{calculatorWorkspace}</div>
+          </Container>
+        </div>
+        {calculatorExplainerBelow}
+      </Section>
+    );
+  }
+
+  return (
+    <Section className="pg-calc-hub-page pg-calculator-detail-page">
+      {helmet}
+      <CalculatorToolHero
+        breadcrumbCurrent={calc.name}
+        titleBefore={themedPage!.titleBefore}
+        accent={themedPage!.accent}
+        titleAfter={themedPage!.titleAfter}
+        lead={themedPage!.lead}
+        floatingLabel={firstMetric?.label}
+        floatingValue={firstMetric ? formatResultsMetricDisplay(firstMetric) : undefined}
+        floatingSub={
+          secondMetric ? `${secondMetric.label}: ${formatResultsMetricDisplay(secondMetric)}` : undefined
+        }
+        loading={loading && !result}
+        workspaceBelow={calculatorWorkspace}
+      />
+
+      {calculatorExplainerBelow}
     </Section>
   );
 }
-

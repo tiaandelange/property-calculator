@@ -7,6 +7,8 @@ import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
 import { Field, Input } from "../components/ui/Input";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { PageBreadcrumb } from "../components/nav/PageBreadcrumb";
+import { homeThen } from "../nav/workspaceBreadcrumbs";
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -25,18 +27,16 @@ export function LoginPage() {
       if (mode === "login") {
         localStorage.setItem("token", res.data.token);
         setMessage({ kind: "ok", text: "Signed in successfully. Redirecting to your portfolio dashboard..." });
-        const from = (location.state as any)?.from as string | undefined;
+        const from = (location.state as { from?: string } | null)?.from;
         if (from && from.startsWith("/calculators/")) {
           window.setTimeout(() => navigate(from, { replace: true }), 450);
           return;
         }
-        try {
-          const propsRes = await api.get("/properties", { headers: { Authorization: `Bearer ${res.data.token}` } });
-          const hasProperties = Array.isArray(propsRes.data) && propsRes.data.length > 0;
-          window.setTimeout(() => navigate(hasProperties ? "/owned-properties" : "/owned-properties?empty=true", { replace: true }), 450);
-        } catch {
-          window.setTimeout(() => navigate("/owned-properties?empty=true", { replace: true }), 450);
+        if (from && from !== "/login" && from !== "/") {
+          window.setTimeout(() => navigate(from, { replace: true }), 450);
+          return;
         }
+        window.setTimeout(() => navigate("/owned-properties/dashboard", { replace: true }), 450);
       } else {
         setMessage({ kind: "ok", text: "Registered. Check the backend console for your email confirmation link." });
       }
@@ -54,6 +54,7 @@ export function LoginPage() {
         <meta name="description" content="Sign in or create an account to save calculations and generate reports." />
       </Helmet>
       <Container>
+        <PageBreadcrumb items={homeThen("Sign in")} />
         <div className="pg-auth-layout">
           <div className="pg-auth-marketing">
             <h2 className="pg-h2" style={{ marginTop: 0 }}>Track deals. Save reports. Manage your portfolio.</h2>

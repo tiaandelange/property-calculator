@@ -7,7 +7,7 @@ export type SummaryMetric = {
   key: string;
   label: string;
   unit: MetricUnit;
-  value: number;
+  value: number | null;
   formatted: string;
 };
 

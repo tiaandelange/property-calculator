@@ -6,6 +6,8 @@ import { Button } from "../components/ui/Button";
 import { useState } from "react";
 import { api, authHeader } from "../api/client";
 import { Link } from "react-router-dom";
+import { PageBreadcrumb } from "../components/nav/PageBreadcrumb";
+import { homeThen } from "../nav/workspaceBreadcrumbs";
 
 export function SubscriptionPage() {
   const [loading, setLoading] = useState(false);
@@ -32,6 +34,7 @@ export function SubscriptionPage() {
         <meta name="description" content="Subscribe for unlimited calculator usage at R99/month." />
       </Helmet>
       <Container>
+        <PageBreadcrumb items={homeThen("Subscription")} />
         <div style={{ maxWidth: 860, margin: "0 auto" }}>
           <Card>
             <h1 className="pg-h2" style={{ marginTop: 0 }}>

@@ -103,6 +103,76 @@ describe("Calculator engine (Phase 4 contract)", () => {
       remainingLoanBalanceAtSale: 0
     });
     expect(Array.isArray(r.interpretation.warnings)).toBe(true);
+    expect(r.breakdown.irrPercent === null || r.breakdown.irrPercent === undefined).toBe(true);
+    const irrMetric = r.summary.find((m: any) => m.key === "irrPercent");
+    expect(irrMetric.formatted).toMatch(/Insufficient data/i);
+  });
+
+  test("irr growth mode: golden path ~22.78% and intermediates", () => {
+    const r: any = calculate("irr", {
+      holdPeriodYears: 25,
+      totalCashInvested: 80_000,
+      currentEstimatedValue: 2_700_000,
+      outstandingBondBalance: 1_900_000,
+      annualCashFlowAfterExpensesAndDebt: 6000,
+      expectedAnnualAppreciationPercent: 6,
+      estimatedSellingCostPercent: 5
+    });
+    const fv = 2_700_000 * Math.pow(1.06, 25);
+    const sell = fv * 0.05;
+    const net = fv - sell - 1_900_000;
+    expect(r.breakdown.futurePropertyValue).toBeCloseTo(fv, 2);
+    expect(r.breakdown.sellingCosts).toBeCloseTo(sell, 2);
+    expect(r.breakdown.netSaleProceeds).toBeCloseTo(net, 2);
+    expect(r.breakdown.finalYearCashFlow).toBeCloseTo(6000 + net, 2);
+    expect(r.breakdown.cashFlows[0]).toBe(-80_000);
+    expect(r.breakdown.cashFlows).toHaveLength(26);
+    expect(r.breakdown.irrPercent).toBeGreaterThan(22.7);
+    expect(r.breakdown.irrPercent).toBeLessThan(22.9);
+    expect(r.interpretation.warnings.some((w: string) => /current bond balance/i.test(w))).toBe(true);
+  });
+
+  test("irr growth mode: zero cash invested yields null IRR", () => {
+    const r: any = calculate("irr", {
+      holdPeriodYears: 10,
+      totalCashInvested: 0,
+      currentEstimatedValue: 2_000_000,
+      outstandingBondBalance: 1_000_000,
+      annualCashFlowAfterExpensesAndDebt: 5000,
+      expectedAnnualAppreciationPercent: 5,
+      estimatedSellingCostPercent: 5
+    });
+    expect(r.breakdown.irrPercent).toBeNull();
+    expect(r.interpretation.warnings.some((w: string) => /total cash invested is zero/i.test(w))).toBe(true);
+  });
+
+  test("irr growth mode: flat appreciation still solves", () => {
+    const r: any = calculate("irr", {
+      holdPeriodYears: 5,
+      totalCashInvested: 100_000,
+      currentEstimatedValue: 1_000_000,
+      outstandingBondBalance: 800_000,
+      annualCashFlowAfterExpensesAndDebt: 12_000,
+      expectedAnnualAppreciationPercent: 0,
+      projectedBondBalanceAtSale: 750_000,
+      estimatedSellingCostPercent: 5
+    });
+    expect(r.breakdown.irrPercent).not.toBeNull();
+    expect(r.interpretation.warnings.some((w: string) => /current bond balance/i.test(w))).toBe(false);
+  });
+
+  test("irr legacy: repeating annual cash flow when only one value provided", () => {
+    const r: any = calculate("irr", {
+      initialCashInvested: -50_000,
+      holdPeriodYears: 3,
+      annualCashFlows: [10_000],
+      expectedSalePrice: 200_000,
+      sellingCostsPercent: 5,
+      remainingLoanBalanceAtSale: 100_000
+    });
+    const netSale = 200_000 - 200_000 * 0.05 - 100_000;
+    expect(r.breakdown.cashFlows).toEqual([-50_000, 10_000, 10_000, 10_000 + netSale]);
+    expect(r.breakdown.irrPercent).not.toBeNull();
   });
 
   test("brrrr: cash left in deal computed and deal rating provided", () => {

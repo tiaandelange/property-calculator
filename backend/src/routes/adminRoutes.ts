@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { requireAuth, requireAdmin } from "../middleware/auth.js";
 import { db } from "../config/db.js";
+import { getPortfolioProjectionGrowthRates, updatePortfolioProjectionGrowthRates } from "../services/portfolioProjectionDefaults.js";
 import { exportPortfolioBackup, resetPortfolioData } from "../services/portfolioResetService.js";
 import { assertPortfolioResetAllowed } from "../utils/portfolioResetGuards.js";
 import { mkdir, writeFile } from "node:fs/promises";
@@ -10,6 +11,38 @@ export const adminRoutes = Router();
 
 adminRoutes.get("/status", requireAuth, requireAdmin, (_req, res) => {
   return res.json({ message: "Admin access granted" });
+});
+
+adminRoutes.get("/portfolio-projection-metrics", requireAuth, requireAdmin, async (_req, res) => {
+  try {
+    const metrics = await getPortfolioProjectionGrowthRates(db);
+    return res.json({
+      metrics,
+      description:
+        "These rates project future rental income and total expenses when calculating portfolio IRR. Property value growth still uses each property’s expected annual appreciation %."
+    });
+  } catch (err: any) {
+    console.error("[admin] GET /portfolio-projection-metrics failed", err?.stack ?? err);
+    return res.status(500).json({ message: "Failed to load projection metrics." });
+  }
+});
+
+adminRoutes.patch("/portfolio-projection-metrics", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const body = req.body ?? {};
+    const rental =
+      typeof body.rentalIncomeGrowthPercentAnnual === "number" ? body.rentalIncomeGrowthPercentAnnual : undefined;
+    const expenses =
+      typeof body.totalExpensesGrowthPercentAnnual === "number" ? body.totalExpensesGrowthPercentAnnual : undefined;
+    const updated = await updatePortfolioProjectionGrowthRates(db, {
+      rentalIncomeGrowthPercentAnnual: rental,
+      totalExpensesGrowthPercentAnnual: expenses
+    });
+    return res.json({ metrics: updated });
+  } catch (err: any) {
+    console.error("[admin] PATCH /portfolio-projection-metrics failed", err?.stack ?? err);
+    return res.status(500).json({ message: "Failed to update projection metrics." });
+  }
 });
 
 adminRoutes.post("/dev/reset-portfolio-data", requireAuth, requireAdmin, async (req, res) => {

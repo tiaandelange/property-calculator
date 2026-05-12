@@ -6,6 +6,8 @@ import { Section } from "../components/ui/Section";
 import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
 import { getTenants } from "../api/ownedProperties";
+import { PageBreadcrumb } from "../components/nav/PageBreadcrumb";
+import { workspacePage } from "../nav/workspaceBreadcrumbs";
 
 export function TenantsListPage() {
   const [rows, setRows] = useState<any[]>([]);
@@ -37,6 +39,7 @@ export function TenantsListPage() {
     <Section>
       <Helmet><title>Tenants | The Property Guy</title></Helmet>
       <Container>
+        <PageBreadcrumb items={workspacePage("Tenants")} />
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
           <h1 className="pg-h2" style={{ margin: 0 }}>Tenants</h1>
           <div style={{ display: "flex", gap: 10 }}>

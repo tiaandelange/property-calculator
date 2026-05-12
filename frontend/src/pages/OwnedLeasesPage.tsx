@@ -2,11 +2,15 @@ import { FormEvent, useEffect, useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { api, authHeader } from "../api/client";
 import { cancelLease as cancelLeaseApi, getProperties, getPropertyTenants } from "../api/ownedProperties";
+import { invalidatePropertyWorkspace } from "../features/properties/invalidate";
+import { usePropertyWorkspaceRefresh } from "../features/properties/usePropertyWorkspaceRefresh";
 import { Container } from "../components/ui/Container";
 import { Section } from "../components/ui/Section";
 import { Card } from "../components/ui/Card";
 import { Field, Input } from "../components/ui/Input";
 import { Button } from "../components/ui/Button";
+import { PageBreadcrumb } from "../components/nav/PageBreadcrumb";
+import { workspacePage } from "../nav/workspaceBreadcrumbs";
 
 export function OwnedLeasesPage() {
   const [properties, setProperties] = useState<any[]>([]);
@@ -41,6 +45,14 @@ export function OwnedLeasesPage() {
   useEffect(() => { void loadProperties(); }, []);
   useEffect(() => { if (propertyId) void loadData(Number(propertyId)); }, [propertyId]);
 
+  usePropertyWorkspaceRefresh({
+    propertyId: propertyId || undefined,
+    onRefresh: () => {
+      void loadProperties();
+      if (propertyId) void loadData(Number(propertyId));
+    }
+  });
+
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     if (!propertyId) return;
@@ -52,6 +64,7 @@ export function OwnedLeasesPage() {
     try {
       await api.post(`/properties/${propertyId}/leases`, form, { headers: authHeader() });
       await loadData(Number(propertyId));
+      invalidatePropertyWorkspace(Number(propertyId));
       setForm({
         tenantId: "",
         startDate: "",
@@ -81,13 +94,17 @@ export function OwnedLeasesPage() {
     if (!cancellationDate) return;
     const cancellationReason = window.prompt("Cancellation reason (optional)", "") ?? undefined;
     await cancelLeaseApi(leaseId, { cancellationDate, cancellationReason, cancelledBy: "LANDLORD" });
-    if (propertyId) await loadData(Number(propertyId));
+    if (propertyId) {
+      await loadData(Number(propertyId));
+      invalidatePropertyWorkspace(Number(propertyId));
+    }
   };
 
   return (
     <Section>
       <Helmet><title>Leases | The Property Guy</title></Helmet>
       <Container>
+        <PageBreadcrumb items={workspacePage("Leases")} />
         <h1 className="pg-h2">Leases</h1>
         {error ? <div className="pg-alert pg-alert-error" style={{ marginBottom: 12 }}>{error}</div> : null}
         <Card>

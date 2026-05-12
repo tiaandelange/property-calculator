@@ -8,12 +8,19 @@ import {
   calculateMonthlyBondPayment,
   calculateNOI,
   calculateNPV,
-  calculateTransferDutySouthAfrica,
   clamp,
   formatCurrency,
   formatPercent,
   round2
 } from "./calculatorHelpers.js";
+import {
+  calculateSouthAfricanTransferAndBondCosts,
+  type AttorneyFeeMode,
+  type BuyerType,
+  type DeedsFeeYearKey,
+  type TransactionType
+} from "./saTransferBondCosts.js";
+import { solveIrrPeriodicCashFlows } from "./irrSolver.js";
 
 type AnyInput = Record<string, unknown>;
 
@@ -22,8 +29,18 @@ const scenarioSchema = z.object({ scenarioName: z.string().trim().min(1).max(80)
 const money = z.number().finite();
 const percent = z.number().finite();
 
-function metric(key: string, label: string, unit: "currency" | "percent" | "number", value: number): SummaryMetric {
-  const formatted = unit === "currency" ? formatCurrency(value) : unit === "percent" ? formatPercent(value) : round2(value).toString();
+function metric(key: string, label: string, unit: "currency" | "percent" | "number", value: number | null): SummaryMetric {
+  if (value == null || (typeof value === "number" && !Number.isFinite(value))) {
+    return {
+      key,
+      label,
+      unit,
+      value: null,
+      formatted: unit === "percent" ? "Insufficient data" : "—"
+    };
+  }
+  const formatted =
+    unit === "currency" ? formatCurrency(value) : unit === "percent" ? formatPercent(value) : round2(value).toString();
   return { key, label, unit, value: round2(value), formatted };
 }
 
@@ -36,103 +53,161 @@ function requirePositive(name: string, value: number, warnings: string[]) {
 }
 
 // 1) Transfer & Bond Costs (SA)
+const buyerTypeEnum = z.enum(["INDIVIDUAL", "COMPANY", "TRUST", "individual", "company", "trust"]);
+const transactionTypeEnum = z.enum(["TRANSFER_DUTY", "VAT_TRANSACTION"]);
+const attorneyModeEnum = z.enum(["ESTIMATE", "MANUAL", "estimate", "manual"]);
+
+function normalizeBuyerType(v: z.infer<typeof buyerTypeEnum>): BuyerType {
+  const s = String(v).toUpperCase();
+  if (s === "COMPANY") return "COMPANY";
+  if (s === "TRUST") return "TRUST";
+  return "INDIVIDUAL";
+}
+
+function normalizeAttorneyMode(v: z.infer<typeof attorneyModeEnum>): AttorneyFeeMode {
+  return String(v).toUpperCase() === "MANUAL" ? "MANUAL" : "ESTIMATE";
+}
+
 const transferBondSchema = scenarioSchema.extend({
-  purchasePrice: money.nonnegative(),
+  purchasePrice: z.number().finite().positive({ message: "Purchase price must be greater than 0" }),
+  marketValue: money.nonnegative().optional().nullable(),
   bondAmount: money.nonnegative(),
-  buyerType: z.enum(["individual", "company", "trust"]).default("individual"),
-  sellerVatRegistered: z.boolean().default(false),
-  propertyIsVatTransaction: z.boolean().default(false),
+  depositAmount: money.nonnegative().optional().nullable(),
+  transactionType: transactionTypeEnum.optional(),
+  /** @deprecated Use `transactionType: VAT_TRANSACTION` */
+  propertyIsVatTransaction: z.boolean().optional(),
+  buyerType: buyerTypeEnum.default("INDIVIDUAL"),
+  sellerVatRegistered: z.boolean().optional().default(false),
   includeBondRegistration: z.boolean().default(true),
-  municipalProvisionEstimate: money.nonnegative().default(7500),
-  attorneyFeeMode: z.enum(["estimate", "manual"]).default("estimate"),
-  manualTransferAttorneyFee: money.nonnegative().optional(),
-  manualBondAttorneyFee: money.nonnegative().optional(),
-  depositAmount: money.nonnegative().optional()
+  province: z.string().trim().max(80).optional().nullable(),
+  municipality: z.string().trim().max(120).optional().nullable(),
+  municipalRatesClearanceProvision: money.nonnegative().default(7500),
+  postagesAndPettiesEstimate: money.nonnegative().default(1200),
+  ficaFeeEstimate: money.nonnegative().default(850),
+  deedsSearchFeeEstimate: money.nonnegative().default(500),
+  electronicInstructionFeeEstimate: money.nonnegative().default(650),
+  vatRate: money.nonnegative().max(30).default(15),
+  attorneyFeeMode: attorneyModeEnum.default("ESTIMATE"),
+  manualTransferAttorneyFee: money.nonnegative().optional().nullable(),
+  manualBondAttorneyFee: money.nonnegative().optional().nullable(),
+  includeDepositInCashRequired: z.boolean().default(false),
+  feeYear: z.enum(["2026_2027", "2025_2026"]).default("2026_2027"),
+  isFirstTimeBuyer: z.boolean().optional().default(false),
+  propertyUse: z
+    .enum(["PRIMARY_RESIDENCE", "INVESTMENT", "COMMERCIAL", "VACANT_LAND", "OTHER"])
+    .optional()
+    .nullable()
 });
 
 function calcTransferBondCosts(input: z.infer<typeof transferBondSchema>): CalculatorResult {
   const warnings: string[] = [];
   requirePositive("Purchase price", input.purchasePrice, warnings);
-  if (input.bondAmount > input.purchasePrice) warnings.push("Bond amount is higher than purchase price. Check deposit/bond values.");
 
-  const transferDuty = input.propertyIsVatTransaction ? 0 : calculateTransferDutySouthAfrica(input.purchasePrice);
-  if (input.propertyIsVatTransaction) warnings.push("VAT transaction selected: transfer duty is set to R0. Confirm this applies to your deal.");
+  const transactionType: TransactionType =
+    input.transactionType ??
+    (input.propertyIsVatTransaction === true ? "VAT_TRANSACTION" : "TRANSFER_DUTY");
 
-  // Fee estimation (simple tiers; can be replaced by tables later)
-  const estimatedTransferAttorneyFee =
-    input.attorneyFeeMode === "manual"
-      ? (input.manualTransferAttorneyFee ?? 0)
-      : Math.max(7_500, input.purchasePrice * 0.0065);
+  const sa = calculateSouthAfricanTransferAndBondCosts({
+    purchasePrice: input.purchasePrice,
+    marketValue: input.marketValue ?? null,
+    bondAmount: input.bondAmount,
+    depositAmount: input.depositAmount ?? 0,
+    transactionType,
+    buyerType: normalizeBuyerType(input.buyerType),
+    includeBondRegistration: input.includeBondRegistration,
+    province: input.province ?? null,
+    municipality: input.municipality ?? null,
+    municipalRatesClearanceProvision: input.municipalRatesClearanceProvision,
+    postagesAndPettiesEstimate: input.postagesAndPettiesEstimate,
+    ficaFeeEstimate: input.ficaFeeEstimate,
+    deedsSearchFeeEstimate: input.deedsSearchFeeEstimate,
+    electronicInstructionFeeEstimate: input.electronicInstructionFeeEstimate,
+    vatRate: input.vatRate,
+    attorneyFeeMode: normalizeAttorneyMode(input.attorneyFeeMode),
+    manualTransferAttorneyFee: input.manualTransferAttorneyFee ?? null,
+    manualBondAttorneyFee: input.manualBondAttorneyFee ?? null,
+    includeDepositInCashRequired: input.includeDepositInCashRequired,
+    feeYear: input.feeYear as DeedsFeeYearKey,
+    isFirstTimeBuyer: input.isFirstTimeBuyer,
+    sellerVatRegistered: input.sellerVatRegistered,
+    propertyUse: input.propertyUse ?? undefined
+  });
 
-  const estimatedBondAttorneyFee =
-    input.attorneyFeeMode === "manual"
-      ? (input.manualBondAttorneyFee ?? 0)
-      : Math.max(6_500, input.bondAmount * 0.006);
+  const mergedWarnings = [...new Set([...warnings, ...sa.warnings])];
 
-  const deedsOfficeTransferFee = Math.max(1_200, input.purchasePrice * 0.0009);
-  const deedsOfficeBondFee = input.includeBondRegistration ? Math.max(1_200, input.bondAmount * 0.0012) : 0;
-  const municipalProvision = input.municipalProvisionEstimate;
-
-  const totalCashRequiredBeforeRegistration =
-    transferDuty +
-    estimatedTransferAttorneyFee +
-    estimatedBondAttorneyFee +
-    deedsOfficeTransferFee +
-    deedsOfficeBondFee +
-    municipalProvision;
-
-  const totalIncludingDeposit = input.depositAmount !== undefined ? totalCashRequiredBeforeRegistration + input.depositAmount : null;
+  const td = sa.transferCosts.transferDuty;
+  let transferDutyNote = "";
+  if (transactionType === "VAT_TRANSACTION") {
+    transferDutyNote = " VAT transaction selected. Transfer duty not applied.";
+  } else if (td <= 0) {
+    transferDutyNote = " No transfer duty payable based on the selected property value.";
+  }
 
   const summary = [
-    metric("totalCashRequiredBeforeRegistration", "Total cash required (pre-registration)", "currency", totalCashRequiredBeforeRegistration),
-    metric("transferDuty", "Transfer duty", "currency", transferDuty),
-    metric("attorneyFees", "Attorney fees (est.)", "currency", estimatedTransferAttorneyFee + estimatedBondAttorneyFee),
-    metric("deedsOfficeFees", "Deeds office fees (est.)", "currency", deedsOfficeTransferFee + deedsOfficeBondFee)
+    metric("transferDuty", "Transfer duty", "currency", sa.transferCosts.transferDuty),
+    metric("totalTransferCosts", "Transfer costs (incl. duty, attorney, Deeds, municipal, admin)", "currency", sa.totals.totalTransferCosts),
+    metric("totalBondRegistrationCosts", "Bond registration costs", "currency", sa.totals.totalBondRegistrationCosts),
+    metric("totalCashRequiredExcludingDeposit", "Total costs excluding deposit", "currency", sa.totals.totalCashRequiredExcludingDeposit),
+    metric(
+      "totalCashRequiredIncludingDeposit",
+      "Total cash incl. deposit (if enabled)",
+      "currency",
+      input.includeDepositInCashRequired ? sa.totals.totalCashRequiredIncludingDeposit : null
+    ),
+    metric("totalAcquisitionCost", "Total acquisition cost (purchase + transfer & bond)", "currency", sa.totals.totalAcquisitionCost)
   ];
 
-  const chartData = [{
-    chartType: "doughnut" as const,
-    title: "Cost composition",
-    data: {
-      labels: ["Transfer duty", "Attorney fees", "Deeds office fees", "Municipal provision"],
-      datasets: [{
-        label: "Costs",
-        data: [transferDuty, estimatedTransferAttorneyFee + estimatedBondAttorneyFee, deedsOfficeTransferFee + deedsOfficeBondFee, municipalProvision],
-        backgroundColor: ["#007acc", "#1f8de0", "#2b2b2b", "#555555"]
-      }]
+  const chartLabels = sa.chartData.costBreakdown.map((c) => c.label);
+  const chartValues = sa.chartData.costBreakdown.map((c) => c.value);
+  const chartData = [
+    {
+      chartType: "doughnut" as const,
+      title: "Cost breakdown",
+      data: {
+        labels: chartLabels,
+        datasets: [
+          {
+            label: "ZAR",
+            data: chartValues,
+            backgroundColor: ["#c99a5b", "#1f8de0", "#4d7c0f", "#2b2b2b", "#555555", "#8b5cf6"]
+          }
+        ]
+      },
+      options: {
+        plugins: {
+          legend: { position: "bottom" as const }
+        }
+      }
     }
-  }];
+  ];
 
   const interpretationText =
-    `Estimated upfront cash required before registration is ${formatCurrency(totalCashRequiredBeforeRegistration)}.` +
-    (totalIncludingDeposit !== null ? ` Including deposit: ${formatCurrency(totalIncludingDeposit)}.` : "") +
-    ` These are estimates—always confirm attorney and deeds office fees with your conveyancer.`;
+    `Estimated buyer upfront cash required before registration (excluding deposit unless toggled): ${formatCurrency(sa.totals.totalCashRequiredExcludingDeposit)}.` +
+    transferDutyNote +
+    ` Total acquisition (purchase price plus transfer and bond cost estimates): ${formatCurrency(sa.totals.totalAcquisitionCost)}.`;
 
   return {
     ...baseResult("transfer-bond-costs", input.scenarioName),
     summary,
     breakdown: {
-      purchasePrice: input.purchasePrice,
-      bondAmount: input.bondAmount,
-      buyerType: input.buyerType,
-      sellerVatRegistered: input.sellerVatRegistered,
-      propertyIsVatTransaction: input.propertyIsVatTransaction,
-      includeBondRegistration: input.includeBondRegistration,
-      transferDuty,
-      estimatedTransferAttorneyFee,
-      estimatedBondAttorneyFee,
-      deedsOfficeTransferFee,
-      deedsOfficeBondFee,
-      municipalProvision,
-      totalCashRequiredBeforeRegistration,
-      totalIncludingDeposit
+      ...sa,
+      transferDuty: sa.transferCosts.transferDuty,
+      totalCashRequiredBeforeRegistration: sa.totals.totalCashRequiredExcludingDeposit,
+      totalIncludingDeposit: input.includeDepositInCashRequired ? sa.totals.totalCashRequiredIncludingDeposit : null,
+      legacyPropertyIsVatTransaction: transactionType === "VAT_TRANSACTION",
+      municipalProvisionEstimate: input.municipalRatesClearanceProvision
     },
-    interpretation: { text: interpretationText, warnings },
+    interpretation: { text: interpretationText, warnings: mergedWarnings },
     chartData,
     assumptionsUsed: {
-      municipalProvisionDefault: 7500,
-      attorneyFeeMode: input.attorneyFeeMode,
-      feeEstimation: "Simple percentage-based estimates; replace with attorney fee tables for higher accuracy."
+      assumptions: sa.assumptions,
+      feeYear: input.feeYear,
+      vatRatePercent: input.vatRate,
+      sellerVatRegistered: input.sellerVatRegistered,
+      isFirstTimeBuyer: input.isFirstTimeBuyer,
+      propertyUse: input.propertyUse ?? null,
+      disclaimer:
+        "This is an estimate and not legal, tax or financial advice. Confirm costs with your conveyancer, bank and SARS."
     }
   };
 }
@@ -478,10 +553,15 @@ function calcCashOnCash(input: z.infer<typeof cocSchema>): CalculatorResult {
   };
 }
 
-// 5) NOI
+// 5) NOI — legacy monthly buckets OR annual income + expense line items + maintenance % of effective gross
+const noiExpenseItemSchema = z.object({
+  label: z.string().trim().min(1).default("Expense"),
+  annualAmount: money.nonnegative()
+});
+
 const noiSchema = scenarioSchema.extend({
-  grossMonthlyRent: money.nonnegative(),
-  otherMonthlyIncome: money.nonnegative().default(0),
+  grossMonthlyRent: money.nonnegative().optional(),
+  otherMonthlyIncome: money.nonnegative().optional(),
   vacancyRatePercent: percent.min(0).max(100).default(0),
   ratesAndTaxes: money.nonnegative().default(0),
   levies: money.nonnegative().default(0),
@@ -490,11 +570,77 @@ const noiSchema = scenarioSchema.extend({
   propertyManagement: money.nonnegative().default(0),
   utilities: money.nonnegative().default(0),
   admin: money.nonnegative().default(0),
-  otherOperatingExpenses: money.nonnegative().default(0)
+  otherOperatingExpenses: money.nonnegative().default(0),
+  rentalIncomeAnnual: money.nonnegative().optional(),
+  otherIncomeAnnual: money.nonnegative().optional(),
+  maintenancePercentOfEffectiveGross: percent.min(0).max(50).default(0),
+  expenseItems: z.array(noiExpenseItemSchema).optional(),
+  rentGrowthPercentAnnual: percent.min(0).max(30).default(3),
+  expenseGrowthPercentAnnual: percent.min(0).max(30).default(3)
+}).superRefine((data, ctx) => {
+  const annual = data.rentalIncomeAnnual != null && data.rentalIncomeAnnual > 0;
+  const legacy = data.grossMonthlyRent != null && data.grossMonthlyRent > 0;
+  if (!annual && !legacy) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Provide rental income (annual) or gross monthly rent.", path: ["rentalIncomeAnnual"] });
+  }
+  if (annual && (!data.expenseItems || data.expenseItems.length === 0)) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Add at least one operating expense line.", path: ["expenseItems"] });
+  }
 });
 
-function calcNOI(input: z.infer<typeof noiSchema>): CalculatorResult {
-  const warnings: string[] = [];
+function noiAnnualFromInputs(input: z.infer<typeof noiSchema>): {
+  rentalAnnual0: number;
+  otherAnnual0: number;
+  vacancyPct: number;
+  lineExpenseAnnual0: number;
+  maintPctOfEffective: number;
+  rentGrowth: number;
+  expenseGrowth: number;
+  doughnutLabels: string[];
+  doughnutValues: number[];
+  legacyMode: boolean;
+  grossMonthlyRent: number;
+  otherMonthlyIncome: number;
+  monthlyOperatingExpenses: number;
+} {
+  const vacancyPct = clamp(input.vacancyRatePercent ?? 0, 0, 100);
+  const rentG = input.rentGrowthPercentAnnual ?? 3;
+  const expG = input.expenseGrowthPercentAnnual ?? 3;
+  const maintPct = clamp(input.maintenancePercentOfEffectiveGross ?? 0, 0, 50);
+
+  if (input.rentalIncomeAnnual != null && Number.isFinite(input.rentalIncomeAnnual)) {
+    const rentalAnnual0 = Math.max(0, input.rentalIncomeAnnual);
+    const otherAnnual0 = Math.max(0, input.otherIncomeAnnual ?? 0);
+    const items = input.expenseItems?.length ? input.expenseItems : [{ label: "Operating expenses", annualAmount: 0 }];
+    const lineExpenseAnnual0 = items.reduce((s, it) => s + Math.max(0, it.annualAmount), 0);
+    const rentM = rentalAnnual0 / 12;
+    const otherM = otherAnnual0 / 12;
+    const lineM = lineExpenseAnnual0 / 12;
+    const g = rentM + otherM;
+    const eff = g * (1 - vacancyPct / 100);
+    const maintM = eff * (maintPct / 100);
+    const totalOpEx = lineM + maintM;
+    const doughnutLabels = [...items.map((i) => i.label), ...(maintPct > 0 ? ["Maintenance (%)"] : [])];
+    const doughnutValues = [...items.map((i) => i.annualAmount / 12), ...(maintPct > 0 ? [maintM] : [])];
+    return {
+      rentalAnnual0,
+      otherAnnual0,
+      vacancyPct,
+      lineExpenseAnnual0,
+      maintPctOfEffective: maintPct,
+      rentGrowth: rentG,
+      expenseGrowth: expG,
+      doughnutLabels,
+      doughnutValues,
+      legacyMode: false,
+      grossMonthlyRent: rentM,
+      otherMonthlyIncome: otherM,
+      monthlyOperatingExpenses: totalOpEx
+    };
+  }
+
+  const grossMonthlyRent = input.grossMonthlyRent ?? 0;
+  const otherMonthlyIncome = input.otherMonthlyIncome ?? 0;
   const operatingExpensesMonthly =
     input.ratesAndTaxes +
     input.levies +
@@ -504,28 +650,118 @@ function calcNOI(input: z.infer<typeof noiSchema>): CalculatorResult {
     input.utilities +
     input.admin +
     input.otherOperatingExpenses;
-
-  const noi = calculateNOI({
-    grossMonthlyRent: input.grossMonthlyRent,
-    otherMonthlyIncome: input.otherMonthlyIncome,
-    vacancyRatePercent: input.vacancyRatePercent,
+  const rentalAnnual0 = grossMonthlyRent * 12;
+  const otherAnnual0 = otherMonthlyIncome * 12;
+  const lineExpenseAnnual0 = operatingExpensesMonthly * 12;
+  return {
+    rentalAnnual0,
+    otherAnnual0,
+    vacancyPct,
+    lineExpenseAnnual0: Math.max(0, lineExpenseAnnual0),
+    maintPctOfEffective: 0,
+    rentGrowth: rentG,
+    expenseGrowth: expG,
+    doughnutLabels: ["Rates & taxes", "Levies", "Insurance", "Maintenance", "Management", "Utilities", "Admin", "Other"],
+    doughnutValues: [
+      input.ratesAndTaxes,
+      input.levies,
+      input.insurance,
+      input.maintenance,
+      input.propertyManagement,
+      input.utilities,
+      input.admin,
+      input.otherOperatingExpenses
+    ],
+    legacyMode: true,
+    grossMonthlyRent,
+    otherMonthlyIncome,
     monthlyOperatingExpenses: operatingExpensesMonthly
+  };
+}
+
+function noiProjectedAnnualSeries(p: ReturnType<typeof noiAnnualFromInputs>): number[] {
+  const years = 5;
+  const out: number[] = [];
+  for (let y = 0; y < years; y++) {
+    const rentA = p.rentalAnnual0 * Math.pow(1 + p.rentGrowth / 100, y);
+    const otherA = p.otherAnnual0 * Math.pow(1 + p.rentGrowth / 100, y);
+    const grossMonthly = (rentA + otherA) / 12;
+    const vacancyLoss = grossMonthly * (p.vacancyPct / 100);
+    const effMonthly = grossMonthly - vacancyLoss;
+    const lineM = (p.lineExpenseAnnual0 * Math.pow(1 + p.expenseGrowth / 100, y)) / 12;
+    const maintM = p.maintPctOfEffective > 0 ? effMonthly * (p.maintPctOfEffective / 100) : 0;
+    const noiM = effMonthly - lineM - maintM;
+    out.push(round2(noiM * 12));
+  }
+  return out;
+}
+
+function calcNOI(input: z.infer<typeof noiSchema>): CalculatorResult {
+  const warnings: string[] = [];
+  if (input.rentalIncomeAnnual == null && (input.grossMonthlyRent == null || input.grossMonthlyRent <= 0)) {
+    warnings.push("Provide rental income (annual) or gross monthly rent.");
+  }
+
+  const norm = noiAnnualFromInputs(input);
+  const noi = calculateNOI({
+    grossMonthlyRent: norm.grossMonthlyRent,
+    otherMonthlyIncome: norm.otherMonthlyIncome,
+    vacancyRatePercent: norm.vacancyPct,
+    monthlyOperatingExpenses: norm.monthlyOperatingExpenses
   });
 
   const operatingExpenseRatioPercent =
     noi.effectiveGrossIncomeAnnual > 0 ? (noi.operatingExpensesAnnual / noi.effectiveGrossIncomeAnnual) * 100 : 0;
 
+  const projectionAnnual = noiProjectedAnnualSeries(norm);
+
+  if (norm.vacancyPct >= 100) warnings.push("Vacancy is 100%: effective income is zero.");
+
   const chartData = [
+    {
+      chartType: "line" as const,
+      title: "NOI over time (5-year projection)",
+      data: {
+        labels: ["Year 1", "Year 2", "Year 3", "Year 4", "Year 5"],
+        datasets: [
+          {
+            label: "Projected annual NOI",
+            data: projectionAnnual,
+            borderColor: "#c99a5b",
+            backgroundColor: "rgba(201, 154, 91, 0.18)",
+            fill: true,
+            tension: 0.25
+          }
+        ]
+      },
+      options: {
+        plugins: { legend: { position: "bottom" as const } },
+        scales: {
+          y: {
+            ticks: {
+              callback: (v: string | number) => {
+                const n = Number(v);
+                if (!Number.isFinite(n)) return String(v);
+                if (Math.abs(n) >= 1_000_000) return `R ${(n / 1_000_000).toFixed(1)}M`;
+                return `R ${Math.round(n / 1000)}k`;
+              }
+            }
+          }
+        }
+      } as any
+    },
     {
       chartType: "doughnut" as const,
       title: "Operating expense breakdown (monthly)",
       data: {
-        labels: ["Rates & taxes", "Levies", "Insurance", "Maintenance", "Management", "Utilities", "Admin", "Other"],
-        datasets: [{
-          label: "ZAR",
-          data: [input.ratesAndTaxes, input.levies, input.insurance, input.maintenance, input.propertyManagement, input.utilities, input.admin, input.otherOperatingExpenses],
-          backgroundColor: ["#007acc", "#1f8de0", "#2b2b2b", "#3a3a3a", "#4a4a4a", "#5a5a5a", "#6a6a6a", "#7a7a7a"]
-        }]
+        labels: norm.doughnutLabels,
+        datasets: [
+          {
+            label: "ZAR",
+            data: norm.doughnutValues,
+            backgroundColor: ["#c99a5b", "#1f8de0", "#2b2b2b", "#3a3a3a", "#4a4a4a", "#5a5a5a", "#6a6a6a", "#7a7a7a", "#8a8a8a"]
+          }
+        ]
       }
     },
     {
@@ -533,16 +769,16 @@ function calcNOI(input: z.infer<typeof noiSchema>): CalculatorResult {
       title: "Income vs NOI (annual)",
       data: {
         labels: ["Gross potential", "Effective gross", "NOI"],
-        datasets: [{
-          label: "ZAR",
-          data: [noi.grossPotentialIncomeAnnual, noi.effectiveGrossIncomeAnnual, noi.noiAnnual],
-          backgroundColor: "#007acc"
-        }]
+        datasets: [
+          {
+            label: "ZAR",
+            data: [noi.grossPotentialIncomeAnnual, noi.effectiveGrossIncomeAnnual, noi.noiAnnual],
+            backgroundColor: "#1f8de0"
+          }
+        ]
       }
     }
   ];
-
-  if (input.vacancyRatePercent === 100) warnings.push("Vacancy is 100%: effective income is zero.");
 
   const interpretationText =
     `Your NOI is ${formatCurrency(noi.noiAnnual)} per year (${formatCurrency(noi.noiMonthly)} per month). ` +
@@ -553,27 +789,37 @@ function calcNOI(input: z.infer<typeof noiSchema>): CalculatorResult {
     ...baseResult("noi", input.scenarioName),
     summary: [
       metric("noiAnnual", "NOI (annual)", "currency", noi.noiAnnual),
-      metric("noiMonthly", "NOI (monthly)", "currency", noi.noiMonthly),
-      metric("effectiveGrossIncomeAnnual", "Effective gross income (annual)", "currency", noi.effectiveGrossIncomeAnnual),
+      metric("grossOperatingIncomeAnnual", "Gross operating income (annual)", "currency", noi.grossPotentialIncomeAnnual),
+      metric("totalOperatingExpensesAnnual", "Total operating expenses (annual)", "currency", noi.operatingExpensesAnnual),
       metric("operatingExpenseRatioPercent", "Operating expense ratio", "percent", operatingExpenseRatioPercent)
     ],
     breakdown: {
       ...noi,
       operatingExpenseRatioPercent,
-      operatingExpensesBreakdownMonthly: {
-        ratesAndTaxes: input.ratesAndTaxes,
-        levies: input.levies,
-        insurance: input.insurance,
-        maintenance: input.maintenance,
-        propertyManagement: input.propertyManagement,
-        utilities: input.utilities,
-        admin: input.admin,
-        otherOperatingExpenses: input.otherOperatingExpenses
-      }
+      noiProjection5YearAnnual: projectionAnnual,
+      rentGrowthPercentAnnual: norm.rentGrowth,
+      expenseGrowthPercentAnnual: norm.expenseGrowth,
+      noiInputMode: norm.legacyMode ? "legacy_monthly" : "annual_line_items",
+      operatingExpensesBreakdownMonthly: norm.legacyMode
+        ? {
+            ratesAndTaxes: input.ratesAndTaxes,
+            levies: input.levies,
+            insurance: input.insurance,
+            maintenance: input.maintenance,
+            propertyManagement: input.propertyManagement,
+            utilities: input.utilities,
+            admin: input.admin,
+            otherOperatingExpenses: input.otherOperatingExpenses
+          }
+        : { expenseItems: input.expenseItems ?? [] }
     },
     interpretation: { text: interpretationText, warnings },
     chartData,
-    assumptionsUsed: { noiExcludesDebtService: true }
+    assumptionsUsed: {
+      noiExcludesDebtService: true,
+      fiveYearProjectionNote:
+        "Projection applies rent growth and expense growth to the income and operating cost bases each year (maintenance % applies to effective gross each year)."
+    }
   };
 }
 
@@ -682,37 +928,272 @@ function calcDSCR(input: z.infer<typeof dscrSchema>): CalculatorResult {
   };
 }
 
-// 8) IRR
+// 8) IRR — NPV(r) = Σ CFₜ/(1+r)ᵗ = 0; CF₀ = −cash invested; final year includes operating + net sale proceeds.
+function expandAnnualFlowsToHorizon(annualCashFlows: number[], H: number): number[] {
+  if (H < 1) return [];
+  const out: number[] = [];
+  for (let y = 0; y < H; y++) {
+    const v = annualCashFlows[y] ?? annualCashFlows[annualCashFlows.length - 1] ?? 0;
+    out.push(v);
+  }
+  return out;
+}
+
 const irrSchema = scenarioSchema.extend({
-  initialCashInvested: money, // should be negative
   holdPeriodYears: z.number().int().min(1).max(50),
-  annualCashFlows: z.array(money).min(1),
-  expectedSalePrice: money.nonnegative(),
-  sellingCostsPercent: percent.min(0).max(20).default(5),
-  remainingLoanBalanceAtSale: money.nonnegative().default(0)
+  sellingCostsPercent: percent.min(0).max(40).default(5),
+
+  initialCashInvested: money.optional(),
+  annualCashFlows: z.array(money).optional(),
+  expectedSalePrice: money.nonnegative().optional(),
+  remainingLoanBalanceAtSale: money.nonnegative().optional().default(0),
+
+  totalCashInvested: money.nonnegative().optional(),
+  annualCashFlowAfterExpensesAndDebt: money.optional(),
+  currentEstimatedValue: money.nonnegative().optional(),
+  outstandingBondBalance: money.nonnegative().optional(),
+  expectedAnnualAppreciationPercent: percent.optional(),
+  estimatedSellingCostPercent: percent.min(0).max(40).optional(),
+  projectedBondBalanceAtSale: money.nonnegative().optional(),
+  cashFlowGrowthPercentAnnual: percent.optional().default(0),
+  rentGrowthPercent: percent.optional(),
+  expenseGrowthPercent: percent.optional()
 });
 
-function calcIRR(input: z.infer<typeof irrSchema>): CalculatorResult {
-  const warnings: string[] = [];
-  if (input.initialCashInvested >= 0) warnings.push("Initial cash invested should be negative (cash outflow).");
+type IrrParsed = z.infer<typeof irrSchema>;
 
-  const saleCosts = input.expectedSalePrice * (clamp(input.sellingCostsPercent, 0, 100) / 100);
-  const netSaleProceeds = input.expectedSalePrice - saleCosts - input.remainingLoanBalanceAtSale;
-  const cashFlows = [
-    input.initialCashInvested,
-    ...input.annualCashFlows.slice(0, Math.max(0, input.holdPeriodYears - 1)),
-    (input.annualCashFlows[input.holdPeriodYears - 1] ?? 0) + netSaleProceeds
-  ];
+function calcIRR(input: IrrParsed): CalculatorResult {
+  const warnings: string[] = [];
+  const assumptions: string[] = [];
+  const H = input.holdPeriodYears;
+
+  const growthMode =
+    input.currentEstimatedValue != null && input.totalCashInvested != null && input.currentEstimatedValue > 0;
+
+  if (growthMode) {
+    return calcIrrGrowthFromValue(input, H, warnings, assumptions);
+  }
+  return calcIrrLegacySalePrice(input, H, warnings, assumptions);
+}
+
+function operatingGrowthRatePerYear(input: IrrParsed): number {
+  const rentG = input.rentGrowthPercent;
+  const expG = input.expenseGrowthPercent;
+  const flatG = input.cashFlowGrowthPercentAnnual ?? 0;
+  if (rentG != null || expG != null) {
+    const r = rentG ?? 0;
+    const e = expG ?? 0;
+    if (rentG != null && expG == null) return r / 100;
+    if (expG != null && rentG == null) return e / 100;
+    return (r + e) / 200;
+  }
+  return flatG / 100;
+}
+
+function calcIrrGrowthFromValue(input: IrrParsed, H: number, warnings: string[], assumptions: string[]): CalculatorResult {
+  const tcRaw = input.totalCashInvested!;
+  if (tcRaw <= 0) {
+    warnings.push("IRR cannot be calculated because total cash invested is zero.");
+    return irrEmptyResult(input, warnings, assumptions, [], null, null, null, null, null, null);
+  }
+
+  const value0 = input.currentEstimatedValue!;
+  if (value0 <= 0 || !Number.isFinite(value0)) {
+    warnings.push("IRR requires property value, holding period, cash invested and expected exit value assumptions.");
+    return irrEmptyResult(input, warnings, assumptions, [], null, null, null, null, null, null);
+  }
+
+  if (!Number.isFinite(H) || H < 1) {
+    warnings.push("IRR requires property value, holding period, cash invested and expected exit value assumptions.");
+    return irrEmptyResult(input, warnings, assumptions, [], null, null, null, null, null, null);
+  }
+
+  const appreciation = input.expectedAnnualAppreciationPercent ?? 0;
+  const sellPct = clamp(input.estimatedSellingCostPercent ?? input.sellingCostsPercent, 0, 100);
+  const outstanding = input.outstandingBondBalance ?? 0;
+  const usedProjectedBond = input.projectedBondBalanceAtSale != null;
+  const bondAtSale = usedProjectedBond ? input.projectedBondBalanceAtSale! : outstanding;
+
+  if (!usedProjectedBond) {
+    warnings.push(
+      "Using current bond balance as estimated future bond balance. Add amortisation details for a more accurate IRR."
+    );
+  }
+
+  const futurePropertyValue = value0 * Math.pow(1 + appreciation / 100, H);
+  const sellingCosts = futurePropertyValue * (sellPct / 100);
+  const netSaleProceeds = futurePropertyValue - sellingCosts - bondAtSale;
+  const g = operatingGrowthRatePerYear(input);
+  const baseAnnual = input.annualCashFlowAfterExpensesAndDebt ?? 0;
+
+  assumptions.push(`Future value (exit) = current estimated value × (1 + appreciation)ᴴ (${appreciation}% p.a.).`);
+  assumptions.push(`Selling costs = ${sellPct}% × future property value.`);
+  assumptions.push(
+    usedProjectedBond
+      ? `Bond at sale = projected balance (${bondAtSale}).`
+      : `Bond at sale = outstanding bond (${bondAtSale}) — conservative snapshot until amortisation is supplied.`
+  );
+  assumptions.push(`Operating cash grows at implied annual factor ${(g * 100).toFixed(2)}% on prior-year net operating cash.`);
+
+  const cashFlows: number[] = [-tcRaw];
+  for (let y = 1; y < H; y++) {
+    cashFlows.push(baseAnnual * Math.pow(1 + g, y - 1));
+  }
+  const finalOperating = baseAnnual * Math.pow(1 + g, H - 1);
+  const finalYearCashFlow = finalOperating + netSaleProceeds;
+  cashFlows.push(finalYearCashFlow);
+
+  const futureAllNonPositive = cashFlows.slice(1).every((x) => x <= 0);
+  if (futureAllNonPositive) {
+    warnings.push("IRR cannot be calculated because there are no positive future cash flows.");
+    return irrEmptyResult(
+      input,
+      warnings,
+      assumptions,
+      cashFlows,
+      futurePropertyValue,
+      sellingCosts,
+      bondAtSale,
+      netSaleProceeds,
+      finalYearCashFlow,
+      null
+    );
+  }
+
+  const irrRate = solveIrrPeriodicCashFlows(cashFlows);
+  const irrPercent = irrRate === null ? null : Math.round(irrRate * 100 * 100) / 100;
+
+  if (irrPercent === null) {
+    warnings.push("Insufficient data to calculate IRR (no discount rate found where NPV = 0 for these cash flows).");
+  }
 
   const irrRes = calculateIRR({ cashFlows });
-  const irrPercent = irrRes.irr === null ? null : irrRes.irr * 100;
   const totalProfit = cashFlows.reduce((s, x) => s + x, 0);
-  const equityMultiple = input.initialCashInvested !== 0 ? (cashFlows.filter((x) => x > 0).reduce((s, x) => s + x, 0) / Math.abs(input.initialCashInvested)) : null;
+  const equityMultiple = tcRaw !== 0 ? cashFlows.filter((x) => x > 0).reduce((s, x) => s + x, 0) / tcRaw : null;
+
+  const interpretationText =
+    irrPercent === null ? "Insufficient data — IRR could not be computed." : `IRR is ${formatPercent(irrPercent)} (annual).`;
+
+  const chartData = irrChartData(cashFlows);
+
+  return {
+    ...baseResult("irr", input.scenarioName),
+    summary: [
+      metric("irrPercent", "IRR", "percent", irrPercent),
+      metric("equityMultiple", "Equity multiple", "number", equityMultiple ?? 0),
+      metric("totalProfit", "Total profit", "currency", totalProfit),
+      metric("netSaleProceeds", "Net sale proceeds", "currency", netSaleProceeds)
+    ],
+    breakdown: {
+      irrPercent,
+      cashFlows,
+      futurePropertyValue,
+      sellingCosts,
+      bondBalanceAtSale: bondAtSale,
+      netSaleProceeds,
+      finalYearCashFlow,
+      assumptions,
+      warnings,
+      holdPeriodYears: H,
+      irr: irrRate,
+      iterations: irrRes.iterations,
+      equityMultiple,
+      totalProfit,
+      averageAnnualCashFlow: baseAnnual,
+      appreciationPercentUsed: appreciation,
+      bondBasis: usedProjectedBond ? "projected" : "outstanding_snapshot"
+    },
+    interpretation: { text: interpretationText, warnings },
+    chartData,
+    assumptionsUsed: {
+      appreciationPercentUsed: appreciation,
+      sellingCostsPercent: sellPct,
+      holdingPeriodYears: H,
+      bondBalanceBasis: usedProjectedBond ? "projectedBondBalanceAtSale" : "outstandingBondBalance"
+    }
+  };
+}
+
+function calcIrrLegacySalePrice(input: IrrParsed, H: number, warnings: string[], assumptions: string[]): CalculatorResult {
+  if (input.initialCashInvested === undefined || input.annualCashFlows === undefined || !input.annualCashFlows.length) {
+    throw new Error("IRR (legacy mode) requires initialCashInvested and at least one annual cash flow value.");
+  }
+  if (input.expectedSalePrice === undefined) {
+    throw new Error("IRR (legacy mode) requires expectedSalePrice, or use growth mode with currentEstimatedValue and totalCashInvested.");
+  }
+
+  const cf0Raw = input.initialCashInvested;
+  const cf0 = cf0Raw > 0 ? -Math.abs(cf0Raw) : cf0Raw;
+  if (cf0 >= 0) warnings.push("Initial cash invested should be negative (cash outflow); normalized using −abs(value).");
+
+  const saleCosts = input.expectedSalePrice * (clamp(input.sellingCostsPercent, 0, 100) / 100);
+  const remainingLoan = input.remainingLoanBalanceAtSale ?? 0;
+  const netSaleProceeds = input.expectedSalePrice - saleCosts - remainingLoan;
+  const series = expandAnnualFlowsToHorizon(input.annualCashFlows, H);
+
+  const cashFlows: number[] = [cf0];
+  for (let y = 1; y < H; y++) {
+    cashFlows.push(series[y - 1]);
+  }
+  cashFlows.push(series[H - 1] + netSaleProceeds);
+
+  assumptions.push("Legacy inputs: exit uses explicit expected sale price (not compounded current value).");
+
+  const futureAllNonPositive = cashFlows.slice(1).every((x) => x <= 0);
+  if (futureAllNonPositive) {
+    warnings.push("IRR cannot be calculated because there are no positive future cash flows.");
+  }
+
+  const irrRate = futureAllNonPositive ? null : solveIrrPeriodicCashFlows(cashFlows);
+  const irrPercent = irrRate === null ? null : Math.round(irrRate * 100 * 100) / 100;
+  const irrRes = calculateIRR({ cashFlows });
+
+  if (irrPercent === null && !futureAllNonPositive) {
+    warnings.push("Insufficient data to calculate IRR (no discount rate found where NPV = 0 for these cash flows).");
+  }
+
+  const totalProfit = cashFlows.reduce((s, x) => s + x, 0);
+  const denom = Math.abs(cf0);
+  const equityMultiple = denom !== 0 ? cashFlows.filter((x) => x > 0).reduce((s, x) => s + x, 0) / denom : null;
   const avgAnnual = input.annualCashFlows.length ? input.annualCashFlows.reduce((s, x) => s + x, 0) / input.annualCashFlows.length : 0;
 
-  if (irrRes.irr === null) warnings.push("IRR could not be calculated (cash flows may not have both positive and negative values).");
+  const interpretationText =
+    irrPercent === null ? "Insufficient data — IRR could not be computed." : `IRR is ${formatPercent(irrPercent)} (annual).`;
 
-  const chartData = [
+  return {
+    ...baseResult("irr", input.scenarioName),
+    summary: [
+      metric("irrPercent", "IRR", "percent", irrPercent),
+      metric("equityMultiple", "Equity multiple", "number", equityMultiple ?? 0),
+      metric("totalProfit", "Total profit", "currency", totalProfit),
+      metric("netSaleProceeds", "Net sale proceeds", "currency", netSaleProceeds)
+    ],
+    breakdown: {
+      irrPercent,
+      cashFlows,
+      futurePropertyValue: null,
+      sellingCosts: saleCosts,
+      bondBalanceAtSale: remainingLoan,
+      netSaleProceeds,
+      finalYearCashFlow: cashFlows[cashFlows.length - 1] ?? null,
+      assumptions,
+      warnings,
+      holdPeriodYears: H,
+      expectedSalePrice: input.expectedSalePrice,
+      irr: irrRate,
+      iterations: irrRes.iterations,
+      equityMultiple,
+      totalProfit,
+      averageAnnualCashFlow: avgAnnual
+    },
+    interpretation: { text: interpretationText, warnings },
+    chartData: irrChartData(cashFlows),
+    assumptionsUsed: { sellingCostsPercent: input.sellingCostsPercent }
+  };
+}
+
+function irrChartData(cashFlows: number[]) {
+  return [
     {
       chartType: "bar" as const,
       title: "Annual cash flow",
@@ -726,49 +1207,58 @@ function calcIRR(input: z.infer<typeof irrSchema>): CalculatorResult {
       title: "Cumulative cash flow",
       data: {
         labels: cashFlows.map((_, i) => `Y${i}`),
-        datasets: [{
-          label: "Cumulative",
-          data: cashFlows.reduce((acc: number[], x) => {
-            const prev = acc.length ? acc[acc.length - 1] : 0;
-            acc.push(round2(prev + x));
-            return acc;
-          }, []),
-          borderColor: "#007acc"
-        }]
+        datasets: [
+          {
+            label: "Cumulative",
+            data: cashFlows.reduce((acc: number[], x) => {
+              const prev = acc.length ? acc[acc.length - 1] : 0;
+              acc.push(round2(prev + x));
+              return acc;
+            }, []),
+            borderColor: "#007acc"
+          }
+        ]
       }
     }
   ];
+}
 
-  const interpretationText =
-    irrPercent === null
-      ? "IRR could not be computed for the provided cash flows."
-      : `IRR is approximately ${formatPercent(irrPercent)} over a ${input.holdPeriodYears}-year hold. This is an annualised return that accounts for timing of cash flows and sale proceeds.`;
-
+function irrEmptyResult(
+  input: IrrParsed,
+  warnings: string[],
+  assumptions: string[],
+  cashFlows: number[],
+  futurePropertyValue: number | null,
+  sellingCosts: number | null,
+  bondBalanceAtSale: number | null,
+  netSaleProceeds: number | null,
+  finalYearCashFlow: number | null,
+  irrPercent: number | null
+): CalculatorResult {
+  const chartData = cashFlows.length ? irrChartData(cashFlows) : [];
   return {
     ...baseResult("irr", input.scenarioName),
     summary: [
-      metric("irrPercent", "IRR", "percent", irrPercent ?? 0),
-      metric("equityMultiple", "Equity multiple", "number", equityMultiple ?? 0),
-      metric("totalProfit", "Total profit", "currency", totalProfit),
-      metric("netSaleProceeds", "Net sale proceeds", "currency", netSaleProceeds)
+      metric("irrPercent", "IRR", "percent", irrPercent),
+      metric("equityMultiple", "Equity multiple", "number", 0),
+      metric("totalProfit", "Total profit", "currency", cashFlows.reduce((s, x) => s + x, 0)),
+      metric("netSaleProceeds", "Net sale proceeds", "currency", netSaleProceeds ?? 0)
     ],
     breakdown: {
-      cashFlows,
-      holdPeriodYears: input.holdPeriodYears,
-      netSaleProceeds,
-      saleCosts,
-      sellingCostsPercent: input.sellingCostsPercent,
-      remainingLoanBalanceAtSale: input.remainingLoanBalanceAtSale,
-      irr: irrRes.irr,
       irrPercent,
-      iterations: irrRes.iterations,
-      equityMultiple,
-      totalProfit,
-      averageAnnualCashFlow: avgAnnual
+      cashFlows,
+      futurePropertyValue,
+      sellingCosts,
+      bondBalanceAtSale,
+      netSaleProceeds,
+      finalYearCashFlow,
+      assumptions,
+      warnings,
+      holdPeriodYears: input.holdPeriodYears
     },
-    interpretation: { text: interpretationText, warnings },
+    interpretation: { text: "Insufficient data — IRR could not be computed.", warnings },
     chartData,
-    assumptionsUsed: { sellingCostsPercent: input.sellingCostsPercent }
+    assumptionsUsed: {}
   };
 }
 

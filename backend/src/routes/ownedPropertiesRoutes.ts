@@ -2,16 +2,57 @@ import { Router } from "express";
 import path from "node:path";
 import fs from "node:fs/promises";
 import multer from "multer";
+import type { RecurringExpenseMonthAnchor } from "@prisma/client";
 import { db } from "../config/db.js";
 import { AuthRequest, requireAuth } from "../middleware/auth.js";
 import { sendInvoiceEmail } from "../services/emailService.js";
+import { leaseDisplayStatus, isCurrentLeaseStatus } from "../domains/properties/propertyLease.helpers.js";
+import {
+  IRR_EXPENSE_BASELINE_BOND_RATE_FALLBACK_PERCENT,
+  inferMonthlyBondPaymentForExpenseBaseline
+} from "../domains/properties/property.bond.helpers.js";
+import { computeFinancialSummary } from "../domains/properties/property.financials.service.js";
+import { whereActiveExpensesForPortfolioMonthSnapshot } from "../domains/properties/propertyExpenseMonth.helpers.js";
+import { buildPropertyCreateInput } from "../domains/properties/property.creation.service.js";
+import { buildPropertyUpdateData } from "../domains/properties/property.update.service.js";
+import { buildPropertyAggregate, mapAggregateToLegacyDetail } from "../domains/properties/property.aggregate.service.js";
+import {
+  buildPortfolioAnalysisOverTime,
+  buildPortfolioProjectionIrrCashFlows,
+  portfolioProjectionIrrRate,
+  portfolioIrrExplainStatus
+} from "../domains/properties/property.portfolioIrr.js";
+import { getPortfolioProjectionGrowthRates } from "../services/portfolioProjectionDefaults.js";
+import {
+  buildPropertyStatement,
+  getCurrentInvoiceForMonth,
+  buildFutureCharges,
+  buildRecurringChargesList
+} from "../domains/properties/property.statement.service.js";
+import {
+  expenseDateFromYmd,
+  firstDueYmdOnOrAfter,
+  materializeDueRecurringExpenses,
+  materializeDueRecurringExpensesForProperties
+} from "../domains/properties/property.recurringExpenseMaterialize.js";
+import { runHistoricalBackfill } from "../domains/properties/property.backfill.service.js";
+import { createDraftInvoiceForLease, createDraftInvoiceFromCurrentLease } from "../domains/properties/property.invoice.current.js";
+import { applyDepositGrowthForCurrentPropertyLeases, ymNow } from "../domains/properties/property.depositGrowth.service.js";
+import { computePropertyBondFinance } from "../domains/properties/property.bond.helpers.js";
+import {
+  backfillBondStatementRows,
+  dueYmdForCalendarMonth,
+  findActiveBondExpenseInDueMonth,
+  postBondStatementRow
+} from "../domains/properties/property.bond.ledger.service.js";
+import { ensureReportsDirectory, getReportsRoot, resolveStoredPdfAbsolute } from "../config/reportsPaths.js";
+import { writePdfDefinitionToFile } from "../services/pdf/writePdfKitDocument.js";
+import { buildInvoicePdfDefinition } from "../services/pdf/invoicePdf.js";
 
 export const ownedPropertiesRoutes = Router();
 
 const propertyDocDir = path.join(process.cwd(), "uploads/property-documents");
-const invoicePdfDir = path.join(process.cwd(), "uploads/invoice-pdfs");
 void fs.mkdir(propertyDocDir, { recursive: true });
-void fs.mkdir(invoicePdfDir, { recursive: true });
 
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, propertyDocDir),
@@ -43,9 +84,40 @@ function asNumber(v: unknown, fallback = 0) {
   return Number.isFinite(n) ? n : fallback;
 }
 
+/** Align calendar-day-only payloads with recurring materialisation (UTC noon) so duplicates aren’t posted. */
+function coerceExpenseDateFromBody(raw: unknown): Date | null {
+  if (raw == null || raw === "") return null;
+  if (typeof raw === "string") {
+    const s = raw.trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return expenseDateFromYmd(s);
+  }
+  const d = new Date(raw as string | number | Date);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
 function isValidDayOfMonth(v: unknown) {
   const n = Number(v);
   return Number.isInteger(n) && n >= 1 && n <= 31;
+}
+
+function parseRecurringExpenseMonthAnchor(body: Record<string, unknown>):
+  | { ok: true; anchor: RecurringExpenseMonthAnchor; recurringDayOfMonth: number | null }
+  | { ok: false; message: string } {
+  const raw = body.recurringMonthAnchor;
+  if (raw === "LAST_OF_MONTH") return { ok: true, anchor: "LAST_OF_MONTH", recurringDayOfMonth: null };
+  if (raw === "DAY_OF_MONTH") {
+    if (!isValidDayOfMonth(body.recurringDayOfMonth)) {
+      return {
+        ok: false,
+        message: "recurringDayOfMonth must be an integer 1–31 when recurringMonthAnchor is DAY_OF_MONTH"
+      };
+    }
+    return { ok: true, anchor: "DAY_OF_MONTH", recurringDayOfMonth: Number(body.recurringDayOfMonth) };
+  }
+  if (raw === "FIRST_OF_MONTH" || raw == null || raw === "") {
+    return { ok: true, anchor: "FIRST_OF_MONTH", recurringDayOfMonth: null };
+  }
+  return { ok: false, message: "recurringMonthAnchor must be FIRST_OF_MONTH, LAST_OF_MONTH, or DAY_OF_MONTH" };
 }
 
 function parseCsvParam(v: unknown) {
@@ -60,145 +132,12 @@ function monthLabel(monthIndex1to12: number) {
   return ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][monthIndex1to12 - 1] ?? "";
 }
 
-function irrBisection(cashFlows: number[], opts?: { low?: number; high?: number; tol?: number; maxIter?: number }) {
-  const low = opts?.low ?? -0.99;
-  const high = opts?.high ?? 1.0;
-  const tol = opts?.tol ?? 1e-6;
-  const maxIter = opts?.maxIter ?? 200;
-
-  const npv = (r: number) => cashFlows.reduce((acc, cf, t) => acc + cf / Math.pow(1 + r, t), 0);
-  let a = low;
-  let b = high;
-  let fa = npv(a);
-  let fb = npv(b);
-  if (!Number.isFinite(fa) || !Number.isFinite(fb)) return null;
-  if (fa === 0) return a;
-  if (fb === 0) return b;
-  if (fa * fb > 0) return null; // no sign change => cannot guarantee a root
-
-  for (let i = 0; i < maxIter; i++) {
-    const m = (a + b) / 2;
-    const fm = npv(m);
-    if (!Number.isFinite(fm)) return null;
-    if (Math.abs(fm) < tol) return m;
-    if (fa * fm < 0) {
-      b = m;
-      fb = fm;
-    } else {
-      a = m;
-      fa = fm;
-    }
-  }
-  return (a + b) / 2;
-}
-
 async function assertPropertyOwner(userId: number, propertyId: number) {
   const property = await db.property.findFirst({ where: { id: propertyId, userId } });
   return property;
 }
 
-function sumByCategory<T extends { category: string; amount: number }>(rows: T[], category: string) {
-  return rows.filter((r) => r.category === category).reduce((acc, r) => acc + r.amount, 0);
-}
-
-async function computeFinancialSummary(userId: number, propertyId: number) {
-  const property = await db.property.findFirst({
-    where: { id: propertyId, userId },
-    include: { leases: true }
-  });
-  if (!property) return null;
-
-  const now = new Date();
-  const { start, end } = monthBounds(now);
-  const [expensesMonth, incomeMonthReceived, incomeMonthExpected, incomeAllReceived, expensesAll] = await Promise.all([
-    db.propertyExpense.findMany({ where: { userId, propertyId, status: "ACTIVE", expenseDate: { gte: start, lt: end } } }),
-    db.propertyIncome.findMany({ where: { userId, propertyId, status: "RECEIVED", incomeDate: { gte: start, lt: end } } }),
-    db.propertyIncome.findMany({ where: { userId, propertyId, status: "EXPECTED", incomeDate: { gte: start, lt: end } } }),
-    db.propertyIncome.findMany({ where: { userId, propertyId, status: "RECEIVED" } }),
-    db.propertyExpense.findMany({ where: { userId, propertyId, status: "ACTIVE" } })
-  ]);
-
-  const totalRentIncome = sumByCategory(incomeMonthReceived as any, "RENT");
-  const totalIncome = incomeMonthReceived.reduce((a, b) => a + b.amount, 0);
-  const totalOtherIncome = totalIncome - totalRentIncome;
-  const expectedIncome = incomeMonthExpected.reduce((a, b) => a + b.amount, 0);
-
-  const totalRatesTaxes = sumByCategory(expensesMonth as any, "RATES_TAXES");
-  const totalWater = sumByCategory(expensesMonth as any, "WATER");
-  const totalElectricity = sumByCategory(expensesMonth as any, "ELECTRICITY");
-  const totalLevies = sumByCategory(expensesMonth as any, "LEVIES");
-  const totalInsurance = sumByCategory(expensesMonth as any, "INSURANCE");
-  const totalMaintenance = sumByCategory(expensesMonth as any, "MAINTENANCE") + sumByCategory(expensesMonth as any, "REPAIRS");
-  const totalBondPayment = sumByCategory(expensesMonth as any, "BOND_PAYMENT");
-  const totalExpenses = expensesMonth.reduce((a, b) => a + b.amount, 0);
-  const totalOtherExpenses =
-    totalExpenses -
-    (totalRatesTaxes + totalWater + totalElectricity + totalLevies + totalInsurance + totalMaintenance + totalBondPayment);
-  const netMonthlyCashFlow = totalIncome - totalExpenses;
-
-  const annualIncome = incomeAllReceived.reduce((a, b) => a + b.amount, 0);
-  const annualExpenses = expensesAll.reduce((a, b) => a + b.amount, 0);
-  const annualNetCashFlow = annualIncome - annualExpenses;
-  const annualRent = incomeAllReceived.filter((i) => i.category === "RENT").reduce((a, b) => a + b.amount, 0);
-  const grossYield = property.purchasePrice > 0 ? annualRent / property.purchasePrice : 0;
-  const netYield = property.purchasePrice > 0 ? annualNetCashFlow / property.purchasePrice : 0;
-  const outstandingLoanAmount = property.outstandingBondBalance ?? 0;
-  const estimatedEquity = property.currentEstimatedValue != null ? property.currentEstimatedValue - outstandingLoanAmount : null;
-  const hasActiveLease = property.leases.some((l) => l.status === "ACTIVE" || l.status === "MONTH_TO_MONTH");
-  const occupancyStatus = hasActiveLease ? "Occupied" : "Vacant";
-
-  return {
-    monthly: {
-      totalRentIncome,
-      totalOtherIncome,
-      totalIncome,
-      expectedIncome,
-      totalRatesTaxes,
-      totalWater,
-      totalElectricity,
-      totalLevies,
-      totalInsurance,
-      totalMaintenance,
-      totalBondPayment,
-      totalOtherExpenses,
-      totalExpenses,
-      netMonthlyCashFlow
-    },
-    annual: {
-      annualIncome,
-      annualExpenses,
-      annualNetCashFlow
-    },
-    investorMetrics: {
-      grossYield,
-      netYield,
-      estimatedEquity,
-      occupancyStatus
-    }
-  };
-}
-
 ownedPropertiesRoutes.use(requireAuth);
-
-function leaseDisplayStatus(lease: { status: string; fixedTermEndDate: Date | null }) {
-  if (lease.status === "CANCELLED" || lease.status === "TERMINATED" || lease.status === "EXPIRED" || lease.status === "DRAFT") return lease.status;
-  if (lease.fixedTermEndDate && lease.fixedTermEndDate.getTime() < Date.now() && lease.status === "ACTIVE") return "MONTH_TO_MONTH";
-  return lease.status;
-}
-
-function isCurrentLeaseStatus(status: string) {
-  return status === "ACTIVE" || status === "MONTH_TO_MONTH";
-}
-
-async function getCurrentLeaseForProperty(userId: number, propertyId: number) {
-  const lease = await db.lease.findFirst({
-    where: { userId, propertyId, status: { in: ["ACTIVE", "MONTH_TO_MONTH"] } },
-    include: { tenant: true },
-    orderBy: { createdAt: "desc" }
-  });
-  if (!lease) return null;
-  return { ...lease, displayStatus: leaseDisplayStatus({ status: lease.status, fixedTermEndDate: lease.fixedTermEndDate }) };
-}
 
 ownedPropertiesRoutes.get("/properties", async (req: AuthRequest, res) => {
   try {
@@ -222,19 +161,25 @@ ownedPropertiesRoutes.get("/properties", async (req: AuthRequest, res) => {
     });
 
     const payload = properties.map((p) => {
-      const activeLease = p.leases[0] ?? null; // most recent current lease for display
+      const leasesDisplay = (p.leases as any[]).map((l: any) => ({
+        ...l,
+        displayStatus: leaseDisplayStatus({ status: l.status, fixedTermEndDate: l.fixedTermEndDate })
+      }));
+      const currentLeaseRows = leasesDisplay.filter((l: any) => isCurrentLeaseStatus(l.displayStatus));
+      const activeLease = currentLeaseRows[0] ?? null;
       const monthlyIncomeActual = p.incomeEntries.reduce((a, b) => a + b.amount, 0);
+      const combinedLeaseRent = currentLeaseRows.reduce((a: number, l: any) => a + Number(l.monthlyRent ?? 0), 0);
       // If user isn't capturing received income entries yet, fall back to lease rent so KPIs don't show nonsense.
-      const monthlyIncome = monthlyIncomeActual > 0 ? monthlyIncomeActual : p.leases.reduce((a: number, l: any) => a + (l.monthlyRent ?? 0), 0);
+      const monthlyIncome = monthlyIncomeActual > 0 ? monthlyIncomeActual : combinedLeaseRent;
       const monthlyOperatingExpenses = (p.expenses as any[]).filter((e: any) => e.category !== "BOND_PAYMENT").reduce((a, b: any) => a + b.amount, 0);
       const monthlyDebtService = (p.expenses as any[]).filter((e: any) => e.category === "BOND_PAYMENT").reduce((a, b: any) => a + b.amount, 0);
       const monthlyExpenses = monthlyOperatingExpenses + monthlyDebtService;
       const monthlyNOI = monthlyIncome - monthlyOperatingExpenses;
       const monthlyCashFlowAfterDebtService = monthlyIncome - monthlyOperatingExpenses - monthlyDebtService;
-      const displayStatus = activeLease ? leaseDisplayStatus({ status: activeLease.status, fixedTermEndDate: activeLease.fixedTermEndDate }) : "VACANT";
+      const displayStatus = activeLease ? activeLease.displayStatus : "VACANT";
       const directTenant = p.tenants.find((t) => t.status === "ACTIVE") ?? null;
       const currentTenant = (activeLease?.tenant as any) ?? directTenant;
-      const occupancyStatus = activeLease || directTenant ? "OCCUPIED" : "VACANT";
+      const occupancyStatus = currentLeaseRows.length > 0 || directTenant ? "OCCUPIED" : "VACANT";
 
       const in7 = new Date(now);
       in7.setDate(in7.getDate() + 7);
@@ -244,14 +189,17 @@ ownedPropertiesRoutes.get("/properties", async (req: AuthRequest, res) => {
       const rentOverdue = openInvoices.some((inv: any) => inv.dueDate && new Date(inv.dueDate) < now);
       const rentDueSoon = openInvoices.some((inv: any) => inv.dueDate && new Date(inv.dueDate) >= now && new Date(inv.dueDate) <= in7);
 
-      const leaseEnd = activeLease?.fixedTermEndDate ? new Date(activeLease.fixedTermEndDate) : null;
-      const leaseExpiringSoon = Boolean(leaseEnd && leaseEnd >= now && leaseEnd <= in90);
-      const leaseMonthToMonth = displayStatus === "MONTH_TO_MONTH";
+      const leaseExpiringSoon = currentLeaseRows.some((l: any) => {
+        const leaseEnd = l.fixedTermEndDate ? new Date(l.fixedTermEndDate) : null;
+        return Boolean(leaseEnd && leaseEnd >= now && leaseEnd <= in90);
+      });
+      const leaseMonthToMonth = currentLeaseRows.some((l: any) => l.displayStatus === "MONTH_TO_MONTH");
       return {
         ...p,
-        tenantStatus: activeLease ? "Occupied" : "Vacant",
+        tenantStatus: currentLeaseRows.length > 0 ? "Occupied" : "Vacant",
         occupancyStatus,
         leaseDisplayStatus: displayStatus,
+        currentLeases: currentLeaseRows,
         currentTenant: currentTenant
           ? { id: currentTenant.id, firstName: currentTenant.firstName, lastName: currentTenant.lastName, email: currentTenant.email, phone: currentTenant.phone }
           : null,
@@ -260,7 +208,7 @@ ownedPropertiesRoutes.get("/properties", async (req: AuthRequest, res) => {
               id: activeLease.id,
               leaseType: activeLease.leaseType,
               status: activeLease.status,
-              displayStatus,
+              displayStatus: activeLease.displayStatus,
               startDate: activeLease.startDate,
               fixedTermEndDate: activeLease.fixedTermEndDate,
               monthlyRent: activeLease.monthlyRent,
@@ -269,7 +217,8 @@ ownedPropertiesRoutes.get("/properties", async (req: AuthRequest, res) => {
             }
           : null,
         allTenantsCount: p.tenants.length,
-        monthlyRent: activeLease?.monthlyRent ?? 0,
+        monthlyRent: combinedLeaseRent,
+        combinedMonthlyLeaseRent: combinedLeaseRent,
         monthlyIncome,
         monthlyOperatingExpenses,
         monthlyDebtService,
@@ -297,169 +246,35 @@ ownedPropertiesRoutes.get("/properties", async (req: AuthRequest, res) => {
 
 ownedPropertiesRoutes.post("/properties", async (req: AuthRequest, res) => {
   try {
-    const result = await db.$transaction(async (tx) => {
-      const created = await tx.property.create({
-        data: {
-          userId: req.userId!,
-          name: req.body.name,
-          propertyType: req.body.propertyType,
-          investmentType: req.body.investmentType ?? "LONG_TERM_RENTAL",
-          addressLine1: req.body.addressLine1,
-          addressLine2: req.body.addressLine2 ?? null,
-          suburb: req.body.suburb ?? null,
-          city: req.body.city,
-          province: req.body.province,
-          postalCode: req.body.postalCode ?? null,
-          country: req.body.country ?? "South Africa",
-          erfNumber: req.body.erfNumber ?? null,
-          sizeSqm: req.body.sizeSqm != null ? asNumber(req.body.sizeSqm) : null,
-          bedrooms: req.body.bedrooms != null ? Number(req.body.bedrooms) : null,
-          bathrooms: req.body.bathrooms != null ? Number(req.body.bathrooms) : null,
-          parkingBays: req.body.parkingBays != null ? Number(req.body.parkingBays) : null,
-          purchasePrice: asNumber(req.body.purchasePrice),
-          purchaseDate: req.body.purchaseDate ? new Date(req.body.purchaseDate) : null,
-          currentEstimatedValue: req.body.currentEstimatedValue != null ? asNumber(req.body.currentEstimatedValue) : null,
-          outstandingBondBalance: req.body.outstandingBondBalance != null ? asNumber(req.body.outstandingBondBalance) : null,
-          monthlyBondPayment: req.body.monthlyBondPayment != null ? asNumber(req.body.monthlyBondPayment) : null,
-          totalCashInvested: req.body.totalCashInvested != null ? asNumber(req.body.totalCashInvested) : null,
-          bondCosts: req.body.bondCosts != null ? asNumber(req.body.bondCosts) : null,
-          transferCosts: req.body.transferCosts != null ? asNumber(req.body.transferCosts) : null,
-          holdingPeriodYears: req.body.holdingPeriodYears != null ? Number(req.body.holdingPeriodYears) : null,
-          estimatedSellingCostPercent: req.body.estimatedSellingCostPercent != null ? asNumber(req.body.estimatedSellingCostPercent) : null,
-          expectedMonthlyIncome: req.body.expectedMonthlyIncome != null ? asNumber(req.body.expectedMonthlyIncome) : null,
-          expectedMonthlyExpenses: req.body.expectedMonthlyExpenses != null ? asNumber(req.body.expectedMonthlyExpenses) : null,
-          status: req.body.status ?? null,
-          notes: req.body.notes ?? null,
+    if (!req.body?.name || !req.body?.propertyType || !req.body?.addressLine1 || !req.body?.city || !req.body?.province) {
+      return res.status(400).json({ message: "Missing required property fields (name, propertyType, addressLine1, city, province)." });
+    }
+    const data = buildPropertyCreateInput(req.body as Record<string, unknown>, req.userId!);
+    const created = await db.property.create({ data });
 
-          landUse: req.body.landUse ?? null,
-          zoning: req.body.zoning ?? null,
-          ratesAndTaxesMonthly: req.body.ratesAndTaxesMonthly != null ? asNumber(req.body.ratesAndTaxesMonthly) : null,
-          leviesMonthly: req.body.leviesMonthly != null ? asNumber(req.body.leviesMonthly) : null,
-          securityMonthly: req.body.securityMonthly != null ? asNumber(req.body.securityMonthly) : null,
-          maintenanceMonthly: req.body.maintenanceMonthly != null ? asNumber(req.body.maintenanceMonthly) : null,
-          expectedAnnualAppreciationPercent:
-            req.body.expectedAnnualAppreciationPercent != null ? asNumber(req.body.expectedAnnualAppreciationPercent) : null,
-
-          averageDailyRate: req.body.averageDailyRate != null ? asNumber(req.body.averageDailyRate) : null,
-          occupancyRate: req.body.occupancyRate != null ? asNumber(req.body.occupancyRate) : null,
-          availableNightsPerMonth: req.body.availableNightsPerMonth != null ? Number(req.body.availableNightsPerMonth) : null,
-          platformFeePercent: req.body.platformFeePercent != null ? asNumber(req.body.platformFeePercent) : null,
-          cleaningFeesMonthly: req.body.cleaningFeesMonthly != null ? asNumber(req.body.cleaningFeesMonthly) : null,
-          managementFeePercent: req.body.managementFeePercent != null ? asNumber(req.body.managementFeePercent) : null,
-          furnishingValue: req.body.furnishingValue != null ? asNumber(req.body.furnishingValue) : null,
-          monthlyUtilities: req.body.monthlyUtilities != null ? asNumber(req.body.monthlyUtilities) : null,
-
-          rehabBudget: req.body.rehabBudget != null ? asNumber(req.body.rehabBudget) : null,
-          holdingCostsMonthly: req.body.holdingCostsMonthly != null ? asNumber(req.body.holdingCostsMonthly) : null,
-          expectedSalePrice: req.body.expectedSalePrice != null ? asNumber(req.body.expectedSalePrice) : null,
-          targetSaleDate: req.body.targetSaleDate ? new Date(req.body.targetSaleDate) : null,
-          projectStage: req.body.projectStage ?? null,
-
-          afterRepairValue: req.body.afterRepairValue != null ? asNumber(req.body.afterRepairValue) : null,
-          refinanceAmount: req.body.refinanceAmount != null ? asNumber(req.body.refinanceAmount) : null,
-          brrrrStage: req.body.brrrrStage ?? null
-        }
-      });
-
-      const firstOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
-      const upsertSetupRecurringExpense = async (category: any, description: string, amountRaw: any) => {
-        const amount = amountRaw != null ? asNumber(amountRaw) : 0;
-        const existingSetup = await tx.propertyExpense.findFirst({
-          where: {
-            userId: req.userId!,
-            propertyId: created.id,
-            category,
-            description,
-            isRecurring: true,
-            recurringFrequency: "MONTHLY"
-          },
-          orderBy: { createdAt: "asc" }
-        });
-
-        if (!amount || amount <= 0) {
-          if (existingSetup) {
-            await tx.propertyExpense.update({ where: { id: existingSetup.id }, data: { status: "ARCHIVED" } });
-          }
-          return;
-        }
-
-        if (existingSetup) {
-          await tx.propertyExpense.update({
-            where: { id: existingSetup.id },
-            data: { amount, source: "PROPERTY_SETUP", status: "ACTIVE" }
-          });
-          return;
-        }
-
-        await tx.propertyExpense.create({
-          data: {
-            userId: req.userId!,
-            propertyId: created.id,
-            category,
-            description,
-            amount,
-            expenseDate: firstOfMonth,
-            isRecurring: true,
-            recurringFrequency: "MONTHLY",
-            source: "PROPERTY_SETUP",
-            status: "ACTIVE"
-          }
-        });
-      };
-
-      // Single source of truth: setup monthly fields become recurring PropertyExpense records
-      await upsertSetupRecurringExpense("RATES_TAXES", "Rates & taxes (setup)", req.body.ratesAndTaxesMonthly);
-      await upsertSetupRecurringExpense("LEVIES", "Levies (setup)", req.body.leviesMonthly);
-      await upsertSetupRecurringExpense("MAINTENANCE", "Maintenance (setup)", req.body.maintenanceMonthly);
-      await upsertSetupRecurringExpense("OTHER", "Security (setup)", req.body.securityMonthly);
-      await upsertSetupRecurringExpense("OTHER", "Other monthly expenses (setup)", req.body.expectedMonthlyExpenses);
-      await upsertSetupRecurringExpense("BOND_PAYMENT", "Bond payment (setup)", req.body.monthlyBondPayment);
-
-      const tenantId = req.body.tenantId != null ? Number(req.body.tenantId) : null;
-      const newTenant = req.body.newTenant ?? null;
-
-      let tenant = null as any;
-      if (tenantId) {
-        tenant = await tx.tenant.findFirst({ where: { id: tenantId, userId: req.userId! } });
-        if (!tenant) throw new Error("Invalid tenant");
-        tenant = await tx.tenant.update({ where: { id: tenantId }, data: { propertyId: created.id, status: "ACTIVE" } });
-      } else if (newTenant?.firstName && newTenant?.lastName && newTenant?.email && newTenant?.phone) {
-        tenant = await tx.tenant.create({
-          data: {
-            userId: req.userId!,
-            propertyId: created.id,
-            firstName: newTenant.firstName,
-            lastName: newTenant.lastName,
-            email: newTenant.email,
-            phone: newTenant.phone,
-            idNumber: newTenant.idNumber ?? null,
-            status: "ACTIVE"
-          }
-        });
+    // If a bond profile is supplied at creation time, auto-post a BOND_PAYMENT row for the current month
+    // so the statement + dashboards reflect debt service immediately.
+    const hasBondProfile =
+      created.monthlyBondPayment != null ||
+      created.outstandingBondBalance != null ||
+      created.bondAnnualInterestRatePercent != null ||
+      created.bondTermYears != null ||
+      created.bondStartDate != null ||
+      created.bondRemainingTermMonths != null;
+    if (hasBondProfile) {
+      const now = new Date();
+      const preferredDom =
+        created.bondStartDate instanceof Date && !Number.isNaN(created.bondStartDate.getTime())
+          ? created.bondStartDate.getUTCDate()
+          : 1;
+      const dueYmd = dueYmdForCalendarMonth(now.getUTCFullYear(), now.getUTCMonth() + 1, preferredDom);
+      const existingBondRow = await findActiveBondExpenseInDueMonth(req.userId!, created.id, dueYmd);
+      if (!existingBondRow) {
+        await postBondStatementRow(req.userId!, created.id, dueYmd);
       }
+    }
 
-      const lease = req.body.lease ?? null;
-      if (tenant && lease?.startDate) {
-        await tx.lease.create({
-          data: {
-            userId: req.userId!,
-            propertyId: created.id,
-            tenantId: tenant.id,
-            startDate: new Date(lease.startDate),
-            fixedTermEndDate: lease.fixedTermEndDate ? new Date(lease.fixedTermEndDate) : null,
-            leaseType: lease.leaseType ?? (lease.fixedTermEndDate ? "FIXED_TERM" : "MONTH_TO_MONTH"),
-            monthlyRent: asNumber(lease.monthlyRent),
-            depositAmount: asNumber(lease.depositAmount),
-            rentDueDay: lease.rentDueDay != null ? Number(lease.rentDueDay) : 1,
-            status: lease.status ?? (lease.leaseType === "MONTH_TO_MONTH" ? "MONTH_TO_MONTH" : "ACTIVE")
-          }
-        });
-      }
-
-      return created;
-    });
-
-    return res.status(201).json(result);
+    return res.status(201).json(created);
   } catch (err: any) {
     console.error("[ownedProperties] POST /properties failed", err?.stack ?? err);
     return res.status(400).json({ message: err?.message ?? "Failed to create property." });
@@ -529,6 +344,7 @@ ownedPropertiesRoutes.patch("/properties/metrics/equity", async (req: AuthReques
 
 ownedPropertiesRoutes.get("/properties/dashboard-summary", async (req: AuthRequest, res) => {
   try {
+    res.setHeader("Cache-Control", "no-store");
     const propertyTypes = parseCsvParam(req.query.propertyTypes);
     const now = new Date();
     const monthParam = typeof req.query.month === "string" ? req.query.month : null; // YYYY-MM
@@ -536,7 +352,16 @@ ownedPropertiesRoutes.get("/properties/dashboard-summary", async (req: AuthReque
       monthParam && /^\d{4}-\d{2}$/.test(monthParam)
         ? new Date(Number(monthParam.slice(0, 4)), Number(monthParam.slice(5, 7)) - 1, 1)
         : now;
+    const portfolioIrrHorizonRaw =
+      typeof req.query.portfolioIrrHorizonYears === "string" ? Number(req.query.portfolioIrrHorizonYears) : NaN;
+    const portfolioIrrHorizonYears =
+      Number.isFinite(portfolioIrrHorizonRaw) && portfolioIrrHorizonRaw >= 1 && portfolioIrrHorizonRaw <= 50
+        ? Math.floor(portfolioIrrHorizonRaw)
+        : null;
     const { start: monthStart, end: monthEnd } = monthBounds(base);
+    /** Trailing 12 calendar months ending at the selected dashboard month — aligns IRR baseline with statement-style averages. */
+    const avgWindowStart = new Date(base.getFullYear(), base.getMonth() - 11, 1);
+    const avgWindowEnd = monthEnd;
     const propertyId = req.query.propertyId != null ? Number(req.query.propertyId) : null;
     if (propertyId != null && Number.isNaN(propertyId)) return res.status(400).json({ message: "Invalid propertyId" });
 
@@ -566,7 +391,12 @@ ownedPropertiesRoutes.get("/properties/dashboard-summary", async (req: AuthReque
       orderBy: { createdAt: "desc" }
     });
 
-    const [incomeMonth, expensesMonth, income12, expenses12] = await Promise.all([
+    await materializeDueRecurringExpensesForProperties(
+      req.userId!,
+      properties.map((p) => p.id)
+    );
+
+    const [incomeMonth, incomeExpectedMonth, expensesMonth, income12, expenses12, incomeAvg12, expenseAvg12] = await Promise.all([
       db.propertyIncome.findMany({
         where: {
           userId: req.userId!,
@@ -575,13 +405,21 @@ ownedPropertiesRoutes.get("/properties/dashboard-summary", async (req: AuthReque
           incomeDate: { gte: monthStart, lt: monthEnd }
         }
       }),
-      db.propertyExpense.findMany({
+      db.propertyIncome.findMany({
         where: {
           userId: req.userId!,
           propertyId: { in: properties.map((p) => p.id) },
-          status: "ACTIVE",
-          expenseDate: { gte: monthStart, lt: monthEnd }
+          status: "EXPECTED",
+          incomeDate: { gte: monthStart, lt: monthEnd }
         }
+      }),
+      db.propertyExpense.findMany({
+        where: whereActiveExpensesForPortfolioMonthSnapshot(
+          req.userId!,
+          properties.map((p) => p.id),
+          monthStart,
+          monthEnd
+        )
       }),
       db.propertyIncome.findMany({
         where: {
@@ -597,6 +435,22 @@ ownedPropertiesRoutes.get("/properties/dashboard-summary", async (req: AuthReque
           propertyId: { in: properties.map((p) => p.id) },
           status: "ACTIVE",
           expenseDate: { gte: twelveStart, lt: twelveEnd }
+        }
+      }),
+      db.propertyIncome.findMany({
+        where: {
+          userId: req.userId!,
+          propertyId: { in: properties.map((p) => p.id) },
+          status: "RECEIVED",
+          incomeDate: { gte: avgWindowStart, lt: avgWindowEnd }
+        }
+      }),
+      db.propertyExpense.findMany({
+        where: {
+          userId: req.userId!,
+          propertyId: { in: properties.map((p) => p.id) },
+          status: "ACTIVE",
+          expenseDate: { gte: avgWindowStart, lt: avgWindowEnd }
         }
       })
     ]);
@@ -628,6 +482,103 @@ ownedPropertiesRoutes.get("/properties/dashboard-summary", async (req: AuthReque
     };
     const incomeMonthByProperty = byProperty(incomeMonth as any);
     const expenseMonthByProperty = byProperty(expensesMonth as any);
+
+    const invoicesPaidCurrentMonth = properties.flatMap((p: any) =>
+      (p.invoices ?? []).filter(
+        (inv: any) =>
+          inv.status === "PAID" &&
+          new Date(inv.invoiceDate).getTime() >= monthStart.getTime() &&
+          new Date(inv.invoiceDate).getTime() < monthEnd.getTime()
+      )
+    );
+    const invoiceIncomeByProperty = new Map<number, number>();
+    for (const inv of invoicesPaidCurrentMonth) {
+      const pid = Number(inv.propertyId);
+      invoiceIncomeByProperty.set(pid, (invoiceIncomeByProperty.get(pid) ?? 0) + Number(inv.total));
+    }
+
+    const invoicePaidTotalsAvgWindow = new Map<number, number>();
+    for (const p of properties as any[]) {
+      let invSum = 0;
+      for (const inv of p.invoices ?? []) {
+        if (inv.status !== "PAID") continue;
+        const t = new Date(inv.invoiceDate).getTime();
+        if (t >= avgWindowStart.getTime() && t < avgWindowEnd.getTime()) invSum += Number(inv.total);
+      }
+      invoicePaidTotalsAvgWindow.set(p.id, invSum);
+    }
+
+    const statementMonthlyAverageByProperty = new Map<
+      number,
+      { avgMonthlyIncome: number; avgMonthlyExpenseTotal: number; leaseIncomeFloorApplied: boolean }
+    >();
+    let irrLeaseIncomeFloors = 0;
+    let irrBondExpenseLifted = 0;
+    let irrBondNominalRateAssumed = 0;
+    const currentMonthStatementIncomeByProperty = new Map<number, number>();
+    for (const p of properties as any[]) {
+      const pid = p.id;
+      const ledgerMonth = (incomeMonthByProperty.get(pid) ?? []).reduce((a: number, r: any) => a + r.amount, 0);
+      currentMonthStatementIncomeByProperty.set(pid, ledgerMonth + (invoiceIncomeByProperty.get(pid) ?? 0));
+
+      const ledgerAvgWindow = (incomeAvg12 as any[]).filter((r) => r.propertyId === pid).reduce((a: number, r: any) => a + r.amount, 0);
+      const avgMonthlyIncomeRaw = (ledgerAvgWindow + (invoicePaidTotalsAvgWindow.get(pid) ?? 0)) / 12;
+
+      const contractualLeaseMonthly = (p.leases ?? [])
+        .filter((l: any) =>
+          isCurrentLeaseStatus(leaseDisplayStatus({ status: l.status, fixedTermEndDate: l.fixedTermEndDate }))
+        )
+        .reduce((s: number, l: any) => s + Number(l.monthlyRent ?? 0), 0);
+
+      const useLeaseIncomeFloor =
+        contractualLeaseMonthly > 0 &&
+        p.investmentType !== "SHORT_TERM_RENTAL" &&
+        p.investmentType !== "VACANT_LAND";
+
+      const avgMonthlyIncome = useLeaseIncomeFloor
+        ? Math.max(avgMonthlyIncomeRaw, contractualLeaseMonthly)
+        : avgMonthlyIncomeRaw;
+
+      const leaseIncomeFloorApplied = Boolean(
+        useLeaseIncomeFloor && avgMonthlyIncome > avgMonthlyIncomeRaw + 0.01
+      );
+      if (leaseIncomeFloorApplied) irrLeaseIncomeFloors += 1;
+
+      const exAvg = (expenseAvg12 as any[]).filter((r) => r.propertyId === pid);
+      const bondSumAvg = exAvg.filter((e: any) => e.category === "BOND_PAYMENT").reduce((a: number, e: any) => a + e.amount, 0);
+      const opSumAvg = exAvg.filter((e: any) => e.category !== "BOND_PAYMENT").reduce((a: number, e: any) => a + e.amount, 0);
+      const bondLedgerMonthly = bondSumAvg > 0 ? bondSumAvg / 12 : 0;
+      const bondProfileMonthly = Number(p.monthlyBondPayment ?? 0);
+      const inferredBond = inferMonthlyBondPaymentForExpenseBaseline(p, base);
+      const bondInferredMonthly = inferredBond?.monthlyPayment ?? 0;
+
+      const bondMonthlyAvg = Math.round(
+        Math.max(bondLedgerMonthly, bondProfileMonthly, bondInferredMonthly) * 100
+      ) / 100;
+
+      if (
+        bondInferredMonthly > 0 &&
+        bondMonthlyAvg <= bondInferredMonthly + 1e-6 &&
+        bondInferredMonthly > Math.max(bondLedgerMonthly, bondProfileMonthly) + 1
+      ) {
+        irrBondExpenseLifted += 1;
+      }
+      if (
+        inferredBond?.usedFallbackNominalRate &&
+        bondInferredMonthly > 0 &&
+        Math.abs(bondMonthlyAvg - bondInferredMonthly) < 0.02
+      ) {
+        irrBondNominalRateAssumed += 1;
+      }
+
+      const avgMonthlyExpenseTotal = opSumAvg / 12 + bondMonthlyAvg;
+
+      statementMonthlyAverageByProperty.set(pid, {
+        avgMonthlyIncome: Math.round(avgMonthlyIncome * 100) / 100,
+        avgMonthlyExpenseTotal: Math.round(avgMonthlyExpenseTotal * 100) / 100,
+        leaseIncomeFloorApplied
+      });
+    }
 
     const totalProperties = properties.length;
     const propertiesByType: Record<string, number> = {};
@@ -677,7 +628,10 @@ ownedPropertiesRoutes.get("/properties/dashboard-summary", async (req: AuthReque
     const debtServiceFromExpenses = (expensesMonth as any[]).filter((e) => e.category === "BOND_PAYMENT").reduce((a, b) => a + b.amount, 0);
     const totalMonthlyDebtService = debtServiceFromExpenses;
     const totalMonthlyOperatingExpenses = (expensesMonth as any[]).filter((e) => e.category !== "BOND_PAYMENT").reduce((a, b) => a + b.amount, 0);
-    const totalMonthlyIncomeActual = (incomeMonth as any[]).reduce((a, b) => a + b.amount, 0);
+    const invoiceIncomeMonthTotal = invoicesPaidCurrentMonth.reduce((a: number, inv: any) => a + Number(inv.total), 0);
+    const totalMonthlyIncomeReceived =
+      (incomeMonth as any[]).reduce((a, b) => a + b.amount, 0) + invoiceIncomeMonthTotal;
+    const totalMonthlyIncomeExpectedLedger = (incomeExpectedMonth as any[]).reduce((a, b) => a + b.amount, 0);
 
     // STR estimated monthly revenue (net) based on property fields
     const strRows = properties.filter((p: any) => p.investmentType === "SHORT_TERM_RENTAL");
@@ -692,15 +646,20 @@ ownedPropertiesRoutes.get("/properties/dashboard-summary", async (req: AuthReque
       return acc + net;
     }, 0);
 
-    // If the user isn't capturing received income entries yet, project rent from current leases (multi-tenant friendly).
+    /** Contractual rent from active / month-to-month leases — informational only (not merged into received income). */
     const totalMonthlyLeaseRent = properties.reduce((a: number, p: any) => {
       const currentLeasesForProperty = (p.leases ?? []).filter((l: any) =>
         isCurrentLeaseStatus(leaseDisplayStatus({ status: l.status, fixedTermEndDate: l.fixedTermEndDate }))
       );
       return a + currentLeasesForProperty.reduce((s: number, l: any) => s + (l.monthlyRent ?? 0), 0);
     }, 0);
-    const projectedRentalIncome = totalMonthlyIncomeActual > 0 ? totalMonthlyIncomeActual : totalMonthlyLeaseRent;
-    const totalMonthlyIncome = projectedRentalIncome + strNet;
+
+    const totalMonthlyIncome = totalMonthlyIncomeReceived + strNet;
+    if (totalMonthlyLeaseRent > 0 && totalMonthlyIncomeReceived === 0) {
+      warnings.push(
+        "Headline monthly income uses received ledger entries (plus STR estimates). Contractual rent from leases is reported separately until rent is recorded as received."
+      );
+    }
     const monthlyNOI = totalMonthlyIncome - totalMonthlyOperatingExpenses;
     const monthlyExpensesTotal = totalMonthlyOperatingExpenses + totalMonthlyDebtService;
     const monthlyNetCashFlow = totalMonthlyIncome - totalMonthlyOperatingExpenses - totalMonthlyDebtService;
@@ -769,7 +728,9 @@ ownedPropertiesRoutes.get("/properties/dashboard-summary", async (req: AuthReque
       });
 
       // Per-property cash flow for the current month (best-effort)
-      const inc = (incomeMonthByProperty.get(p.id) ?? []).reduce((a: number, r: any) => a + r.amount, 0);
+      const inc =
+        (incomeMonthByProperty.get(p.id) ?? []).reduce((a: number, r: any) => a + r.amount, 0) +
+        (invoiceIncomeByProperty.get(p.id) ?? 0);
       const expRows = expenseMonthByProperty.get(p.id) ?? [];
       const opEx = expRows.filter((e: any) => e.category !== "BOND_PAYMENT").reduce((a: number, r: any) => a + r.amount, 0);
       const debt = expRows.filter((e: any) => e.category === "BOND_PAYMENT").reduce((a: number, r: any) => a + r.amount, 0);
@@ -905,6 +866,18 @@ ownedPropertiesRoutes.get("/properties/dashboard-summary", async (req: AuthReque
     const keyYM = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
     const income5ByYM = new Map<string, number>();
     income5.forEach((r: any) => income5ByYM.set(keyYM(new Date(r.incomeDate)), (income5ByYM.get(keyYM(new Date(r.incomeDate))) ?? 0) + r.amount));
+    const invoicesPaidLast5 = properties.flatMap((p: any) =>
+      (p.invoices ?? []).filter(
+        (inv: any) =>
+          inv.status === "PAID" &&
+          new Date(inv.invoiceDate).getTime() >= last5Start.getTime() &&
+          new Date(inv.invoiceDate).getTime() < last5End.getTime()
+      )
+    );
+    for (const inv of invoicesPaidLast5) {
+      const k = keyYM(new Date(inv.invoiceDate));
+      income5ByYM.set(k, (income5ByYM.get(k) ?? 0) + Number(inv.total));
+    }
     const opEx5ByYM = new Map<string, number>();
     expense5
       .filter((r: any) => r.category !== "BOND_PAYMENT")
@@ -970,6 +943,7 @@ ownedPropertiesRoutes.get("/properties/dashboard-summary", async (req: AuthReque
       else if (r.category === "DEPOSIT") addComp("Other Income", "income", r.amount);
       else addComp("Other Income", "income", r.amount);
     });
+    invoicesPaidCurrentMonth.forEach((inv: any) => addComp("Invoice payments", "income", Number(inv.total)));
     if (strNet > 0) addComp("Short-Term Rental Income", "income", strNet);
 
     // expense categories mapping
@@ -1007,26 +981,58 @@ ownedPropertiesRoutes.get("/properties/dashboard-summary", async (req: AuthReque
     // --- KPI: true cash-on-cash ROI ---
     const annualPreTaxCashFlow = monthlyNOI * 12 - totalMonthlyDebtService * 12;
 
+    const numMoney = (v: unknown): number | null => {
+      if (v == null || v === "") return null;
+      const n = typeof v === "number" ? v : Number(v);
+      return Number.isFinite(n) ? n : null;
+    };
+
     const estimateCashInvested = (p: any): number | null => {
-      const purchasePrice = typeof p.purchasePrice === "number" ? p.purchasePrice : null;
+      const purchasePrice = numMoney(p.purchasePrice);
       if (purchasePrice == null || purchasePrice <= 0) return null;
 
-      const bondBal = typeof p.outstandingBondBalance === "number" ? p.outstandingBondBalance : 0;
+      const bondBal = numMoney(p.outstandingBondBalance) ?? 0;
       const financed = Math.min(Math.max(0, bondBal), purchasePrice);
       const deposit = Math.max(0, purchasePrice - financed);
 
-      const transferCosts = typeof p.transferCosts === "number" ? p.transferCosts : 0;
-      const bondCosts = typeof p.bondCosts === "number" ? p.bondCosts : 0;
-      const renovations = typeof p.rehabBudget === "number" ? p.rehabBudget : 0;
-      const furnishings = typeof p.furnishingValue === "number" ? p.furnishingValue : 0;
+      const transferCosts = numMoney(p.transferCosts) ?? 0;
+      const bondCosts = numMoney(p.bondCosts) ?? 0;
+      const renovations = numMoney(p.rehabBudget) ?? 0;
+      const furnishings = numMoney(p.furnishingValue) ?? 0;
 
       return deposit + transferCosts + bondCosts + renovations + furnishings;
+    };
+
+    /** IRR needs CF₀ even when explicit cash invested fields are sparse — equity / deposit fallbacks last. */
+    const estimateCashInvestedForIrr = (p: any): number | null => {
+      const explicit = numMoney(p.totalCashInvested);
+      if (explicit != null && explicit > 0) return explicit;
+
+      const base = estimateCashInvested(p);
+      if (base != null && base > 0) return base;
+
+      const v = numMoney(p.currentEstimatedValue);
+      const bond = numMoney(p.outstandingBondBalance) ?? 0;
+      if (v != null && v > 0) {
+        const equity = v - bond;
+        if (equity > 1) return equity;
+      }
+
+      const pp = numMoney(p.purchasePrice);
+      if (pp != null && pp > 0) {
+        const financed = Math.min(Math.max(0, bond), pp);
+        const deposit = Math.max(0, pp - financed);
+        if (deposit > 1) return deposit;
+        return Math.max(pp * 0.15, 1);
+      }
+
+      return null;
     };
 
     let estimatedCashInvestedCount = 0;
     let missingCashInvestedCount = 0;
     const totalCashInvested = (properties as any[]).reduce((sum, p) => {
-      const explicit = typeof p.totalCashInvested === "number" ? p.totalCashInvested : null;
+      const explicit = numMoney(p.totalCashInvested);
       if (explicit != null && explicit > 0) return sum + explicit;
 
       const est = estimateCashInvested(p);
@@ -1060,43 +1066,89 @@ ownedPropertiesRoutes.get("/properties/dashboard-summary", async (req: AuthReque
                 ? "Strong"
                 : "Very strong, check assumptions";
 
-    // --- KPI: portfolio IRR ---
-    const holdingYears = Math.max(1, ...properties.map((p: any) => p.holdingPeriodYears ?? 10));
+    // --- KPI: portfolio IRR (projected cash flows + growth; bisection matches NPV = Σ CFₜ/(1+r)ᵗ ) ---
+    const projectionGrowth = await getPortfolioProjectionGrowthRates(db);
     const sellCostDefault = 5;
     const appreciationDefault = 5;
-    const irrAssumptions: string[] = [];
-    let canIrr = true;
-    let year0 = 0;
-    let annual = 0;
-    let finalSale = 0;
+    const defaultHoldingYears = 10;
 
-    for (const p of properties as any[]) {
-      const invested =
-        typeof p.totalCashInvested === "number" && p.totalCashInvested > 0 ? p.totalCashInvested : estimateCashInvested(p);
-      const value = typeof p.currentEstimatedValue === "number" && p.currentEstimatedValue > 0 ? p.currentEstimatedValue : p.purchasePrice;
+    const irrBuilt = buildPortfolioProjectionIrrCashFlows({
+      properties,
+      expenseMonthByProperty,
+      statementMonthlyAverageByProperty,
+      currentMonthStatementIncomeByProperty,
+      growth: projectionGrowth,
+      estimateCashInvested: estimateCashInvestedForIrr,
+      appreciationDefaultPercent: appreciationDefault,
+      sellCostDefaultPercent: sellCostDefault,
+      defaultHoldingYears,
+      projectionAsOf: base,
+      uniformHoldingYears: portfolioIrrHorizonYears
+    });
 
-      if (invested == null || invested <= 0 || value == null || value <= 0) {
-        canIrr = false;
-        continue;
-      }
-      year0 -= invested;
-      // use same annual pretax cashflow split by property proportionally to NOI; fallback: 0
-      // for now: allocate by current lease rent + STR net
-      annual += annualPreTaxCashFlow / Math.max(1, properties.length);
+    const irrCashFlows = irrBuilt.cashFlows;
+    const holdingYears = irrBuilt.holdingPeriodYearsMax;
+    const irrAssumptions = [
+      ...(irrLeaseIncomeFloors > 0
+        ? [
+            `${irrLeaseIncomeFloors} propert${irrLeaseIncomeFloors === 1 ? "y" : "ies"}: IRR rental income baseline uses max(trailing‑12 received income + paid invoices, current contractual lease rent) when the ledger average would understate contracted rent — aligned with lease rent minus bond and expenses.`
+          ]
+        : []),
+      ...(irrBondExpenseLifted > 0
+        ? [
+            `${irrBondExpenseLifted} propert${irrBondExpenseLifted === 1 ? "y" : "ies"}: IRR bond expense uses max(trailing‑12 bond ledger average, “Monthly bond payment”, amortising instalment from balance & rate/term) when the amortised instalment exceeds ledger/profile — avoids understating debt service.`
+          ]
+        : []),
+      ...(irrBondNominalRateAssumed > 0
+        ? [
+            `${irrBondNominalRateAssumed} propert${irrBondNominalRateAssumed === 1 ? "y" : "ies"}: Bond nominal rate was blank — amortised instalment used ${IRR_EXPENSE_BASELINE_BOND_RATE_FALLBACK_PERCENT}% p.a. as a placeholder. Set “Bond interest rate” on the property for accuracy.`
+          ]
+        : []),
+      ...irrBuilt.assumptions,
+      "CF₀ uses total cash invested when set; otherwise purchase-based estimate; otherwise equity (value − bond) or a deposit proxy so IRR can be computed."
+    ];
+    const irrAttempt =
+      irrBuilt.eligiblePropertyCount > 0 &&
+      irrCashFlows.length >= 2 &&
+      irrCashFlows[0] < -1e-9 &&
+      irrCashFlows.slice(1).some((x) => Math.abs(x) > 1e-9);
+    const irr = irrAttempt ? portfolioProjectionIrrRate(irrCashFlows) : null;
+    if (irrAttempt && irr == null) warnings.push("Insufficient data to calculate IRR (cash flows do not produce a solvable IRR).");
 
-      const app = p.expectedAnnualAppreciationPercent ?? appreciationDefault;
-      const sellCost = p.estimatedSellingCostPercent ?? sellCostDefault;
-      const futureValue = value * Math.pow(1 + app / 100, p.holdingPeriodYears ?? holdingYears);
-      const sellingCosts = futureValue * (sellCost / 100);
-      const bond = p.outstandingBondBalance ?? 0;
-      if (p.outstandingBondBalance == null) irrAssumptions.push("IRR uses current bond balance as conservative sale balance assumption.");
-      const netSale = futureValue - sellingCosts - bond;
-      finalSale += netSale;
-    }
+    const irrExplain = portfolioIrrExplainStatus({
+      filteredPropertyCount: properties.length,
+      eligiblePropertyCount: irrBuilt.eligiblePropertyCount,
+      cashFlows: irrCashFlows,
+      irrAttempted: irrAttempt,
+      rateFound: irr != null
+    });
 
-    const irrCashFlows = canIrr ? Array.from({ length: holdingYears + 1 }, (_, t) => (t === 0 ? year0 : t === holdingYears ? annual + finalSale : annual)) : [];
-    const irr = canIrr ? irrBisection(irrCashFlows) : null;
-    if (canIrr && irr == null) warnings.push("Insufficient data to calculate IRR (cash flows do not produce a solvable IRR).");
+    const portfolioIrrDiagnostics = {
+      statusCode: irrExplain.code,
+      statusMessage: irrExplain.message,
+      filteredPropertyCount: properties.length,
+      eligiblePropertyCount: irrBuilt.eligiblePropertyCount,
+      irrSolveAttempted: irrAttempt,
+      irrRatePercent: irr == null ? null : Math.round(irr * 100 * 100) / 100,
+      cf0: irrExplain.cf0,
+      yearlyCashFlows: irrExplain.yearlyCashFlows,
+      sumUndiscountedCashFlows: irrExplain.sumUndiscounted,
+      holdingHorizonYears: holdingYears,
+      propertyInputs: irrBuilt.eligibleInputs
+    };
+
+    const portfolioAnalysisOverTimeBuilt = buildPortfolioAnalysisOverTime({
+      properties,
+      statementMonthlyAverageByProperty,
+      currentMonthStatementIncomeByProperty,
+      expenseMonthByProperty,
+      growth: projectionGrowth,
+      appreciationDefaultPercent: appreciationDefault,
+      sellCostDefaultPercent: sellCostDefault,
+      projectionAsOf: base,
+      totalCashInvested,
+      estimateCashInvestedForIrr
+    });
 
     const charts = {
       valueDebtEquity: {
@@ -1120,16 +1172,19 @@ ownedPropertiesRoutes.get("/properties/dashboard-summary", async (req: AuthReque
     const kpiStatus = (value: number) => (value < 0 ? "negative" : "positive");
 
     const response = {
-      filters: { propertyTypes, propertyId, month: monthParam ?? null },
+      filters: { propertyTypes, propertyId, month: monthParam ?? null, portfolioIrrHorizonYears },
       kpis: {
         monthlyNOI: {
           value: monthlyNOI,
           status: kpiStatus(monthlyNOI),
           operatingIncome: totalMonthlyIncome,
-          operatingIncomeActualReceived: totalMonthlyIncomeActual + strNet,
+          operatingIncomeActualReceived: totalMonthlyIncomeReceived + strNet,
+          operatingIncomeExpectedFromLedger: totalMonthlyIncomeExpectedLedger,
+          contractualMonthlyRentFromLeases: totalMonthlyLeaseRent,
           operatingIncomeProjectedFromLeases: totalMonthlyLeaseRent + strNet,
           operatingExpenses: totalMonthlyOperatingExpenses,
-          explanation: "Income less operating expenses, before debt service."
+          explanation:
+            "Income less operating expenses, before debt service. Headline income is received ledger entries plus STR field estimates — not contractual lease rent unless recorded as received."
         },
         monthlyExpenses: {
           value: monthlyExpensesTotal,
@@ -1145,12 +1200,24 @@ ownedPropertiesRoutes.get("/properties/dashboard-summary", async (req: AuthReque
           explanation: "Annual pre-tax cash flow divided by actual cash invested."
         },
         portfolioIRR: {
-          valuePercent: irr == null ? null : irr * 100,
+          valuePercent: irr == null ? null : Math.round(irr * 100 * 100) / 100,
           cashFlows: irrCashFlows,
           holdingPeriodYears: holdingYears,
+          projectionGrowth,
           assumptions: irrAssumptions,
-          canCalculate: Boolean(canIrr && irr != null),
-          explanation: "Includes cash flow and estimated property value growth."
+          canCalculate: irr != null,
+          diagnostics: portfolioIrrDiagnostics,
+          explanation:
+            "Portfolio IRR — best long-term return metric. Uses each property’s trailing-12-month statement average income (received ledger + paid invoices) and average expenses (including bond) as Year 1 cash-flow inputs, then applies admin income/expense growth and exit value. IRR solves 0 = CF₀ + CF₁/(1+r)¹ + … + CFₙ/(1+r)ⁿ with CF₀ negative (cash invested) and CFₙ including final-year operating cash plus exit proceeds."
+        },
+        portfolioAnalysisOverTime: {
+          projectionGrowth,
+          appreciationDefaultPercent: appreciationDefault,
+          columns: portfolioAnalysisOverTimeBuilt.columns,
+          bondHorizonCapYears: portfolioAnalysisOverTimeBuilt.bondHorizonCapYears,
+          analysisLimitedByBondSchedule: portfolioAnalysisOverTimeBuilt.limitedByBondSchedule,
+          explanation:
+            "Operating rows sum each property’s projection baseline (same as portfolio IRR: expected monthly when both set; otherwise trailing‑12 averages with lease income floor and bond max logic), escalated annually by admin rental vs expense growth. Property values compound per asset appreciation (default where blank). Loan balances amortise month‑by‑month when nominal rate and payment resolve; otherwise the current outstanding balance is carried. Cash‑on‑cash uses dashboard total cash invested as denominator. Column titles use calendar ownership years from the earliest purchase date in the current filter (when set); otherwise they stay projection years 1…30. Time horizons stop at the longest resolved bond payoff in the filter (bond term + start date, or manual months remaining); unmortgaged portfolios keep milestones through 30 years. IRR row: internal rate of return on the same IRR-eligible subset as the headline portfolio IRR (cash invested + positive value), assuming every eligible asset is sold at the end of that column’s horizon year with proportional operating cash flows through that year."
         },
         totalProperties: {
           value: totalProperties,
@@ -1189,6 +1256,9 @@ ownedPropertiesRoutes.get("/properties/dashboard-summary", async (req: AuthReque
       monthlyRentRoll,
       monthlyShortTermRentalRevenue,
       totalMonthlyIncome,
+      totalMonthlyIncomeReceived,
+      totalMonthlyIncomeExpectedLedger,
+      contractualMonthlyRentFromLeases: totalMonthlyLeaseRent,
       totalMonthlyOperatingExpenses,
       totalMonthlyDebtService,
       monthlyNetCashFlow,
@@ -1352,51 +1422,336 @@ ownedPropertiesRoutes.delete("/tenants/:id", async (req: AuthRequest, res) => {
   }
 });
 
-ownedPropertiesRoutes.get("/properties/:id", async (req: AuthRequest, res) => {
+ownedPropertiesRoutes.get("/properties/:id/aggregate", async (req: AuthRequest, res) => {
   try {
     const id = Number(req.params.id);
-    const property = await db.property.findFirst({
-      where: { id, userId: req.userId! },
-      include: {
-        tenants: true,
-        leases: { include: { tenant: true }, orderBy: { createdAt: "desc" } },
-        documents: true,
-        incomeEntries: { where: { status: { not: "ARCHIVED" } }, orderBy: { incomeDate: "desc" } },
-        expenses: { where: { status: { not: "ARCHIVED" } }, orderBy: { expenseDate: "desc" } },
-        invoices: { include: { lineItems: true }, orderBy: { createdAt: "desc" } }
-      }
-    });
-    if (!property) return res.status(404).json({ message: "Property not found" });
-    const currentLease = property.leases.find((l) => isCurrentLeaseStatus(leaseDisplayStatus({ status: l.status, fixedTermEndDate: l.fixedTermEndDate }))) ?? null;
-    const currentLeaseDisplayStatus = currentLease ? leaseDisplayStatus({ status: currentLease.status, fixedTermEndDate: currentLease.fixedTermEndDate }) : "VACANT";
-    const directTenant = property.tenants.find((t) => t.status === "ACTIVE") ?? null;
-    const currentTenant = (currentLease?.tenant as any) ?? directTenant;
-    const occupancyStatus = currentLease || directTenant ? "OCCUPIED" : "VACANT";
-    return res.json({
-      ...property,
-      occupancyStatus,
-      leaseDisplayStatus: currentLeaseDisplayStatus,
-      currentTenant: currentTenant
-        ? { id: currentTenant.id, firstName: currentTenant.firstName, lastName: currentTenant.lastName, email: currentTenant.email, phone: currentTenant.phone }
-        : null,
-      currentLease: currentLease
-        ? {
-            id: currentLease.id,
-            leaseType: currentLease.leaseType,
-            status: currentLease.status,
-            displayStatus: currentLeaseDisplayStatus,
-            startDate: currentLease.startDate,
-            fixedTermEndDate: currentLease.fixedTermEndDate,
-            monthlyRent: currentLease.monthlyRent,
-            depositAmount: currentLease.depositAmount,
-            rentDueDay: currentLease.rentDueDay
-          }
-        : null,
-      allTenantsCount: property.tenants.length
-    });
+    const monthQ = typeof req.query.month === "string" ? req.query.month : undefined;
+    const agg = await buildPropertyAggregate(req.userId!, id, { financialSummaryMonth: monthQ });
+    if (!agg) return res.status(404).json({ message: "Property not found" });
+    return res.json(agg);
+  } catch (err: any) {
+    console.error("[ownedProperties] GET /properties/:id/aggregate failed", err?.stack ?? err);
+    return res.status(500).json({ message: "Could not load property aggregate." });
+  }
+});
+
+ownedPropertiesRoutes.get("/properties/:id", async (req: AuthRequest, res) => {
+  try {
+    res.setHeader("Cache-Control", "no-store");
+    const id = Number(req.params.id);
+    const monthQ = typeof req.query.month === "string" ? req.query.month : undefined;
+    const agg = await buildPropertyAggregate(req.userId!, id, { financialSummaryMonth: monthQ });
+    if (!agg) return res.status(404).json({ message: "Property not found" });
+    return res.json(mapAggregateToLegacyDetail(agg));
   } catch (err: any) {
     console.error("[ownedProperties] GET /properties/:id failed", err?.stack ?? err);
     return res.status(500).json({ message: "Could not load property details." });
+  }
+});
+
+ownedPropertiesRoutes.get("/properties/:propertyId/statement", async (req: AuthRequest, res) => {
+  try {
+    res.setHeader("Cache-Control", "no-store");
+    const propertyId = Number(req.params.propertyId);
+    const existing = await assertPropertyOwner(req.userId!, propertyId);
+    if (!existing) return res.status(404).json({ message: "Property not found" });
+    await materializeDueRecurringExpenses(req.userId!, propertyId);
+    const includeExpected = req.query.includeExpected !== "false";
+    const month = typeof req.query.month === "string" ? req.query.month : null;
+    const stmt = await buildPropertyStatement(req.userId!, propertyId, {
+      includeExpectedIncomeRows: includeExpected,
+      calendarMonth: month
+    });
+    if (!stmt) return res.status(404).json({ message: "Property not found" });
+    await applyDepositGrowthForCurrentPropertyLeases(req.userId!, propertyId);
+    const currentInvoice = await getCurrentInvoiceForMonth(req.userId!, propertyId, month);
+    const future = await buildFutureCharges(req.userId!, propertyId);
+    const recurring = await buildRecurringChargesList(req.userId!, propertyId);
+
+    const leases = await db.lease.findMany({
+      where: { userId: req.userId!, propertyId },
+      include: { tenant: true },
+      orderBy: { createdAt: "desc" }
+    });
+    const deposits = leases
+      .filter((l) => isCurrentLeaseStatus(leaseDisplayStatus({ status: l.status, fixedTermEndDate: l.fixedTermEndDate })))
+      .map((l) => ({
+        leaseId: l.id,
+        tenantName: l.tenant ? `${l.tenant.firstName} ${l.tenant.lastName}` : null,
+        amount: l.depositAmount,
+        depositAnnualGrowthPercent: l.depositAnnualGrowthPercent ?? null,
+        depositGrowthLastAppliedMonth: l.depositGrowthLastAppliedMonth ?? null
+      }));
+
+    return res.json({
+      ...stmt,
+      currentInvoice,
+      deposits,
+      futureCharges: future?.items ?? [],
+      recurringCharges: recurring?.recurringCharges ?? []
+    });
+  } catch (err: any) {
+    console.error("[ownedProperties] GET /properties/:propertyId/statement failed", err?.stack ?? err);
+    return res.status(500).json({ message: "Could not load property statement." });
+  }
+});
+
+ownedPropertiesRoutes.get("/properties/:propertyId/bond/preview-at-date", async (req: AuthRequest, res) => {
+  try {
+    const propertyId = Number(req.params.propertyId);
+    const property = await assertPropertyOwner(req.userId!, propertyId);
+    if (!property) return res.status(404).json({ message: "Property not found" });
+    const raw = typeof req.query.dueDate === "string" ? req.query.dueDate.trim() : "";
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+      return res.status(400).json({ message: "Query parameter dueDate must be YYYY-MM-DD" });
+    }
+    const expenseDay = expenseDateFromYmd(raw);
+    const bondFinance = computePropertyBondFinance(property, expenseDay);
+    return res.json({ dueDate: raw, bondFinance });
+  } catch (err: any) {
+    console.error("[ownedProperties] GET bond preview-at-date failed", err?.stack ?? err);
+    return res.status(500).json({ message: "Could not preview bond payment for that date." });
+  }
+});
+
+ownedPropertiesRoutes.post("/properties/:propertyId/bond/statement-row", async (req: AuthRequest, res) => {
+  try {
+    const propertyId = Number(req.params.propertyId);
+    const existing = await assertPropertyOwner(req.userId!, propertyId);
+    if (!existing) return res.status(404).json({ message: "Property not found" });
+    const dueDate = typeof req.body?.dueDate === "string" ? req.body.dueDate.trim() : "";
+    const result = await postBondStatementRow(req.userId!, propertyId, dueDate);
+    if (!result.ok) {
+      const payload: Record<string, unknown> = { message: result.message };
+      if ("duplicateExpenseId" in result && result.duplicateExpenseId != null) {
+        payload.duplicateExpenseId = result.duplicateExpenseId;
+      }
+      return res.status(result.status).json(payload);
+    }
+    return res.status(201).json({ expense: result.expense });
+  } catch (err: any) {
+    console.error("[ownedProperties] POST bond statement-row failed", err?.stack ?? err);
+    return res.status(500).json({ message: "Could not add bond payment to statement." });
+  }
+});
+
+ownedPropertiesRoutes.post("/properties/:propertyId/bond/backfill-statement-rows", async (req: AuthRequest, res) => {
+  try {
+    const propertyId = Number(req.params.propertyId);
+    const existing = await assertPropertyOwner(req.userId!, propertyId);
+    if (!existing) return res.status(404).json({ message: "Property not found" });
+    const startDate = typeof req.body?.startDate === "string" ? req.body.startDate.trim() : "";
+    const endDate = typeof req.body?.endDate === "string" ? req.body.endDate.trim() : "";
+    const result = await backfillBondStatementRows(req.userId!, propertyId, startDate, endDate);
+    if (!result.ok) {
+      return res.status(result.status).json({ message: result.message });
+    }
+    return res.status(201).json({
+      createdCount: result.createdCount,
+      createdIds: result.createdIds,
+      skipped: result.skipped
+    });
+  } catch (err: any) {
+    console.error("[ownedProperties] POST bond backfill-statement-rows failed", err?.stack ?? err);
+    return res.status(500).json({ message: "Could not backfill bond payments." });
+  }
+});
+
+ownedPropertiesRoutes.post("/properties/:propertyId/financials/backfill", async (req: AuthRequest, res) => {
+  try {
+    const propertyId = Number(req.params.propertyId);
+    const existing = await assertPropertyOwner(req.userId!, propertyId);
+    if (!existing) return res.status(404).json({ message: "Property not found" });
+    const result = await runHistoricalBackfill(req.userId!, propertyId, req.body);
+    if (!result.ok) return res.status(400).json(result);
+    return res.status(201).json(result);
+  } catch (err: any) {
+    console.error("[ownedProperties] POST backfill failed", err?.stack ?? err);
+    return res.status(500).json({ message: "Backfill failed." });
+  }
+});
+
+ownedPropertiesRoutes.get("/properties/:propertyId/invoices/current", async (req: AuthRequest, res) => {
+  try {
+    const propertyId = Number(req.params.propertyId);
+    const existing = await assertPropertyOwner(req.userId!, propertyId);
+    if (!existing) return res.status(404).json({ message: "Property not found" });
+    const month = typeof req.query.month === "string" ? req.query.month : null;
+    const currentInvoice = await getCurrentInvoiceForMonth(req.userId!, propertyId, month);
+    return res.json({ currentInvoice });
+  } catch (err: any) {
+    console.error("[ownedProperties] GET invoices/current failed", err?.stack ?? err);
+    return res.status(500).json({ message: "Could not load invoice." });
+  }
+});
+
+ownedPropertiesRoutes.post("/properties/:propertyId/invoices/create-current", async (req: AuthRequest, res) => {
+  try {
+    const propertyId = Number(req.params.propertyId);
+    const existing = await assertPropertyOwner(req.userId!, propertyId);
+    if (!existing) return res.status(404).json({ message: "Property not found" });
+    const leaseIdRaw = req.body?.leaseId;
+    const leaseId = leaseIdRaw != null && leaseIdRaw !== "" ? Number(leaseIdRaw) : NaN;
+    const result = Number.isFinite(leaseId)
+      ? await createDraftInvoiceForLease(req.userId!, propertyId, leaseId)
+      : await createDraftInvoiceFromCurrentLease(req.userId!, propertyId);
+    if (!result.ok) {
+      if ("invoiceId" in result && result.invoiceId != null) return res.status(409).json(result);
+      return res.status(400).json(result);
+    }
+    return res.status(201).json(result.invoice);
+  } catch (err: any) {
+    console.error("[ownedProperties] POST invoices/create-current failed", err?.stack ?? err);
+    return res.status(500).json({ message: "Could not create invoice." });
+  }
+});
+
+ownedPropertiesRoutes.get("/properties/:propertyId/future-charges", async (req: AuthRequest, res) => {
+  const propertyId = Number(req.params.propertyId);
+  const existing = await assertPropertyOwner(req.userId!, propertyId);
+  if (!existing) return res.status(404).json({ message: "Property not found" });
+  const fc = await buildFutureCharges(req.userId!, propertyId);
+  return res.json(fc ?? { items: [] });
+});
+
+ownedPropertiesRoutes.get("/properties/:propertyId/recurring-charges", async (req: AuthRequest, res) => {
+  const propertyId = Number(req.params.propertyId);
+  const existing = await assertPropertyOwner(req.userId!, propertyId);
+  if (!existing) return res.status(404).json({ message: "Property not found" });
+  const rc = await buildRecurringChargesList(req.userId!, propertyId);
+  return res.json(rc ?? { recurringCharges: [] });
+});
+
+ownedPropertiesRoutes.post("/properties/:propertyId/recurring-charges", async (req: AuthRequest, res) => {
+  try {
+    const propertyId = Number(req.params.propertyId);
+    const existing = await assertPropertyOwner(req.userId!, propertyId);
+    if (!existing) return res.status(404).json({ message: "Property not found" });
+
+    const kind = req.body.kind ?? "expense";
+    if (kind === "invoice_rule") {
+      const tenantId = Number(req.body.tenantId);
+      if (!tenantId) return res.status(400).json({ message: "tenantId is required for invoice_rule" });
+      const tenant = await db.tenant.findFirst({ where: { id: tenantId, userId: req.userId!, propertyId } });
+      if (!tenant) return res.status(400).json({ message: "Invalid tenant for property" });
+      const nextRun = req.body.nextRunDate ? new Date(req.body.nextRunDate) : new Date();
+      const created = await db.recurringInvoiceRule.create({
+        data: {
+          userId: req.userId!,
+          propertyId,
+          tenantId,
+          leaseId: req.body.leaseId != null ? Number(req.body.leaseId) : null,
+          frequency: req.body.frequency ?? "MONTHLY",
+          dayOfMonth: req.body.dayOfMonth != null ? Number(req.body.dayOfMonth) : 1,
+          nextRunDate: nextRun,
+          invoiceDescription: req.body.description ?? "Monthly charge",
+          rentAmount: asNumber(req.body.amount),
+          enabled: req.body.enabled !== false
+        }
+      });
+      return res.status(201).json(created);
+    }
+
+    const startRaw = req.body.recurringStartDate ?? req.body.expenseDate;
+    const startYmd =
+      typeof startRaw === "string" && /^\d{4}-\d{2}-\d{2}$/.test(startRaw)
+        ? startRaw
+        : new Date(startRaw ?? Date.now()).toISOString().slice(0, 10);
+    const parsedAnchor = parseRecurringExpenseMonthAnchor(req.body ?? {});
+    if (!parsedAnchor.ok) return res.status(400).json({ message: parsedAnchor.message });
+    const { anchor, recurringDayOfMonth } = parsedAnchor;
+    const openEnded = Boolean(req.body.recurringOpenEnded ?? true);
+    const endRaw = req.body.recurringEndDate;
+    const endYmd =
+      openEnded || endRaw == null || endRaw === ""
+        ? null
+        : typeof endRaw === "string" && /^\d{4}-\d{2}-\d{2}$/.test(endRaw)
+          ? endRaw
+          : new Date(endRaw).toISOString().slice(0, 10);
+    const firstDue = firstDueYmdOnOrAfter(startYmd, anchor, recurringDayOfMonth);
+    const created = await db.propertyExpense.create({
+      data: {
+        userId: req.userId!,
+        propertyId,
+        category: req.body.category ?? "OTHER",
+        description: req.body.description ?? "Recurring expense",
+        amount: asNumber(req.body.amount),
+        expenseDate: expenseDateFromYmd(firstDue),
+        isRecurring: true,
+        recurringFrequency: req.body.recurringFrequency ?? "MONTHLY",
+        recurringStartDate: new Date(startYmd + "T12:00:00.000Z"),
+        recurringEndDate: endYmd ? new Date(endYmd + "T12:00:00.000Z") : null,
+        recurringOpenEnded: openEnded,
+        recurringMonthAnchor: anchor,
+        recurringDayOfMonth: anchor === "DAY_OF_MONTH" ? recurringDayOfMonth : null,
+        source: "MANUAL_FINANCIAL_ENTRY",
+        status: "ACTIVE"
+      }
+    });
+    await materializeDueRecurringExpenses(req.userId!, propertyId);
+    return res.status(201).json(created);
+  } catch (err: any) {
+    console.error("[ownedProperties] POST recurring-charges failed", err?.stack ?? err);
+    return res.status(500).json({ message: "Could not create recurring charge." });
+  }
+});
+
+ownedPropertiesRoutes.put("/recurring-charges/:id", async (req: AuthRequest, res) => {
+  try {
+    const id = Number(req.params.id);
+    const rule = await db.recurringInvoiceRule.findFirst({ where: { id, userId: req.userId! } });
+    if (!rule) return res.status(404).json({ message: "Recurring charge not found" });
+    const patch: any = {};
+    if (req.body.rentAmount != null) patch.rentAmount = asNumber(req.body.rentAmount);
+    if (req.body.invoiceDescription != null) patch.invoiceDescription = req.body.invoiceDescription;
+    if (req.body.dayOfMonth != null) patch.dayOfMonth = Number(req.body.dayOfMonth);
+    if (req.body.enabled !== undefined) patch.enabled = Boolean(req.body.enabled);
+    if (req.body.nextRunDate) patch.nextRunDate = new Date(req.body.nextRunDate);
+    const updated = await db.recurringInvoiceRule.update({ where: { id }, data: patch });
+    return res.json(updated);
+  } catch (err: any) {
+    console.error("[ownedProperties] PUT recurring-charges/:id failed", err?.stack ?? err);
+    return res.status(500).json({ message: "Could not update recurring charge." });
+  }
+});
+
+ownedPropertiesRoutes.get("/properties/:propertyId/reports", async (req: AuthRequest, res) => {
+  const propertyId = Number(req.params.propertyId);
+  const existing = await assertPropertyOwner(req.userId!, propertyId);
+  if (!existing) return res.status(404).json({ message: "Property not found" });
+  return res.json({
+    propertyId,
+    reports: [
+      { id: "property-statement-pdf", title: "Property statement PDF", description: "Generate from Financials tab actions.", tab: "financials" },
+      { id: "income-expense", title: "Income & expense report", description: "Uses the same ledger as your workspace statement.", tab: "financials" },
+      { id: "tenant-statement", title: "Tenant statement", description: "Open Tenants tab and use invoices / ledger.", tab: "tenants" },
+      { id: "invoice-pdfs", title: "Invoice PDF list", description: "Create invoices under Financials then generate PDF.", tab: "financials" },
+      { id: "lease-summary", title: "Lease summary", description: "Current and historical leases on this property.", tab: "leases" },
+      { id: "investor-performance", title: "Investor performance", description: "Portfolio dashboard filtered to this property.", href: `/owned-properties/dashboard?propertyId=${propertyId}` }
+    ]
+  });
+});
+
+ownedPropertiesRoutes.post("/properties/:propertyId/tenants/link", async (req: AuthRequest, res) => {
+  try {
+    const propertyId = Number(req.params.propertyId);
+    const tenantId = Number(req.body.tenantId);
+    if (!tenantId) return res.status(400).json({ message: "tenantId is required." });
+    const property = await assertPropertyOwner(req.userId!, propertyId);
+    if (!property) return res.status(404).json({ message: "Property not found." });
+    const tenant = await db.tenant.findFirst({ where: { id: tenantId, userId: req.userId! } });
+    if (!tenant) return res.status(404).json({ message: "Tenant not found." });
+
+    const currentLease = await db.lease.findFirst({ where: { userId: req.userId!, tenantId, status: { in: ["ACTIVE", "MONTH_TO_MONTH"] } } });
+    if (currentLease && currentLease.propertyId !== propertyId) {
+      return res.status(400).json({ message: "Tenant has an active lease. Cancel or terminate the current lease before moving the tenant." });
+    }
+
+    const updated = await db.tenant.update({ where: { id: tenantId }, data: { propertyId, status: "ACTIVE" } });
+    return res.json({ tenant: updated });
+  } catch (err: any) {
+    console.error("[ownedProperties] POST tenants/link failed", err?.stack ?? err);
+    return res.status(500).json({ message: "Failed to link tenant to property." });
   }
 });
 
@@ -1405,158 +1760,34 @@ ownedPropertiesRoutes.put("/properties/:id", async (req: AuthRequest, res) => {
   const existing = await assertPropertyOwner(req.userId!, id);
   if (!existing) return res.status(404).json({ message: "Property not found" });
   try {
-    const result = await db.$transaction(async (tx) => {
-      const updated = await tx.property.update({
-        where: { id },
-        data: {
-          name: req.body.name,
-          propertyType: req.body.propertyType,
-          investmentType: req.body.investmentType ?? undefined,
-          addressLine1: req.body.addressLine1,
-          addressLine2: req.body.addressLine2 ?? null,
-          suburb: req.body.suburb ?? null,
-          city: req.body.city,
-          province: req.body.province,
-          postalCode: req.body.postalCode ?? null,
-          country: req.body.country ?? "South Africa",
-          erfNumber: req.body.erfNumber ?? null,
-          sizeSqm: req.body.sizeSqm != null ? asNumber(req.body.sizeSqm) : null,
-          bedrooms: req.body.bedrooms != null ? Number(req.body.bedrooms) : null,
-          bathrooms: req.body.bathrooms != null ? Number(req.body.bathrooms) : null,
-          parkingBays: req.body.parkingBays != null ? Number(req.body.parkingBays) : null,
-          purchasePrice: req.body.purchasePrice != null ? asNumber(req.body.purchasePrice) : existing.purchasePrice,
-          purchaseDate: req.body.purchaseDate ? new Date(req.body.purchaseDate) : null,
-          currentEstimatedValue: req.body.currentEstimatedValue != null ? asNumber(req.body.currentEstimatedValue) : null,
-          outstandingBondBalance: req.body.outstandingBondBalance != null ? asNumber(req.body.outstandingBondBalance) : null,
-          monthlyBondPayment: req.body.monthlyBondPayment != null ? asNumber(req.body.monthlyBondPayment) : null,
-          totalCashInvested: req.body.totalCashInvested != null ? asNumber(req.body.totalCashInvested) : null,
-          bondCosts: req.body.bondCosts != null ? asNumber(req.body.bondCosts) : null,
-          transferCosts: req.body.transferCosts != null ? asNumber(req.body.transferCosts) : null,
-          holdingPeriodYears: req.body.holdingPeriodYears != null ? Number(req.body.holdingPeriodYears) : null,
-          estimatedSellingCostPercent: req.body.estimatedSellingCostPercent != null ? asNumber(req.body.estimatedSellingCostPercent) : null,
-          expectedMonthlyIncome: req.body.expectedMonthlyIncome != null ? asNumber(req.body.expectedMonthlyIncome) : null,
-          expectedMonthlyExpenses: req.body.expectedMonthlyExpenses != null ? asNumber(req.body.expectedMonthlyExpenses) : null,
-          status: req.body.status ?? null,
-          notes: req.body.notes ?? null,
-
-          landUse: req.body.landUse ?? null,
-          zoning: req.body.zoning ?? null,
-          ratesAndTaxesMonthly: req.body.ratesAndTaxesMonthly != null ? asNumber(req.body.ratesAndTaxesMonthly) : null,
-          leviesMonthly: req.body.leviesMonthly != null ? asNumber(req.body.leviesMonthly) : null,
-          securityMonthly: req.body.securityMonthly != null ? asNumber(req.body.securityMonthly) : null,
-          maintenanceMonthly: req.body.maintenanceMonthly != null ? asNumber(req.body.maintenanceMonthly) : null,
-          expectedAnnualAppreciationPercent:
-            req.body.expectedAnnualAppreciationPercent != null ? asNumber(req.body.expectedAnnualAppreciationPercent) : null,
-
-          averageDailyRate: req.body.averageDailyRate != null ? asNumber(req.body.averageDailyRate) : null,
-          occupancyRate: req.body.occupancyRate != null ? asNumber(req.body.occupancyRate) : null,
-          availableNightsPerMonth: req.body.availableNightsPerMonth != null ? Number(req.body.availableNightsPerMonth) : null,
-          platformFeePercent: req.body.platformFeePercent != null ? asNumber(req.body.platformFeePercent) : null,
-          cleaningFeesMonthly: req.body.cleaningFeesMonthly != null ? asNumber(req.body.cleaningFeesMonthly) : null,
-          managementFeePercent: req.body.managementFeePercent != null ? asNumber(req.body.managementFeePercent) : null,
-          furnishingValue: req.body.furnishingValue != null ? asNumber(req.body.furnishingValue) : null,
-          monthlyUtilities: req.body.monthlyUtilities != null ? asNumber(req.body.monthlyUtilities) : null,
-
-          rehabBudget: req.body.rehabBudget != null ? asNumber(req.body.rehabBudget) : null,
-          holdingCostsMonthly: req.body.holdingCostsMonthly != null ? asNumber(req.body.holdingCostsMonthly) : null,
-          expectedSalePrice: req.body.expectedSalePrice != null ? asNumber(req.body.expectedSalePrice) : null,
-          targetSaleDate: req.body.targetSaleDate ? new Date(req.body.targetSaleDate) : null,
-          projectStage: req.body.projectStage ?? null,
-
-          afterRepairValue: req.body.afterRepairValue != null ? asNumber(req.body.afterRepairValue) : null,
-          refinanceAmount: req.body.refinanceAmount != null ? asNumber(req.body.refinanceAmount) : null,
-          brrrrStage: req.body.brrrrStage ?? null
-        }
-      });
-
-      const firstOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
-      const upsertSetupRecurringExpense = async (category: any, description: string, amountRaw: any) => {
-        const amount = amountRaw != null ? asNumber(amountRaw) : 0;
-        // Match by category + description so we don't collide on category "OTHER"
-        const existingSetup = await tx.propertyExpense.findFirst({
-          where: {
-            userId: req.userId!,
-            propertyId: id,
-            category,
-            description,
-            isRecurring: true,
-            recurringFrequency: "MONTHLY"
-          },
-          orderBy: { createdAt: "asc" }
-        });
-
-        if (!amount || amount <= 0) {
-          if (existingSetup) {
-            await tx.propertyExpense.update({ where: { id: existingSetup.id }, data: { status: "ARCHIVED" } });
-          }
-          return;
-        }
-
-        if (existingSetup) {
-          await tx.propertyExpense.update({
-            where: { id: existingSetup.id },
-            data: { amount, description, recurringFrequency: "MONTHLY", source: "PROPERTY_SETUP", status: "ACTIVE" }
-          });
-          return;
-        }
-
-        await tx.propertyExpense.create({
-          data: {
-            userId: req.userId!,
-            propertyId: id,
-            category,
-            description,
-            amount,
-            expenseDate: firstOfMonth,
-            isRecurring: true,
-            recurringFrequency: "MONTHLY",
-            source: "PROPERTY_SETUP",
-            status: "ACTIVE"
-          }
-        });
-      };
-
-      // Keep setup monthly fields in sync as PropertyExpense records (single source of truth for Financials/Dashboard)
-      if (req.body.ratesAndTaxesMonthly !== undefined) await upsertSetupRecurringExpense("RATES_TAXES", "Rates & taxes (setup)", req.body.ratesAndTaxesMonthly);
-      if (req.body.leviesMonthly !== undefined) await upsertSetupRecurringExpense("LEVIES", "Levies (setup)", req.body.leviesMonthly);
-      if (req.body.maintenanceMonthly !== undefined) await upsertSetupRecurringExpense("MAINTENANCE", "Maintenance (setup)", req.body.maintenanceMonthly);
-      if (req.body.securityMonthly !== undefined) await upsertSetupRecurringExpense("OTHER", "Security (setup)", req.body.securityMonthly);
-      if (req.body.expectedMonthlyExpenses !== undefined) await upsertSetupRecurringExpense("OTHER", "Other monthly expenses (setup)", req.body.expectedMonthlyExpenses);
-      if (req.body.monthlyBondPayment !== undefined) await upsertSetupRecurringExpense("BOND_PAYMENT", "Bond payment (setup)", req.body.monthlyBondPayment);
-
-      const tenantId = req.body.tenantId != null ? Number(req.body.tenantId) : null;
-      const newTenant = req.body.newTenant ?? null;
-      if (tenantId || newTenant) {
-        const currentLease = await tx.lease.findFirst({
-          where: { userId: req.userId!, propertyId: id, status: { in: ["ACTIVE", "MONTH_TO_MONTH"] } }
-        });
-        if (currentLease && tenantId && currentLease.tenantId !== tenantId) {
-          throw new Error("Cannot change tenant while a current lease exists. Cancel the lease first.");
-        }
-
-        if (tenantId) {
-          const tenant = await tx.tenant.findFirst({ where: { id: tenantId, userId: req.userId! } });
-          if (!tenant) throw new Error("Invalid tenant");
-          await tx.tenant.update({ where: { id: tenantId }, data: { propertyId: id, status: "ACTIVE" } });
-        } else if (newTenant?.firstName && newTenant?.lastName && newTenant?.email && newTenant?.phone) {
-          await tx.tenant.create({
-            data: {
-              userId: req.userId!,
-              propertyId: id,
-              firstName: newTenant.firstName,
-              lastName: newTenant.lastName,
-              email: newTenant.email,
-              phone: newTenant.phone,
-              idNumber: newTenant.idNumber ?? null,
-              status: "ACTIVE"
-            }
-          });
-        }
-      }
-
-      return updated;
+    const updated = await db.property.update({
+      where: { id },
+      data: buildPropertyUpdateData(req.body as Record<string, unknown>)
     });
-    return res.json(result);
+
+    // When the bond profile is edited, ensure there is a BOND_PAYMENT statement row for the current month.
+    // This keeps statements and dashboard metrics consistent (bond is treated as debt service expense everywhere).
+    const touchedBond =
+      req.body?.monthlyBondPayment !== undefined ||
+      req.body?.outstandingBondBalance !== undefined ||
+      req.body?.bondAnnualInterestRatePercent !== undefined ||
+      req.body?.bondTermYears !== undefined ||
+      req.body?.bondStartDate !== undefined ||
+      req.body?.bondRemainingTermMonths !== undefined;
+    if (touchedBond) {
+      const now = new Date();
+      const preferredDom =
+        updated.bondStartDate instanceof Date && !Number.isNaN(updated.bondStartDate.getTime())
+          ? updated.bondStartDate.getUTCDate()
+          : 1;
+      const dueYmd = dueYmdForCalendarMonth(now.getUTCFullYear(), now.getUTCMonth() + 1, preferredDom);
+      const existingBondRow = await findActiveBondExpenseInDueMonth(req.userId!, id, dueYmd);
+      if (!existingBondRow) {
+        await postBondStatementRow(req.userId!, id, dueYmd);
+      }
+    }
+
+    return res.json(updated);
   } catch (err: any) {
     console.error("[ownedProperties] PUT /properties/:id failed", err?.stack ?? err);
     return res.status(400).json({ message: err?.message ?? "Failed to update property." });
@@ -1695,9 +1926,11 @@ ownedPropertiesRoutes.get("/properties/:propertyId/leases", async (req: AuthRequ
     ...l,
     displayStatus: leaseDisplayStatus({ status: l.status, fixedTermEndDate: l.fixedTermEndDate })
   }));
-  const currentLease = withDisplay.find((l) => isCurrentLeaseStatus(l.displayStatus)) ?? null;
+  const currentLeases = withDisplay.filter((l) => isCurrentLeaseStatus(l.displayStatus));
+  const currentLease = currentLeases[0] ?? null;
   const historicalLeases = withDisplay.filter((l) => !isCurrentLeaseStatus(l.displayStatus));
   return res.json({
+    currentLeases,
     currentLease,
     historicalLeases,
     leases: withDisplay
@@ -1713,10 +1946,13 @@ ownedPropertiesRoutes.get("/properties/:propertyId/current-lease", async (req: A
     include: { tenant: true },
     orderBy: { createdAt: "desc" }
   });
-  const current = leases
-    .map((l) => ({ ...l, displayStatus: leaseDisplayStatus({ status: l.status, fixedTermEndDate: l.fixedTermEndDate }) }))
-    .find((l) => isCurrentLeaseStatus(l.displayStatus)) ?? null;
-  return res.json({ currentLease: current });
+  const withDisplay = leases.map((l) => ({
+    ...l,
+    displayStatus: leaseDisplayStatus({ status: l.status, fixedTermEndDate: l.fixedTermEndDate })
+  }));
+  const currentLeases = withDisplay.filter((l) => isCurrentLeaseStatus(l.displayStatus));
+  const current = currentLeases[0] ?? null;
+  return res.json({ currentLeases, currentLease: current });
 });
 
 ownedPropertiesRoutes.post("/properties/:propertyId/leases", async (req: AuthRequest, res) => {
@@ -1786,23 +2022,25 @@ ownedPropertiesRoutes.post("/properties/:propertyId/leases", async (req: AuthReq
       }
     });
 
-    // Create a pending recurring expected rent rule (does NOT create received income)
-    await tx.recurringIncomeRule.create({
-      data: {
-        userId: req.userId!,
-        propertyId,
-        tenantId,
-        leaseId: lease.id,
-        category: "RENT",
-        amount: monthlyRent,
-        frequency: "MONTHLY",
-        dayOfMonth: lease.rentDueDay,
-        startDate: lease.startDate,
-        endDate: lease.leaseType === "FIXED_TERM" ? lease.fixedTermEndDate : null,
-        status: "PAUSED",
-        autoCreateExpectedEntries: true
-      }
-    });
+    const createExpectedRentRule = req.body.createExpectedRentRule !== false;
+    if (createExpectedRentRule) {
+      await tx.recurringIncomeRule.create({
+        data: {
+          userId: req.userId!,
+          propertyId,
+          tenantId,
+          leaseId: lease.id,
+          category: "RENT",
+          amount: monthlyRent,
+          frequency: "MONTHLY",
+          dayOfMonth: lease.rentDueDay,
+          startDate: lease.startDate,
+          endDate: lease.leaseType === "FIXED_TERM" ? lease.fixedTermEndDate : null,
+          status: "ACTIVE",
+          autoCreateExpectedEntries: false
+        }
+      });
+    }
     return lease;
   });
 
@@ -1825,7 +2063,26 @@ ownedPropertiesRoutes.put("/leases/:id", async (req: AuthRequest, res) => {
 
   const patch: any = {};
   if (req.body.monthlyRent != null) patch.monthlyRent = asNumber(req.body.monthlyRent);
-  if (req.body.depositAmount != null) patch.depositAmount = asNumber(req.body.depositAmount);
+  if (req.body.depositAmount != null) {
+    patch.depositAmount = asNumber(req.body.depositAmount);
+    patch.depositGrowthLastAppliedMonth = ymNow();
+  }
+  if (req.body.depositAnnualGrowthPercent !== undefined) {
+    if (req.body.depositAnnualGrowthPercent === null || req.body.depositAnnualGrowthPercent === "") {
+      patch.depositAnnualGrowthPercent = null;
+      patch.depositGrowthLastAppliedMonth = null;
+    } else {
+      const p = asNumber(req.body.depositAnnualGrowthPercent);
+      if (Number.isNaN(p) || p < 0 || p > 100) return res.status(400).json({ message: "depositAnnualGrowthPercent must be between 0 and 100" });
+      if (p === 0) {
+        patch.depositAnnualGrowthPercent = null;
+        patch.depositGrowthLastAppliedMonth = null;
+      } else {
+        patch.depositAnnualGrowthPercent = p;
+        patch.depositGrowthLastAppliedMonth = ymNow();
+      }
+    }
+  }
   if (req.body.rentDueDay != null) {
     if (!isValidDayOfMonth(req.body.rentDueDay)) return res.status(400).json({ message: "rentDueDay must be between 1 and 31" });
     patch.rentDueDay = Number(req.body.rentDueDay);
@@ -2003,20 +2260,117 @@ ownedPropertiesRoutes.post("/properties/:propertyId/expenses", async (req: AuthR
   const propertyId = Number(req.params.propertyId);
   const existing = await assertPropertyOwner(req.userId!, propertyId);
   if (!existing) return res.status(404).json({ message: "Property not found" });
-  const created = await db.propertyExpense.create({
-    data: {
-      userId: req.userId!,
-      propertyId,
-      category: req.body.category,
-      description: req.body.description,
-      amount: asNumber(req.body.amount),
-      expenseDate: new Date(req.body.expenseDate),
-      isRecurring: Boolean(req.body.isRecurring),
-      recurringFrequency: req.body.recurringFrequency ?? null,
-      source: req.body.source ?? "MANUAL_FINANCIAL_ENTRY",
-      status: req.body.status ?? "ACTIVE"
+
+  const schedule = Boolean(req.body.recurringSchedule);
+  const legacyRecurring = !schedule && Boolean(req.body.isRecurring);
+
+  const parseYmd = (raw: unknown): string | null =>
+    typeof raw === "string" && /^\d{4}-\d{2}-\d{2}$/.test(raw) ? raw : null;
+
+  if (schedule) {
+    const parsedAnchor = parseRecurringExpenseMonthAnchor(req.body ?? {});
+    if (!parsedAnchor.ok) return res.status(400).json({ message: parsedAnchor.message });
+    const { anchor, recurringDayOfMonth } = parsedAnchor;
+    const startYmd = parseYmd(req.body.recurringStartDate);
+    if (!startYmd) return res.status(400).json({ message: "recurringStartDate must be YYYY-MM-DD" });
+    const openEnded = Boolean(req.body.recurringOpenEnded);
+    const endYmd = openEnded ? null : parseYmd(req.body.recurringEndDate);
+    if (!openEnded && !endYmd) {
+      return res.status(400).json({ message: "recurringEndDate is required unless recurringOpenEnded is true" });
     }
-  });
+    if (!openEnded && endYmd && endYmd < startYmd) {
+      return res.status(400).json({ message: "recurringEndDate must be on or after recurringStartDate" });
+    }
+    const firstDue = firstDueYmdOnOrAfter(startYmd, anchor, recurringDayOfMonth);
+    const created = await db.propertyExpense.create({
+      data: {
+        userId: req.userId!,
+        propertyId,
+        category: req.body.category,
+        description: req.body.description,
+        amount: asNumber(req.body.amount),
+        expenseDate: expenseDateFromYmd(firstDue),
+        isRecurring: true,
+        recurringFrequency: "MONTHLY",
+        recurringStartDate: new Date(startYmd + "T12:00:00.000Z"),
+        recurringEndDate: endYmd ? new Date(endYmd + "T12:00:00.000Z") : null,
+        recurringOpenEnded: openEnded,
+        recurringMonthAnchor: anchor,
+        recurringDayOfMonth: anchor === "DAY_OF_MONTH" ? recurringDayOfMonth : null,
+        source: req.body.source ?? "MANUAL_FINANCIAL_ENTRY",
+        status: req.body.status ?? "ACTIVE"
+      }
+    });
+    await materializeDueRecurringExpenses(req.userId!, propertyId);
+    return res.status(201).json(created);
+  }
+
+  const expenseDate = coerceExpenseDateFromBody(req.body.expenseDate);
+  if (!expenseDate) {
+    return res.status(400).json({ message: "Invalid expenseDate" });
+  }
+
+  const futureExpense = Boolean(req.body.futureExpense);
+  if (futureExpense && (schedule || legacyRecurring)) {
+    return res.status(400).json({ message: "futureExpense applies only to one-off expenses." });
+  }
+  if (futureExpense) {
+    const ymd = expenseDate.toISOString().slice(0, 10);
+    const todayUtcStr = new Date().toISOString().slice(0, 10);
+    if (ymd <= todayUtcStr) {
+      return res.status(400).json({
+        message: "Future expenses must use a payment date strictly after today (UTC calendar date)."
+      });
+    }
+  }
+
+  if (legacyRecurring) {
+    const startYmd = expenseDate.toISOString().slice(0, 10);
+    const firstDue = firstDueYmdOnOrAfter(startYmd, "FIRST_OF_MONTH");
+    const created = await db.propertyExpense.create({
+      data: {
+        userId: req.userId!,
+        propertyId,
+        category: req.body.category,
+        description: req.body.description,
+        amount: asNumber(req.body.amount),
+        expenseDate: expenseDateFromYmd(firstDue),
+        isRecurring: true,
+        recurringFrequency: "MONTHLY",
+        recurringStartDate: new Date(startYmd + "T12:00:00.000Z"),
+        recurringEndDate: null,
+        recurringOpenEnded: true,
+        recurringMonthAnchor: "FIRST_OF_MONTH",
+        source: req.body.source ?? "MANUAL_FINANCIAL_ENTRY",
+        status: req.body.status ?? "ACTIVE"
+      }
+    });
+    await materializeDueRecurringExpenses(req.userId!, propertyId);
+    return res.status(201).json(created);
+  }
+
+  const created = await db.propertyExpense.create({
+      data: {
+        userId: req.userId!,
+        propertyId,
+        category: req.body.category,
+        description: req.body.description,
+        amount: asNumber(req.body.amount),
+        expenseDate,
+        isRecurring: false,
+        recurringFrequency: null,
+        bondInterestAmount:
+          req.body.bondInterestAmount != null && req.body.bondInterestAmount !== ""
+            ? asNumber(req.body.bondInterestAmount)
+            : null,
+        bondPrincipalAmount:
+          req.body.bondPrincipalAmount != null && req.body.bondPrincipalAmount !== ""
+            ? asNumber(req.body.bondPrincipalAmount)
+            : null,
+        source: req.body.source ?? "MANUAL_FINANCIAL_ENTRY",
+        status: req.body.status ?? "ACTIVE"
+      }
+    });
   return res.status(201).json(created);
 });
 
@@ -2053,6 +2407,134 @@ ownedPropertiesRoutes.get("/properties/:propertyId/income", async (req: AuthRequ
   const existing = await assertPropertyOwner(req.userId!, propertyId);
   if (!existing) return res.status(404).json({ message: "Property not found" });
   return res.json(await db.propertyIncome.findMany({ where: { userId: req.userId!, propertyId }, orderBy: { incomeDate: "desc" } }));
+});
+
+ownedPropertiesRoutes.patch("/expenses/:id", async (req: AuthRequest, res) => {
+  const id = Number(req.params.id);
+  const existing = await db.propertyExpense.findFirst({ where: { id, userId: req.userId! } });
+  if (!existing) return res.status(404).json({ message: "Expense not found" });
+  const data: Record<string, unknown> = {};
+  if (req.body.category != null) data.category = req.body.category;
+  if (req.body.description != null) data.description = String(req.body.description);
+  if (req.body.amount != null) data.amount = asNumber(req.body.amount);
+  if (req.body.expenseDate != null) {
+    const coerced = coerceExpenseDateFromBody(req.body.expenseDate);
+    if (!coerced) return res.status(400).json({ message: "Invalid expenseDate" });
+    data.expenseDate = coerced;
+  }
+  if (req.body.isRecurring != null) data.isRecurring = Boolean(req.body.isRecurring);
+  if (req.body.recurringFrequency !== undefined) data.recurringFrequency = req.body.recurringFrequency ?? null;
+  if (existing.isRecurring && existing.recurringScheduleParentId == null) {
+    if (req.body.recurringStartDate !== undefined) {
+      data.recurringStartDate =
+        req.body.recurringStartDate == null || req.body.recurringStartDate === ""
+          ? null
+          : new Date(String(req.body.recurringStartDate));
+    }
+    if (req.body.recurringEndDate !== undefined) {
+      data.recurringEndDate =
+        req.body.recurringEndDate == null || req.body.recurringEndDate === ""
+          ? null
+          : new Date(String(req.body.recurringEndDate));
+    }
+    if (req.body.recurringOpenEnded !== undefined) data.recurringOpenEnded = Boolean(req.body.recurringOpenEnded);
+    if (req.body.recurringMonthAnchor !== undefined) {
+      const parsed = parseRecurringExpenseMonthAnchor({
+        recurringMonthAnchor: req.body.recurringMonthAnchor,
+        recurringDayOfMonth: req.body.recurringDayOfMonth ?? existing.recurringDayOfMonth
+      });
+      if (!parsed.ok) return res.status(400).json({ message: parsed.message });
+      data.recurringMonthAnchor = parsed.anchor;
+      data.recurringDayOfMonth = parsed.anchor === "DAY_OF_MONTH" ? parsed.recurringDayOfMonth : null;
+    }
+    if (req.body.recurringDayOfMonth !== undefined && req.body.recurringMonthAnchor === undefined) {
+      const anchor = (existing.recurringMonthAnchor ?? "FIRST_OF_MONTH") as RecurringExpenseMonthAnchor;
+      if (anchor !== "DAY_OF_MONTH") {
+        return res.status(400).json({ message: "recurringDayOfMonth applies only when recurringMonthAnchor is DAY_OF_MONTH" });
+      }
+      if (!isValidDayOfMonth(req.body.recurringDayOfMonth)) {
+        return res.status(400).json({ message: "recurringDayOfMonth must be an integer 1–31" });
+      }
+      data.recurringDayOfMonth = Number(req.body.recurringDayOfMonth);
+    }
+  }
+  if (req.body.bondInterestAmount !== undefined) {
+    data.bondInterestAmount =
+      req.body.bondInterestAmount === null || req.body.bondInterestAmount === ""
+        ? null
+        : asNumber(req.body.bondInterestAmount);
+  }
+  if (req.body.bondPrincipalAmount !== undefined) {
+    data.bondPrincipalAmount =
+      req.body.bondPrincipalAmount === null || req.body.bondPrincipalAmount === ""
+        ? null
+        : asNumber(req.body.bondPrincipalAmount);
+  }
+  if (req.body.status !== undefined) {
+    const s = req.body.status;
+    if (s !== "ACTIVE" && s !== "ARCHIVED" && s !== "CANCELLED") {
+      return res.status(400).json({ message: "Invalid expense status" });
+    }
+    data.status = s;
+  }
+
+  const scheduleShapeKeys = ["recurringStartDate", "recurringEndDate", "recurringOpenEnded", "recurringMonthAnchor", "recurringDayOfMonth"];
+  const touchesScheduleShape =
+    existing.isRecurring &&
+    existing.recurringScheduleParentId == null &&
+    scheduleShapeKeys.some((k) => Object.prototype.hasOwnProperty.call(data, k));
+
+  if (touchesScheduleShape) {
+    const mergedStart =
+      data.recurringStartDate !== undefined ? (data.recurringStartDate as Date | null) : existing.recurringStartDate;
+    const mergedAnchorRaw =
+      data.recurringMonthAnchor !== undefined ? data.recurringMonthAnchor : existing.recurringMonthAnchor;
+    const anchor = (mergedAnchorRaw ?? "FIRST_OF_MONTH") as RecurringExpenseMonthAnchor;
+    const mergedDom =
+      data.recurringDayOfMonth !== undefined ? data.recurringDayOfMonth : existing.recurringDayOfMonth;
+    const startSrc = mergedStart ?? existing.expenseDate;
+    if (startSrc) {
+      const startYmd =
+        typeof startSrc === "string"
+          ? String(startSrc).slice(0, 10)
+          : new Date(startSrc as Date).toISOString().slice(0, 10);
+      const dom =
+        anchor === "DAY_OF_MONTH" && mergedDom != null && Number.isFinite(Number(mergedDom))
+          ? Number(mergedDom)
+          : null;
+      data.expenseDate = expenseDateFromYmd(firstDueYmdOnOrAfter(startYmd, anchor, dom));
+    }
+  }
+
+  const updated = await db.propertyExpense.update({ where: { id }, data: data as any });
+  return res.json(updated);
+});
+
+ownedPropertiesRoutes.delete("/expenses/:id/hard", async (req: AuthRequest, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isFinite(id)) return res.status(400).json({ message: "Invalid id" });
+  const existing = await db.propertyExpense.findFirst({ where: { id, userId: req.userId! } });
+  if (!existing) return res.status(404).json({ message: "Expense not found" });
+  /**
+   * Posted recurring instances (`SYSTEM`) stay as ARCHIVED tombstones so materialisation doesn’t recreate them on the next statement load.
+   * Removes them from the ledger view without resurrecting the month from the schedule template.
+   */
+  /** Any posted instance of a schedule must stay a tombstone so materialisation cannot recreate it (source may be legacy non-SYSTEM). */
+  if (existing.recurringScheduleParentId != null) {
+    await db.propertyExpense.update({ where: { id }, data: { status: "ARCHIVED" } });
+    return res.json({ message: "Archived", archived: true });
+  }
+  await db.propertyExpense.delete({ where: { id } });
+  return res.json({ message: "Deleted" });
+});
+
+ownedPropertiesRoutes.delete("/income/:id/hard", async (req: AuthRequest, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isFinite(id)) return res.status(400).json({ message: "Invalid id" });
+  const existing = await db.propertyIncome.findFirst({ where: { id, userId: req.userId! } });
+  if (!existing) return res.status(404).json({ message: "Income not found" });
+  await db.propertyIncome.delete({ where: { id } });
+  return res.json({ message: "Deleted" });
 });
 
 ownedPropertiesRoutes.delete("/expenses/:id", async (req: AuthRequest, res) => {
@@ -2158,6 +2640,22 @@ ownedPropertiesRoutes.post("/properties/:propertyId/invoices", async (req: AuthR
   return res.status(201).json(created);
 });
 
+ownedPropertiesRoutes.delete("/invoices/:id/hard", async (req: AuthRequest, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isFinite(id)) return res.status(400).json({ message: "Invalid id" });
+  const existing = await db.invoice.findFirst({ where: { id, userId: req.userId! } });
+  if (!existing) return res.status(404).json({ message: "Invoice not found" });
+  if (existing.pdfPath) {
+    try {
+      await fs.unlink(resolveStoredPdfAbsolute(existing.pdfPath));
+    } catch {
+      /* ignore missing file */
+    }
+  }
+  await db.invoice.delete({ where: { id } });
+  return res.json({ message: "Deleted" });
+});
+
 ownedPropertiesRoutes.get("/invoices/:id", async (req: AuthRequest, res) => {
   const id = Number(req.params.id);
   const invoice = await db.invoice.findFirst({
@@ -2172,56 +2670,83 @@ ownedPropertiesRoutes.put("/invoices/:id", async (req: AuthRequest, res) => {
   const id = Number(req.params.id);
   const existing = await db.invoice.findFirst({ where: { id, userId: req.userId! } });
   if (!existing) return res.status(404).json({ message: "Invoice not found" });
+  const nextTotal = req.body.total != null ? asNumber(req.body.total) : existing.total;
   const updated = await db.invoice.update({
     where: { id },
     data: {
       invoiceDate: req.body.invoiceDate ? new Date(req.body.invoiceDate) : existing.invoiceDate,
       dueDate: req.body.dueDate ? new Date(req.body.dueDate) : existing.dueDate,
       status: req.body.status ?? existing.status,
-      notes: req.body.notes ?? existing.notes,
-      total: req.body.total != null ? asNumber(req.body.total) : existing.total
+      notes: req.body.notes !== undefined ? req.body.notes : existing.notes,
+      total: nextTotal,
+      subtotal: req.body.total != null ? nextTotal : existing.subtotal
     }
   });
   return res.json(updated);
 });
 
 ownedPropertiesRoutes.post("/invoices/:id/generate-pdf", async (req: AuthRequest, res) => {
-  const id = Number(req.params.id);
-  const invoice = await db.invoice.findFirst({
-    where: { id, userId: req.userId! },
-    include: { lineItems: true, property: true, tenant: true }
-  });
-  if (!invoice) return res.status(404).json({ message: "Invoice not found" });
-  const filePath = path.join(invoicePdfDir, `invoice-${invoice.id}-${Date.now()}.pdf`);
-  const lines = [
-    "The Property Guy",
-    "Invoice",
-    `Invoice Number: ${invoice.invoiceNumber}`,
-    `Invoice Date: ${invoice.invoiceDate.toISOString().slice(0, 10)}`,
-    `Due Date: ${invoice.dueDate.toISOString().slice(0, 10)}`,
-    `Property: ${invoice.property.name}`,
-    `Address: ${invoice.property.addressLine1}, ${invoice.property.city}`,
-    `Tenant: ${invoice.tenant.firstName} ${invoice.tenant.lastName}`,
-    `Tenant Email: ${invoice.tenant.email}`,
-    "Line Items:",
-    ...invoice.lineItems.map((i) => `${i.description} | ${i.quantity} x ${i.unitPrice.toFixed(2)} = ${i.total.toFixed(2)}`),
-    `Subtotal: ${invoice.subtotal.toFixed(2)}`,
-    `Total: ${invoice.total.toFixed(2)}`,
-    "Banking details: [Add landlord bank details]",
-    `Payment reference: ${invoice.invoiceNumber}`,
-    invoice.notes ?? "Notes: -"
-  ];
-  await fs.writeFile(filePath, lines.join("\n"), "utf8");
-  await db.invoice.update({ where: { id }, data: { pdfPath: filePath } });
-  return res.json({ message: "Invoice PDF generated", downloadUrl: `/api/invoices/${id}/download` });
+  try {
+    await ensureReportsDirectory();
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id)) return res.status(400).json({ message: "Invalid invoice id." });
+
+    const prior = await db.invoice.findFirst({
+      where: { id, userId: req.userId! },
+      select: { id: true, pdfPath: true }
+    });
+    if (!prior) return res.status(404).json({ message: "Invoice not found." });
+
+    if (prior.pdfPath) {
+      try {
+        await fs.unlink(resolveStoredPdfAbsolute(prior.pdfPath));
+      } catch {
+        /* stale path from older builds (e.g. uploads/) or missing file — regenerate cleanly */
+      }
+    }
+
+    const built = await buildInvoicePdfDefinition(id, req.userId!);
+    if (!built.ok) return res.status(built.status).json({ message: built.message });
+
+    const absolutePath = path.join(getReportsRoot(), built.fileName);
+    await writePdfDefinitionToFile(built.definition, absolutePath);
+    await db.invoice.update({ where: { id }, data: { pdfPath: built.fileName } });
+    return res.json({
+      message: "Invoice PDF generated",
+      fileName: built.fileName,
+      downloadUrl: `/api/invoices/${id}/download`
+    });
+  } catch (err: any) {
+    console.error("[ownedProperties] POST invoices/:id/generate-pdf failed", err?.stack ?? err);
+    const hint =
+      typeof err?.message === "string" && process.env.NODE_ENV !== "production"
+        ? ` (${err.message})`
+        : "";
+    return res.status(500).json({ message: `Failed to generate invoice PDF.${hint}` });
+  }
 });
 
 ownedPropertiesRoutes.get("/invoices/:id/download", async (req: AuthRequest, res) => {
-  const id = Number(req.params.id);
-  const invoice = await db.invoice.findFirst({ where: { id, userId: req.userId! } });
-  if (!invoice) return res.status(404).json({ message: "Invoice not found" });
-  if (!invoice.pdfPath) return res.status(400).json({ message: "Invoice PDF not generated yet" });
-  return res.download(invoice.pdfPath);
+  try {
+    const id = Number(req.params.id);
+    const invoice = await db.invoice.findFirst({ where: { id, userId: req.userId! } });
+    if (!invoice) return res.status(404).json({ message: "Invoice not found" });
+    if (!invoice.pdfPath) return res.status(404).json({ message: "Invoice PDF not generated yet." });
+    const absolutePath = resolveStoredPdfAbsolute(invoice.pdfPath);
+    try {
+      await fs.access(absolutePath);
+    } catch {
+      return res.status(404).json({ message: "PDF file is missing on disk. Generate the invoice PDF again." });
+    }
+    const safeName =
+      path.basename(invoice.pdfPath).replace(/[^\w.\-]+/g, "_") || `invoice-${id}.pdf`;
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="${safeName}"`);
+    return res.sendFile(path.resolve(absolutePath));
+  } catch (err: any) {
+    console.error("[ownedProperties] GET invoices/:id/download failed", err?.stack ?? err);
+    return res.status(500).json({ message: "Failed to download invoice PDF." });
+  }
 });
 
 ownedPropertiesRoutes.post("/invoices/:id/mark-paid", async (req: AuthRequest, res) => {
@@ -2422,6 +2947,23 @@ ownedPropertiesRoutes.post("/recurring-income/run-due", async (req: AuthRequest,
   }
 
   return res.json({ message: "Recurring expected income run complete.", createdCount: created.length, created });
+});
+
+ownedPropertiesRoutes.post("/recurring-expenses/run-due", async (req: AuthRequest, res) => {
+  const templates = await db.propertyExpense.groupBy({
+    by: ["propertyId"],
+    where: {
+      userId: req.userId!,
+      status: "ACTIVE",
+      isRecurring: true,
+      recurringScheduleParentId: null
+    }
+  });
+  let created = 0;
+  for (const row of templates) {
+    created += (await materializeDueRecurringExpenses(req.userId!, row.propertyId)).created;
+  }
+  return res.json({ message: "Recurring expense materialization complete.", createdCount: created });
 });
 
 ownedPropertiesRoutes.post("/leases/:id/cancel", async (req: AuthRequest, res) => {

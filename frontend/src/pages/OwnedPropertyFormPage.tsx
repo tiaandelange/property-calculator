@@ -6,16 +6,12 @@ import { Section } from "../components/ui/Section";
 import { Card } from "../components/ui/Card";
 import { Input, Field } from "../components/ui/Input";
 import { Button } from "../components/ui/Button";
-import {
-  createLease,
-  createProperty,
-  createPropertyTenant,
-  getProperty,
-  getTenants,
-  linkTenantToProperty,
-  unlinkTenantFromProperty,
-  updateProperty
-} from "../api/ownedProperties";
+import { createProperty, getProperty, updateProperty } from "../api/ownedProperties";
+import { invalidatePropertyWorkspace } from "../features/properties/invalidate";
+import { PageBreadcrumb } from "../components/nav/PageBreadcrumb";
+import { workspaceMyProperties } from "../nav/workspaceBreadcrumbs";
+
+const BOND_TERM_YEAR_OPTIONS = [5, 10, 15, 20, 25, 30] as const;
 
 export function OwnedPropertyFormPage() {
   const { id } = useParams();
@@ -23,8 +19,6 @@ export function OwnedPropertyFormPage() {
   const navigate = useNavigate();
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
-  const [tenantMode, setTenantMode] = useState<"NONE" | "EXISTING" | "NEW">("NONE");
-  const [tenants, setTenants] = useState<any[]>([]);
   const [form, setForm] = useState<any>({
     name: "",
     propertyType: "OTHER",
@@ -35,99 +29,46 @@ export function OwnedPropertyFormPage() {
     country: "South Africa",
     purchasePrice: ""
   });
-  const [tenantId, setTenantId] = useState<number | "">("");
-  const [newTenant, setNewTenant] = useState<any>({ firstName: "", lastName: "", email: "", phone: "", idNumber: "" });
-  const [linkedTenants, setLinkedTenants] = useState<any[]>([]);
-  const [linkAnotherTenantId, setLinkAnotherTenantId] = useState<number | "">("");
-  const [anotherNewTenant, setAnotherNewTenant] = useState<any>({ firstName: "", lastName: "", email: "", phone: "", idNumber: "" });
-  const [createLeaseNow, setCreateLeaseNow] = useState(false);
-  const [lease, setLease] = useState<any>({
-    leaseType: "FIXED_TERM",
-    startDate: "",
-    fixedTermEndDate: "",
-    monthlyRent: "",
-    depositAmount: "",
-    rentDueDay: 1
-  });
-
   useEffect(() => {
     async function load() {
       if (!isEdit || !id) return;
       const data = await getProperty(id);
-      // Prevent duplicate lease creation from the property edit form.
-      // Lease management is handled inside View Property.
-      setCreateLeaseNow(false);
-      if (data?.currentTenant?.id) {
-        setTenantMode("EXISTING");
-        setTenantId(Number(data.currentTenant.id));
-      }
       setForm({
         ...data,
         propertyType: data.propertyType ?? "OTHER",
         investmentType: data.investmentType ?? "LONG_TERM_RENTAL",
         purchasePrice: data.purchasePrice ?? "",
         currentEstimatedValue: data.currentEstimatedValue ?? "",
-        outstandingBondBalance: data.outstandingBondBalance ?? "",
-        monthlyBondPayment: data.monthlyBondPayment ?? ""
+        outstandingBondBalance: data.outstandingBondBalance ?? ""
       });
-      setLinkedTenants(data?.tenants ?? []);
     }
     void load();
   }, [id, isEdit]);
-
-  useEffect(() => {
-    void (async () => {
-      try {
-        setTenants(await getTenants());
-      } catch {
-        setTenants([]);
-      }
-    })();
-  }, []);
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     setSaving(true);
     setError("");
     try {
-      // 1) Save the property itself first
-      const propertyPayload: any = { ...form, propertyType: form.propertyType ?? "OTHER" };
+      const tyRaw = form.bondTermYears;
+      const allowedYears = BOND_TERM_YEAR_OPTIONS as unknown as number[];
+      const bondTermYears =
+        tyRaw === "" || tyRaw == null ? null : allowedYears.includes(Number(tyRaw)) ? Number(tyRaw) : null;
+      const sdRaw = typeof form.bondStartDate === "string" ? form.bondStartDate.trim() : "";
+      const bondStartDate = /^\d{4}-\d{2}-\d{2}$/.test(sdRaw) ? sdRaw : null;
+
+      const propertyPayload: any = {
+        ...form,
+        propertyType: form.propertyType ?? "OTHER",
+        bondTermYears,
+        bondStartDate,
+        bondRemainingTermMonths: bondTermYears != null && bondStartDate != null ? null : form.bondRemainingTermMonths ?? null
+      };
       const saved = isEdit && id ? await updateProperty(id, propertyPayload) : await createProperty(propertyPayload);
       const propertyId = isEdit && id ? id : saved?.id;
+      if (propertyId != null && propertyId !== "") invalidatePropertyWorkspace(propertyId);
 
-      // 2) Tenant linking / creation (separate endpoints for reliability)
-      let resolvedTenantId: number | null = null;
-      if (tenantMode === "EXISTING" && tenantId) {
-        await linkTenantToProperty(propertyId, tenantId);
-        resolvedTenantId = Number(tenantId);
-      }
-      if (tenantMode === "NEW") {
-        const created = await createPropertyTenant(propertyId, {
-          firstName: newTenant.firstName,
-          lastName: newTenant.lastName,
-          email: newTenant.email || undefined,
-          phone: newTenant.phone || undefined,
-          idNumber: newTenant.idNumber || undefined,
-          status: "ACTIVE"
-        });
-        resolvedTenantId = created?.id ?? null;
-      }
-
-      // 3) Optional lease creation
-      if (createLeaseNow && resolvedTenantId && lease.startDate) {
-        await createLease(propertyId, {
-          tenantId: resolvedTenantId,
-          leaseType: lease.leaseType,
-          startDate: lease.startDate,
-          fixedTermEndDate: lease.leaseType === "FIXED_TERM" ? lease.fixedTermEndDate : undefined,
-          monthlyRent: lease.monthlyRent,
-          depositAmount: lease.depositAmount,
-          rentDueDay: lease.rentDueDay
-        });
-      }
-
-      // After creating a property, push the user into the universal "View Property" flow
-      if (!isEdit) navigate(`/owned-properties/${propertyId}?tab=financials`);
+      if (!isEdit) navigate(`/owned-properties/${propertyId}?tab=overview`);
       else navigate(`/owned-properties/${propertyId}?tab=overview`);
     } catch (e: any) {
       setError(e?.response?.data?.message ?? "Failed to save property.");
@@ -136,57 +77,13 @@ export function OwnedPropertyFormPage() {
     }
   };
 
-  const refreshLinkedTenants = async () => {
-    if (!isEdit || !id) return;
-    const data = await getProperty(id);
-    setLinkedTenants(data?.tenants ?? []);
-  };
-
-  const linkAnotherTenant = async () => {
-    if (!id || !linkAnotherTenantId) return;
-    try {
-      await linkTenantToProperty(id, linkAnotherTenantId);
-      setLinkAnotherTenantId("");
-      await refreshLinkedTenants();
-    } catch (e: any) {
-      window.alert(e?.response?.data?.message ?? "Failed to link tenant.");
-    }
-  };
-
-  const addAnotherTenant = async () => {
-    if (!id) return;
-    if (!anotherNewTenant.firstName || !anotherNewTenant.lastName) return;
-    try {
-      await createPropertyTenant(id, {
-        firstName: anotherNewTenant.firstName,
-        lastName: anotherNewTenant.lastName,
-        email: anotherNewTenant.email || undefined,
-        phone: anotherNewTenant.phone || undefined,
-        idNumber: anotherNewTenant.idNumber || undefined,
-        status: "ACTIVE"
-      });
-      setAnotherNewTenant({ firstName: "", lastName: "", email: "", phone: "", idNumber: "" });
-      await refreshLinkedTenants();
-    } catch (e: any) {
-      window.alert(e?.response?.data?.message ?? "Failed to add tenant.");
-    }
-  };
-
-  const unlinkTenant = async (tenantId: number) => {
-    if (!id) return;
-    if (!window.confirm("Unlink this tenant from the property? (Active leases may block this.)")) return;
-    try {
-      await unlinkTenantFromProperty(id, tenantId);
-      await refreshLinkedTenants();
-    } catch (e: any) {
-      window.alert(e?.response?.data?.message ?? "Failed to unlink tenant.");
-    }
-  };
-
   return (
     <Section>
       <Helmet><title>{isEdit ? "Edit Property" : "Add Property"} | The Property Guy</title></Helmet>
       <Container>
+        <PageBreadcrumb
+          items={workspaceMyProperties(isEdit ? (form.name?.trim() ? form.name.trim() : "Edit property") : "Add property")}
+        />
         <Card>
           <h1 className="pg-h2">{isEdit ? "Edit Property" : "Add Property"}</h1>
           {error ? <div className="pg-alert pg-alert-error">{error}</div> : null}
@@ -224,16 +121,136 @@ export function OwnedPropertyFormPage() {
             <Field label="Purchase date"><Input type="date" value={form.purchaseDate?.slice?.(0, 10) ?? ""} onChange={(e) => setForm({ ...form, purchaseDate: e.target.value })} /></Field>
             <Field label="Current estimated value"><Input type="number" value={form.currentEstimatedValue} onChange={(e) => setForm({ ...form, currentEstimatedValue: Number(e.target.value) })} /></Field>
             <Field label="Outstanding bond balance"><Input type="number" value={form.outstandingBondBalance} onChange={(e) => setForm({ ...form, outstandingBondBalance: Number(e.target.value) })} /></Field>
-            <Field label="Monthly bond payment"><Input type="number" value={form.monthlyBondPayment} onChange={(e) => setForm({ ...form, monthlyBondPayment: Number(e.target.value) })} /></Field>
+            <Field
+              label="Bond interest rate (% p.a.)"
+              help="Nominal annual rate — used with remaining term (from duration + start date) to estimate instalment and interest split."
+            >
+              <Input
+                type="number"
+                step="any"
+                min={0}
+                value={form.bondAnnualInterestRatePercent ?? ""}
+                onChange={(e) =>
+                  setForm({ ...form, bondAnnualInterestRatePercent: e.target.value === "" ? null : Number(e.target.value) })
+                }
+              />
+            </Field>
+            <Field label="Bond duration (years)" help="Original registered term — steps of 5 years up to 30 years.">
+              <select
+                className="pg-input"
+                value={form.bondTermYears === null || form.bondTermYears === undefined ? "" : String(form.bondTermYears)}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    bondTermYears: e.target.value === "" ? "" : Number(e.target.value)
+                  })
+                }
+              >
+                <option value="">Not specified</option>
+                {BOND_TERM_YEAR_OPTIONS.map((y) => (
+                  <option key={y} value={y}>
+                    {y} years
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Bond start date" help="Registration / first debit month anchor — used with duration to calculate months remaining automatically.">
+              <Input
+                type="date"
+                value={
+                  typeof form.bondStartDate === "string"
+                    ? form.bondStartDate.slice(0, 10)
+                    : form.bondStartDate?.slice?.(0, 10) ?? ""
+                }
+                onChange={(e) => setForm({ ...form, bondStartDate: e.target.value || "" })}
+              />
+            </Field>
+            <Field
+              label="Bond — months remaining (manual)"
+              help="Used only when bond duration and start date are not both set. Otherwise remaining months come from duration minus elapsed time."
+            >
+              <Input
+                type="number"
+                step={1}
+                min={0}
+                value={form.bondRemainingTermMonths ?? ""}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    bondRemainingTermMonths: e.target.value === "" ? null : Math.max(0, Math.floor(Number(e.target.value)))
+                  })
+                }
+              />
+            </Field>
+            <Field label="Monthly bond payment (bank debit)" help="Leave blank to derive from balance + rate + term where possible.">
+              <Input
+                type="number"
+                step="any"
+                min={0}
+                value={form.monthlyBondPayment ?? ""}
+                onChange={(e) => setForm({ ...form, monthlyBondPayment: e.target.value === "" ? null : Number(e.target.value) })}
+              />
+            </Field>
+            <Field label="Bond — interest portion override (optional)" help="When the bank statement differs from the estimate for this period.">
+              <Input
+                type="number"
+                step="any"
+                min={0}
+                value={form.bondInterestPortionOverride ?? ""}
+                onChange={(e) =>
+                  setForm({ ...form, bondInterestPortionOverride: e.target.value === "" ? null : Number(e.target.value) })
+                }
+              />
+            </Field>
+            <Field label="Bond — principal portion override (optional)">
+              <Input
+                type="number"
+                step="any"
+                min={0}
+                value={form.bondPrincipalPortionOverride ?? ""}
+                onChange={(e) =>
+                  setForm({ ...form, bondPrincipalPortionOverride: e.target.value === "" ? null : Number(e.target.value) })
+                }
+              />
+            </Field>
             <Field label="Notes"><Input value={form.notes ?? ""} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></Field>
 
             <div style={{ height: 10 }} />
             <h3 className="pg-h3" style={{ margin: "8px 0" }}>Investment assumptions</h3>
             <div className="pg-muted" style={{ marginBottom: 8 }}>
               Total cash invested should include deposit plus purchasing costs (Bond, renovation and Transfer costs), furnishings and other out-of-pocket acquisition costs.
+              Portfolio IRR uses bond fields (rate, term, outstanding balance, instalment), appreciation & selling cost %, holding period, cash invested, and — when both are set — expected monthly income & expenses below; otherwise trailing‑12 statement averages.
             </div>
             <Field label="Total cash invested">
               <Input type="number" value={form.totalCashInvested ?? ""} onChange={(e) => setForm({ ...form, totalCashInvested: e.target.value === "" ? null : Number(e.target.value) })} />
+            </Field>
+            <Field
+              label="Expected monthly income (IRR)"
+              help="Optional. When both income and expenses here are set, portfolio IRR uses them as the operating baseline (×12), then applies admin income/expense growth rates. Otherwise averages from your ledger/statements apply."
+            >
+              <Input
+                type="number"
+                step="any"
+                min={0}
+                value={form.expectedMonthlyIncome ?? ""}
+                onChange={(e) =>
+                  setForm({ ...form, expectedMonthlyIncome: e.target.value === "" ? null : Number(e.target.value) })
+                }
+              />
+            </Field>
+            <Field
+              label="Expected monthly expenses (IRR)"
+              help="Include bond instalment here if you want all‑in monthly cash burden in this baseline; otherwise match how you define income (e.g. operating costs only if bond is tracked separately in statements)."
+            >
+              <Input
+                type="number"
+                step="any"
+                min={0}
+                value={form.expectedMonthlyExpenses ?? ""}
+                onChange={(e) =>
+                  setForm({ ...form, expectedMonthlyExpenses: e.target.value === "" ? null : Number(e.target.value) })
+                }
+              />
             </Field>
             <Field label="Bond costs (once-off)">
               <Input type="number" value={form.bondCosts ?? ""} onChange={(e) => setForm({ ...form, bondCosts: e.target.value === "" ? null : Number(e.target.value) })} />
@@ -327,136 +344,6 @@ export function OwnedPropertyFormPage() {
                 <Field label="Refinance amount"><Input type="number" value={form.refinanceAmount ?? ""} onChange={(e) => setForm({ ...form, refinanceAmount: e.target.value === "" ? null : Number(e.target.value) })} /></Field>
               </>
             ) : null}
-
-            <div style={{ height: 10 }} />
-            {["LONG_TERM_RENTAL", "HOUSE_HACK", "COMMERCIAL", "MIXED_USE", "OTHER"].includes(form.investmentType) || (form.investmentType === "BRRRR" && ["RENTED", "REFINANCED"].includes(form.brrrrStage ?? "")) ? (
-              <>
-            <h3 className="pg-h3" style={{ margin: "8px 0" }}>Tenant</h3>
-            {isEdit ? (
-              <Card title="Tenants linked to this property">
-                {(linkedTenants?.length ?? 0) ? (
-                  <div style={{ display: "grid", gap: 8 }}>
-                    {linkedTenants.map((t: any) => (
-                      <div key={t.id} style={{ border: "1px solid rgba(255,255,255,.08)", borderRadius: 10, padding: 10 }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
-                          <div>
-                            <div><strong>{t.firstName} {t.lastName}</strong> <span className="pg-muted">({t.status})</span></div>
-                            <div className="pg-muted">{t.phone ? `Phone: ${t.phone}` : "Phone: -"} {t.email ? `| Email: ${t.email}` : ""}</div>
-                          </div>
-                          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                            <a className="pg-btn pg-btn-ghost" href={`/tenants/${t.id}/edit`}>Edit</a>
-                            <button className="pg-btn pg-btn-ghost" type="button" onClick={() => void unlinkTenant(t.id)}>Unlink</button>
-                          </div>
-                        </div>
-                        <div className="pg-muted">{t.phone ? `Phone: ${t.phone}` : "Phone: -"} {t.email ? `| Email: ${t.email}` : ""}</div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="pg-muted">No tenants linked yet.</div>
-                )}
-                <div style={{ height: 10 }} />
-                <div className="pg-muted" style={{ marginBottom: 6 }}>Link existing tenant (unlinked only)</div>
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                  <select className="pg-input" value={linkAnotherTenantId} onChange={(e) => setLinkAnotherTenantId(e.target.value === "" ? "" : Number(e.target.value))}>
-                    <option value="">Select tenant</option>
-                    {tenants.filter((t: any) => t.propertyId == null).map((t: any) => (
-                      <option key={t.id} value={t.id}>{t.firstName} {t.lastName}</option>
-                    ))}
-                  </select>
-                  <button className="pg-btn pg-btn-primary" type="button" onClick={() => void linkAnotherTenant()} disabled={!linkAnotherTenantId}>Link tenant</button>
-                </div>
-                <div style={{ height: 10 }} />
-                <div className="pg-muted" style={{ marginBottom: 6 }}>Add new tenant</div>
-                <div style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}>
-                  <Input placeholder="First name" value={anotherNewTenant.firstName} onChange={(e) => setAnotherNewTenant({ ...anotherNewTenant, firstName: e.target.value })} />
-                  <Input placeholder="Last name" value={anotherNewTenant.lastName} onChange={(e) => setAnotherNewTenant({ ...anotherNewTenant, lastName: e.target.value })} />
-                  <Input placeholder="Email (optional)" value={anotherNewTenant.email} onChange={(e) => setAnotherNewTenant({ ...anotherNewTenant, email: e.target.value })} />
-                  <Input placeholder="Phone (optional)" value={anotherNewTenant.phone} onChange={(e) => setAnotherNewTenant({ ...anotherNewTenant, phone: e.target.value })} />
-                </div>
-                <div style={{ marginTop: 8 }}>
-                  <button className="pg-btn pg-btn-secondary" type="button" onClick={() => void addAnotherTenant()} disabled={!anotherNewTenant.firstName || !anotherNewTenant.lastName}>
-                    Add tenant
-                  </button>
-                </div>
-              </Card>
-            ) : null}
-            <Field label="Tenant option">
-              <select className="pg-input" value={tenantMode} onChange={(e) => setTenantMode(e.target.value as any)}>
-                <option value="NONE">No tenant yet</option>
-                <option value="EXISTING">Select existing tenant</option>
-                <option value="NEW">Add new tenant</option>
-              </select>
-            </Field>
-            {tenantMode === "EXISTING" ? (
-              <Field label="Existing tenant">
-                <select className="pg-input" value={tenantId} onChange={(e) => setTenantId(Number(e.target.value))}>
-                  <option value="">Select tenant</option>
-                  {tenants.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.firstName} {t.lastName} {t.property?.name ? `(${t.property.name})` : ""}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-            ) : null}
-            {tenantMode === "NEW" ? (
-              <>
-                <Field label="First name"><Input value={newTenant.firstName} onChange={(e) => setNewTenant({ ...newTenant, firstName: e.target.value })} required /></Field>
-                <Field label="Last name"><Input value={newTenant.lastName} onChange={(e) => setNewTenant({ ...newTenant, lastName: e.target.value })} required /></Field>
-                <Field label="Email (optional)"><Input value={newTenant.email} onChange={(e) => setNewTenant({ ...newTenant, email: e.target.value })} /></Field>
-                <Field label="Phone (optional)"><Input value={newTenant.phone} onChange={(e) => setNewTenant({ ...newTenant, phone: e.target.value })} /></Field>
-                <Field label="ID number (optional)"><Input value={newTenant.idNumber} onChange={(e) => setNewTenant({ ...newTenant, idNumber: e.target.value })} /></Field>
-              </>
-            ) : null}
-
-            {tenantMode !== "NONE" ? (
-              <>
-                <div style={{ height: 10 }} />
-                <h3 className="pg-h3" style={{ margin: "8px 0" }}>Lease details (optional)</h3>
-                {isEdit ? (
-                  <div className="pg-muted" style={{ marginBottom: 8 }}>
-                    Lease creation/editing is managed in <strong>View Property → Lease</strong> to prevent duplicates.
-                  </div>
-                ) : null}
-                <Field label="Create lease now?">
-                  <select
-                    className="pg-input"
-                    value={createLeaseNow ? "YES" : "NO"}
-                    onChange={(e) => setCreateLeaseNow(e.target.value === "YES")}
-                    disabled={isEdit}
-                  >
-                    <option value="NO">No</option>
-                    <option value="YES">Yes</option>
-                  </select>
-                </Field>
-                {createLeaseNow ? (
-                  <>
-                <Field label="Lease type">
-                  <select className="pg-input" value={lease.leaseType} onChange={(e) => setLease({ ...lease, leaseType: e.target.value })}>
-                    <option value="FIXED_TERM">Fixed term</option>
-                    <option value="MONTH_TO_MONTH">Month-to-month</option>
-                  </select>
-                </Field>
-                <Field label="Start date"><Input type="date" value={lease.startDate} onChange={(e) => setLease({ ...lease, startDate: e.target.value })} /></Field>
-                {lease.leaseType === "FIXED_TERM" ? (
-                  <Field label="Fixed term end date">
-                    <Input type="date" value={lease.fixedTermEndDate} onChange={(e) => setLease({ ...lease, fixedTermEndDate: e.target.value })} />
-                  </Field>
-                ) : null}
-                <Field label="Monthly rent"><Input type="number" value={lease.monthlyRent} onChange={(e) => setLease({ ...lease, monthlyRent: Number(e.target.value) })} /></Field>
-                <Field label="Deposit amount"><Input type="number" value={lease.depositAmount} onChange={(e) => setLease({ ...lease, depositAmount: Number(e.target.value) })} /></Field>
-                <Field label="Rent due day"><Input type="number" value={lease.rentDueDay} onChange={(e) => setLease({ ...lease, rentDueDay: Number(e.target.value) })} /></Field>
-                  </>
-                ) : null}
-              </>
-            ) : null}
-              </>
-            ) : (
-              <div className="pg-muted" style={{ marginTop: 6 }}>
-                Tenant/lease not required for this property type.
-              </div>
-            )}
 
             <Button type="submit" loading={saving}>{isEdit ? "Update Property" : "Create Property"}</Button>
           </form>

@@ -7,6 +7,16 @@ const ADMIN_EMAIL = "delangetiaan13@gmail.com";
 const TEMP_PASSWORD = "Tiaan123";
 
 async function main() {
+  await prisma.portfolioProjectionDefaults.upsert({
+    where: { id: 1 },
+    create: {
+      id: 1,
+      rentalIncomeGrowthPercentAnnual: 6,
+      totalExpensesGrowthPercentAnnual: 6
+    },
+    update: {}
+  });
+
   const passwordHash = await bcrypt.hash(TEMP_PASSWORD, 10);
   const existing = await prisma.user.findUnique({ where: { email: ADMIN_EMAIL } });
 

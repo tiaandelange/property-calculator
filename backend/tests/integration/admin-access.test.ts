@@ -9,6 +9,11 @@ const dbMock = {
   },
   calculation: {
     create: jest.fn()
+  },
+  portfolioProjectionDefaults: {
+    findUnique: jest.fn(),
+    upsert: jest.fn(),
+    create: jest.fn()
   }
 };
 
@@ -172,5 +177,58 @@ describe("admin access + usage limits", () => {
 
     expect(res.status).toBe(200);
     expect(res.body.message).toMatch(/Admin access granted/i);
+  });
+
+  test("admin can GET portfolio projection metrics", async () => {
+    dbMock.portfolioProjectionDefaults.findUnique.mockResolvedValue({
+      id: 1,
+      rentalIncomeGrowthPercentAnnual: 6,
+      totalExpensesGrowthPercentAnnual: 6,
+      updatedAt: new Date()
+    });
+    const token = signToken({
+      sub: "6",
+      email: "admin3@example.com",
+      role: "ADMIN",
+      subscription_status: "SUBSCRIBED"
+    });
+    const res = await request(app).get("/api/admin/portfolio-projection-metrics").set("Authorization", `Bearer ${token}`);
+    expect(res.status).toBe(200);
+    expect(res.body.metrics.rentalIncomeGrowthPercentAnnual).toBe(6);
+    expect(res.body.metrics.totalExpensesGrowthPercentAnnual).toBe(6);
+  });
+
+  test("non-admin cannot GET portfolio projection metrics", async () => {
+    const token = signToken({
+      sub: "7",
+      email: "user3@example.com",
+      role: "USER",
+      subscription_status: "SUBSCRIBED"
+    });
+    const res = await request(app).get("/api/admin/portfolio-projection-metrics").set("Authorization", `Bearer ${token}`);
+    expect(res.status).toBe(403);
+  });
+
+  test("admin can PATCH portfolio projection metrics", async () => {
+    dbMock.portfolioProjectionDefaults.upsert.mockResolvedValue({});
+    dbMock.portfolioProjectionDefaults.findUnique.mockResolvedValue({
+      id: 1,
+      rentalIncomeGrowthPercentAnnual: 7.5,
+      totalExpensesGrowthPercentAnnual: 6,
+      updatedAt: new Date()
+    });
+    const token = signToken({
+      sub: "8",
+      email: "admin4@example.com",
+      role: "ADMIN",
+      subscription_status: "SUBSCRIBED"
+    });
+    const res = await request(app)
+      .patch("/api/admin/portfolio-projection-metrics")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ rentalIncomeGrowthPercentAnnual: 7.5 });
+    expect(res.status).toBe(200);
+    expect(res.body.metrics.rentalIncomeGrowthPercentAnnual).toBe(7.5);
+    expect(dbMock.portfolioProjectionDefaults.upsert).toHaveBeenCalled();
   });
 });

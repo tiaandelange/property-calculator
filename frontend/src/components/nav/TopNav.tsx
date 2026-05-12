@@ -1,4 +1,4 @@
-import { Link, useNavigate } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import { Container } from "../ui/Container";
 import { ButtonLink } from "../ui/Button";
 import { HamburgerButton } from "./HamburgerButton";
@@ -22,7 +22,6 @@ export function TopNav({
   const initials = userEmail ? userEmail.slice(0, 2).toUpperCase() : null;
   const isAdmin = userRole === "ADMIN";
   const [calcOpen, setCalcOpen] = useState(false);
-  const [ownedOpen, setOwnedOpen] = useState(false);
 
   useEffect(() => {
     function onClickOutside(event: MouseEvent) {
@@ -47,9 +46,9 @@ export function TopNav({
           <div className="pg-brand">
             <HamburgerButton onClick={onMenu} />
             <div>
-              <Link to="/" className="pg-logo">
+              <NavLink to="/" end className={({ isActive }) => `pg-logo${isActive ? " pg-logo-active" : ""}`}>
                 The Property Guy
-              </Link>
+              </NavLink>
               <div className="pg-logo-tagline">Property calculators & portfolio tools</div>
             </div>
           </div>
@@ -61,37 +60,27 @@ export function TopNav({
               {calcOpen ? (
                 <div className="pg-main-nav-menu">
                   {calculators.slice(0, 10).map((c) => (
-                    <Link key={c.slug} to={`/calculators/${c.slug}`} className="pg-profile-item" onClick={() => setCalcOpen(false)}>
+                    <NavLink
+                      key={c.slug}
+                      to={`/calculators/${c.slug}`}
+                      className={({ isActive }) => `pg-profile-item${isActive ? " pg-main-nav-link-active" : ""}`}
+                      onClick={() => setCalcOpen(false)}
+                    >
                       {c.name}
-                    </Link>
+                    </NavLink>
                   ))}
                 </div>
               ) : null}
             </div>
-            {signedIn ? (
-              <div className="pg-main-nav-item" onMouseEnter={() => setOwnedOpen(true)} onMouseLeave={() => setOwnedOpen(false)}>
-                <button type="button" className="pg-main-nav-btn">
-                  Owned Properties
-                </button>
-                {ownedOpen ? (
-                  <div className="pg-main-nav-menu">
-                    <Link to="/owned-properties/my-properties" className="pg-profile-item" onClick={() => setOwnedOpen(false)}>My Properties</Link>
-                    <Link to="/owned-properties/dashboard" className="pg-profile-item" onClick={() => setOwnedOpen(false)}>Portfolio Dashboard</Link>
-                    <Link to="/owned-properties/new" className="pg-profile-item" onClick={() => setOwnedOpen(false)}>Add Property</Link>
-                    <Link to="/tenants" className="pg-profile-item" onClick={() => setOwnedOpen(false)}>Tenants</Link>
-                    <Link to="/leases" className="pg-profile-item" onClick={() => setOwnedOpen(false)}>Leases</Link>
-                    <Link to="/financials" className="pg-profile-item" onClick={() => setOwnedOpen(false)}>Financials</Link>
-                    <Link to="/invoices" className="pg-profile-item" onClick={() => setOwnedOpen(false)}>Invoices</Link>
-                    <Link to="/owned-properties/recurring-invoices" className="pg-profile-item" onClick={() => setOwnedOpen(false)}>Recurring Invoices</Link>
-                    <Link to="/documents" className="pg-profile-item" onClick={() => setOwnedOpen(false)}>Documents</Link>
-                    <Link to="/owned-properties/reports" className="pg-profile-item" onClick={() => setOwnedOpen(false)}>Reports</Link>
-                  </div>
-                ) : null}
-              </div>
-            ) : null}
-            <Link to="/learn" className="pg-main-nav-link">Learn</Link>
-            <Link to="/about" className="pg-main-nav-link">About</Link>
-            <Link to="/contact" className="pg-main-nav-link">Contact</Link>
+            <NavLink to="/learn" className={({ isActive }) => `pg-main-nav-link${isActive ? " pg-main-nav-link-active" : ""}`}>
+              Learn
+            </NavLink>
+            <NavLink to="/about" className={({ isActive }) => `pg-main-nav-link${isActive ? " pg-main-nav-link-active" : ""}`}>
+              About
+            </NavLink>
+            <NavLink to="/contact" className={({ isActive }) => `pg-main-nav-link${isActive ? " pg-main-nav-link-active" : ""}`}>
+              Contact
+            </NavLink>
           </nav>
           <div className="pg-top-actions">
             {signedIn ? (
@@ -102,28 +91,46 @@ export function TopNav({
                 {open ? (
                   <div className="pg-profile-menu">
                     <div className="pg-profile-label">{isAdmin ? "Admin" : "User"}</div>
-                    <Link to="/owned-properties/dashboard" className="pg-profile-item" onClick={() => setOpen(false)}>Portfolio Dashboard</Link>
-                    <Link to="/owned-properties/my-properties" className="pg-profile-item" onClick={() => setOpen(false)}>My Properties</Link>
-                    <Link to="/dashboard" className="pg-profile-item" onClick={() => setOpen(false)}>
-                      My Reports
-                    </Link>
-                    <Link to="/owned-properties/new" className="pg-profile-item" onClick={() => setOpen(false)}>Add Property</Link>
+                    <NavLink
+                      to="/owned-properties/dashboard"
+                      className={({ isActive }) => `pg-profile-item${isActive ? " pg-main-nav-link-active" : ""}`}
+                      onClick={() => setOpen(false)}
+                    >
+                      Open workspace
+                    </NavLink>
+                    <NavLink
+                      to="/account"
+                      className={({ isActive }) => `pg-profile-item${isActive ? " pg-main-nav-link-active" : ""}`}
+                      onClick={() => setOpen(false)}
+                    >
+                      Account
+                    </NavLink>
+                    <NavLink
+                      to="/settings"
+                      className={({ isActive }) => `pg-profile-item${isActive ? " pg-main-nav-link-active" : ""}`}
+                      onClick={() => setOpen(false)}
+                    >
+                      Settings
+                    </NavLink>
                     {isAdmin ? (
-                      <Link to="/admin" className="pg-profile-item" onClick={() => setOpen(false)}>
-                        Admin
-                      </Link>
-                    ) : (
-                      <Link to="/account" className="pg-profile-item" onClick={() => setOpen(false)}>
-                        Account
-                      </Link>
-                    )}
-                    {!isAdmin ? (
-                      <Link to="/subscription" className="pg-profile-item" onClick={() => setOpen(false)}>
-                        Subscription
-                      </Link>
+                      <NavLink
+                        to="/admin"
+                        className={({ isActive }) => `pg-profile-item${isActive ? " pg-main-nav-link-active" : ""}`}
+                        onClick={() => setOpen(false)}
+                      >
+                        Admin metrics
+                      </NavLink>
                     ) : null}
+                    <NavLink
+                      to="/subscription"
+                      end
+                      className={({ isActive }) => `pg-profile-item${isActive ? " pg-main-nav-link-active" : ""}`}
+                      onClick={() => setOpen(false)}
+                    >
+                      Subscription
+                    </NavLink>
                     <button type="button" className="pg-profile-item pg-profile-item-button" onClick={logout}>
-                      Logout
+                      Log out
                     </button>
                   </div>
                 ) : null}

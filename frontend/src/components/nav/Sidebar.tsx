@@ -6,11 +6,11 @@ import { useMemo, useState } from "react";
 export function Sidebar({
   open,
   onClose,
-  showReports
+  showWorkspaceLinks = false
 }: {
   open: boolean;
   onClose: () => void;
-  showReports: boolean;
+  showWorkspaceLinks?: boolean;
 }) {
   const { pathname } = useLocation();
   const [calcOpen, setCalcOpen] = useState(true);
@@ -67,7 +67,7 @@ export function Sidebar({
             Contact <span className="pg-nav-muted">→</span>
           </NavLink>
 
-          {showReports ? (
+          {showWorkspaceLinks ? (
             <>
               <div className="pg-nav-group-title">Reports</div>
               <NavLink

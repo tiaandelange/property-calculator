@@ -11,13 +11,14 @@ jest.mock("pdfmake", () => {
   return function PdfPrinterMock() {
     return {
       createPdfKitDocument: () => {
-        let stream: any;
+        let out: any;
         return {
           pipe: (s: any) => {
-            stream = s;
+            out = s;
           },
           end: () => {
-            if (stream?.emit) stream.emit("finish");
+            if (out?.write) out.write(Buffer.from("%PDF-1.4\n"));
+            if (out?.end) out.end();
           }
         };
       }
@@ -27,6 +28,7 @@ jest.mock("pdfmake", () => {
 
 const dbMock = {
   $transaction: async (fn: any) => fn(dbMock),
+  $queryRaw: jest.fn().mockResolvedValue([{ invoice_payment_details: null }]),
   property: {
     findMany: jest.fn(),
     create: jest.fn(),
@@ -86,10 +88,21 @@ const dbMock = {
   },
   calculation: {
     findFirst: jest.fn(),
+    findMany: jest.fn(),
     update: jest.fn()
+  },
+  storedReport: {
+    create: jest.fn(),
+    findFirst: jest.fn(),
+    findMany: jest.fn()
   },
   user: {
     findUnique: jest.fn()
+  },
+  portfolioProjectionDefaults: {
+    findUnique: jest.fn(),
+    create: jest.fn(),
+    upsert: jest.fn()
   }
 };
 
@@ -105,6 +118,13 @@ describe("Owned properties phase 5", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     sendInvoiceEmailMock.mockResolvedValue({ ok: true, message: "sent" });
+    dbMock.propertyExpense.groupBy.mockResolvedValue([]);
+    dbMock.portfolioProjectionDefaults.findUnique.mockResolvedValue({
+      id: 1,
+      rentalIncomeGrowthPercentAnnual: 6,
+      totalExpensesGrowthPercentAnnual: 6,
+      updatedAt: new Date()
+    });
   });
 
   test("creating a property", async () => {
@@ -118,6 +138,25 @@ describe("Owned properties phase 5", () => {
       purchasePrice: 1000000
     });
     expect(res.status).toBe(201);
+  });
+
+  test("creating a property does not create ledger rows, tenants or leases", async () => {
+    dbMock.property.create.mockResolvedValue({ id: 77, name: "Solo" });
+    const res = await request(app).post("/api/properties").set("Authorization", `Bearer ${token}`).send({
+      name: "Solo",
+      propertyType: "HOUSE",
+      addressLine1: "1 Main",
+      city: "Cape Town",
+      province: "Western Cape",
+      purchasePrice: 500000,
+      ratesAndTaxesMonthly: 800,
+      monthlyBondPayment: 9000
+    });
+    expect(res.status).toBe(201);
+    expect(dbMock.propertyExpense.create).not.toHaveBeenCalled();
+    expect(dbMock.propertyIncome.create).not.toHaveBeenCalled();
+    expect(dbMock.tenant.create).not.toHaveBeenCalled();
+    expect(dbMock.lease.create).not.toHaveBeenCalled();
   });
 
   test("GET /api/properties returns expected shape", async () => {
@@ -147,10 +186,28 @@ describe("Owned properties phase 5", () => {
   test("adding lease", async () => {
     dbMock.property.findFirst.mockResolvedValue({ id: 11, userId: 1 });
     dbMock.tenant.findFirst.mockResolvedValue({ id: 200, propertyId: null });
+    dbMock.lease.findMany.mockResolvedValueOnce([]);
     dbMock.tenant.update.mockResolvedValue({ id: 200, propertyId: 11 });
     dbMock.lease.create.mockResolvedValue({ id: 300 });
     const res = await request(app).post("/api/properties/11/leases").set("Authorization", `Bearer ${token}`).send({
       tenantId: 200, startDate: "2026-01-01", endDate: "2026-12-31", monthlyRent: 12000, depositAmount: 12000
+    });
+    expect(res.status).toBe(201);
+  });
+
+  test("second current lease on same property is allowed (multiple tenants per property)", async () => {
+    dbMock.property.findFirst.mockResolvedValue({ id: 11, userId: 1 });
+    dbMock.tenant.findFirst.mockResolvedValue({ id: 201, propertyId: null });
+    dbMock.lease.findFirst.mockResolvedValue(null);
+    dbMock.tenant.update.mockResolvedValue({ id: 201, propertyId: 11 });
+    dbMock.lease.create.mockResolvedValue({ id: 302 });
+    dbMock.recurringIncomeRule.create.mockResolvedValue({});
+    const res = await request(app).post("/api/properties/11/leases").set("Authorization", `Bearer ${token}`).send({
+      tenantId: 201,
+      startDate: "2026-01-01",
+      endDate: "2027-01-01",
+      monthlyRent: 8000,
+      depositAmount: 8000
     });
     expect(res.status).toBe(201);
   });
@@ -223,9 +280,11 @@ describe("Owned properties phase 5", () => {
     // For the endpoint we call income.findMany twice and expense.findMany twice. Return 12-month data where:
     // income = 12000, operating expenses = 2400, bond expense entries = 6000, plus monthlyBondPayment estimate is ignored for NOI.
     dbMock.propertyIncome.findMany
-      .mockResolvedValueOnce([]) // month
-      .mockResolvedValueOnce([{ amount: 12000, incomeDate: new Date(), propertyId: 1 }]); // 12 months
+      .mockResolvedValueOnce([]) // month RECEIVED
+      .mockResolvedValueOnce([]) // month EXPECTED
+      .mockResolvedValueOnce([{ amount: 12000, incomeDate: new Date(), propertyId: 1 }]); // 12 months RECEIVED
     dbMock.propertyExpense.findMany
+      .mockResolvedValueOnce([]) // materialize recurring templates (none)
       .mockResolvedValueOnce([]) // month
       .mockResolvedValueOnce([
         { amount: 2400, category: "RATES_TAXES", expenseDate: new Date(), propertyId: 1 },
@@ -342,7 +401,10 @@ describe("Owned properties phase 5", () => {
     dbMock.calculation.findFirst.mockImplementationOnce(() => {
       throw new Error("boom");
     });
-    const reportRes = await request(app).post("/api/reports/1/generate").set("Authorization", `Bearer ${token}`).send({});
+    const reportRes = await request(app)
+      .post("/api/reports/generate")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ reportType: "CALCULATION", calculationId: 1 });
     expect(reportRes.status).toBe(500);
 
     dbMock.property.findMany.mockResolvedValue([]);
@@ -370,8 +432,15 @@ describe("Owned properties phase 5", () => {
 
   test("financial summary calculation", async () => {
     dbMock.property.findFirst.mockResolvedValueOnce({ id: 11, userId: 1, purchasePrice: 1000000, currentEstimatedValue: 1200000, leases: [{ status: "ACTIVE" }] });
-    dbMock.propertyExpense.findMany.mockResolvedValueOnce([{ amount: 1000, category: "RATES_TAXES" }]).mockResolvedValueOnce([{ amount: 1000, category: "RATES_TAXES" }]);
-    dbMock.propertyIncome.findMany.mockResolvedValueOnce([{ amount: 12000, category: "RENT" }]).mockResolvedValueOnce([{ amount: 12000, category: "RENT" }]);
+    dbMock.propertyExpense.findMany
+      .mockResolvedValueOnce([]) // materialize recurring templates (none)
+      .mockResolvedValueOnce([{ amount: 1000, category: "RATES_TAXES" }])
+      .mockResolvedValueOnce([{ amount: 1000, category: "RATES_TAXES" }]);
+    dbMock.propertyIncome.findMany
+      .mockResolvedValueOnce([{ amount: 12000, category: "RENT" }])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ amount: 12000, category: "RENT" }]);
+    dbMock.invoice.findMany.mockResolvedValue([]);
     dbMock.propertyIncome.groupBy.mockResolvedValue([]);
     dbMock.propertyExpense.groupBy.mockResolvedValue([]);
     const res = await request(app).get("/api/properties/11/financials/summary").set("Authorization", `Bearer ${token}`);
@@ -393,21 +462,39 @@ describe("Owned properties phase 5", () => {
   });
 
   test("invoice PDF generation", async () => {
+    dbMock.user.findUnique.mockResolvedValue({ id: 1 });
+    dbMock.invoice.findMany.mockResolvedValue([]);
+    dbMock.propertyIncome.findMany.mockResolvedValue([]);
     dbMock.invoice.findFirst.mockResolvedValue({
       id: 501,
+      userId: 1,
+      propertyId: 11,
+      tenantId: 200,
+      leaseId: null,
       invoiceNumber: "INV-2",
       invoiceDate: new Date(),
       dueDate: new Date(),
+      status: "DRAFT",
       subtotal: 12000,
       total: 12000,
       notes: "ok",
-      property: { name: "House", addressLine1: "1 Main", city: "Cape Town" },
-      tenant: { firstName: "Jane", lastName: "Doe", email: "jane@example.com" },
+      property: {
+        name: "House",
+        addressLine1: "1 Main",
+        addressLine2: null,
+        suburb: null,
+        city: "Cape Town",
+        province: "WC",
+        postalCode: null
+      },
+      tenant: { firstName: "Jane", lastName: "Doe", email: "jane@example.com", phone: null, idNumber: null },
+      lease: null,
       lineItems: [{ description: "Rent", quantity: 1, unitPrice: 12000, total: 12000 }]
     });
     dbMock.invoice.update.mockResolvedValue({ id: 501 });
     const res = await request(app).post("/api/invoices/501/generate-pdf").set("Authorization", `Bearer ${token}`);
     expect(res.status).toBe(200);
+    expect(res.body?.downloadUrl).toBe("/api/invoices/501/download");
   });
 
   test("recurring invoice rule creation", async () => {

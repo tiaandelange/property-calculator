@@ -1,4 +1,5 @@
 import type { Money, Percent } from "./calculatorTypes.js";
+import { solveIrrPeriodicCashFlows } from "./irrSolver.js";
 
 export function round2(n: number) {
   return Math.round((n + Number.EPSILON) * 100) / 100;
@@ -46,21 +47,12 @@ export function calculateAnnualDebtService(monthlyBondPayment: Money) {
   return monthlyBondPayment * 12;
 }
 
-// SARS Transfer Duty brackets (as provided in prompt)
-const transferDutyBrackets = [
-  { upTo: 1_210_000, base: 0, rate: 0, threshold: 0 },
-  { upTo: 1_663_800, base: 0, rate: 0.03, threshold: 1_210_000 },
-  { upTo: 2_329_300, base: 13_614, rate: 0.06, threshold: 1_663_800 },
-  { upTo: 2_994_800, base: 53_544, rate: 0.08, threshold: 2_329_300 },
-  { upTo: 13_310_000, base: 106_784, rate: 0.11, threshold: 2_994_800 },
-  { upTo: Infinity, base: 1_241_456, rate: 0.13, threshold: 13_310_000 }
-] as const;
+import { calculateTransferDutySA } from "./saTransferBondCosts.js";
 
+/** @deprecated Use `calculateTransferDutySA` with explicit transaction type; kept for other calculators that only pass price. */
 export function calculateTransferDutySouthAfrica(purchasePrice: Money) {
   assertNonNegative("Purchase price", purchasePrice);
-  const b = transferDutyBrackets.find((x) => purchasePrice <= x.upTo)!;
-  const duty = b.base + Math.max(0, (purchasePrice - b.threshold) * b.rate);
-  return round2(duty);
+  return calculateTransferDutySA(purchasePrice, "TRANSFER_DUTY");
 }
 
 export function calculateNOI(params: {
@@ -127,28 +119,8 @@ export function calculateNPV(params: { discountRatePercent: Percent; cashFlows: 
 }
 
 export function calculateIRR(params: { cashFlows: Money[] }) {
-  const cashFlows = params.cashFlows;
-  if (cashFlows.length < 2) return { irr: null as number | null, iterations: 0, converged: false };
-  const hasPos = cashFlows.some((c) => c > 0);
-  const hasNeg = cashFlows.some((c) => c < 0);
-  if (!hasPos || !hasNeg) return { irr: null as number | null, iterations: 0, converged: false };
-
-  let guess = 0.1;
-  for (let iter = 0; iter < 100; iter += 1) {
-    let npv = 0;
-    let d = 0;
-    for (let t = 0; t < cashFlows.length; t += 1) {
-      const cf = cashFlows[t];
-      npv += cf / (1 + guess) ** t;
-      if (t > 0) d -= (t * cf) / (1 + guess) ** (t + 1);
-    }
-    if (Math.abs(npv) < 1e-7) return { irr: guess, iterations: iter + 1, converged: true };
-    if (Math.abs(d) < 1e-12) break;
-    const next = guess - npv / d;
-    if (!Number.isFinite(next) || next <= -0.9999) break;
-    guess = next;
-  }
-  return { irr: null as number | null, iterations: 100, converged: false };
+  const irr = solveIrrPeriodicCashFlows(params.cashFlows);
+  return { irr: irr ?? null, iterations: 0, converged: irr !== null };
 }
 
 export function calculateAmortisationSchedule(params: {
