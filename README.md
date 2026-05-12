@@ -23,6 +23,7 @@ React + Vite + TS  ─►  Express + TS  ─►  PostgreSQL (Supabase)
 ├── docs/                     Architecture and deployment docs
 │   ├── ARCHITECTURE.md        ← read this first to understand the system
 │   ├── DEPLOYMENT.md          ← step-by-step production deploy
+│   ├── SECRETS.md             ← inventory, rotation cadence, CI/CD pattern
 │   └── deployment/            per-platform deep-dives
 ├── render.yaml               Render blueprint (provisions the backend)
 ├── railway.json              Railway config (alternative to Render)

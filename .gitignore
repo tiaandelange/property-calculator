@@ -1,12 +1,41 @@
+# =============================================================================
+# .gitignore
+#
+# Rule of thumb: anything starting with `.env` is potentially a secret. Only
+# the explicitly named *.example files below are allowed through.
+# =============================================================================
+
+# ---- env files ---------------------------------------------------------------
+# Real env files (any directory):
+.env
+.env.local
+.env.development
+.env.staging
+.env.production
+.env.*.local
+
+# But the committed templates are explicitly allowed through:
+!.env.example
+!.env.*.example
+!*.env.example
+
+# ---- build / dependency artefacts -------------------------------------------
 node_modules/
 dist/
 build/
-.env
-.env.local
-.env.*.local
-.env.production
 coverage/
+
+# ---- generated code ----------------------------------------------------------
 backend/generated/
+
+# ---- runtime / user data (should never be committed) ------------------------
 backend/uploads/
+backend/reports/
+backend/backups/
+
+# ---- editor / OS noise -------------------------------------------------------
 .DS_Store
+Thumbs.db
 *.log
+*.swp
+*.swo

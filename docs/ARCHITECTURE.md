@@ -168,11 +168,19 @@ What the codebase already protects you against:
 | `TRUST_PROXY`            | backend  | no                     | Number of upstream proxy hops to trust             |
 | `STRIPE_SECRET_KEY`      | backend  | only if using payments | `sk_live_...`                                      |
 | `STRIPE_WEBHOOK_SECRET`  | backend  | only if using payments | `whsec_...`; webhook returns 503 without it        |
-| `EMAIL_FROM`             | backend  | no                     | Display-only until SMTP is wired                   |
+| `EMAIL_FROM`             | backend  | no                     | "From" address used by emailService once SMTP is wired |
+| `SMTP_HOST`              | backend  | only if sending mail   | All four `SMTP_*` vars must be set together         |
+| `SMTP_PORT`              | backend  | only if sending mail   |                                                    |
+| `SMTP_USER`              | backend  | only if sending mail   |                                                    |
+| `SMTP_PASS`              | backend  | only if sending mail   | **Secret**                                         |
+| `SMTP_FROM`              | backend  | only if sending mail   | RFC 5322 "From:" header                            |
+| `REPORTS_ROOT_OVERRIDE`  | backend  | **dev/test only**      | Integration suite sets this automatically. Never set in prod. |
+| `TRUST_PROXY`            | backend  | no (default `1`)       | Hops to peel off X-Forwarded-For                    |
 | `VITE_API_BASE_URL`      | frontend | yes                    | **PUBLIC** — inlined into bundle                   |
 
 Anything **not** in this table is either dev-only or already wrong if it's
-in your env. Audit the list before each deploy.
+in your env. Audit the list before each deploy. The canonical inventory and
+rotation cadence live in [`SECRETS.md`](SECRETS.md).
 
 ## Future work
 

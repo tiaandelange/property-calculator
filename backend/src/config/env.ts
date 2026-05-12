@@ -1,8 +1,34 @@
+import path from "path";
 import dotenv from "dotenv";
-dotenv.config();
 
+/**
+ * Load env files in the same precedence order as Vite, Next.js and Astro.
+ * Files listed earlier WIN — once a key is set, later files cannot overwrite
+ * it (because we pass `override: false`):
+ *
+ *   1. .env.[NODE_ENV].local   (mode-specific + always-local; never committed)
+ *   2. .env.[NODE_ENV]         (mode-specific; only .env.example variants committed)
+ *   3. .env.local              (always-local; never committed)
+ *   4. .env                    (baseline; only .env.example committed)
+ *
+ * In production we DO NOT load `.env*` files at all — the platform (Render,
+ * Railway, etc.) injects env vars directly into the process. Anything read
+ * from disk in production would either be a noop or a misconfiguration smell.
+ */
 const nodeEnv = process.env.NODE_ENV ?? "development";
 const isProductionEnv = nodeEnv === "production";
+
+if (!isProductionEnv) {
+  const candidates = [
+    `.env.${nodeEnv}.local`,
+    `.env.${nodeEnv}`,
+    ".env.local",
+    ".env"
+  ];
+  for (const file of candidates) {
+    dotenv.config({ path: path.resolve(process.cwd(), file), override: false });
+  }
+}
 
 const DEV_JWT_SECRET_FALLBACK = "unsafe-dev-secret";
 
