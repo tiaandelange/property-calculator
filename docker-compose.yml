@@ -1,4 +1,17 @@
-version: "3.9"
+# LOCAL DEVELOPMENT compose. NEVER deploy this file to a production environment:
+#   - the frontend service runs the Vite dev server (HMR, source maps)
+#   - Postgres credentials default to the well-known "propertyguy" placeholders
+#   - the database is exposed on the loopback interface for local debugging tools
+#   - the backend exposes :4000 to the host so the Vite dev server can hit it directly
+#
+# For production deployments use ./docker-compose.prod.yml, which:
+#   - removes the dev server and ships a static SPA via nginx
+#   - keeps Postgres reachable only from inside the compose network
+#   - requires every credential to be supplied via the environment
+#   - drops capabilities, sets read-only filesystems, adds healthchecks
+#
+# Run with:  docker compose up -d --build
+
 services:
   backend:
     build:
@@ -9,25 +22,43 @@ services:
     env_file:
       - backend/.env
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent http://127.0.0.1:4000/api/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
   frontend:
     build:
       context: .
-      dockerfile: frontend/Dockerfile
+      dockerfile: frontend/Dockerfile.dev
     ports:
       - "5173:5173"
     depends_on:
       - backend
+
   db:
-    image: postgres:16
+    image: postgres:16-alpine
     restart: always
     environment:
-      POSTGRES_USER: propertyguy
-      POSTGRES_PASSWORD: propertyguy
-      POSTGRES_DB: propertyguy
+      POSTGRES_USER:     ${POSTGRES_USER:-propertyguy}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-propertyguy}
+      POSTGRES_DB:       ${POSTGRES_DB:-propertyguy}
+    # Loopback-only binding so the dev DB isn't reachable from other machines on
+    # the network even when run on a laptop on a shared Wi-Fi.
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-propertyguy} -d ${POSTGRES_DB:-propertyguy}"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
 volumes:
   pg_data:

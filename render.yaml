@@ -1,0 +1,62 @@
+# Render.com Blueprint — provisions the backend as a Docker-based Web Service.
+#
+# How to use:
+#   1. Push this repo to GitHub.
+#   2. In Render → New → Blueprint → connect this repo.
+#   3. Render reads this file and creates the service. You'll be prompted for
+#      every env var marked `sync: false` (everything that isn't safe to commit).
+#
+# What it does NOT do:
+#   - Provision a database. We use Supabase for that. Paste your Supabase
+#     connection string into the `DATABASE_URL` prompt.
+#   - Provision the frontend. The frontend lives on Vercel — see
+#     `frontend/vercel.json`.
+#
+# Reference: https://render.com/docs/blueprint-spec
+
+services:
+  - type: web
+    name: propertyguy-backend
+    runtime: docker
+    plan: starter           # bump to `standard` / `pro` once you have traffic
+    region: oregon          # change to your nearest region for lower latency
+    autoDeploy: true        # deploy on every push to the configured branch
+    branch: main
+
+    # Build context = repo root, so the backend Dockerfile sees the same paths
+    # it does locally. .dockerignore at the repo root keeps the context lean.
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: .
+
+    # Render hits this URL every 30 s. The backend's own Docker HEALTHCHECK
+    # already covers the container itself; this one tells Render's router when
+    # the service is ready to receive public traffic.
+    healthCheckPath: /api/health
+
+    envVars:
+      # ---- Fixed values that are safe to commit ------------------------------
+      - key: NODE_ENV
+        value: production
+      - key: TRUST_PROXY
+        # Cloudflare → Render → app = 2 hops. If you don't put Cloudflare in
+        # front of Render, change this to 1.
+        value: "2"
+      - key: JWT_EXPIRES_IN
+        value: 1h
+      - key: EMAIL_FROM
+        value: no-reply@example.com
+
+      # ---- Secrets — you'll be prompted for these in the Render UI ----------
+      - key: DATABASE_URL          # Supabase pooled connection string
+        sync: false
+      - key: FRONTEND_URLS         # comma-separated allow-list, e.g. https://app.example.com,https://www.example.com
+        sync: false
+      - key: STRIPE_SECRET_KEY     # leave blank if not using payments yet
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET # leave blank if not using payments yet
+        sync: false
+
+      # Render can mint this for us — we never need to see the value, the
+      # platform stores it as a secret and only this service can read it.
+      - key: JWT_SECRET
+        generateValue: true

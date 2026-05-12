@@ -1,10 +1,19 @@
 import { Router } from "express";
 import path from "node:path";
 import fs from "node:fs/promises";
-import multer from "multer";
 import type { RecurringExpenseMonthAnchor } from "@prisma/client";
 import { db } from "../config/db.js";
 import { AuthRequest, requireAuth } from "../middleware/auth.js";
+import { requireDownloadAuth } from "../middleware/downloadAuth.js";
+import { createSecureUploadInstance, discardUploadedFile } from "../utils/uploadStorage.js";
+import { detectFileKind, detectedKindMatchesExtension } from "../utils/mimeSniff.js";
+import {
+  buildContentDisposition,
+  safeExtensionFromOriginalName,
+  sanitizeDisplayFilename
+} from "../utils/safeFileNames.js";
+import { resolveWithinRootOrNull } from "../utils/safePaths.js";
+import { buildSignedDownloadUrl, signDownloadParams } from "../utils/downloadSignatures.js";
 import { sendInvoiceEmail } from "../services/emailService.js";
 import { leaseDisplayStatus, isCurrentLeaseStatus } from "../domains/properties/propertyLease.helpers.js";
 import {
@@ -15,7 +24,13 @@ import { computeFinancialSummary } from "../domains/properties/property.financia
 import { whereActiveExpensesForPortfolioMonthSnapshot } from "../domains/properties/propertyExpenseMonth.helpers.js";
 import { buildPropertyCreateInput } from "../domains/properties/property.creation.service.js";
 import { buildPropertyUpdateData } from "../domains/properties/property.update.service.js";
-import { buildPropertyAggregate, mapAggregateToLegacyDetail } from "../domains/properties/property.aggregate.service.js";
+import {
+  buildPropertyAggregate,
+  mapAggregateToLegacyDetail,
+  sanitizeAggregateForClient,
+  sanitizeInvoiceRow,
+  sanitizeDocumentRow
+} from "../domains/properties/property.aggregate.service.js";
 import {
   buildPortfolioAnalysisOverTime,
   buildPortfolioProjectionIrrCashFlows,
@@ -45,33 +60,31 @@ import {
   findActiveBondExpenseInDueMonth,
   postBondStatementRow
 } from "../domains/properties/property.bond.ledger.service.js";
-import { ensureReportsDirectory, getReportsRoot, resolveStoredPdfAbsolute } from "../config/reportsPaths.js";
+import {
+  ensureReportsDirectory,
+  getReportsRoot,
+  resolveStoredPdfAbsoluteOrNull
+} from "../config/reportsPaths.js";
 import { writePdfDefinitionToFile } from "../services/pdf/writePdfKitDocument.js";
 import { buildInvoicePdfDefinition } from "../services/pdf/invoicePdf.js";
 
 export const ownedPropertiesRoutes = Router();
 
+/**
+ * Property-document upload storage root. The directory is private to the
+ * server and never exposed to clients — frontends interact with it solely
+ * through the `/api/documents/:id/download` endpoint.
+ */
 const propertyDocDir = path.join(process.cwd(), "uploads/property-documents");
-void fs.mkdir(propertyDocDir, { recursive: true });
 
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => cb(null, propertyDocDir),
-  filename: (_req, file, cb) => cb(null, `${Date.now()}-${file.originalname.replace(/\s+/g, "-")}`)
-});
-const allowedMimeTypes = new Set([
-  "application/pdf",
-  "application/msword",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-  "image/jpeg",
-  "image/png"
-]);
-const upload = multer({
-  storage,
-  limits: { fileSize: 10 * 1024 * 1024 },
-  fileFilter: (_req, file, cb) => {
-    cb(null, allowedMimeTypes.has(file.mimetype));
-  }
-});
+/**
+ * Secure multer instance:
+ *   - server-generated UUID filenames (never `originalname`)
+ *   - allow-listed mime + extension pair (PDF, DOC/DOCX, JPG, PNG)
+ *   - 10 MiB cap, 1 file per request, bounded multipart field sizes
+ *   - file content is magic-byte sniffed AFTER multer finishes writing
+ */
+const documentUpload = createSecureUploadInstance(propertyDocDir);
 
 function monthBounds(d: Date) {
   const start = new Date(d.getFullYear(), d.getMonth(), 1);
@@ -196,6 +209,9 @@ ownedPropertiesRoutes.get("/properties", async (req: AuthRequest, res) => {
       const leaseMonthToMonth = currentLeaseRows.some((l: any) => l.displayStatus === "MONTH_TO_MONTH");
       return {
         ...p,
+        // Strip the internal `pdfPath` from every nested invoice before this
+        // row crosses the API boundary.
+        invoices: (p.invoices as any[]).map(sanitizeInvoiceRow),
         tenantStatus: currentLeaseRows.length > 0 ? "Occupied" : "Vacant",
         occupancyStatus,
         leaseDisplayStatus: displayStatus,
@@ -1428,7 +1444,7 @@ ownedPropertiesRoutes.get("/properties/:id/aggregate", async (req: AuthRequest, 
     const monthQ = typeof req.query.month === "string" ? req.query.month : undefined;
     const agg = await buildPropertyAggregate(req.userId!, id, { financialSummaryMonth: monthQ });
     if (!agg) return res.status(404).json({ message: "Property not found" });
-    return res.json(agg);
+    return res.json(sanitizeAggregateForClient(agg));
   } catch (err: any) {
     console.error("[ownedProperties] GET /properties/:id/aggregate failed", err?.stack ?? err);
     return res.status(500).json({ message: "Could not load property aggregate." });
@@ -1578,7 +1594,7 @@ ownedPropertiesRoutes.get("/properties/:propertyId/invoices/current", async (req
     if (!existing) return res.status(404).json({ message: "Property not found" });
     const month = typeof req.query.month === "string" ? req.query.month : null;
     const currentInvoice = await getCurrentInvoiceForMonth(req.userId!, propertyId, month);
-    return res.json({ currentInvoice });
+    return res.json({ currentInvoice: currentInvoice ? sanitizeInvoiceRow(currentInvoice) : null });
   } catch (err: any) {
     console.error("[ownedProperties] GET invoices/current failed", err?.stack ?? err);
     return res.status(500).json({ message: "Could not load invoice." });
@@ -2146,49 +2162,162 @@ ownedPropertiesRoutes.delete("/leases/:id", async (req: AuthRequest, res) => {
   return res.json({ message: "Archived lease", lease: updated });
 });
 
-ownedPropertiesRoutes.post("/properties/:propertyId/documents/upload", upload.single("file"), async (req: AuthRequest, res) => {
-  const propertyId = Number(req.params.propertyId);
-  const existing = await assertPropertyOwner(req.userId!, propertyId);
-  if (!existing) return res.status(404).json({ message: "Property not found" });
-  if (!req.file) return res.status(400).json({ message: "No file uploaded or file type invalid" });
-  const doc = await db.propertyDocument.create({
-    data: {
-      userId: req.userId!,
-      propertyId,
-      leaseId: req.body.leaseId ? Number(req.body.leaseId) : null,
-      documentType: req.body.documentType ?? "OTHER",
-      fileName: req.file.originalname,
-      filePath: req.file.path,
-      mimeType: req.file.mimetype,
-      fileSize: req.file.size
+/**
+ * Strip internal storage fields before returning a document to a client.
+ * `filePath` (server-side absolute path) and `mimeType` (sometimes useful but
+ * not needed by the UI) stay server-side; the client only sees a download URL
+ * plus user-friendly metadata.
+ */
+function presentDocument(doc: {
+  id: number;
+  propertyId: number;
+  leaseId: number | null;
+  documentType: string;
+  fileName: string;
+  fileSize: number;
+  uploadedAt: Date;
+}) {
+  return {
+    id: doc.id,
+    propertyId: doc.propertyId,
+    leaseId: doc.leaseId,
+    documentType: doc.documentType,
+    fileName: doc.fileName,
+    fileSize: doc.fileSize,
+    uploadedAt: doc.uploadedAt,
+    downloadUrl: `/api/documents/${doc.id}/download`
+  };
+}
+
+ownedPropertiesRoutes.post(
+  "/properties/:propertyId/documents/upload",
+  (req, res, next) => documentUpload.upload.single("file")(req, res, next),
+  async (req: AuthRequest, res) => {
+    const propertyId = Number(req.params.propertyId);
+    const existing = await assertPropertyOwner(req.userId!, propertyId);
+    if (!existing) {
+      await discardUploadedFile(req.file?.path);
+      return res.status(404).json({ message: "Property not found" });
     }
-  });
-  return res.status(201).json(doc);
-});
+    if (!req.file) {
+      // multer either rejected the mimetype/extension or no file was sent.
+      return res.status(400).json({ message: "No file uploaded or file type invalid" });
+    }
+
+    // Defence-in-depth: verify the saved file lives strictly under our upload
+    // root. multer's diskStorage already guarantees this, but a future change
+    // could weaken that — checking once costs nothing.
+    const safeAbsolute = resolveWithinRootOrNull(propertyDocDir, path.basename(req.file.path));
+    if (!safeAbsolute || safeAbsolute !== req.file.path) {
+      await discardUploadedFile(req.file.path);
+      return res.status(400).json({ message: "Upload rejected." });
+    }
+
+    // Magic-byte validation. We never trust the client-supplied Content-Type.
+    const ext = safeExtensionFromOriginalName(req.file.originalname || "");
+    const detected = await detectFileKind(req.file.path);
+    if (!detectedKindMatchesExtension(detected, ext)) {
+      await discardUploadedFile(req.file.path);
+      return res.status(400).json({ message: "Uploaded file contents do not match the declared type." });
+    }
+
+    const displayFileName = sanitizeDisplayFilename(req.file.originalname, `document.${ext}`);
+    const leaseId = req.body?.leaseId ? Number(req.body.leaseId) : null;
+    const documentType = typeof req.body?.documentType === "string" ? req.body.documentType : "OTHER";
+
+    const doc = await db.propertyDocument.create({
+      data: {
+        userId: req.userId!,
+        propertyId,
+        leaseId: Number.isInteger(leaseId) && (leaseId as number) > 0 ? leaseId : null,
+        documentType,
+        // Display label only; never re-used to build a filesystem path.
+        fileName: displayFileName,
+        // Server-controlled, basename-only — never the user's path.
+        filePath: path.basename(req.file.path),
+        mimeType: req.file.mimetype,
+        fileSize: req.file.size
+      }
+    });
+    return res.status(201).json(presentDocument(doc));
+  }
+);
 
 ownedPropertiesRoutes.get("/properties/:propertyId/documents", async (req: AuthRequest, res) => {
   const propertyId = Number(req.params.propertyId);
   const existing = await assertPropertyOwner(req.userId!, propertyId);
   if (!existing) return res.status(404).json({ message: "Property not found" });
-  return res.json(await db.propertyDocument.findMany({ where: { userId: req.userId!, propertyId }, orderBy: { uploadedAt: "desc" } }));
+  const docs = await db.propertyDocument.findMany({
+    where: { userId: req.userId!, propertyId },
+    orderBy: { uploadedAt: "desc" }
+  });
+  return res.json(docs.map(presentDocument));
 });
 
-ownedPropertiesRoutes.get("/documents/:id/download", async (req: AuthRequest, res) => {
+/**
+ * Mint a short-lived signed download URL for a property document. Use this in
+ * the frontend when the link must be hit directly by the browser (e.g. an
+ * `<a href>` click) — the bearer-header flow still works for AJAX downloads.
+ */
+ownedPropertiesRoutes.post("/documents/:id/sign-download", async (req: AuthRequest, res) => {
   const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ message: "Invalid document id." });
   const doc = await db.propertyDocument.findFirst({ where: { id, userId: req.userId! } });
   if (!doc) return res.status(404).json({ message: "Document not found" });
-  return res.download(doc.filePath, doc.fileName);
+  const parts = signDownloadParams({ userId: req.userId!, kind: "document", resourceId: id });
+  return res.json({
+    url: buildSignedDownloadUrl(`/api/documents/${id}/download`, parts),
+    expiresAt: parts.exp
+  });
 });
+
+ownedPropertiesRoutes.get(
+  "/documents/:id/download",
+  requireDownloadAuth("document", "id"),
+  async (req: AuthRequest, res) => {
+    const id = Number(req.params.id);
+    const doc = await db.propertyDocument.findFirst({ where: { id, userId: req.userId! } });
+    if (!doc) return res.status(404).json({ message: "Document not found" });
+
+    // The DB row may contain either a basename (new behaviour) or, for legacy
+    // rows, an absolute path written by older builds. Either way, we re-derive
+    // the absolute location by resolving the basename strictly inside the
+    // upload root — so a stale absolute path or any `..` segment is rejected.
+    const basename = path.basename(doc.filePath);
+    const absolutePath = resolveWithinRootOrNull(propertyDocDir, basename);
+    if (!absolutePath) {
+      console.warn("[ownedProperties] refusing to serve document outside upload root", { id });
+      return res.status(404).json({ message: "Document not found" });
+    }
+    try {
+      await fs.access(absolutePath);
+    } catch {
+      return res.status(404).json({ message: "Document file is missing." });
+    }
+
+    res.setHeader("Content-Type", typeof doc.mimeType === "string" && doc.mimeType ? doc.mimeType : "application/octet-stream");
+    res.setHeader(
+      "Content-Disposition",
+      buildContentDisposition({ displayName: doc.fileName, fallback: "document" })
+    );
+    return res.sendFile(absolutePath);
+  }
+);
 
 ownedPropertiesRoutes.delete("/documents/:id", async (req: AuthRequest, res) => {
   const id = Number(req.params.id);
   const doc = await db.propertyDocument.findFirst({ where: { id, userId: req.userId! } });
   if (!doc) return res.status(404).json({ message: "Document not found" });
   await db.propertyDocument.delete({ where: { id } });
-  try {
-    await fs.unlink(doc.filePath);
-  } catch {
-    // noop for missing files
+
+  const basename = path.basename(doc.filePath);
+  const absolutePath = resolveWithinRootOrNull(propertyDocDir, basename);
+  if (absolutePath) {
+    try {
+      await fs.unlink(absolutePath);
+    } catch {
+      // noop for missing/already-deleted files
+    }
   }
   return res.json({ message: "Deleted" });
 });
@@ -2589,17 +2718,30 @@ ownedPropertiesRoutes.put("/income/:id", async (req: AuthRequest, res) => {
   return res.json({ income: updated });
 });
 
+/**
+ * Strip the internal `pdfPath` (server-side storage location) from any invoice
+ * row before it crosses the API boundary. Replaces it with a `hasPdf` boolean
+ * + `downloadUrl` the frontend can use directly.
+ */
+function presentInvoice<T extends { id: number; pdfPath: string | null }>(inv: T): Omit<T, "pdfPath"> & { hasPdf: boolean; downloadUrl: string | null } {
+  const { pdfPath, ...rest } = inv;
+  return {
+    ...(rest as Omit<T, "pdfPath">),
+    hasPdf: Boolean(pdfPath),
+    downloadUrl: pdfPath ? `/api/invoices/${inv.id}/download` : null
+  };
+}
+
 ownedPropertiesRoutes.get("/properties/:propertyId/invoices", async (req: AuthRequest, res) => {
   const propertyId = Number(req.params.propertyId);
   const existing = await assertPropertyOwner(req.userId!, propertyId);
   if (!existing) return res.status(404).json({ message: "Property not found" });
-  return res.json(
-    await db.invoice.findMany({
-      where: { userId: req.userId!, propertyId },
-      include: { lineItems: true, tenant: true },
-      orderBy: { createdAt: "desc" }
-    })
-  );
+  const rows = await db.invoice.findMany({
+    where: { userId: req.userId!, propertyId },
+    include: { lineItems: true, tenant: true },
+    orderBy: { createdAt: "desc" }
+  });
+  return res.json(rows.map((r) => presentInvoice(r)));
 });
 
 ownedPropertiesRoutes.post("/properties/:propertyId/invoices", async (req: AuthRequest, res) => {
@@ -2637,7 +2779,7 @@ ownedPropertiesRoutes.post("/properties/:propertyId/invoices", async (req: AuthR
     },
     include: { lineItems: true }
   });
-  return res.status(201).json(created);
+  return res.status(201).json(presentInvoice(created));
 });
 
 ownedPropertiesRoutes.delete("/invoices/:id/hard", async (req: AuthRequest, res) => {
@@ -2646,10 +2788,13 @@ ownedPropertiesRoutes.delete("/invoices/:id/hard", async (req: AuthRequest, res)
   const existing = await db.invoice.findFirst({ where: { id, userId: req.userId! } });
   if (!existing) return res.status(404).json({ message: "Invoice not found" });
   if (existing.pdfPath) {
-    try {
-      await fs.unlink(resolveStoredPdfAbsolute(existing.pdfPath));
-    } catch {
-      /* ignore missing file */
+    const safeAbs = resolveStoredPdfAbsoluteOrNull(existing.pdfPath);
+    if (safeAbs) {
+      try {
+        await fs.unlink(safeAbs);
+      } catch {
+        /* ignore missing file */
+      }
     }
   }
   await db.invoice.delete({ where: { id } });
@@ -2663,7 +2808,7 @@ ownedPropertiesRoutes.get("/invoices/:id", async (req: AuthRequest, res) => {
     include: { lineItems: true, property: true, tenant: true }
   });
   if (!invoice) return res.status(404).json({ message: "Invoice not found" });
-  return res.json(invoice);
+  return res.json(presentInvoice(invoice));
 });
 
 ownedPropertiesRoutes.put("/invoices/:id", async (req: AuthRequest, res) => {
@@ -2682,14 +2827,14 @@ ownedPropertiesRoutes.put("/invoices/:id", async (req: AuthRequest, res) => {
       subtotal: req.body.total != null ? nextTotal : existing.subtotal
     }
   });
-  return res.json(updated);
+  return res.json(presentInvoice(updated));
 });
 
 ownedPropertiesRoutes.post("/invoices/:id/generate-pdf", async (req: AuthRequest, res) => {
   try {
     await ensureReportsDirectory();
     const id = Number(req.params.id);
-    if (!Number.isFinite(id)) return res.status(400).json({ message: "Invalid invoice id." });
+    if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ message: "Invalid invoice id." });
 
     const prior = await db.invoice.findFirst({
       where: { id, userId: req.userId! },
@@ -2698,55 +2843,90 @@ ownedPropertiesRoutes.post("/invoices/:id/generate-pdf", async (req: AuthRequest
     if (!prior) return res.status(404).json({ message: "Invoice not found." });
 
     if (prior.pdfPath) {
-      try {
-        await fs.unlink(resolveStoredPdfAbsolute(prior.pdfPath));
-      } catch {
-        /* stale path from older builds (e.g. uploads/) or missing file — regenerate cleanly */
+      const safeAbs = resolveStoredPdfAbsoluteOrNull(prior.pdfPath);
+      if (safeAbs) {
+        try {
+          await fs.unlink(safeAbs);
+        } catch {
+          /* stale path or missing file — regenerate cleanly */
+        }
       }
     }
 
     const built = await buildInvoicePdfDefinition(id, req.userId!);
     if (!built.ok) return res.status(built.status).json({ message: built.message });
 
+    // `built.fileName` is server-generated; resolve it strictly inside the
+    // reports root so a future refactor cannot accidentally write elsewhere.
     const absolutePath = path.join(getReportsRoot(), built.fileName);
+    if (!resolveStoredPdfAbsoluteOrNull(built.fileName)) {
+      // This should never happen because the basename is server-generated; if
+      // it does, abort instead of writing.
+      return res.status(500).json({ message: "Failed to generate invoice PDF." });
+    }
     await writePdfDefinitionToFile(built.definition, absolutePath);
     await db.invoice.update({ where: { id }, data: { pdfPath: built.fileName } });
     return res.json({
       message: "Invoice PDF generated",
-      fileName: built.fileName,
+      hasPdf: true,
       downloadUrl: `/api/invoices/${id}/download`
     });
   } catch (err: any) {
     console.error("[ownedProperties] POST invoices/:id/generate-pdf failed", err?.stack ?? err);
-    const hint =
-      typeof err?.message === "string" && process.env.NODE_ENV !== "production"
-        ? ` (${err.message})`
-        : "";
-    return res.status(500).json({ message: `Failed to generate invoice PDF.${hint}` });
+    return res.status(500).json({ message: "Failed to generate invoice PDF." });
   }
 });
 
-ownedPropertiesRoutes.get("/invoices/:id/download", async (req: AuthRequest, res) => {
-  try {
-    const id = Number(req.params.id);
-    const invoice = await db.invoice.findFirst({ where: { id, userId: req.userId! } });
-    if (!invoice) return res.status(404).json({ message: "Invoice not found" });
-    if (!invoice.pdfPath) return res.status(404).json({ message: "Invoice PDF not generated yet." });
-    const absolutePath = resolveStoredPdfAbsolute(invoice.pdfPath);
+/**
+ * Mint a short-lived signed download URL for an invoice PDF. Same rationale
+ * as the document/report variants — needed for direct browser navigation.
+ */
+ownedPropertiesRoutes.post("/invoices/:id/sign-download", async (req: AuthRequest, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ message: "Invalid invoice id." });
+  const invoice = await db.invoice.findFirst({
+    where: { id, userId: req.userId! },
+    select: { id: true, pdfPath: true }
+  });
+  if (!invoice) return res.status(404).json({ message: "Invoice not found" });
+  if (!invoice.pdfPath) return res.status(404).json({ message: "Invoice PDF not generated yet." });
+  const parts = signDownloadParams({ userId: req.userId!, kind: "invoice", resourceId: id });
+  return res.json({
+    url: buildSignedDownloadUrl(`/api/invoices/${id}/download`, parts),
+    expiresAt: parts.exp
+  });
+});
+
+ownedPropertiesRoutes.get(
+  "/invoices/:id/download",
+  requireDownloadAuth("invoice", "id"),
+  async (req: AuthRequest, res) => {
     try {
-      await fs.access(absolutePath);
-    } catch {
-      return res.status(404).json({ message: "PDF file is missing on disk. Generate the invoice PDF again." });
+      const id = Number(req.params.id);
+      const invoice = await db.invoice.findFirst({ where: { id, userId: req.userId! } });
+      if (!invoice) return res.status(404).json({ message: "Invoice not found" });
+      if (!invoice.pdfPath) return res.status(404).json({ message: "Invoice PDF not generated yet." });
+
+      const absolutePath = resolveStoredPdfAbsoluteOrNull(invoice.pdfPath);
+      if (!absolutePath) {
+        console.warn("[ownedProperties] refusing to serve invoice PDF outside reports root", { id });
+        return res.status(404).json({ message: "Invoice not found" });
+      }
+      try {
+        await fs.access(absolutePath);
+      } catch {
+        return res.status(404).json({ message: "PDF file is missing on disk. Generate the invoice PDF again." });
+      }
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader(
+        "Content-Disposition",
+        buildContentDisposition({ displayName: `invoice-${id}.pdf`, fallback: `invoice-${id}.pdf` })
+      );
+      return res.sendFile(absolutePath);
+    } catch (err: any) {
+      console.error("[ownedProperties] GET invoices/:id/download failed", err?.stack ?? err);
+      return res.status(500).json({ message: "Failed to download invoice PDF." });
     }
-    const safeName =
-      path.basename(invoice.pdfPath).replace(/[^\w.\-]+/g, "_") || `invoice-${id}.pdf`;
-    res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", `attachment; filename="${safeName}"`);
-    return res.sendFile(path.resolve(absolutePath));
-  } catch (err: any) {
-    console.error("[ownedProperties] GET invoices/:id/download failed", err?.stack ?? err);
-    return res.status(500).json({ message: "Failed to download invoice PDF." });
-  }
 });
 
 ownedPropertiesRoutes.post("/invoices/:id/mark-paid", async (req: AuthRequest, res) => {
@@ -2864,7 +3044,7 @@ ownedPropertiesRoutes.post("/recurring-invoices/run-due", async (req: AuthReques
     const nextRun = new Date(rule.nextRunDate);
     nextRun.setMonth(nextRun.getMonth() + 1);
     await db.recurringInvoiceRule.update({ where: { id: rule.id }, data: { nextRunDate: nextRun } });
-    generated.push(invoice);
+    generated.push(presentInvoice(invoice));
   }
 
   return res.json({

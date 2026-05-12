@@ -1,0 +1,89 @@
+# Files excluded from Docker build contexts.
+#
+# Goals:
+#   1. Never bake .env files / secrets into images.
+#   2. Never ship local node_modules / build outputs (the Dockerfile rebuilds them).
+#   3. Never ship user-generated data (uploads, reports, backups, the local DB volume).
+#   4. Keep the build context small so transfers to the daemon stay fast.
+
+# --- Secrets ---------------------------------------------------------------
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+
+# --- VCS / metadata --------------------------------------------------------
+.git
+.gitignore
+.gitattributes
+.dockerignore
+.github
+.gitlab-ci.yml
+**/.git
+
+# --- Build tooling files we don't need inside the image --------------------
+# The Dockerfiles themselves are read by `docker build` BEFORE this list takes
+# effect, so excluding them here is safe and shrinks the context.
+Dockerfile
+Dockerfile.*
+**/Dockerfile
+**/Dockerfile.*
+docker-compose*.yml
+**/docker-compose*.yml
+
+# --- Node ------------------------------------------------------------------
+node_modules
+**/node_modules
+npm-debug.log
+**/npm-debug.log
+yarn-error.log
+**/yarn-error.log
+.pnpm-store
+.npm
+
+# --- Build outputs (rebuilt inside Docker) --------------------------------
+backend/dist
+frontend/dist
+backend/generated
+**/coverage
+**/.turbo
+**/.next
+
+# --- Runtime / user data ---------------------------------------------------
+backend/uploads
+backend/reports
+backend/backups
+
+# --- Editor / OS -----------------------------------------------------------
+.vscode
+.idea
+.cursor
+.DS_Store
+Thumbs.db
+*.log
+**/*.log
+*.swp
+*.swo
+
+# --- Tests / docs / tooling that the runtime image doesn't need -----------
+**/*.test.ts
+**/*.test.tsx
+**/__snapshots__
+**/__tests__
+docs
+*.md
+**/*.md
+!backend/prisma/migrations/**/*.sql
+LICENSE
+LICENSE.*
+NOTICE
+NOTICE.*
+
+# --- CI/IDE config that isn't useful at runtime ---------------------------
+.editorconfig
+.prettierrc*
+.eslintrc*
+**/.prettierrc*
+**/.eslintrc*

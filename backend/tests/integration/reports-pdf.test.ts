@@ -4,6 +4,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import os from "node:os";
 import { env } from "../../src/config/env";
+import { signDownloadParams, buildSignedDownloadUrl } from "../../src/utils/downloadSignatures";
 
 jest.mock("../../src/domains/properties/property.statement.service.js", () => ({
   buildPropertyStatement: jest.fn()
@@ -126,7 +127,12 @@ describe("reports & invoice PDF API", () => {
       .send({ reportType: "PROPERTY_SUMMARY", propertyId: 3 });
     expect(res.status).toBe(201);
     expect(res.body.reportId).toBe(77);
-    const abs = path.join(reportsDir, res.body.fileName);
+    expect(res.body.downloadUrl).toBe("/api/reports/77/download");
+    // The server-generated filename never leaks in the response; we read it
+    // back from the captured `storedReport.create` argument instead.
+    const captured = dbMock.storedReport.create.mock.calls.at(-1)?.[0]?.data?.fileName as string;
+    expect(typeof captured).toBe("string");
+    const abs = path.join(reportsDir, captured);
     const buf = await fs.readFile(abs);
     expect(buf.length).toBeGreaterThan(4);
     expect(buf.subarray(0, 4).toString()).toBe("%PDF");
@@ -209,7 +215,13 @@ describe("reports & invoice PDF API", () => {
 
     const gen = await request(app).post("/api/invoices/44/generate-pdf").set("Authorization", `Bearer ${signToken(1)}`);
     expect(gen.status).toBe(200);
-    const rel = gen.body.fileName as string;
+    expect(gen.body.hasPdf).toBe(true);
+    expect(gen.body.downloadUrl).toBe("/api/invoices/44/download");
+    // The internal storage path is never returned; reconstruct it from the
+    // captured `invoice.update` argument instead.
+    const updateCall = dbMock.invoice.update.mock.calls.at(-1)?.[0];
+    const rel = updateCall?.data?.pdfPath as string;
+    expect(typeof rel).toBe("string");
     const abs = path.join(reportsDir, rel);
     const buf = await fs.readFile(abs);
     expect(buf.length).toBeGreaterThan(4);
@@ -219,5 +231,97 @@ describe("reports & invoice PDF API", () => {
     const dl = await request(app).get("/api/invoices/44/download").set("Authorization", `Bearer ${signToken(1)}`).buffer(true);
     expect(dl.status).toBe(200);
     expect(String(dl.headers["content-type"])).toMatch(/application\/pdf/);
+    expect(String(dl.headers["content-disposition"] ?? "")).toMatch(/filename="invoice-44.pdf"/);
+    expect(String(dl.headers["content-disposition"] ?? "")).toMatch(/filename\*=UTF-8''/);
+  });
+
+  test("report download refuses to serve files outside the reports root (path traversal)", async () => {
+    dbMock.storedReport.findFirst.mockResolvedValue({
+      id: 11,
+      userId: 1,
+      fileName: "../../etc/passwd",
+      reportType: "PROPERTY_SUMMARY",
+      calculationId: null,
+      propertyId: null,
+      invoiceId: null,
+      scenarioName: null,
+      createdAt: new Date()
+    });
+    const res = await request(app).get("/api/reports/11/download").set("Authorization", `Bearer ${signToken(1)}`);
+    expect(res.status).toBe(404);
+  });
+
+  test("report download refuses absolute paths stored in DB (legacy rows)", async () => {
+    dbMock.storedReport.findFirst.mockResolvedValue({
+      id: 12,
+      userId: 1,
+      fileName: "/etc/passwd",
+      reportType: "PROPERTY_SUMMARY",
+      calculationId: null,
+      propertyId: null,
+      invoiceId: null,
+      scenarioName: null,
+      createdAt: new Date()
+    });
+    const res = await request(app).get("/api/reports/12/download").set("Authorization", `Bearer ${signToken(1)}`);
+    expect(res.status).toBe(404);
+  });
+
+  test("signed download URL grants single-use-ish access without JWT header", async () => {
+    const fname = "signed-report.pdf";
+    await fs.writeFile(path.join(reportsDir, fname), Buffer.from("%PDF-1.4 x"));
+    dbMock.storedReport.findFirst.mockResolvedValue({
+      id: 21,
+      userId: 1,
+      fileName: fname,
+      reportType: "PROPERTY_SUMMARY",
+      calculationId: null,
+      propertyId: 1,
+      invoiceId: null,
+      scenarioName: null,
+      createdAt: new Date()
+    });
+    const sign = await request(app).post("/api/reports/21/sign-download").set("Authorization", `Bearer ${signToken(1)}`);
+    expect(sign.status).toBe(200);
+    expect(typeof sign.body.url).toBe("string");
+    expect(sign.body.url).toMatch(/\?exp=\d+&uid=1&sig=/);
+
+    // Now use the signed URL — note: NO Authorization header.
+    const signedPath = sign.body.url as string;
+    const dl = await request(app).get(signedPath).buffer(true);
+    expect(dl.status).toBe(200);
+    expect(String(dl.headers["content-type"])).toMatch(/application\/pdf/);
+  });
+
+  test("signed download URL fails when the signature targets a different resource id", async () => {
+    dbMock.storedReport.findFirst.mockResolvedValue({
+      id: 31,
+      userId: 1,
+      fileName: "x.pdf",
+      reportType: "PROPERTY_SUMMARY",
+      calculationId: null,
+      propertyId: null,
+      invoiceId: null,
+      scenarioName: null,
+      createdAt: new Date()
+    });
+    const sign = await request(app).post("/api/reports/31/sign-download").set("Authorization", `Bearer ${signToken(1)}`);
+    expect(sign.status).toBe(200);
+    // Replay the signature against id=99 instead of id=31 — must fail.
+    const tampered = String(sign.body.url).replace("/api/reports/31/download", "/api/reports/99/download");
+    const dl = await request(app).get(tampered);
+    expect(dl.status).toBe(401);
+  });
+
+  test("signed download URL is rejected once expired", async () => {
+    // The verifier short-circuits on `exp < now()`, so a URL whose `exp` field
+    // is in the past is rejected even if the (mismatched) signature were
+    // otherwise plausible. This protects against URLs leaking into logs/email
+    // and being replayed later.
+    const live = signDownloadParams({ userId: 1, kind: "report", resourceId: 41, ttlSeconds: 60 });
+    const expired = { ...live, exp: Math.floor(Date.now() / 1000) - 60 };
+    const expiredUrl = buildSignedDownloadUrl(`/api/reports/41/download`, expired);
+    const dl = await request(app).get(expiredUrl);
+    expect(dl.status).toBe(401);
   });
 });

@@ -1,0 +1,20 @@
+# Vite dev server image. INTENDED FOR LOCAL DEVELOPMENT ONLY.
+# Never reference this Dockerfile from a production compose/Kubernetes manifest.
+# Production deployments must use ./frontend/Dockerfile, which builds a static
+# bundle and serves it via nginx-unprivileged.
+
+FROM node:20-alpine
+
+WORKDIR /app
+
+COPY frontend/package*.json ./
+# `npm ci` rather than `npm install` so dev installs use the lockfile too —
+# keeps dev/CI/prod resolutions identical.
+RUN npm ci --no-audit --no-fund
+
+COPY frontend .
+
+EXPOSE 5173
+# `--host` so the dev server is reachable from the host (and other containers)
+# rather than only on the container's localhost.
+CMD ["npm", "run", "dev", "--", "--host"]

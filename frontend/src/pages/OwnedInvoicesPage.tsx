@@ -119,7 +119,7 @@ export function OwnedInvoicesPage() {
                   <Button
                     variant="ghost"
                     loading={invoicePdfBusyId === inv.id}
-                    disabled={!inv.pdfPath}
+                    disabled={!inv.hasPdf}
                     onClick={() => void downloadPdf(inv.id, inv.invoiceNumber)}
                   >
                     Download PDF

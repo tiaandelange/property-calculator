@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import fsSync from "node:fs";
 import path from "node:path";
+import { resolveWithinRoot, resolveWithinRootOrNull } from "../utils/safePaths.js";
 
 /** Override for tests via REPORTS_ROOT_OVERRIDE */
 export function getReportsRoot(): string {
@@ -15,9 +16,20 @@ export async function ensureReportsDirectory(): Promise<void> {
   await fs.mkdir(path.join(root, "invoices"), { recursive: true });
 }
 
-export function resolveStoredPdfAbsolute(relativeOrAbsolute: string): string {
-  if (path.isAbsolute(relativeOrAbsolute)) return relativeOrAbsolute;
-  return path.join(getReportsRoot(), relativeOrAbsolute);
+/**
+ * Resolve a stored PDF location strictly inside `getReportsRoot()`.
+ *
+ * Throws if `relative` is absolute, contains traversal, or otherwise escapes
+ * the reports root. Used by every download handler so a malicious/legacy DB
+ * row cannot make us serve files from elsewhere on disk.
+ */
+export function resolveStoredPdfAbsolute(relative: string): string {
+  return resolveWithinRoot(getReportsRoot(), relative);
+}
+
+/** Same as `resolveStoredPdfAbsolute` but returns `null` on any error. */
+export function resolveStoredPdfAbsoluteOrNull(relative: string): string | null {
+  return resolveWithinRootOrNull(getReportsRoot(), relative);
 }
 
 export async function reportsDirectoryWritable(): Promise<boolean> {

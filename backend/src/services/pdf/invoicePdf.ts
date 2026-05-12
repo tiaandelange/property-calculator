@@ -2,6 +2,7 @@ import type { InvoiceLineItem } from "@prisma/client";
 import type { TDocumentDefinitions } from "pdfmake/interfaces";
 import { db } from "../../config/db.js";
 import { readInvoicePaymentDetails } from "../../utils/invoicePaymentDetails.js";
+import { generateReportBasename } from "../../utils/safeFileNames.js";
 
 const m = (l: number, t: number, r: number, b: number) => [l, t, r, b] as [number, number, number, number];
 
@@ -257,6 +258,6 @@ export async function buildInvoicePdfDefinition(
     defaultStyle: { font: "Roboto", fontSize: 10 }
   };
 
-  const fileName = `invoices/invoice-${invoice.id}-${Date.now()}.pdf`;
+  const fileName = `invoices/${generateReportBasename("invoice", Number(invoice.id))}`;
   return { ok: true, definition, fileName };
 }

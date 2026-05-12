@@ -165,16 +165,50 @@ export async function buildPropertyAggregate(
   };
 }
 
+/**
+ * Strip internal filesystem fields (`pdfPath`, `filePath`) from any invoice /
+ * document record before it is serialised to a client.
+ */
+export function sanitizeInvoiceRow(inv: any): any {
+  if (!inv || typeof inv !== "object") return inv;
+  const { pdfPath, ...rest } = inv as { pdfPath?: string | null; id?: number };
+  return {
+    ...rest,
+    hasPdf: Boolean(pdfPath),
+    downloadUrl: pdfPath && typeof rest.id === "number" ? `/api/invoices/${rest.id}/download` : null
+  };
+}
+export function sanitizeDocumentRow(doc: any): any {
+  if (!doc || typeof doc !== "object") return doc;
+  const { filePath, ...rest } = doc as { filePath?: string | null; id?: number };
+  return {
+    ...rest,
+    downloadUrl: typeof rest.id === "number" ? `/api/documents/${rest.id}/download` : null
+  };
+}
+
+/**
+ * Return a client-safe copy of a PropertyAggregate with internal filesystem
+ * fields stripped from every nested invoice / document.
+ */
+export function sanitizeAggregateForClient(agg: PropertyAggregate): PropertyAggregate {
+  return {
+    ...agg,
+    invoices: (agg.invoices as unknown[]).map(sanitizeInvoiceRow),
+    documents: (agg.documents as unknown[]).map(sanitizeDocumentRow)
+  };
+}
+
 /** Flatten aggregate into the legacy GET /properties/:id JSON shape expected by older clients. */
 export function mapAggregateToLegacyDetail(agg: PropertyAggregate) {
   return {
     ...(agg.property as object),
     tenants: agg.tenants,
     leases: agg.leases,
-    documents: agg.documents,
+    documents: (agg.documents as unknown[]).map(sanitizeDocumentRow),
     incomeEntries: agg.incomeEntries,
     expenses: agg.expenses,
-    invoices: agg.invoices,
+    invoices: (agg.invoices as unknown[]).map(sanitizeInvoiceRow),
     recurringIncomeRules: agg.recurringIncomeRules,
     financialSummary: agg.financialSummary,
     occupancyStatus: agg.occupancyStatus,

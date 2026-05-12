@@ -65,6 +65,24 @@ export function OwnedDocumentsPage() {
     }
   };
 
+  /**
+   * Open a document via a server-signed short-lived URL. The browser does not
+   * send the `Authorization` header on plain `<a href>` clicks, so the older
+   * approach silently 401'd. We now ask the API for a signed URL bound to
+   * `(user, document, exp)` and navigate to that.
+   */
+  const downloadDocument = async (id: number) => {
+    try {
+      const res = await api.post(`/documents/${id}/sign-download`, undefined, { headers: authHeader() });
+      const url = res.data?.url as string | undefined;
+      if (!url) throw new Error("Could not get signed download URL.");
+      const baseHost = (import.meta.env.VITE_API_BASE_URL ?? import.meta.env.VITE_API_URL ?? "http://localhost:4000/api").replace(/\/api\/?$/, "");
+      window.open(`${baseHost}${url}`, "_blank", "noopener,noreferrer");
+    } catch (err: any) {
+      setError(err?.response?.data?.message ?? "Download failed");
+    }
+  };
+
   return (
     <Section>
       <Helmet><title>Documents | The Property Guy</title></Helmet>
@@ -89,7 +107,7 @@ export function OwnedDocumentsPage() {
               <div key={d.id} style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
                 <span>{d.fileName} ({d.documentType})</span>
                 <span style={{ display: "flex", gap: 8 }}>
-                  <a className="pg-btn pg-btn-ghost" href={`${import.meta.env.VITE_API_BASE_URL ?? import.meta.env.VITE_API_URL ?? "http://localhost:4000/api"}/documents/${d.id}/download`}>Download</a>
+                  <Button variant="ghost" onClick={() => void downloadDocument(d.id)}>Download</Button>
                   <Button variant="ghost" onClick={() => remove(d.id)}>Delete</Button>
                 </span>
               </div>

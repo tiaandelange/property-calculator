@@ -1,0 +1,155 @@
+# Production compose. Run with:
+#
+#   docker compose -f docker-compose.prod.yml up -d
+#
+# This file is opinionated about the production topology:
+#
+#                ┌──────────────────────────┐
+#                │   nginx (frontend:80)    │  ◄── only port exposed to the host
+#                │   /            → SPA     │
+#                │   /api/...     → backend │
+#                │   /healthz     → 200 OK  │
+#                └────────────┬─────────────┘
+#                             │
+#                ┌────────────▼─────────────┐
+#                │   backend (no host port) │
+#                │   node dist/server.js    │
+#                └────────────┬─────────────┘
+#                             │
+#                ┌────────────▼─────────────┐
+#                │   postgres (no host port)│
+#                └──────────────────────────┘
+#
+# - Postgres is reachable only from inside the compose network.
+# - The backend has no host port mapping; it's reachable only from nginx.
+# - Only the frontend container exposes a port (80) to the host.
+#
+# Secrets are read from the environment with NO defaults — Compose refuses to
+# start if any required variable is missing, which prevents accidental boots
+# with placeholder credentials. Provide them via a CI/CD secret manager or an
+# .env file that is NEVER committed to git.
+#
+# Required environment variables:
+#   POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB
+#   JWT_SECRET                  (>= 32 chars, non-placeholder)
+#   FRONTEND_URL                (e.g. https://app.thepropertyguy.co.za)
+# Optional:
+#   JWT_EXPIRES_IN              (default: 1h)
+#   EMAIL_FROM                  (default: no-reply@thepropertyguy.co.za)
+#   STRIPE_SECRET_KEY           (without it /checkout falls back to a mock)
+#   STRIPE_WEBHOOK_SECRET       (without it /api/subscription/webhook returns 503)
+#   VITE_API_BASE_URL           (default: /api — same-origin via nginx proxy)
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    image: propertyguy-backend:prod
+    restart: unless-stopped
+    # NO `ports:` mapping. The backend is reachable only from the frontend
+    # nginx container via the docker network. The public internet has no
+    # route to port 4000.
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      DATABASE_URL: "postgresql://${POSTGRES_USER:?POSTGRES_USER is required}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@db:5432/${POSTGRES_DB:?POSTGRES_DB is required}?schema=public"
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-1h}
+      FRONTEND_URL: ${FRONTEND_URL:?FRONTEND_URL is required}
+      EMAIL_FROM: ${EMAIL_FROM:-no-reply@thepropertyguy.co.za}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+    # Persistent storage for user-generated files. Bind to named volumes so the
+    # data survives `docker compose down` and image rebuilds. The Dockerfile
+    # `mkdir`'s these paths with the right owner before the first run.
+    volumes:
+      - backend_reports:/app/reports
+      - backend_uploads:/app/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+    # Linux capability hardening — drop everything, then add back only the
+    # specific capabilities Node needs (none on a typical Linux setup).
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent http://127.0.0.1:4000/api/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        # Same-origin /api in production — nginx (this service) handles the
+        # proxy to the backend, so the bundle never needs a fully-qualified
+        # API URL baked in.
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-/api}
+    image: propertyguy-frontend:prod
+    restart: unless-stopped
+    # The container listens on 8080 (non-root). We publish that on host :80.
+    ports:
+      - "80:8080"
+    depends_on:
+      backend:
+        condition: service_healthy
+    cap_drop:
+      - ALL
+    # nginx needs to write to a few ephemeral directories (PID file, body temp,
+    # proxy cache temp). We give it tmpfs so the rest of the filesystem can
+    # stay read-only.
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m
+      - /var/cache/nginx:size=32m
+      - /var/run:size=8m
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://127.0.0.1:8080/healthz || exit 1"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER:     ${POSTGRES_USER:?POSTGRES_USER is required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB:       ${POSTGRES_DB:?POSTGRES_DB is required}
+    # NOTE: no `ports:` mapping — Postgres is reachable ONLY from inside the
+    # compose network. The host machine and the public internet have no route
+    # to port 5432.
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    cap_drop:
+      - ALL
+    cap_add:
+      # Postgres needs to set its uid/gid at startup; CAP_SETUID/CAP_SETGID
+      # cover that. DAC_READ_SEARCH is needed to read /etc/passwd on first
+      # boot. CHOWN lets initdb fix permissions on the data volume.
+      - SETUID
+      - SETGID
+      - CHOWN
+      - DAC_READ_SEARCH
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+volumes:
+  pg_data:
+  backend_reports:
+  backend_uploads:
