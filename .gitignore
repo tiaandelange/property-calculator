@@ -7,4 +7,5 @@ build/
 coverage/
 backend/generated/
 backend/uploads/
+.DS_Store
 *.log
