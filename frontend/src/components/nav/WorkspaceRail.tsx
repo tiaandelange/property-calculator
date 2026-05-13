@@ -2,6 +2,7 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { calculators } from "../../data/calculators";
 import { groupCalculators } from "../../data/calculatorHubGroups";
+import { useAuth } from "../../contexts/AuthContext";
 
 export type WorkspaceRailProps = {
   userRole?: "USER" | "ADMIN" | null;
@@ -71,6 +72,7 @@ function IconHelp({ active }: { active: boolean }) {
 export function WorkspaceRail({ userRole }: WorkspaceRailProps) {
   const navigate = useNavigate();
   const location = useLocation();
+  const { signOut } = useAuth();
   const baseId = useId();
   const isAdmin = userRole === "ADMIN";
   const [coarsePointer, setCoarsePointer] = useState(false);
@@ -216,11 +218,10 @@ export function WorkspaceRail({ userRole }: WorkspaceRailProps) {
     closeAll();
   };
 
-  const logout = () => {
-    localStorage.removeItem("token");
+  const logout = async () => {
+    await signOut();
     closeAll();
     navigate("/");
-    window.location.reload();
   };
 
   const expanded = pinned ?? hoverOpen;

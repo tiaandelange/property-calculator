@@ -8,6 +8,7 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "test": "vitest",
+    "test:ci": "vitest run",
     "verify:public-env": "node ../backend/scripts/verify-public-frontend-env.mjs"
   },
   "dependencies": {

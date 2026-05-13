@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { fetchMe, patchProfileInvoicePaymentDetails } from "../api/user";
 import type { InvoicePaymentDetailsPayload } from "../api/user";
+import { useAuth } from "../contexts/AuthContext";
 import { PageBreadcrumb } from "../components/nav/PageBreadcrumb";
 import { workspacePage } from "../nav/workspaceBreadcrumbs";
 import { Button } from "../components/ui/Button";
@@ -64,6 +65,7 @@ function toPayload(form: FormState): InvoicePaymentDetailsPayload {
 }
 
 export function AccountPage() {
+  const { refreshProfile } = useAuth();
   const [email, setEmail] = useState<string>("");
   const [form, setForm] = useState<FormState>(() => emptyForm());
   const [loading, setLoading] = useState(true);
@@ -99,6 +101,7 @@ export function AccountPage() {
     try {
       const updated = await patchProfileInvoicePaymentDetails(toPayload(form));
       setForm(formFromApi(updated.invoicePaymentDetails));
+      await refreshProfile();
       setSavedFlash(true);
       window.setTimeout(() => setSavedFlash(false), 4000);
     } catch (e: unknown) {

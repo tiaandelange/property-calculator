@@ -1,7 +1,34 @@
+import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { WorkspaceRail } from "./WorkspaceRail";
+import { AuthProvider } from "../../contexts/AuthContext";
+
+const { signOut } = vi.hoisted(() => ({
+  signOut: vi.fn(() => Promise.resolve({ error: null }))
+}));
+
+vi.mock("../../lib/supabaseClient", () => ({
+  isSupabaseConfigured: true,
+  supabase: {
+    auth: {
+      getSession: vi.fn(() => Promise.resolve({ data: { session: null } })),
+      onAuthStateChange: vi.fn(() => ({ data: { subscription: { unsubscribe: vi.fn() } } })),
+      signOut
+    }
+  },
+  getSupabase: () => ({
+    auth: {
+      signOut,
+      getSession: vi.fn(() => Promise.resolve({ data: { session: null } }))
+    }
+  })
+}));
+
+function renderRail(ui: React.ReactElement) {
+  return render(<AuthProvider>{ui}</AuthProvider>);
+}
 
 describe("WorkspaceRail", () => {
   beforeEach(() => {
@@ -17,10 +44,11 @@ describe("WorkspaceRail", () => {
         dispatchEvent: vi.fn()
       }))
     );
+    signOut.mockClear();
   });
 
   it("marks the home rail control active on portfolio dashboard route", () => {
-    render(
+    renderRail(
       <MemoryRouter initialEntries={["/owned-properties/dashboard"]}>
         <WorkspaceRail userRole="USER" />
       </MemoryRouter>
@@ -31,7 +59,7 @@ describe("WorkspaceRail", () => {
   });
 
   it("opens the settings submenu from the keyboard (Enter)", () => {
-    render(
+    renderRail(
       <MemoryRouter initialEntries={["/account"]}>
         <WorkspaceRail userRole="USER" />
       </MemoryRouter>
@@ -47,7 +75,7 @@ describe("WorkspaceRail", () => {
   });
 
   it("opens the settings submenu on click", () => {
-    render(
+    renderRail(
       <MemoryRouter initialEntries={["/account"]}>
         <WorkspaceRail userRole="USER" />
       </MemoryRouter>
@@ -60,7 +88,7 @@ describe("WorkspaceRail", () => {
   });
 
   it("closes the submenu on Escape", () => {
-    render(
+    renderRail(
       <MemoryRouter initialEntries={["/account"]}>
         <WorkspaceRail userRole="USER" />
       </MemoryRouter>

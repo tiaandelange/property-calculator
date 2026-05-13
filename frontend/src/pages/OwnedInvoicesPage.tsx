@@ -2,7 +2,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { api, authHeader } from "../api/client";
 import { downloadAuthenticatedPdf, triggerPdfFileDownload } from "../api/pdfBlob";
-import { getProperties } from "../api/ownedProperties";
+import { getProperties, getPropertyTenants } from "../api/ownedProperties";
 import { invalidatePropertyWorkspace } from "../features/properties/invalidate";
 import { usePropertyWorkspaceRefresh } from "../features/properties/usePropertyWorkspaceRefresh";
 import { Container } from "../components/ui/Container";
@@ -16,7 +16,7 @@ import { workspacePage } from "../nav/workspaceBreadcrumbs";
 export function OwnedInvoicesPage() {
   const [invoicePdfBusyId, setInvoicePdfBusyId] = useState<number | null>(null);
   const [properties, setProperties] = useState<any[]>([]);
-  const [propertyId, setPropertyId] = useState<number | "">("");
+  const [propertyId, setPropertyId] = useState<string | number | "">("");
   const [tenants, setTenants] = useState<any[]>([]);
   const [invoices, setInvoices] = useState<any[]>([]);
   const [form, setForm] = useState<any>({
@@ -32,22 +32,22 @@ export function OwnedInvoicesPage() {
     setProperties(rows);
     if (!propertyId && rows[0]) setPropertyId(rows[0].id);
   }
-  async function loadData(pid: number) {
+  async function loadData(pid: string | number) {
     const [t, i] = await Promise.all([
-      api.get(`/properties/${pid}/tenants`, { headers: authHeader() }),
+      getPropertyTenants(pid),
       api.get(`/properties/${pid}/invoices`, { headers: authHeader() })
     ]);
-    setTenants(t.data);
+    setTenants(Array.isArray(t) ? t : []);
     setInvoices(i.data);
   }
   useEffect(() => { void loadProperties(); }, []);
-  useEffect(() => { if (propertyId) void loadData(Number(propertyId)); }, [propertyId]);
+  useEffect(() => { if (propertyId) void loadData(propertyId); }, [propertyId]);
 
   usePropertyWorkspaceRefresh({
     propertyId: propertyId || undefined,
     onRefresh: () => {
       void loadProperties();
-      if (propertyId) void loadData(Number(propertyId));
+      if (propertyId) void loadData(propertyId);
     }
   });
 
@@ -55,14 +55,14 @@ export function OwnedInvoicesPage() {
     e.preventDefault();
     if (!propertyId) return;
     await api.post(`/properties/${propertyId}/invoices`, form, { headers: authHeader() });
-    await loadData(Number(propertyId));
-    invalidatePropertyWorkspace(Number(propertyId));
+    await loadData(propertyId);
+    invalidatePropertyWorkspace(propertyId);
   };
   const generatePdf = async (id: number) => {
     setInvoicePdfBusyId(id);
     try {
       await api.post(`/invoices/${id}/generate-pdf`, {}, { headers: authHeader() });
-      await loadData(Number(propertyId));
+      if (propertyId) await loadData(propertyId);
     } finally {
       setInvoicePdfBusyId(null);
     }
@@ -81,12 +81,12 @@ export function OwnedInvoicesPage() {
   };
   const markPaid = async (id: number) => {
     await api.post(`/invoices/${id}/mark-paid`, {}, { headers: authHeader() });
-    await loadData(Number(propertyId));
-    invalidatePropertyWorkspace(Number(propertyId));
+    if (propertyId) await loadData(propertyId);
+    invalidatePropertyWorkspace(propertyId);
   };
   const sendEmail = async (id: number) => {
     await api.post(`/invoices/${id}/send-email`, {}, { headers: authHeader() });
-    await loadData(Number(propertyId));
+    if (propertyId) await loadData(propertyId);
   };
 
   return (
@@ -96,9 +96,9 @@ export function OwnedInvoicesPage() {
         <PageBreadcrumb items={workspacePage("Invoices")} />
         <h1 className="pg-h2">Invoices</h1>
         <Card>
-          <Field label="Property"><select className="pg-input" value={propertyId} onChange={(e) => setPropertyId(Number(e.target.value))}>{properties.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></Field>
+          <Field label="Property"><select className="pg-input" value={propertyId} onChange={(e) => setPropertyId(e.target.value === "" ? "" : e.target.value)}>{properties.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></Field>
           <form onSubmit={create}>
-            <Field label="Tenant"><select className="pg-input" value={form.tenantId} onChange={(e) => setForm({ ...form, tenantId: Number(e.target.value) })}>{tenants.map((t) => <option key={t.id} value={t.id}>{t.firstName} {t.lastName}</option>)}</select></Field>
+            <Field label="Tenant"><select className="pg-input" value={form.tenantId} onChange={(e) => setForm({ ...form, tenantId: e.target.value })}>{tenants.map((t) => <option key={t.id} value={t.id}>{t.firstName} {t.lastName}</option>)}</select></Field>
             <Field label="Invoice date"><Input type="date" value={form.invoiceDate} onChange={(e) => setForm({ ...form, invoiceDate: e.target.value })} required /></Field>
             <Field label="Due date"><Input type="date" value={form.dueDate} onChange={(e) => setForm({ ...form, dueDate: e.target.value })} required /></Field>
             <Field label="Description"><Input value={form.lineItems[0].description} onChange={(e) => setForm({ ...form, lineItems: [{ ...form.lineItems[0], description: e.target.value }] })} /></Field>

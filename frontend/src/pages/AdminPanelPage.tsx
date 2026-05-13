@@ -3,6 +3,7 @@ import { Helmet } from "react-helmet-async";
 import { Link } from "react-router-dom";
 import { fetchPortfolioProjectionMetrics, patchPortfolioProjectionMetrics } from "../api/admin";
 import { fetchMe, patchProfileUiColorScheme } from "../api/user";
+import { useAuth } from "../contexts/AuthContext";
 import { UiColorSchemeSwitch } from "../components/ui/UiColorSchemeSwitch";
 import { applyUiColorScheme, normalizeUiColorScheme, type UiColorScheme } from "../theme/uiColorScheme";
 import { PageBreadcrumb } from "../components/nav/PageBreadcrumb";
@@ -14,6 +15,7 @@ import { Field, Input } from "../components/ui/Input";
 import { Section } from "../components/ui/Section";
 
 export function AdminPanelPage() {
+  const { refreshProfile } = useAuth();
   const [role, setRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -91,6 +93,7 @@ export function AdminPanelPage() {
     setThemeSaving(true);
     try {
       await patchProfileUiColorScheme(next);
+      await refreshProfile();
     } catch (e: unknown) {
       setUiColorScheme(prev);
       applyUiColorScheme(prev);

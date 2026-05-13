@@ -53,7 +53,7 @@ export function TenantFormPage() {
           emergencyContactName: data.tenant.emergencyContactName ?? "",
           emergencyContactPhone: data.tenant.emergencyContactPhone ?? "",
           status: data.tenant.status ?? "ACTIVE",
-          propertyId: data.tenant.propertyId ?? ""
+          propertyId: data.tenant.propertyId != null && data.tenant.propertyId !== "" ? String(data.tenant.propertyId) : ""
         });
       } catch (e: any) {
         setError(e?.response?.data?.message ?? "Failed to load tenant.");
@@ -75,7 +75,7 @@ export function TenantFormPage() {
         emergencyContactName: form.emergencyContactName || undefined,
         emergencyContactPhone: form.emergencyContactPhone || undefined,
         status: form.status,
-        propertyId: form.propertyId === "" ? null : Number(form.propertyId)
+        propertyId: form.propertyId === "" ? null : String(form.propertyId)
       };
       if (isEdit && id) {
         await updateTenant(id, payload);

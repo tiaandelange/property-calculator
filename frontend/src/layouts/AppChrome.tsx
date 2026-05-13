@@ -4,8 +4,8 @@ import { AuthenticatedShell } from "./AuthenticatedShell";
 import { HomePublicFooter } from "../components/home/HomePublicFooter";
 import { HomePublicHeader } from "../components/home/HomePublicHeader";
 import { isWorkspacePath } from "../utils/workspacePaths";
-import { api, authHeader } from "../api/client";
 import { applyUiColorScheme, normalizeUiColorScheme } from "../theme/uiColorScheme";
+import { useAuth } from "../contexts/AuthContext";
 
 type Me = {
   email?: string;
@@ -16,42 +16,46 @@ type Me = {
 
 export function AppChrome() {
   const location = useLocation();
+  const { session, initializing, profile, profileLoading } = useAuth();
   const [me, setMe] = useState<Me>(null);
-  const [token, setToken] = useState<string | null>(() => localStorage.getItem("token"));
 
-  const useWorkspaceChrome = Boolean(token) && isWorkspacePath(location.pathname);
+  const useWorkspaceChrome = !initializing && Boolean(session) && isWorkspacePath(location.pathname);
   const isMarketingHome = location.pathname === "/";
   /** Hub + individual tool pages share the same shell: navy hero under the fixed header, then content. */
   const isMarketingCalculatorsShell =
     location.pathname === "/calculators" || /^\/calculators\/.+/.test(location.pathname);
 
   useEffect(() => {
-    const t = window.setInterval(() => {
-      const next = localStorage.getItem("token");
-      setToken((curr) => (curr === next ? curr : next));
-    }, 500);
-    return () => window.clearInterval(t);
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    async function load() {
-      if (!localStorage.getItem("token")) return;
-      try {
-        const res = await api.get("/auth/me", { headers: authHeader() });
-        if (!cancelled) {
-          setMe(res.data);
-          applyUiColorScheme(normalizeUiColorScheme(res.data?.uiColorScheme));
-        }
-      } catch {
-        if (!cancelled) setMe(null);
-      }
+    if (!session) {
+      setMe(null);
+      return;
     }
-    void load();
-    return () => {
-      cancelled = true;
-    };
-  }, [token]);
+    const email = session.user.email ?? "";
+    if (!profile && profileLoading) {
+      return;
+    }
+    if (!profile) {
+      setMe({
+        email,
+        role: "USER",
+        freeUsesRemaining: null,
+        uiColorScheme: normalizeUiColorScheme("dark")
+      });
+      return;
+    }
+    const scheme = normalizeUiColorScheme(profile.ui_color_scheme === "light" ? "light" : "dark");
+    setMe({
+      email,
+      role: profile.role === "ADMIN" ? "ADMIN" : "USER",
+      freeUsesRemaining: profile.free_uses_remaining ?? null,
+      uiColorScheme: scheme
+    });
+    applyUiColorScheme(scheme);
+  }, [session, profile, profileLoading]);
+
+  if (initializing) {
+    return null;
+  }
 
   if (useWorkspaceChrome) {
     return (

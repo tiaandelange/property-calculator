@@ -13,6 +13,7 @@ import {
   hardDeletePropertyExpense,
   hardDeletePropertyIncome,
   postBondStatementRow,
+  propertyApiErrorMessage,
   updateLease,
   updateProperty,
   updatePropertyExpense,
@@ -160,7 +161,7 @@ export function WorkspaceFinancialsTab({
 }: Props) {
   const navigate = useNavigate();
   const [depositModal, setDepositModal] = useState<{
-    leaseId: number;
+    leaseId: string | number;
     tenantLabel: string;
     amount: string;
     annualPct: string;
@@ -309,7 +310,7 @@ export function WorkspaceFinancialsTab({
     }
   }
 
-  async function createInvoiceForLease(leaseId: number) {
+  async function createInvoiceForLease(leaseId: string | number) {
     try {
       await createCurrentInvoiceFromLease(propertyId, leaseId);
       await onReload();
@@ -561,8 +562,8 @@ export function WorkspaceFinancialsTab({
         }
       }
       await onReload();
-    } catch (err: any) {
-      window.alert(err?.response?.data?.message ?? "Could not save bond details.");
+    } catch (err: unknown) {
+      window.alert(propertyApiErrorMessage(err) || "Could not save bond details.");
     } finally {
       setBondSaving(false);
     }

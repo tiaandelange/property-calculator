@@ -39,3 +39,9 @@ Thumbs.db
 *.log
 *.swp
 *.swo
+
+# Supabase CLI local cache (not migrations)
+supabase/.temp/
+
+# Cursor IDE (local MCP / machine-specific)
+.cursor/

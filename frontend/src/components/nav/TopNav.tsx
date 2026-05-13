@@ -4,6 +4,7 @@ import { ButtonLink } from "../ui/Button";
 import { HamburgerButton } from "./HamburgerButton";
 import { useEffect, useRef, useState } from "react";
 import { calculators } from "../../data/calculators";
+import { useAuth } from "../../contexts/AuthContext";
 
 export function TopNav({
   onMenu,
@@ -17,6 +18,7 @@ export function TopNav({
   signedIn: boolean;
 }) {
   const navigate = useNavigate();
+  const { signOut } = useAuth();
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const initials = userEmail ? userEmail.slice(0, 2).toUpperCase() : null;
@@ -32,11 +34,10 @@ export function TopNav({
     return () => window.removeEventListener("mousedown", onClickOutside);
   }, [open]);
 
-  const logout = () => {
-    localStorage.removeItem("token");
+  const logout = async () => {
     setOpen(false);
-    navigate("/");
-    window.location.reload();
+    await signOut();
+    navigate("/login", { replace: true });
   };
 
   return (

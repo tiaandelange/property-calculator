@@ -1,3 +1,8 @@
+/**
+ * @deprecated Phase 3+ — The SPA uses Supabase Auth (`signUp` / `signInWithPassword`).
+ * These routes remain for legacy email-confirmation links and tooling until the API is fully migrated.
+ * Do not build new features on this surface.
+ */
 import { Router } from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
@@ -5,7 +10,8 @@ import crypto from "node:crypto";
 import { db } from "../config/db.js";
 import { readInvoicePaymentDetails } from "../utils/invoicePaymentDetails.js";
 import { env } from "../config/env.js";
-import type { AuthJwtPayload } from "../middleware/auth.js";
+import type { AuthJwtPayload } from "../auth/resolveBearerUser.js";
+import { NO_APP_USER_MESSAGE, resolveBearerUser } from "../auth/resolveBearerUser.js";
 import { registerSchema, loginSchema, confirmationTokenSchema } from "../validation/authSchemas.js";
 
 export const authRoutes = Router();
@@ -152,14 +158,15 @@ authRoutes.get("/me", async (req, res, next) => {
     const header = req.headers.authorization;
     if (!header?.startsWith("Bearer ")) return res.status(401).json({ message: "Unauthorized" });
     const token = header.slice("Bearer ".length).trim();
-    let payload: AuthJwtPayload;
-    try {
-      payload = jwt.verify(token, env.JWT_SECRET) as AuthJwtPayload;
-    } catch {
+    const resolved = await resolveBearerUser(token);
+    if (!resolved.ok) {
+      if (resolved.reason === "supabase_no_app_user") {
+        return res.status(401).json({ message: NO_APP_USER_MESSAGE });
+      }
       return res.status(401).json({ message: "Invalid token" });
     }
     const user = await db.user.findUnique({
-      where: { id: Number(payload.sub) },
+      where: { id: resolved.user.userId },
       select: {
         id: true,
         email: true,

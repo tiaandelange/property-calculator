@@ -1,5 +1,5 @@
 /**
- * Routes that render inside the signed-in left-rail workspace chrome when a token is present.
+ * Routes that render inside the signed-in left-rail workspace chrome when a Supabase session exists.
  * Public marketing pages (home, calculators hub/detail, contact, help, etc.) use the same
  * marketing header/footer as the homepage even when signed in.
  */

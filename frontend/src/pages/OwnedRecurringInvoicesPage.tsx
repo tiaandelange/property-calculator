@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { api, authHeader } from "../api/client";
-import { getProperties } from "../api/ownedProperties";
+import { getProperties, getPropertyTenants } from "../api/ownedProperties";
 import { Container } from "../components/ui/Container";
 import { Section } from "../components/ui/Section";
 import { Card } from "../components/ui/Card";
@@ -12,7 +12,7 @@ import { workspacePage } from "../nav/workspaceBreadcrumbs";
 
 export function OwnedRecurringInvoicesPage() {
   const [properties, setProperties] = useState<any[]>([]);
-  const [propertyId, setPropertyId] = useState<number | "">("");
+  const [propertyId, setPropertyId] = useState<string | number | "">("");
   const [tenants, setTenants] = useState<any[]>([]);
   const [rules, setRules] = useState<any[]>([]);
   const [form, setForm] = useState<any>({
@@ -32,26 +32,26 @@ export function OwnedRecurringInvoicesPage() {
     setProperties(rows);
     if (!propertyId && rows[0]) setPropertyId(rows[0].id);
   }
-  async function loadData(pid: number) {
+  async function loadData(pid: string | number) {
     const [t, r] = await Promise.all([
-      api.get(`/properties/${pid}/tenants`, { headers: authHeader() }),
+      getPropertyTenants(pid),
       api.get(`/properties/${pid}/recurring-invoices`, { headers: authHeader() })
     ]);
-    setTenants(t.data);
+    setTenants(Array.isArray(t) ? t : []);
     setRules(r.data);
   }
   useEffect(() => { void loadProperties(); }, []);
-  useEffect(() => { if (propertyId) void loadData(Number(propertyId)); }, [propertyId]);
+  useEffect(() => { if (propertyId) void loadData(propertyId); }, [propertyId]);
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     if (!propertyId) return;
     await api.post(`/properties/${propertyId}/recurring-invoices`, form, { headers: authHeader() });
-    await loadData(Number(propertyId));
+    await loadData(propertyId);
   };
   const runDue = async () => {
     await api.post("/recurring-invoices/run-due", {}, { headers: authHeader() });
-    if (propertyId) await loadData(Number(propertyId));
+    if (propertyId) await loadData(propertyId);
   };
 
   return (
@@ -64,9 +64,9 @@ export function OwnedRecurringInvoicesPage() {
           Recurring invoices will only be emailed if you confirm permission and configure email sending.
         </div>
         <Card>
-          <Field label="Property"><select className="pg-input" value={propertyId} onChange={(e) => setPropertyId(Number(e.target.value))}>{properties.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></Field>
+          <Field label="Property"><select className="pg-input" value={propertyId} onChange={(e) => setPropertyId(e.target.value === "" ? "" : e.target.value)}>{properties.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></Field>
           <form onSubmit={submit}>
-            <Field label="Tenant"><select className="pg-input" value={form.tenantId} onChange={(e) => setForm({ ...form, tenantId: Number(e.target.value) })}>{tenants.map((t) => <option key={t.id} value={t.id}>{t.firstName} {t.lastName}</option>)}</select></Field>
+            <Field label="Tenant"><select className="pg-input" value={form.tenantId} onChange={(e) => setForm({ ...form, tenantId: e.target.value })}>{tenants.map((t) => <option key={t.id} value={t.id}>{t.firstName} {t.lastName}</option>)}</select></Field>
             <Field label="Rent amount"><Input type="number" value={form.rentAmount} onChange={(e) => setForm({ ...form, rentAmount: Number(e.target.value) })} required /></Field>
             <Field label="Invoice day of month"><Input type="number" min={1} max={31} value={form.dayOfMonth} onChange={(e) => setForm({ ...form, dayOfMonth: Number(e.target.value) })} /></Field>
             <Field label="Next run date"><Input type="date" value={form.nextRunDate} onChange={(e) => setForm({ ...form, nextRunDate: e.target.value })} required /></Field>

@@ -3,7 +3,17 @@ import { invalidatePropertyWorkspace } from "../features/properties/invalidate";
 import { usePropertyWorkspaceRefresh } from "../features/properties/usePropertyWorkspaceRefresh";
 import { Helmet } from "react-helmet-async";
 import { api, authHeader } from "../api/client";
-import { deletePropertyIncome, getProperties, getPropertyTenants, hardDeletePropertyExpense, updatePropertyIncome } from "../api/ownedProperties";
+import {
+  createPropertyIncome,
+  createPropertyExpense,
+  deletePropertyIncome,
+  getProperties,
+  getPropertyFinancials,
+  getPropertyTenants,
+  hardDeletePropertyExpense,
+  markPropertyIncomeReceived,
+  updatePropertyIncome
+} from "../api/ownedProperties";
 import { Container } from "../components/ui/Container";
 import { Section } from "../components/ui/Section";
 import { Card } from "../components/ui/Card";
@@ -41,7 +51,7 @@ function todayYmd() {
 export function OwnedFinancialsPage() {
   const { search } = useLocation();
   const [properties, setProperties] = useState<any[]>([]);
-  const [propertyId, setPropertyId] = useState<number | "">("");
+  const [propertyId, setPropertyId] = useState<string | number | "">("");
   const [summary, setSummary] = useState<any>(null);
   const [expenses, setExpenses] = useState<any[]>([]);
   const [incomeEntries, setIncomeEntries] = useState<any[]>([]);
@@ -76,17 +86,22 @@ export function OwnedFinancialsPage() {
     setProperties(rows);
     const params = new URLSearchParams(search);
     const pid = params.get("propertyId");
-    const presetPid = pid != null && !Number.isNaN(Number(pid)) ? Number(pid) : null;
+    const presetPid =
+      pid != null && pid.trim() !== ""
+        ? /^\d+$/.test(pid.trim())
+          ? Number(pid)
+          : pid.trim()
+        : null;
     if (!propertyId && presetPid != null) setPropertyId(presetPid);
     else if (!propertyId && rows[0]) setPropertyId(rows[0].id);
 
   }
-  async function loadSummary(pid: number) {
-    const res = await api.get(`/properties/${pid}/financials`, { headers: authHeader() });
-    setSummary(res.data?.summary ?? null);
-    setExpenses(res.data?.expenses ?? []);
-    setIncomeEntries(res.data?.income ?? []);
-    setRecurringIncomeRules(res.data?.recurringIncomeRules ?? []);
+  async function loadSummary(pid: string | number) {
+    const bundle = await getPropertyFinancials(pid);
+    setSummary(bundle.summary ?? null);
+    setExpenses(bundle.expenses ?? []);
+    setIncomeEntries(bundle.income ?? []);
+    setRecurringIncomeRules(bundle.recurringIncomeRules ?? []);
     try {
       setTenants(await getPropertyTenants(pid));
     } catch {
@@ -94,49 +109,48 @@ export function OwnedFinancialsPage() {
     }
   }
   useEffect(() => { void loadProperties(); }, []);
-  useEffect(() => { if (propertyId) void loadSummary(Number(propertyId)); }, [propertyId]);
+  useEffect(() => {
+    if (propertyId !== "") void loadSummary(propertyId);
+  }, [propertyId]);
 
   usePropertyWorkspaceRefresh({
     propertyId: propertyId || undefined,
     onRefresh: () => {
       void loadProperties();
-      if (propertyId) void loadSummary(Number(propertyId));
+      if (propertyId !== "") void loadSummary(propertyId);
     }
   });
 
-  const refreshSummaryAndBroadcast = async (pid?: number | null) => {
-    const resolved = pid ?? (propertyId ? Number(propertyId) : null);
+  const refreshSummaryAndBroadcast = async (pid?: string | number | null) => {
+    const resolved = pid ?? (propertyId !== "" ? propertyId : null);
     if (resolved != null) await loadSummary(resolved);
     invalidatePropertyWorkspace(resolved ?? undefined);
   };
 
   const addIncome = async (e: FormEvent) => {
     e.preventDefault();
-    if (!propertyId) return;
-    await api.post(`/properties/${propertyId}/income`, { ...income, source: "MANUAL_FINANCIAL_ENTRY", status: "RECEIVED" }, { headers: authHeader() });
-    await refreshSummaryAndBroadcast(Number(propertyId));
+    if (propertyId === "") return;
+    await createPropertyIncome(propertyId, { ...income, source: "MANUAL_FINANCIAL_ENTRY", status: "RECEIVED" });
+    await refreshSummaryAndBroadcast(propertyId);
   };
   const addExpense = async (e: FormEvent) => {
     e.preventDefault();
-    if (!propertyId) return;
-    await api.post(
-      `/properties/${propertyId}/expenses`,
-      {
-        category: expense.category,
-        description: expense.description,
-        amount: Number(expense.amount),
-        expenseDate: expense.expenseDate,
-        source: "MANUAL_FINANCIAL_ENTRY",
-        status: "ACTIVE"
-      },
-      { headers: authHeader() }
-    );
-    await refreshSummaryAndBroadcast(Number(propertyId));
+    if (propertyId === "") return;
+    await createPropertyExpense(propertyId, {
+      category: expense.category,
+      description: expense.description,
+      amount: Number(expense.amount),
+      expenseDate: expense.expenseDate,
+      source: "MANUAL_FINANCIAL_ENTRY",
+      status: "ACTIVE",
+      isRecurring: false
+    });
+    await refreshSummaryAndBroadcast(propertyId);
   };
 
   const addRecurringExpenseSchedule = async (e: FormEvent) => {
     e.preventDefault();
-    if (!propertyId) return;
+    if (propertyId === "") return;
     if (
       !recurringSchedule.recurringOpenEnded &&
       (!recurringSchedule.recurringEndDate || recurringSchedule.recurringEndDate < recurringSchedule.recurringStartDate)
@@ -181,10 +195,10 @@ export function OwnedFinancialsPage() {
       recurringMonthAnchor: "FIRST_OF_MONTH",
       recurringDayOfMonth: 15
     });
-    await refreshSummaryAndBroadcast(Number(propertyId));
+    await refreshSummaryAndBroadcast(propertyId);
   };
 
-  const removeExpense = async (id: number) => {
+  const removeExpense = async (id: string | number) => {
     if (
       !window.confirm(
         "Permanently delete this expense from your ledger? Recurring schedule lines follow the same rules as the statement (posted SYSTEM rows archive instead of deleting so they are not recreated)."
@@ -192,31 +206,31 @@ export function OwnedFinancialsPage() {
     )
       return;
     await hardDeletePropertyExpense(id);
-    await refreshSummaryAndBroadcast(Number(propertyId));
+    await refreshSummaryAndBroadcast(propertyId);
   };
 
-  const archiveIncome = async (id: number) => {
+  const archiveIncome = async (id: string | number) => {
     if (!window.confirm("Archive this income entry?")) return;
     await deletePropertyIncome(id);
-    await refreshSummaryAndBroadcast(Number(propertyId));
+    await refreshSummaryAndBroadcast(propertyId);
   };
 
   const runExpectedIncome = async () => {
     await api.post(`/recurring-income/run-due`, {}, { headers: authHeader() });
-    if (propertyId) await loadSummary(Number(propertyId));
+    if (propertyId !== "") await loadSummary(propertyId);
     invalidatePropertyWorkspace();
   };
 
-  const activateRecurring = async (id: number) => {
+  const activateRecurring = async (id: string | number) => {
     await api.post(`/recurring-income/${id}/activate`, {}, { headers: authHeader() });
-    await refreshSummaryAndBroadcast(Number(propertyId));
+    await refreshSummaryAndBroadcast(propertyId);
   };
 
-  const markReceived = async (id: number) => {
+  const markReceived = async (id: string | number) => {
     const paymentDate = window.prompt("Payment received date (YYYY-MM-DD)", new Date().toISOString().slice(0, 10));
     if (!paymentDate) return;
-    await api.post(`/income/${id}/mark-received`, { paymentDate }, { headers: authHeader() });
-    await refreshSummaryAndBroadcast(Number(propertyId));
+    await markPropertyIncomeReceived(id, { paymentDate });
+    await refreshSummaryAndBroadcast(propertyId);
   };
 
   const editIncome = async (inc: any) => {
@@ -229,10 +243,10 @@ export function OwnedFinancialsPage() {
     await updatePropertyIncome(inc.id, {
       amount: Number(amount),
       incomeDate,
-      tenantId: tenantId === "" ? null : Number(tenantId),
+      tenantId: tenantId === "" ? null : /^\d+$/.test(String(tenantId).trim()) ? Number(tenantId) : String(tenantId).trim(),
       description
     });
-    await refreshSummaryAndBroadcast(Number(propertyId));
+    await refreshSummaryAndBroadcast(propertyId);
   };
 
   return (
@@ -243,7 +257,14 @@ export function OwnedFinancialsPage() {
         <h1 className="pg-h2">Financials</h1>
         <Card>
           <Field label="Property">
-            <select className="pg-input" value={propertyId} onChange={(e) => setPropertyId(Number(e.target.value))}>
+            <select
+              className="pg-input"
+              value={propertyId === "" ? "" : String(propertyId)}
+              onChange={(e) => {
+                const v = e.target.value;
+                setPropertyId(v === "" ? "" : /^\d+$/.test(v) ? Number(v) : v);
+              }}
+            >
               {properties.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
           </Field>
@@ -335,7 +356,11 @@ export function OwnedFinancialsPage() {
               <select
                 className="pg-input"
                 value={income.tenantId ?? ""}
-                onChange={(e) => setIncome({ ...income, tenantId: e.target.value === "" ? null : Number(e.target.value) })}
+                onChange={(e) =>
+                  setIncome({
+                    ...income,
+                    tenantId: e.target.value === "" ? null : /^\d+$/.test(e.target.value) ? Number(e.target.value) : e.target.value
+                  })}
               >
                 <option value="">No tenant</option>
                 {tenants.map((t: any) => (

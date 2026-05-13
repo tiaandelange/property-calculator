@@ -50,6 +50,7 @@ export function App() {
         <Route path="/calculators" element={<CalculatorHubPage />} />
         <Route path="/calculators/:slug" element={<CalculatorPage />} />
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/confirm-email" element={<ConfirmEmailPage />} />
         <Route path="/confirm-email/:token" element={<ConfirmEmailPage />} />
         <Route path="/dashboard" element={<RequireAuth><DashboardPage /></RequireAuth>} />
         <Route

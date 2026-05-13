@@ -6,7 +6,13 @@ import { Section } from "../components/ui/Section";
 import { Card } from "../components/ui/Card";
 import { Input, Field } from "../components/ui/Input";
 import { Button } from "../components/ui/Button";
-import { createProperty, getProperty, updateProperty } from "../api/ownedProperties";
+import {
+  createProperty,
+  deleteProperty,
+  getProperty,
+  propertyApiErrorMessage,
+  updateProperty
+} from "../api/ownedProperties";
 import { invalidatePropertyWorkspace } from "../features/properties/invalidate";
 import { PageBreadcrumb } from "../components/nav/PageBreadcrumb";
 import { workspaceMyProperties } from "../nav/workspaceBreadcrumbs";
@@ -19,6 +25,7 @@ export function OwnedPropertyFormPage() {
   const navigate = useNavigate();
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [form, setForm] = useState<any>({
     name: "",
     propertyType: "OTHER",
@@ -70,10 +77,26 @@ export function OwnedPropertyFormPage() {
 
       if (!isEdit) navigate(`/owned-properties/${propertyId}?tab=overview`);
       else navigate(`/owned-properties/${propertyId}?tab=overview`);
-    } catch (e: any) {
-      setError(e?.response?.data?.message ?? "Failed to save property.");
+    } catch (e: unknown) {
+      setError(propertyApiErrorMessage(e) || "Failed to save property.");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const onDelete = async () => {
+    if (!isEdit || !id) return;
+    if (!window.confirm("Permanently delete this property? This cannot be undone.")) return;
+    setDeleting(true);
+    setError("");
+    try {
+      await deleteProperty(id);
+      invalidatePropertyWorkspace(id);
+      navigate("/owned-properties");
+    } catch (e: unknown) {
+      setError(propertyApiErrorMessage(e) || "Failed to delete property.");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -345,7 +368,20 @@ export function OwnedPropertyFormPage() {
               </>
             ) : null}
 
-            <Button type="submit" loading={saving}>{isEdit ? "Update Property" : "Create Property"}</Button>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center" }}>
+              <Button type="submit" loading={saving}>{isEdit ? "Update Property" : "Create Property"}</Button>
+              {isEdit && id ? (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  loading={deleting}
+                  onClick={() => void onDelete()}
+                  style={{ borderColor: "rgba(255,77,79,.45)", color: "var(--danger)" }}
+                >
+                  Delete property
+                </Button>
+              ) : null}
+            </div>
           </form>
         </Card>
       </Container>

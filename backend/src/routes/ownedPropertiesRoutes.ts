@@ -152,6 +152,12 @@ async function assertPropertyOwner(userId: number, propertyId: number) {
 
 ownedPropertiesRoutes.use(requireAuth);
 
+// =============================================================================
+// Phase 5 — Property list / detail / CRUD: the SPA may use Supabase `public.properties`
+// when `VITE_SUPABASE_*` is configured. The routes below remain for legacy mode
+// (no Supabase) and tooling; do not delete until the full API migration is done.
+// =============================================================================
+
 ownedPropertiesRoutes.get("/properties", async (req: AuthRequest, res) => {
   try {
     const now = new Date();

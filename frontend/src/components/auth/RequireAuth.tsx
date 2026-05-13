@@ -1,9 +1,38 @@
+/**
+ * Requires a **Supabase Auth** session (`getSession` / `onAuthStateChange` in `AuthProvider`).
+ * Express legacy JWTs are not used for route access; the axios client still attaches the
+ * Supabase access token when calling the Node API until those routes are migrated.
+ */
 import type React from "react";
 import { Navigate, useLocation } from "react-router-dom";
+import { isSupabaseConfigured } from "../../lib/supabaseClient";
+import { useAuth } from "../../contexts/AuthContext";
 
 export function RequireAuth({ children }: { children: React.ReactElement }) {
   const location = useLocation();
-  const token = localStorage.getItem("token");
-  if (!token) return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+  const { session, initializing } = useAuth();
+
+  if (!isSupabaseConfigured) {
+    return (
+      <Navigate
+        to="/login"
+        replace
+        state={{ from: location.pathname, reason: "supabase_unconfigured" }}
+      />
+    );
+  }
+
+  if (initializing) {
+    return (
+      <div className="pg-muted" style={{ padding: 24 }}>
+        Checking session…
+      </div>
+    );
+  }
+
+  if (!session) {
+    return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+  }
+
   return children;
 }

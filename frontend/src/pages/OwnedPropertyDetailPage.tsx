@@ -5,9 +5,9 @@ import { Container } from "../components/ui/Container";
 import { Section } from "../components/ui/Section";
 import { Card } from "../components/ui/Card";
 import { Input } from "../components/ui/Input";
-import { api, authHeader } from "../api/client";
 import {
   cancelLease,
+  createPropertyIncome,
   createPropertyTenant,
   deleteLease,
   getProperty,
@@ -19,6 +19,7 @@ import {
   updateLease,
   unlinkTenantFromProperty
 } from "../api/ownedProperties";
+import { legacyExpressPropertyId } from "../utils/propertyIds";
 import { WorkspaceTabs } from "../components/workspace/WorkspaceTabs";
 import { invalidatePropertyWorkspace } from "../features/properties/invalidate";
 import { usePropertyWorkspaceRefresh } from "../features/properties/usePropertyWorkspaceRefresh";
@@ -53,7 +54,7 @@ export function OwnedPropertyDetailPage() {
   const [error, setError] = useState("");
   const [allTenants, setAllTenants] = useState<any[]>([]);
   const [perf, setPerf] = useState<any>(null);
-  const [linkTenantId, setLinkTenantId] = useState<number | "">("");
+  const [linkTenantId, setLinkTenantId] = useState<string | "">("");
   const [newTenant, setNewTenant] = useState<any>({ firstName: "", lastName: "", email: "", phone: "", idNumber: "" });
   const [stmt, setStmt] = useState<any>(null);
   const [stmtLoading, setStmtLoading] = useState(false);
@@ -77,7 +78,7 @@ export function OwnedPropertyDetailPage() {
     });
   }, [data]);
 
-  const currentLeaseIdSet = useMemo(() => new Set(currentLeases.map((l: any) => Number(l.id))), [currentLeases]);
+  const currentLeaseIdSet = useMemo(() => new Set(currentLeases.map((l: any) => String(l.id))), [currentLeases]);
 
   const combinedContractRent = useMemo(() => {
     const v = data?.combinedMonthlyRentFromLeases;
@@ -98,7 +99,7 @@ export function OwnedPropertyDetailPage() {
   }, [data, currentLeases]);
 
   const tenantIdsWithCurrentLease = useMemo(
-    () => new Set(currentLeases.map((l: any) => Number(l.tenantId)).filter((n: number) => !Number.isNaN(n))),
+    () => new Set(currentLeases.map((l: any) => String(l.tenantId ?? "")).filter(Boolean)),
     [currentLeases]
   );
 
@@ -119,8 +120,9 @@ export function OwnedPropertyDetailPage() {
         (ledger) => ({ ok: true as const, ledger }),
         () => ({ ok: false as const })
       );
+      const numericPid = legacyExpressPropertyId(id);
       const dashPromise = getPortfolioDashboardSummary({
-        propertyId: Number(id),
+        propertyId: numericPid,
         month: summaryMonth,
         bustCache: true
       });
@@ -137,7 +139,7 @@ export function OwnedPropertyDetailPage() {
       setStmt((prev: any) => (ledgerOutcome.ok ? ledgerOutcome.ledger : prev));
     } catch (e: any) {
       if (seq !== loadSeqRef.current) return;
-      setError(e?.response?.data?.message ?? "Failed to load property.");
+      setError(e?.response?.data?.message ?? e?.message ?? "Failed to load property.");
     } finally {
       if (seq === loadSeqRef.current) setStmtLoading(false);
     }
@@ -181,7 +183,7 @@ export function OwnedPropertyDetailPage() {
     if (id) invalidatePropertyWorkspace(id);
   };
 
-  const onCancelLease = async (lease: { id: number }) => {
+  const onCancelLease = async (lease: { id: string | number }) => {
     const cancellationDate = window.prompt("Cancellation date (YYYY-MM-DD)", new Date().toISOString().slice(0, 10));
     if (!cancellationDate) return;
     const cancellationReason = window.prompt("Cancellation reason (optional)", "") ?? undefined;
@@ -189,7 +191,7 @@ export function OwnedPropertyDetailPage() {
     await refreshAfterMutation();
   };
 
-  const onUnlinkTenant = async (tenantId: number) => {
+  const onUnlinkTenant = async (tenantId: string | number) => {
     if (!id) return;
     if (!window.confirm("Unlink this tenant from the property? (Active leases may block this.)")) return;
     try {
@@ -222,7 +224,7 @@ export function OwnedPropertyDetailPage() {
     await refreshAfterMutation();
   };
 
-  const onArchiveLease = async (leaseId: number) => {
+  const onArchiveLease = async (leaseId: string | number) => {
     if (!window.confirm("Archive this lease? (Historical record is kept.)")) return;
     await deleteLease(leaseId);
     await refreshAfterMutation();
@@ -266,21 +268,25 @@ export function OwnedPropertyDetailPage() {
     }
   };
 
-  const onAddReceivedIncomeForTenant = async (tenantId: number) => {
+  const onAddReceivedIncomeForTenant = async (tenantId: string | number) => {
     if (!id) return;
     const amount = window.prompt("Amount received (number)", "");
     if (!amount) return;
     const incomeDate = window.prompt("Income date (YYYY-MM-DD)", new Date().toISOString().slice(0, 10));
     if (!incomeDate) return;
     try {
-      await api.post(
-        `/properties/${id}/income`,
-        { tenantId, category: "RENT", description: "Rent received", amount: Number(amount), incomeDate, source: "MANUAL_FINANCIAL_ENTRY", status: "RECEIVED" },
-        { headers: authHeader() }
-      );
+      await createPropertyIncome(id, {
+        tenantId,
+        category: "RENT",
+        description: "Rent received",
+        amount: Number(amount),
+        incomeDate,
+        source: "MANUAL_FINANCIAL_ENTRY",
+        status: "RECEIVED"
+      });
       await refreshAfterMutation();
     } catch (e: any) {
-      window.alert(e?.response?.data?.message ?? "Failed to add income.");
+      window.alert(e?.response?.data?.message ?? e?.message ?? "Failed to add income.");
     }
   };
 
@@ -376,7 +382,7 @@ export function OwnedPropertyDetailPage() {
                           Link existing tenant
                         </div>
                         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                          <select className="pg-input" value={linkTenantId} onChange={(e) => setLinkTenantId(e.target.value === "" ? "" : Number(e.target.value))}>
+                            <select className="pg-input" value={linkTenantId} onChange={(e) => setLinkTenantId(e.target.value === "" ? "" : e.target.value)}>
                             <option value="">Select tenant</option>
                             {allTenants
                               .filter((t: any) => t.propertyId == null)
@@ -438,9 +444,9 @@ export function OwnedPropertyDetailPage() {
                               <button
                                 className="pg-btn pg-btn-ghost"
                                 type="button"
-                                disabled={tenantIdsWithCurrentLease.has(Number(t.id))}
+                                disabled={tenantIdsWithCurrentLease.has(String(t.id))}
                                 title={
-                                  tenantIdsWithCurrentLease.has(Number(t.id))
+                                  tenantIdsWithCurrentLease.has(String(t.id))
                                     ? "Cancel the current lease before unlinking this tenant."
                                     : undefined
                                 }
@@ -526,10 +532,10 @@ export function OwnedPropertyDetailPage() {
                       Lease history
                     </summary>
                     <div style={{ height: 10 }} />
-                    {(data.leases?.filter?.((l: any) => !currentLeaseIdSet.has(Number(l.id)))?.length ?? 0) ? (
+                    {(data.leases?.filter?.((l: any) => !currentLeaseIdSet.has(String(l.id)))?.length ?? 0) ? (
                       <div style={{ display: "grid", gap: 10 }}>
                         {data.leases
-                          .filter((l: any) => !currentLeaseIdSet.has(Number(l.id)))
+                          .filter((l: any) => !currentLeaseIdSet.has(String(l.id)))
                           .map((l: any) => (
                             <div key={l.id} style={{ border: "1px solid rgba(255,255,255,.08)", borderRadius: 10, padding: 10 }}>
                               <div className="pg-muted" style={{ marginBottom: 6 }}>

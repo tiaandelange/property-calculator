@@ -1,14 +1,15 @@
+/**
+ * Express auth middleware — delegates token resolution to {@link resolveBearerUser}.
+ */
 import { NextFunction, Request, Response } from "express";
-import jwt from "jsonwebtoken";
 import type { SubscriptionStatus, UserRole } from "@prisma/client";
-import { env } from "../config/env.js";
+import {
+  NO_APP_USER_MESSAGE,
+  resolveBearerUser,
+  type ResolvedBearerUser
+} from "../auth/resolveBearerUser.js";
 
-export interface AuthJwtPayload {
-  sub: string;
-  email: string;
-  role: UserRole;
-  subscription_status: SubscriptionStatus;
-}
+export type { AuthJwtPayload } from "../auth/resolveBearerUser.js";
 
 export interface AuthRequest extends Request {
   userId?: number;
@@ -17,20 +18,39 @@ export interface AuthRequest extends Request {
   userSubscriptionStatus?: SubscriptionStatus;
 }
 
-export function requireAuth(req: AuthRequest, res: Response, next: NextFunction) {
+function clearAuthFields(req: AuthRequest) {
+  req.userId = undefined;
+  req.userEmail = undefined;
+  req.userRole = undefined;
+  req.userSubscriptionStatus = undefined;
+}
+
+function applyResolvedToRequest(req: AuthRequest, user: ResolvedBearerUser) {
+  req.userId = user.userId;
+  req.userEmail = user.email;
+  req.userRole = user.role;
+  req.userSubscriptionStatus = user.subscriptionStatus;
+}
+
+export async function requireAuth(req: AuthRequest, res: Response, next: NextFunction) {
   const header = req.headers.authorization;
-  if (!header?.startsWith("Bearer ")) return res.status(401).json({ message: "Unauthorized" });
+  if (!header?.startsWith("Bearer ")) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
   const token = header.replace("Bearer ", "");
   try {
-    const payload = jwt.verify(token, env.JWT_SECRET) as AuthJwtPayload;
-    req.userId = Number(payload.sub);
-    req.userEmail = payload.email;
-    req.userRole = payload.role;
-    req.userSubscriptionStatus = payload.subscription_status;
-    console.log(`[auth] userId=${req.userId} ${req.method} ${req.path}`);
-    next();
-  } catch {
+    const result = await resolveBearerUser(token);
+    if (result.ok) {
+      applyResolvedToRequest(req, result.user);
+      console.log(`[auth] userId=${req.userId} ${req.method} ${req.path}`);
+      return next();
+    }
+    if (result.reason === "supabase_no_app_user") {
+      return res.status(401).json({ message: NO_APP_USER_MESSAGE });
+    }
     return res.status(401).json({ message: "Invalid token" });
+  } catch (err) {
+    next(err);
   }
 }
 
@@ -41,21 +61,21 @@ export function requireAdmin(req: AuthRequest, res: Response, next: NextFunction
   next();
 }
 
-export function optionalAuth(req: AuthRequest, _res: Response, next: NextFunction) {
+export async function optionalAuth(req: AuthRequest, _res: Response, next: NextFunction) {
   const header = req.headers.authorization;
   if (!header?.startsWith("Bearer ")) return next();
   const token = header.replace("Bearer ", "");
   try {
-    const payload = jwt.verify(token, env.JWT_SECRET) as AuthJwtPayload;
-    req.userId = Number(payload.sub);
-    req.userEmail = payload.email;
-    req.userRole = payload.role;
-    req.userSubscriptionStatus = payload.subscription_status;
-  } catch {
-    req.userId = undefined;
-    req.userEmail = undefined;
-    req.userRole = undefined;
-    req.userSubscriptionStatus = undefined;
+    const result = await resolveBearerUser(token);
+    if (result.ok) {
+      applyResolvedToRequest(req, result.user);
+    } else {
+      clearAuthFields(req);
+    }
+  } catch (err) {
+    clearAuthFields(req);
+    next(err);
+    return;
   }
   next();
 }

@@ -1,7 +1,13 @@
 import { FormEvent, useEffect, useState } from "react";
 import { Helmet } from "react-helmet-async";
-import { api, authHeader } from "../api/client";
-import { cancelLease as cancelLeaseApi, getProperties, getPropertyTenants } from "../api/ownedProperties";
+import {
+  cancelLease as cancelLeaseApi,
+  createLease,
+  getProperties,
+  getPropertyLeases,
+  getPropertyTenants,
+  propertyApiErrorMessage
+} from "../api/ownedProperties";
 import { invalidatePropertyWorkspace } from "../features/properties/invalidate";
 import { usePropertyWorkspaceRefresh } from "../features/properties/usePropertyWorkspaceRefresh";
 import { Container } from "../components/ui/Container";
@@ -14,7 +20,7 @@ import { workspacePage } from "../nav/workspaceBreadcrumbs";
 
 export function OwnedLeasesPage() {
   const [properties, setProperties] = useState<any[]>([]);
-  const [propertyId, setPropertyId] = useState<number | "">("");
+  const [propertyId, setPropertyId] = useState<string | number | "">("");
   const [tenants, setTenants] = useState<any[]>([]);
   const [leases, setLeases] = useState<any[]>([]);
   const [error, setError] = useState("");
@@ -34,22 +40,19 @@ export function OwnedLeasesPage() {
     setProperties(rows);
     if (!propertyId && rows[0]) setPropertyId(rows[0].id);
   }
-  async function loadData(pid: number) {
-    const [t, l] = await Promise.all([
-      Promise.resolve({ data: await getPropertyTenants(pid) }),
-      api.get(`/properties/${pid}/leases`, { headers: authHeader() })
-    ]);
-    setTenants(t.data);
-    setLeases(l.data?.leases ?? l.data);
+  async function loadData(pid: string | number) {
+    const [tRows, bundle] = await Promise.all([getPropertyTenants(pid), getPropertyLeases(pid)]);
+    setTenants(Array.isArray(tRows) ? tRows : []);
+    setLeases(bundle.leases ?? []);
   }
   useEffect(() => { void loadProperties(); }, []);
-  useEffect(() => { if (propertyId) void loadData(Number(propertyId)); }, [propertyId]);
+  useEffect(() => { if (propertyId) void loadData(propertyId); }, [propertyId]);
 
   usePropertyWorkspaceRefresh({
     propertyId: propertyId || undefined,
     onRefresh: () => {
       void loadProperties();
-      if (propertyId) void loadData(Number(propertyId));
+      if (propertyId) void loadData(propertyId);
     }
   });
 
@@ -62,9 +65,9 @@ export function OwnedLeasesPage() {
       return;
     }
     try {
-      await api.post(`/properties/${propertyId}/leases`, form, { headers: authHeader() });
-      await loadData(Number(propertyId));
-      invalidatePropertyWorkspace(Number(propertyId));
+      await createLease(propertyId, form);
+      await loadData(propertyId);
+      invalidatePropertyWorkspace(propertyId);
       setForm({
         tenantId: "",
         startDate: "",
@@ -76,7 +79,7 @@ export function OwnedLeasesPage() {
         status: "DRAFT"
       });
     } catch (e: any) {
-      const msg = e?.response?.data?.message ?? "Failed to add lease.";
+      const msg = propertyApiErrorMessage(e);
       const blocking = e?.response?.data?.blocking;
       if (blocking?.propertyLeaseId || blocking?.tenantLeaseId) {
         setError(
@@ -89,14 +92,14 @@ export function OwnedLeasesPage() {
     }
   };
 
-  const cancelLease = async (leaseId: number) => {
+  const cancelLease = async (leaseId: string | number) => {
     const cancellationDate = window.prompt("Cancellation date (YYYY-MM-DD)", new Date().toISOString().slice(0, 10));
     if (!cancellationDate) return;
     const cancellationReason = window.prompt("Cancellation reason (optional)", "") ?? undefined;
     await cancelLeaseApi(leaseId, { cancellationDate, cancellationReason, cancelledBy: "LANDLORD" });
     if (propertyId) {
-      await loadData(Number(propertyId));
-      invalidatePropertyWorkspace(Number(propertyId));
+      await loadData(propertyId);
+      invalidatePropertyWorkspace(propertyId);
     }
   };
 
@@ -109,13 +112,13 @@ export function OwnedLeasesPage() {
         {error ? <div className="pg-alert pg-alert-error" style={{ marginBottom: 12 }}>{error}</div> : null}
         <Card>
           <Field label="Property">
-            <select className="pg-input" value={propertyId} onChange={(e) => setPropertyId(Number(e.target.value))}>
+            <select className="pg-input" value={propertyId} onChange={(e) => setPropertyId(e.target.value === "" ? "" : e.target.value)}>
               {properties.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
           </Field>
           <form onSubmit={submit}>
             <Field label="Tenant">
-              <select className="pg-input" value={form.tenantId} onChange={(e) => setForm({ ...form, tenantId: Number(e.target.value) })}>
+              <select className="pg-input" value={form.tenantId} onChange={(e) => setForm({ ...form, tenantId: e.target.value })}>
                 <option value="">Select tenant</option>
                 {tenants.map((t) => <option key={t.id} value={t.id}>{t.firstName} {t.lastName}</option>)}
               </select>
