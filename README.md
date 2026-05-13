@@ -60,6 +60,25 @@ npm ci
 npm run dev                         # http://localhost:5173
 ```
 
+### Supabase env (optional until you use the Supabase client)
+
+The frontend includes a Supabase **browser** client (`frontend/src/lib/supabaseClient.ts`)
+for **Supabase Auth** and data migration. It reads **only**:
+
+- `VITE_SUPABASE_URL` — Supabase Dashboard → **Project Settings** → **API** → **Project URL**
+- `VITE_SUPABASE_ANON_KEY` — same page → **Project API keys** → **anon** `public`
+
+Use **only** the **anon** key in Vite env files. The anon key is public in the bundle and is safe **only with correct Row Level Security (RLS)** on your tables. Never add the **service_role** key, `SUPABASE_JWT_SECRET`, or Stripe **secret** keys to the frontend or any `VITE_*` variable (see [`docs/MIGRATION_STATUS.md`](docs/MIGRATION_STATUS.md)).
+
+For local development, add these to `frontend/.env.local` (gitignored), e.g.:
+
+```bash
+cp frontend/.env.example frontend/.env.local
+# Edit .env.local: set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY
+```
+
+If they are unset, `supabase` is `null` and the existing Express API flow is unchanged.
+
 That's it. Sign up at <http://localhost:5173>, confirm your email via the
 link printed in the backend console, and the app is ready to use.
 
@@ -70,10 +89,12 @@ link printed in the backend console, and the app is ready to use.
 cd backend
 npm run test                # unit tests
 npm run test:integration    # full route-level integration tests
+npm run verify:public-env   # ensure no server-only secret tokens in frontend/src
 
 # Frontend
 cd frontend
 npm run test
+npm run verify:public-env   # same guard (runs backend script from frontend/)
 ```
 
 ### Full stack in Docker
@@ -102,9 +123,7 @@ step-by-step walkthrough. Per-platform deep-dives live in
 
 ### One-line summary of what each provider does
 
-- **Supabase**: provisions Postgres; you copy the connection string into Render
-  or Railway. We do _not_ use Supabase Auth — the app ships with its own
-  hardened JWT auth (see [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)).
+- **Supabase**: managed Postgres, Auth, Storage, and RLS. The app is migrating from Prisma-only access to Supabase clients where appropriate; Express may still verify Supabase JWTs during the bridge (see `backend/src/auth/resolveBearerUser.ts`).
 - **Render / Railway**: builds `backend/Dockerfile` from the repo and runs it
   with secrets injected via the platform's env-var UI. Health-checked at
   `/api/health`.

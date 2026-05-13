@@ -58,11 +58,23 @@ The existing Express app remains until feature parity is proven; new surfaces ca
 
 ---
 
+## Environment variable contract (Phase 1)
+
+| Surface | Supabase-related vars | Other secrets |
+|---------|------------------------|---------------|
+| **Backend / server** (`process.env`, `backend/.env*`) | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWT_SECRET` (bridge), optional `SUPABASE_ANON_KEY` for future RLS-respecting server calls | `DATABASE_URL`, `JWT_SECRET`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` |
+| **Frontend / Vite** (`import.meta.env`, `frontend/.env*`) | **Only** `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` | Never `sk_*`, `whsec_*`, service role, or DB URLs |
+
+- **Anon key:** intentionally public in the bundle; security depends on **RLS** and Auth session, not on hiding the anon string.
+- **Service role key:** full database bypass; **server-only** (`backend/src/config/supabaseClient.ts`, future Vercel server functions). Confirmed: no `SUPABASE_SERVICE_ROLE_KEY` string in `frontend/src` runtime sources (see `npm run verify:public-env`).
+
+---
+
 ## Migration phases (checklist)
 
 Use this as a living checklist; update row status (`[ ]` → `[x]`) in PRs as phases complete.
 
-- [ ] **Phase 1:** Environment and Supabase clients (URLs, anon vs service keys, local vs hosted projects documented)
+- [x] **Phase 1:** Environment and Supabase clients (URLs, anon vs service keys, docs, `verify:public-env`, `env.ts` / README contract — **this commit**)
 - [ ] **Phase 2:** Supabase Auth and profiles (link `auth.users` to app profile; retire legacy auth paths when unused)
 - [ ] **Phase 3:** Database schema and RLS (tables, policies, indexes; parity with Prisma models)
 - [ ] **Phase 4:** Properties CRUD
@@ -90,11 +102,13 @@ Recorded on **2026-05-13** from repo root on branch **`migration/supabase-vercel
 | Backend build | `cd backend && npm run build` | **Pass** — `prisma generate` + `tsc` |
 | Frontend unit tests | `cd frontend && npm test -- --run` | **Pass** — 6 files, 20 tests |
 | Frontend production build | `cd frontend && npm run build` | **Pass** — `tsc` + `vite build` (chunk size warning only) |
+| Env boundary guard | `cd backend && npm run verify:public-env` | **Pass** — no forbidden tokens in `frontend/src` |
 
 **Notes:**
 
 - Integration tests expect a working Postgres + migrations (as already used in this environment).
 - Re-run this table before and after major migration PRs to detect regressions early.
+- Run `npm run verify:public-env` from `backend/` or `frontend/` after any change that might reference server secrets in the SPA tree.
 
 ---
 
@@ -102,4 +116,5 @@ Recorded on **2026-05-13** from repo root on branch **`migration/supabase-vercel
 
 | Date | Change |
 |------|--------|
+| 2026-05-13 | Phase 1 env: separated server vs public vars in docs, `env.ts` comments, `verify:public-env`, `getSupabaseAdminClient` alias, README updates. |
 | 2026-05-13 | Initial baseline: branch name, targets, rules, phase checklist, first verification snapshot. |

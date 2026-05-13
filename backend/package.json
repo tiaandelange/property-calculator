@@ -9,6 +9,7 @@
     "start": "node dist/server.js",
     "test": "jest tests/unit",
     "test:integration": "jest tests/integration",
+    "verify:public-env": "node scripts/verify-public-frontend-env.mjs",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev --name init",
     "confirm:admin": "node --loader ts-node/esm scripts/confirm-admin.ts",
@@ -24,6 +25,7 @@
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
+    "@supabase/supabase-js": "^2.105.4",
     "bcryptjs": "^2.4.3",
     "chartjs-node-canvas": "^5.0.0",
     "cors": "^2.8.5",

@@ -2,7 +2,33 @@ import path from "path";
 import dotenv from "dotenv";
 
 /**
- * Load env files in the same precedence order as Vite, Next.js and Astro.
+ * Backend environment loader (`process.env` only — never `import.meta.env`).
+ *
+ * ## Variable classes (Supabase + Vercel migration)
+ *
+ * ### Server-only secrets (must NEVER appear in `frontend/` or any `VITE_*` key)
+ * These belong in `backend/.env`, Render/Railway/Vercel **server** env, or CI secrets:
+ * - `DATABASE_URL` — Postgres for Prisma (until decommissioned).
+ * - `JWT_SECRET` — legacy app JWT signing + HMAC download URLs (until retired).
+ * - `SUPABASE_JWT_SECRET` — verifies Supabase access tokens on Express during the **legacy bridge**
+ *   (`resolveBearerUser`). Still server-only; not bundled to the SPA.
+ * - `SUPABASE_SERVICE_ROLE_KEY` — Supabase **service_role**; **bypasses RLS**. Use only in trusted
+ *   backend/serverless code (`src/config/supabaseClient.ts`). **Never** import into the frontend.
+ * - `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` — Stripe server API + webhook verification.
+ *
+ * ### Server public / non-secret (still backend `process.env`, not Vite)
+ * - `SUPABASE_URL` — same project URL as the SPA; safe to expose in the bundle, but we read it
+ *   on the server for `createClient` with the service role. The browser uses `VITE_SUPABASE_URL`.
+ * - `SUPABASE_ANON_KEY` — optional on Express for future **RLS-respecting** server calls with a user JWT.
+ *   **Browser-safe only when paired with RLS** — the anon key alone does not protect data; policies do.
+ *   The SPA must use **only** `VITE_SUPABASE_ANON_KEY`, never the service role.
+ *
+ * ### Frontend (Vite) — see `frontend/.env.example`
+ * Only `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` for Supabase. Every `VITE_*` value is public
+ * in the built JS bundle.
+ *
+ * ## Dotenv file precedence (development only)
+ *
  * Files listed earlier WIN — once a key is set, later files cannot overwrite
  * it (because we pass `override: false`):
  *
@@ -12,8 +38,8 @@ import dotenv from "dotenv";
  *   4. .env                    (baseline; only .env.example committed)
  *
  * In production we DO NOT load `.env*` files at all — the platform (Render,
- * Railway, etc.) injects env vars directly into the process. Anything read
- * from disk in production would either be a noop or a misconfiguration smell.
+ * Railway, Vercel server, etc.) injects env vars directly into the process.
+ * Anything read from disk in production would either be a noop or a misconfiguration smell.
  */
 const nodeEnv = process.env.NODE_ENV ?? "development";
 const isProductionEnv = nodeEnv === "production";
@@ -121,6 +147,23 @@ export const env = {
   NODE_ENV: nodeEnv,
   PORT: Number(process.env.PORT ?? 4000),
   JWT_SECRET: resolveJwtSecret(),
+  /**
+   * Supabase Dashboard → Settings → API → JWT Secret (signs access tokens).
+   * Required for Express to accept `Authorization: Bearer <supabase access_token>`.
+   */
+  SUPABASE_JWT_SECRET: (process.env.SUPABASE_JWT_SECRET ?? "").trim(),
+  /** Supabase project URL (Settings → API → Project URL). */
+  SUPABASE_URL: (process.env.SUPABASE_URL ?? "").trim(),
+  /**
+   * Supabase **anon** public key (Settings → API → Project API keys → `anon`).
+   * Optional on the Express server today; reserved for future server-side calls that must respect RLS.
+   */
+  SUPABASE_ANON_KEY: (process.env.SUPABASE_ANON_KEY ?? "").trim(),
+  /**
+   * Supabase **service role** secret (Settings → API → `service_role`).
+   * Bypasses RLS — backend only; never commit real values. Used by `src/config/supabaseClient.ts`.
+   */
+  SUPABASE_SERVICE_ROLE_KEY: (process.env.SUPABASE_SERVICE_ROLE_KEY ?? "").trim(),
   // Short-lived tokens by default: shrinks the window in which a stolen JWT
   // (e.g. via a future XSS bug or leaked log line) remains usable. Override with
   // JWT_EXPIRES_IN if a longer session is genuinely required.
@@ -132,7 +175,14 @@ export const env = {
   FRONTEND_URL: process.env.FRONTEND_URL ?? "http://localhost:5173",
   ALLOWED_ORIGINS: resolveAllowedOrigins(),
   TRUST_PROXY: resolveTrustProxy(),
+  /**
+   * Stripe **secret** API key (`sk_…`). **Server-only** — never in `VITE_*` or frontend code.
+   * Used by `subscriptionRoutes` for Checkout; omit in dev to use mock checkout.
+   */
   STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY ?? "",
+  /**
+   * Stripe webhook signing secret (`whsec_…`). **Server-only** — raw body verification on POST `/api/subscription/webhook`.
+   */
   STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET ?? ""
 };
 
