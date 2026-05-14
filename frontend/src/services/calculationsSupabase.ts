@@ -5,9 +5,21 @@ import { getSupabase } from "../lib/supabaseClient";
 
 function toError(e: unknown): Error {
   if (e instanceof Error) return e;
-  if (e && typeof e === "object" && "message" in e) {
-    const pe = e as { message?: string; hint?: string; details?: string };
-    const parts = [pe.message, pe.hint, pe.details].filter(Boolean);
+  if (e && typeof e === "object") {
+    const pe = e as {
+      message?: string;
+      hint?: string;
+      details?: string;
+      code?: string;
+      statusCode?: string | number;
+    };
+    const parts = [
+      pe.message,
+      pe.details,
+      pe.hint,
+      pe.code != null && pe.code !== "" ? `code=${pe.code}` : undefined,
+      pe.statusCode != null ? `status=${pe.statusCode}` : undefined
+    ].filter(Boolean);
     return new Error(parts.join(" — ") || "Database request failed.");
   }
   return new Error(String(e));

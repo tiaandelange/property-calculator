@@ -76,6 +76,30 @@ function normalizeScenarioNameField(payload: Record<string, unknown>) {
   }
 }
 
+/** Best-effort string for UI when catch receives non-Error throws or odd axios/PostgREST shapes. */
+function formatClientCatch(err: unknown): string {
+  if (err instanceof Error && err.message.trim()) return err.message;
+  if (typeof err === "string" && err.trim()) return err;
+  const a = err as {
+    message?: unknown;
+    response?: { data?: { message?: unknown; error?: unknown }; status?: number };
+    issues?: Array<{ message?: string }>;
+  };
+  const axiosMsg = a?.response?.data?.message ?? a?.response?.data?.error;
+  if (axiosMsg != null && String(axiosMsg).trim()) return String(axiosMsg);
+  if (a?.response?.status != null) return `Request failed (HTTP ${a.response.status}).`;
+  if (a?.message != null && String(a.message).trim()) return String(a.message);
+  if (err && typeof err === "object") {
+    try {
+      const s = JSON.stringify(err);
+      if (s !== "{}") return s;
+    } catch {
+      /* ignore */
+    }
+  }
+  return "Calculation failed";
+}
+
 function toPayload(slug: string, values: Record<string, any>) {
   if (slug === "noi") {
     const items = Array.isArray(values.expenseItems) ? values.expenseItems : [];
@@ -280,7 +304,16 @@ export function CalculatorPage() {
     const payload = toPayload(targetSlug, payloadValues);
     try {
       if (isSupabaseConfigured) {
-        const calcResult = runCalculatorLocally(targetSlug, payload);
+        let calcResult: ReturnType<typeof runCalculatorLocally>;
+        try {
+          calcResult = runCalculatorLocally(targetSlug, payload);
+        } catch (calcErr: unknown) {
+          const issues = (calcErr as Error & { issues?: { message?: string }[] })?.issues;
+          const base = formatClientCatch(calcErr);
+          throw issues?.length
+            ? new Error(`Calculator: ${base}: ${issues.map((i) => i.message).filter(Boolean).join(" · ")}`)
+            : new Error(`Calculator: ${base}`);
+        }
         setResult(calcResult);
         const { data: sessionData } = await getSupabase().auth.getSession();
         if (sessionData.session) {
@@ -310,9 +343,9 @@ export function CalculatorPage() {
         setSavedId(res.data?.id ?? null);
         lastRunRef.current = JSON.stringify(payloadValues);
       }
-    } catch (err: any) {
-      const msg = err?.response?.data?.message ?? err?.message ?? "Calculation failed";
-      const issues = err?.issues ?? err?.response?.data?.issues;
+    } catch (err: unknown) {
+      const issues = (err as Error & { issues?: { message?: string }[] })?.issues ?? (err as any)?.response?.data?.issues;
+      const msg = formatClientCatch(err);
       setError(issues?.length ? `${msg}: ${issues.map((i: any) => i.message).join(" · ")}` : msg);
     } finally {
       setLoading(false);
@@ -338,7 +371,17 @@ export function CalculatorPage() {
       try {
         const payload = toPayload(calcDef.slug, defaults);
         if (isSupabaseConfigured) {
-          const calcResult = runCalculatorLocally(calcDef.slug, payload);
+          let calcResult: ReturnType<typeof runCalculatorLocally>;
+          try {
+            calcResult = runCalculatorLocally(calcDef.slug, payload);
+          } catch (calcErr: unknown) {
+            if (cancelled) return;
+            const issues = (calcErr as Error & { issues?: { message?: string }[] })?.issues;
+            const base = formatClientCatch(calcErr);
+            throw issues?.length
+              ? new Error(`Calculator: ${base}: ${issues.map((i) => i.message).filter(Boolean).join(" · ")}`)
+              : new Error(`Calculator: ${base}`);
+          }
           if (cancelled) return;
           setResult(calcResult);
           const { data: sessionData } = await getSupabase().auth.getSession();
@@ -371,10 +414,10 @@ export function CalculatorPage() {
           setSavedId(res.data?.id ?? null);
         }
         lastRunRef.current = JSON.stringify(defaults);
-      } catch (err: any) {
+      } catch (err: unknown) {
         if (cancelled) return;
-        const msg = err?.response?.data?.message ?? err?.message ?? "Calculation failed";
-        const issues = err?.issues ?? err?.response?.data?.issues;
+        const issues = (err as Error & { issues?: { message?: string }[] })?.issues ?? (err as any)?.response?.data?.issues;
+        const msg = formatClientCatch(err);
         setError(issues?.length ? `${msg}: ${issues.map((i: any) => i.message).join(" · ")}` : msg);
       } finally {
         if (!cancelled) setLoading(false);
