@@ -78,8 +78,4 @@ CREATE POLICY reports_storage_delete_own ON storage.objects FOR DELETE TO authen
   AND split_part(name, '/', 2) = 'reports'
 );
 
-COMMENT ON POLICY reports_storage_select_own ON storage.objects IS
-  'Users read only their prefix and reports/ segment in bucket reports.';
-
-COMMENT ON POLICY reports_storage_insert_own ON storage.objects IS
-  'Users upload only under {uid}/reports/.';
+-- No COMMENT ON POLICY on storage.objects (see property_documents migration; SQLSTATE 42501 on hosted).

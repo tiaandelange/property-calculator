@@ -85,11 +85,6 @@ CREATE POLICY property_documents_storage_delete_own ON storage.objects FOR DELET
   AND split_part(name, '/', 1) = auth.uid ()::text
 );
 
-COMMENT ON POLICY property_documents_storage_select_own ON storage.objects IS
-  'Users read only objects under their auth.uid() prefix in property-documents.';
-
-COMMENT ON POLICY property_documents_storage_insert_own ON storage.objects IS
-  'Users upload only under their auth.uid() prefix.';
-
-COMMENT ON POLICY property_documents_storage_delete_own ON storage.objects IS
-  'Users delete only their own prefix.';
+-- No COMMENT ON POLICY on storage.objects: hosted Supabase runs migrations as a role
+-- that is not owner of storage.objects (42501 "must be owner of relation objects").
+-- Policy intent: uid-prefix isolation on bucket property-documents (see migration header).
