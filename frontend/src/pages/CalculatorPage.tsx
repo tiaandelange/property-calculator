@@ -47,6 +47,35 @@ function selectFieldCoerceValue(field: FieldDef, raw: string): string | number {
   return Number(raw);
 }
 
+/** HTML inputs often yield strings; shared Zod schemas expect real numbers. */
+function coerceEngineNumericPayload(payload: Record<string, unknown>) {
+  const neverCoerce = new Set(["scenarioName", "annualCashFlows", "items"]);
+  for (const key of Object.keys(payload)) {
+    if (neverCoerce.has(key)) continue;
+    const v = payload[key];
+    if (typeof v !== "string") continue;
+    const t = v.trim();
+    if (t === "") continue;
+    const normalized = t.replace(/,/g, "").replace(/\s/g, "");
+    if (normalized === "") continue;
+    const n = Number(normalized);
+    if (Number.isFinite(n)) payload[key] = n;
+  }
+}
+
+function normalizeScenarioNameField(payload: Record<string, unknown>) {
+  const sn = payload.scenarioName;
+  if (sn === null || sn === undefined) {
+    delete payload.scenarioName;
+    return;
+  }
+  if (typeof sn === "string") {
+    const t = sn.trim();
+    if (t) payload.scenarioName = t;
+    else delete payload.scenarioName;
+  }
+}
+
 function toPayload(slug: string, values: Record<string, any>) {
   if (slug === "noi") {
     const items = Array.isArray(values.expenseItems) ? values.expenseItems : [];
@@ -70,9 +99,7 @@ function toPayload(slug: string, values: Record<string, any>) {
   }
 
   const payload: Record<string, unknown> = { ...values };
-  if (payload.scenarioName === "" || payload.scenarioName === null || payload.scenarioName === undefined) {
-    delete payload.scenarioName;
-  }
+  normalizeScenarioNameField(payload);
 
   if (slug === "transfer-bond-costs") {
     const numKeys = new Set([
@@ -125,6 +152,7 @@ function toPayload(slug: string, values: Record<string, any>) {
     }
   }
 
+  coerceEngineNumericPayload(payload);
   return payload;
 }
 
@@ -256,8 +284,21 @@ export function CalculatorPage() {
         setResult(calcResult);
         const { data: sessionData } = await getSupabase().auth.getSession();
         if (sessionData.session) {
-          const saved = await saveCalculationResult(targetSlug, payload, calcResult);
-          setSavedId(saved.id);
+          try {
+            const saved = await saveCalculationResult(targetSlug, payload, calcResult);
+            setSavedId(saved.id);
+          } catch (saveErr: unknown) {
+            setSavedId(null);
+            const sm =
+              saveErr instanceof Error
+                ? saveErr.message
+                : saveErr && typeof saveErr === "object" && "message" in saveErr
+                  ? String((saveErr as { message: unknown }).message)
+                  : String(saveErr);
+            throw new Error(
+              `Could not save this run: ${sm}. (Results are still shown; try signing in, or check profile / free uses in Supabase.)`
+            );
+          }
         } else {
           setSavedId(null);
         }
@@ -302,9 +343,25 @@ export function CalculatorPage() {
           setResult(calcResult);
           const { data: sessionData } = await getSupabase().auth.getSession();
           if (sessionData.session) {
-            const saved = await saveCalculationResult(calcDef.slug, payload, calcResult);
-            setSavedId(saved.id);
+            try {
+              const saved = await saveCalculationResult(calcDef.slug, payload, calcResult);
+              if (cancelled) return;
+              setSavedId(saved.id);
+            } catch (saveErr: unknown) {
+              if (cancelled) return;
+              setSavedId(null);
+              const sm =
+                saveErr instanceof Error
+                  ? saveErr.message
+                  : saveErr && typeof saveErr === "object" && "message" in saveErr
+                    ? String((saveErr as { message: unknown }).message)
+                    : String(saveErr);
+              throw new Error(
+                `Could not save this run: ${sm}. (Results are still shown; try signing in, or check profile / free uses in Supabase.)`
+              );
+            }
           } else {
+            if (cancelled) return;
             setSavedId(null);
           }
         } else {
