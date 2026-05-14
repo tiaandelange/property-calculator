@@ -15,7 +15,9 @@
     "allowSyntheticDefaultImports": true,
     "baseUrl": ".",
     "paths": {
-      "@calculatorShared/*": ["../backend/src/calculatorShared/*"]
+      "@calculatorShared/*": ["../backend/src/calculatorShared/*"],
+      "zod": ["./node_modules/zod"],
+      "zod/*": ["./node_modules/zod/*"]
     }
   },
   "include": ["src", "api"]
