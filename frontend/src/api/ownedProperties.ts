@@ -4,6 +4,9 @@ import * as propertiesSupabase from "../services/propertiesSupabase";
 import * as tenantsSupabase from "../services/tenantsSupabase";
 import * as leasesSupabase from "../services/leasesSupabase";
 import * as financialsSupabase from "../services/financialsSupabase";
+import * as invoicesSupabase from "../services/invoicesSupabase";
+import * as dashboardSupabase from "../services/dashboardSupabase";
+import * as statementsSupabase from "../services/statementsSupabase";
 
 /** Normalizes errors from Axios or Supabase-thrown `Error` for UI copy. */
 export function propertyApiErrorMessage(e: unknown): string {
@@ -26,14 +29,27 @@ export async function getProperties(params?: { month?: string }) {
 
 export async function getPortfolioDashboardSummary(params?: {
   propertyTypes?: string[];
-  propertyId?: number | null;
+  propertyId?: string | number | null;
   month?: string | null;
+  portfolioIrrHorizonYears?: number | null;
   bustCache?: boolean;
 }) {
+  if (isSupabaseConfigured) {
+    return dashboardSupabase.getDashboardSummary({
+      propertyTypes: params?.propertyTypes,
+      propertyId: params?.propertyId ?? null,
+      month: params?.month ?? null,
+      portfolioIrrHorizonYears: params?.portfolioIrrHorizonYears ?? null,
+      bustCache: params?.bustCache
+    });
+  }
   const p = new URLSearchParams();
   if (params?.propertyTypes?.length) p.set("propertyTypes", params.propertyTypes.join(","));
   if (params?.propertyId != null) p.set("propertyId", String(params.propertyId));
   if (params?.month) p.set("month", params.month);
+  if (params?.portfolioIrrHorizonYears != null && Number.isFinite(params.portfolioIrrHorizonYears)) {
+    p.set("portfolioIrrHorizonYears", String(Math.floor(Number(params.portfolioIrrHorizonYears))));
+  }
   if (params?.bustCache === true) p.set("_", String(Date.now()));
   const qs = p.toString() ? `?${p.toString()}` : "";
   const res = await api.get(`/properties/dashboard-summary${qs}`, { headers: authHeader() });
@@ -365,7 +381,50 @@ export async function hardDeletePropertyIncome(incomeId: string | number) {
   return res.data;
 }
 
+export async function listPropertyInvoices(propertyId: string | number) {
+  if (isSupabaseConfigured) {
+    return invoicesSupabase.listInvoices(propertyId);
+  }
+  const res = await api.get(`/properties/${propertyId}/invoices`, { headers: authHeader() });
+  return res.data;
+}
+
+export async function getInvoice(invoiceId: string | number) {
+  if (isSupabaseConfigured) {
+    return invoicesSupabase.getInvoice(invoiceId);
+  }
+  const res = await api.get(`/invoices/${invoiceId}`, { headers: authHeader() });
+  return res.data;
+}
+
+export async function createPropertyInvoice(propertyId: string | number, payload: Record<string, unknown>) {
+  if (isSupabaseConfigured) {
+    return invoicesSupabase.createInvoice(propertyId, payload);
+  }
+  const res = await api.post(`/properties/${propertyId}/invoices`, payload, { headers: authHeader() });
+  return res.data;
+}
+
+export async function updateInvoice(invoiceId: string | number, payload: Record<string, unknown>) {
+  if (isSupabaseConfigured) {
+    return invoicesSupabase.updateInvoice(invoiceId, payload);
+  }
+  const res = await api.put(`/invoices/${invoiceId}`, payload, { headers: authHeader() });
+  return res.data;
+}
+
+export async function markInvoicePaid(invoiceId: string | number) {
+  if (isSupabaseConfigured) {
+    return invoicesSupabase.markInvoicePaid(invoiceId);
+  }
+  const res = await api.post(`/invoices/${invoiceId}/mark-paid`, {}, { headers: authHeader() });
+  return res.data;
+}
+
 export async function hardDeleteInvoice(invoiceId: string | number) {
+  if (isSupabaseConfigured) {
+    return invoicesSupabase.deleteInvoice(invoiceId);
+  }
   const res = await api.delete(`/invoices/${invoiceId}/hard`, { headers: authHeader() });
   return res.data;
 }
@@ -382,6 +441,13 @@ export async function getPropertyStatement(
   propertyId: string | number,
   params?: { month?: string; includeExpected?: boolean; bustCache?: boolean }
 ) {
+  if (isSupabaseConfigured) {
+    const uuid = statementsSupabase.supabaseStatementPropertyId(propertyId);
+    if (!uuid) {
+      throw new Error("Property id must be a UUID to load the statement when Supabase is configured.");
+    }
+    return statementsSupabase.getPropertyMonthlyStatement(uuid, params);
+  }
   const p = new URLSearchParams();
   if (params?.month) p.set("month", params.month);
   if (params?.includeExpected === false) p.set("includeExpected", "false");

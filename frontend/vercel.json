@@ -10,6 +10,12 @@
     "silent": true
   },
 
+  "functions": {
+    "api/reports/generate.ts": {
+      "includeFiles": "assets/fonts/**"
+    }
+  },
+
   "cleanUrls": true,
   "trailingSlash": false,
 

@@ -1,6 +1,7 @@
 /**
  * Hub once-off totals — aligned with `calculateSouthAfricanTransferAndBondCosts` (same engine as backend API).
- * Keep `frontend/src/data/saPropertyCostTables.ts` and `frontend/src/utils/saTransferBondCosts.ts` in sync with backend copies.
+ * Keep `frontend/src/data/saPropertyCostTables.ts` and `frontend/src/utils/saTransferBondCosts.ts`
+ * in sync with `backend/src/calculatorShared/saPropertyCostTables.ts` / `saTransferBondCosts.ts` (canonical for the calculator engine).
  */
 
 import { calculateSouthAfricanTransferAndBondCosts } from "./saTransferBondCosts";

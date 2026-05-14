@@ -2,7 +2,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { api, authHeader } from "../api/client";
 import { downloadAuthenticatedPdf, triggerPdfFileDownload } from "../api/pdfBlob";
-import { getProperties, getPropertyTenants } from "../api/ownedProperties";
+import { getProperties, getPropertyTenants, listPropertyInvoices, createPropertyInvoice, markInvoicePaid } from "../api/ownedProperties";
 import { invalidatePropertyWorkspace } from "../features/properties/invalidate";
 import { usePropertyWorkspaceRefresh } from "../features/properties/usePropertyWorkspaceRefresh";
 import { Container } from "../components/ui/Container";
@@ -14,7 +14,7 @@ import { PageBreadcrumb } from "../components/nav/PageBreadcrumb";
 import { workspacePage } from "../nav/workspaceBreadcrumbs";
 
 export function OwnedInvoicesPage() {
-  const [invoicePdfBusyId, setInvoicePdfBusyId] = useState<number | null>(null);
+  const [invoicePdfBusyId, setInvoicePdfBusyId] = useState<string | number | null>(null);
   const [properties, setProperties] = useState<any[]>([]);
   const [propertyId, setPropertyId] = useState<string | number | "">("");
   const [tenants, setTenants] = useState<any[]>([]);
@@ -35,10 +35,10 @@ export function OwnedInvoicesPage() {
   async function loadData(pid: string | number) {
     const [t, i] = await Promise.all([
       getPropertyTenants(pid),
-      api.get(`/properties/${pid}/invoices`, { headers: authHeader() })
+      listPropertyInvoices(pid)
     ]);
     setTenants(Array.isArray(t) ? t : []);
-    setInvoices(i.data);
+    setInvoices(Array.isArray(i) ? i : []);
   }
   useEffect(() => { void loadProperties(); }, []);
   useEffect(() => { if (propertyId) void loadData(propertyId); }, [propertyId]);
@@ -54,11 +54,11 @@ export function OwnedInvoicesPage() {
   const create = async (e: FormEvent) => {
     e.preventDefault();
     if (!propertyId) return;
-    await api.post(`/properties/${propertyId}/invoices`, form, { headers: authHeader() });
+    await createPropertyInvoice(propertyId, form);
     await loadData(propertyId);
     invalidatePropertyWorkspace(propertyId);
   };
-  const generatePdf = async (id: number) => {
+  const generatePdf = async (id: string | number) => {
     setInvoicePdfBusyId(id);
     try {
       await api.post(`/invoices/${id}/generate-pdf`, {}, { headers: authHeader() });
@@ -68,7 +68,7 @@ export function OwnedInvoicesPage() {
     }
   };
 
-  const downloadPdf = async (id: number, invoiceNumber: string) => {
+  const downloadPdf = async (id: string | number, invoiceNumber: string) => {
     setInvoicePdfBusyId(id);
     try {
       const blob = await downloadAuthenticatedPdf(`/api/invoices/${id}/download`);
@@ -79,12 +79,12 @@ export function OwnedInvoicesPage() {
       setInvoicePdfBusyId(null);
     }
   };
-  const markPaid = async (id: number) => {
-    await api.post(`/invoices/${id}/mark-paid`, {}, { headers: authHeader() });
+  const markPaid = async (id: string | number) => {
+    await markInvoicePaid(id);
     if (propertyId) await loadData(propertyId);
     invalidatePropertyWorkspace(propertyId);
   };
-  const sendEmail = async (id: number) => {
+  const sendEmail = async (id: string | number) => {
     await api.post(`/invoices/${id}/send-email`, {}, { headers: authHeader() });
     if (propertyId) await loadData(propertyId);
   };

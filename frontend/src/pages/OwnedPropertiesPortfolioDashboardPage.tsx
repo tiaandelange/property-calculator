@@ -40,9 +40,11 @@ function parseMonthParam(search: string) {
   return /^\d{4}-\d{2}$/.test(raw) ? raw : null;
 }
 
-function parsePropertyParam(search: string) {
+function parsePropertyParam(search: string): string | number | null {
   const raw = new URLSearchParams(search).get("propertyId");
   if (!raw) return null;
+  const t = raw.trim();
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(t)) return t;
   const n = Number(raw);
   return Number.isNaN(n) ? null : n;
 }
@@ -86,7 +88,7 @@ export function OwnedPropertiesPortfolioDashboardPage() {
   const [selectedTypes, setSelectedTypes] = useState<string[]>(() => parseTypesParam(search));
   const [month, setMonth] = useState<string | null>(() => parseMonthParam(search) ?? new Date().toISOString().slice(0, 7));
   const [properties, setProperties] = useState<any[]>([]);
-  const [propertyId, setPropertyId] = useState<number | null>(() => parsePropertyParam(search));
+  const [propertyId, setPropertyId] = useState<string | number | null>(() => parsePropertyParam(search));
   const [filtersOpen, setFiltersOpen] = useState(false);
   const filtersWrapRef = useRef<HTMLDivElement | null>(null);
 
@@ -104,7 +106,7 @@ export function OwnedPropertiesPortfolioDashboardPage() {
       setData(res);
     } catch (e: any) {
       console.error("[PortfolioDashboard] load failed", e);
-      setError(e?.response?.data?.message ?? "Failed to load portfolio dashboard.");
+      setError(e?.response?.data?.message ?? e?.message ?? "Failed to load portfolio dashboard.");
     } finally {
       setLoading(false);
     }
@@ -385,7 +387,7 @@ export function OwnedPropertiesPortfolioDashboardPage() {
                       <select
                         className="pg-input"
                         value={propertyId ?? ""}
-                        onChange={(e) => setParam({ propertyId: e.target.value ? String(Number(e.target.value)) : null })}
+                        onChange={(e) => setParam({ propertyId: e.target.value || null })}
                       >
                         <option value="">All properties</option>
                         {properties.map((p: any) => (

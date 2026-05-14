@@ -156,12 +156,22 @@ describe("propertiesSupabase", () => {
           }))
         };
       }
+      if (table === "invoices") {
+        return {
+          select: vi.fn(() => ({
+            eq: vi.fn(() => ({
+              order: vi.fn(() => Promise.resolve({ data: [], error: null }))
+            }))
+          }))
+        };
+      }
       return {};
     });
     const p = await getProperty(propertyId);
     expect(p.id).toBe(propertyId);
     expect(p.tenants).toEqual([]);
     expect(p.leases).toEqual([]);
+    expect(p.invoices).toEqual([]);
   });
 
   it("createProperty sets user_id on insert", async () => {

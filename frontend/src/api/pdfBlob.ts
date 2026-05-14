@@ -7,6 +7,27 @@ export function normalizeDownloadPath(downloadUrl: string): string {
   return trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
 }
 
+/** True when the URL is an absolute HTTP(S) link (e.g. Supabase Storage signed URL). */
+export function isAbsoluteHttpUrl(url: string): boolean {
+  const t = url.trim().toLowerCase();
+  return t.startsWith("https://") || t.startsWith("http://");
+}
+
+/**
+ * Downloads a PDF blob. Uses anonymous `fetch` for Supabase signed URLs; otherwise uses the
+ * authenticated Express API client for legacy `/api/reports/:id/download` paths.
+ */
+export async function fetchPdfBlob(downloadUrl: string): Promise<Blob> {
+  if (isAbsoluteHttpUrl(downloadUrl)) {
+    const res = await fetch(downloadUrl);
+    if (!res.ok) {
+      throw new Error(`Download failed (${res.status}).`);
+    }
+    return await res.blob();
+  }
+  return downloadAuthenticatedPdf(downloadUrl);
+}
+
 export async function downloadAuthenticatedPdf(downloadUrl: string): Promise<Blob> {
   const rel = normalizeDownloadPath(downloadUrl);
   try {

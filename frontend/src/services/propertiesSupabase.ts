@@ -9,6 +9,7 @@ import {
   snakeRowToCamel
 } from "../api/propertyRowMapping";
 import * as leasesSupabase from "./leasesSupabase";
+import * as invoicesSupabase from "./invoicesSupabase";
 
 function toError(e: PostgrestError | Error): Error {
   if ("code" in e && "message" in e) {
@@ -73,7 +74,9 @@ export async function getProperty(
   }
   const base = dbToProperty(data as Record<string, unknown>, "detail");
   const leaseBundle = await leasesSupabase.listLeasesForProperty(String(id));
-  return leasesSupabase.mergeLeaseBundleIntoPropertyDetail(base, leaseBundle);
+  const merged = leasesSupabase.mergeLeaseBundleIntoPropertyDetail(base, leaseBundle);
+  const invoices = await invoicesSupabase.listInvoices(String(id));
+  return { ...merged, invoices };
 }
 
 /** Inserts a property with `user_id = auth.uid()`. */

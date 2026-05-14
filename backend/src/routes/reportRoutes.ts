@@ -39,6 +39,10 @@ reportRoutes.get("/health", authRequired, async (_req: AuthRequest, res) => {
   }
 });
 
+/**
+ * Legacy disk-backed PDF generation (Prisma integer ids).
+ * @deprecated When the SPA runs on Vercel with Supabase saves, use `POST /api/reports/generate` (see `frontend/api/reports/generate.ts`) for Storage-backed reports.
+ */
 reportRoutes.post("/generate", authRequired, async (req: AuthRequest, res) => {
   try {
     await ensureReportsDirectory();

@@ -71,6 +71,11 @@ import { buildInvoicePdfDefinition } from "../services/pdf/invoicePdf.js";
 export const ownedPropertiesRoutes = Router();
 
 /**
+ * @deprecated Disk + multer property-document uploads — superseded by Supabase Storage
+ * (`property-documents` bucket) + `frontend/src/services/documentsSupabase.ts` when the SPA
+ * runs with `VITE_SUPABASE_*`. Retained for Express-only deployments and automated tests until
+ * full parity sign-off; do not extend for new features.
+ *
  * Property-document upload storage root. The directory is private to the
  * server and never exposed to clients — frontends interact with it solely
  * through the `/api/documents/:id/download` endpoint.
@@ -2169,6 +2174,7 @@ ownedPropertiesRoutes.delete("/leases/:id", async (req: AuthRequest, res) => {
 });
 
 /**
+ * @deprecated Prefer Storage-backed flows for Supabase; see `documentsSupabase.ts` on the SPA.
  * Strip internal storage fields before returning a document to a client.
  * `filePath` (server-side absolute path) and `mimeType` (sometimes useful but
  * not needed by the UI) stay server-side; the client only sees a download URL
@@ -2195,6 +2201,7 @@ function presentDocument(doc: {
   };
 }
 
+/** @deprecated Disk upload — use Supabase Storage for new cloud builds. */
 ownedPropertiesRoutes.post(
   "/properties/:propertyId/documents/upload",
   (req, res, next) => documentUpload.upload.single("file")(req, res, next),
@@ -2249,6 +2256,7 @@ ownedPropertiesRoutes.post(
   }
 );
 
+/** @deprecated Lists Prisma disk-backed documents — Supabase lists from Postgres + Storage metadata. */
 ownedPropertiesRoutes.get("/properties/:propertyId/documents", async (req: AuthRequest, res) => {
   const propertyId = Number(req.params.propertyId);
   const existing = await assertPropertyOwner(req.userId!, propertyId);
@@ -2265,6 +2273,7 @@ ownedPropertiesRoutes.get("/properties/:propertyId/documents", async (req: AuthR
  * the frontend when the link must be hit directly by the browser (e.g. an
  * `<a href>` click) — the bearer-header flow still works for AJAX downloads.
  */
+/** @deprecated Express signed URL for disk downloads — Supabase uses `createSignedUrl` on the bucket. */
 ownedPropertiesRoutes.post("/documents/:id/sign-download", async (req: AuthRequest, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ message: "Invalid document id." });
@@ -2277,6 +2286,7 @@ ownedPropertiesRoutes.post("/documents/:id/sign-download", async (req: AuthReque
   });
 });
 
+/** @deprecated Streams from local `uploads/property-documents`. */
 ownedPropertiesRoutes.get(
   "/documents/:id/download",
   requireDownloadAuth("document", "id"),
@@ -2310,6 +2320,7 @@ ownedPropertiesRoutes.get(
   }
 );
 
+/** @deprecated Deletes Prisma row and local file under `uploads/property-documents`. */
 ownedPropertiesRoutes.delete("/documents/:id", async (req: AuthRequest, res) => {
   const id = Number(req.params.id);
   const doc = await db.propertyDocument.findFirst({ where: { id, userId: req.userId! } });

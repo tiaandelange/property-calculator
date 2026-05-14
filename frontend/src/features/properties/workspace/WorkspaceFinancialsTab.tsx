@@ -3,7 +3,9 @@ import { Link, useNavigate } from "react-router-dom";
 import { Card } from "../../../components/ui/Card";
 import { Field, Input } from "../../../components/ui/Input";
 import { api, authHeader } from "../../../api/client";
-import { downloadAuthenticatedPdf, openPdfBlobInNewTab } from "../../../api/pdfBlob";
+import { downloadAuthenticatedPdf, fetchPdfBlob, isAbsoluteHttpUrl, openPdfBlobInNewTab } from "../../../api/pdfBlob";
+import { isSupabaseConfigured } from "../../../lib/supabaseClient";
+import { generateReportViaVercel } from "../../../services/reportsVercel";
 import {
   backfillBondStatementRows,
   createCurrentInvoiceFromLease,
@@ -14,6 +16,7 @@ import {
   hardDeletePropertyIncome,
   postBondStatementRow,
   propertyApiErrorMessage,
+  updateInvoice,
   updateLease,
   updateProperty,
   updatePropertyExpense,
@@ -229,6 +232,7 @@ export function WorkspaceFinancialsTab({
   const [statementConfirm, setStatementConfirm] = useState<null | { kind: "save" | "delete"; row: any }>(null);
   const [statementConfirmBusy, setStatementConfirmBusy] = useState(false);
   const [statementFeedback, setStatementFeedback] = useState<string | null>(null);
+  const [summaryPdfBusy, setSummaryPdfBusy] = useState(false);
   const [invoicePdfBusyId, setInvoicePdfBusyId] = useState<number | null>(null);
   const [invoicePdfBanner, setInvoicePdfBanner] = useState<string | null>(null);
 
@@ -496,6 +500,26 @@ export function WorkspaceFinancialsTab({
   );
 
   const setSub = (key: string) => navigate(`/owned-properties/${propertyId}?tab=financials&fin=${key}`, { replace: true });
+
+  const downloadPropertySummaryPdf = async () => {
+    setSummaryPdfBusy(true);
+    setStatementFeedback(null);
+    try {
+      const gen = await generateReportViaVercel({ reportType: "PROPERTY_SUMMARY", propertyId });
+      const downloadUrl = gen.downloadUrl;
+      if (!downloadUrl) throw new Error(gen.error ?? "No download URL returned.");
+      if (isAbsoluteHttpUrl(downloadUrl)) {
+        window.open(downloadUrl, "_blank", "noopener,noreferrer");
+      } else {
+        const blob = await fetchPdfBlob(downloadUrl);
+        openPdfBlobInNewTab(blob);
+      }
+    } catch (e: unknown) {
+      setStatementFeedback(e instanceof Error ? e.message : String(e));
+    } finally {
+      setSummaryPdfBusy(false);
+    }
+  };
 
   const fmt = (n: number | null | undefined) =>
     n == null || Number.isNaN(Number(n)) ? "—" : `R ${Number(n).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
@@ -838,16 +862,12 @@ export function WorkspaceFinancialsTab({
         return false;
       }
       const notesRaw = String(draft.notes ?? "");
-      await api.put(
-        `/invoices/${row.sourceId}`,
-        {
-          invoiceDate: draft.date,
-          total,
-          status: draft.status,
-          notes: notesRaw.trim() === "" ? null : notesRaw.trim()
-        },
-        { headers: authHeader() }
-      );
+      await updateInvoice(row.sourceId, {
+        invoiceDate: draft.date,
+        total,
+        status: draft.status,
+        notes: notesRaw.trim() === "" ? null : notesRaw.trim()
+      });
     } else {
       setStatementFeedback("Unsupported row type for save.");
       return false;
@@ -1006,6 +1026,21 @@ export function WorkspaceFinancialsTab({
           {statementFeedback ? (
             <div className="pg-alert pg-alert-error" role="alert" style={{ marginBottom: 12 }}>
               {statementFeedback}
+            </div>
+          ) : null}
+          {isSupabaseConfigured ? (
+            <div style={{ marginBottom: 12, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+              <button
+                type="button"
+                className="pg-btn pg-btn-secondary"
+                disabled={summaryPdfBusy}
+                onClick={() => void downloadPropertySummaryPdf()}
+              >
+                {summaryPdfBusy ? "Generating…" : "Property summary PDF"}
+              </button>
+              <span className="pg-muted" style={{ fontSize: 12 }}>
+                Current UTC month via serverless PDF (Supabase Storage).
+              </span>
             </div>
           ) : null}
           {(rows?.length ?? 0) === 0 ? (

@@ -8,7 +8,10 @@ import { getCalculatorDefaultValues } from "../data/calculatorDefaultValues";
 import { getCalculatorToolPage } from "../data/calculatorToolPageContent";
 import { getToolExplainer } from "../data/calculatorToolExplainerContent";
 import { api, authHeader } from "../api/client";
-import { downloadAuthenticatedPdf, openPdfBlobInNewTab } from "../api/pdfBlob";
+import { getSupabase, isSupabaseConfigured } from "../lib/supabaseClient";
+import { runCalculatorLocally, saveCalculationResult } from "../services/calculationsSupabase";
+import { downloadAuthenticatedPdf, fetchPdfBlob, isAbsoluteHttpUrl, openPdfBlobInNewTab } from "../api/pdfBlob";
+import { generateReportViaVercel } from "../services/reportsVercel";
 import { CalculatorToolHero } from "../components/calculators/CalculatorToolHero";
 import { Container } from "../components/ui/Container";
 import { Section } from "../components/ui/Section";
@@ -239,22 +242,36 @@ export function CalculatorPage() {
   const [result, setResult] = useState<any>(null);
   const [autoUpdate, setAutoUpdate] = useState(true);
   const lastRunRef = useRef<string>("");
-  const [savedId, setSavedId] = useState<number | null>(null);
+  const [savedId, setSavedId] = useState<string | number | null>(null);
   const [pdfBusy, setPdfBusy] = useState(false);
 
   const runWithValues = useCallback(async (targetSlug: string, payloadValues: Record<string, any>) => {
     setError("");
     setLoading(true);
     setSavedId(null);
+    const payload = toPayload(targetSlug, payloadValues);
     try {
-      const res = await api.post(`/calculations/${targetSlug}`, toPayload(targetSlug, payloadValues), { headers: authHeader() });
-      const calcResult = res.data?.result ?? res.data;
-      setResult(calcResult);
-      setSavedId(res.data?.id ?? null);
-      lastRunRef.current = JSON.stringify(payloadValues);
+      if (isSupabaseConfigured) {
+        const calcResult = runCalculatorLocally(targetSlug, payload);
+        setResult(calcResult);
+        const { data: sessionData } = await getSupabase().auth.getSession();
+        if (sessionData.session) {
+          const saved = await saveCalculationResult(targetSlug, payload, calcResult);
+          setSavedId(saved.id);
+        } else {
+          setSavedId(null);
+        }
+        lastRunRef.current = JSON.stringify(payloadValues);
+      } else {
+        const res = await api.post(`/calculations/${targetSlug}`, payload, { headers: authHeader() });
+        const calcResult = res.data?.result ?? res.data;
+        setResult(calcResult);
+        setSavedId(res.data?.id ?? null);
+        lastRunRef.current = JSON.stringify(payloadValues);
+      }
     } catch (err: any) {
-      const msg = err?.response?.data?.message ?? "Calculation failed";
-      const issues = err?.response?.data?.issues;
+      const msg = err?.response?.data?.message ?? err?.message ?? "Calculation failed";
+      const issues = err?.issues ?? err?.response?.data?.issues;
       setError(issues?.length ? `${msg}: ${issues.map((i: any) => i.message).join(" · ")}` : msg);
     } finally {
       setLoading(false);
@@ -278,19 +295,29 @@ export function CalculatorPage() {
       setLoading(true);
       setSavedId(null);
       try {
-        const res = await api.post(
-          `/calculations/${calcDef.slug}`,
-          toPayload(calcDef.slug, defaults),
-          { headers: authHeader() }
-        );
-        if (cancelled) return;
-        setResult(res.data?.result ?? res.data);
-        setSavedId(res.data?.id ?? null);
+        const payload = toPayload(calcDef.slug, defaults);
+        if (isSupabaseConfigured) {
+          const calcResult = runCalculatorLocally(calcDef.slug, payload);
+          if (cancelled) return;
+          setResult(calcResult);
+          const { data: sessionData } = await getSupabase().auth.getSession();
+          if (sessionData.session) {
+            const saved = await saveCalculationResult(calcDef.slug, payload, calcResult);
+            setSavedId(saved.id);
+          } else {
+            setSavedId(null);
+          }
+        } else {
+          const res = await api.post(`/calculations/${calcDef.slug}`, payload, { headers: authHeader() });
+          if (cancelled) return;
+          setResult(res.data?.result ?? res.data);
+          setSavedId(res.data?.id ?? null);
+        }
         lastRunRef.current = JSON.stringify(defaults);
       } catch (err: any) {
         if (cancelled) return;
-        const msg = err?.response?.data?.message ?? "Calculation failed";
-        const issues = err?.response?.data?.issues;
+        const msg = err?.response?.data?.message ?? err?.message ?? "Calculation failed";
+        const issues = err?.issues ?? err?.response?.data?.issues;
         setError(issues?.length ? `${msg}: ${issues.map((i: any) => i.message).join(" · ")}` : msg);
       } finally {
         if (!cancelled) setLoading(false);
@@ -390,11 +417,23 @@ export function CalculatorPage() {
     setPdfBusy(true);
     setError("");
     try {
-      const gen = await api.post(`/reports/generate`, { reportType: "CALCULATION", calculationId: savedId }, { headers: authHeader() });
-      const downloadUrl = gen.data?.downloadUrl as string | undefined;
-      if (!downloadUrl) throw new Error("No download URL returned.");
-      const blob = await downloadAuthenticatedPdf(downloadUrl);
-      openPdfBlobInNewTab(blob);
+      if (isSupabaseConfigured) {
+        const gen = await generateReportViaVercel({ reportType: "CALCULATION", calculationId: String(savedId) });
+        const downloadUrl = gen.downloadUrl;
+        if (!downloadUrl) throw new Error(gen.error ?? "No download URL returned.");
+        if (isAbsoluteHttpUrl(downloadUrl)) {
+          window.open(downloadUrl, "_blank", "noopener,noreferrer");
+        } else {
+          const blob = await fetchPdfBlob(downloadUrl);
+          openPdfBlobInNewTab(blob);
+        }
+      } else {
+        const gen = await api.post(`/reports/generate`, { reportType: "CALCULATION", calculationId: savedId }, { headers: authHeader() });
+        const downloadUrl = gen.data?.downloadUrl as string | undefined;
+        if (!downloadUrl) throw new Error("No download URL returned.");
+        const blob = await downloadAuthenticatedPdf(downloadUrl);
+        openPdfBlobInNewTab(blob);
+      }
     } catch (e: any) {
       setError(e?.response?.data?.message ?? e?.message ?? "Failed to generate PDF.");
     } finally {

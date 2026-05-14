@@ -6,9 +6,9 @@ import {
   buildIncomeInsert,
   buildIncomeUpdatePatch,
   dbToExpense,
-  dbToIncome,
-  recurringIncomeRuleToCamel
+  dbToIncome
 } from "../api/financialRowMapping";
+import { listRecurringIncomeRulesForProperty } from "./recurringRulesSupabase";
 import { utcCalendarMonthBounds } from "../utils/financialMonthBounds";
 import { leaseDisplayStatus } from "../utils/leaseDisplay";
 import { getProperty } from "./propertiesSupabase";
@@ -340,17 +340,7 @@ export async function markIncomeReceived(
   return { income: dbToIncome(data as Record<string, unknown>) };
 }
 
-export async function listRecurringIncomeRulesForProperty(propertyId: string | number): Promise<Record<string, unknown>[]> {
-  await requireUserId();
-  const sb = getSupabase();
-  const { data, error } = await sb
-    .from("recurring_income_rules")
-    .select("*")
-    .eq("property_id", String(propertyId))
-    .order("created_at", { ascending: false });
-  if (error) throw toError(error);
-  return (data ?? []).map((r) => recurringIncomeRuleToCamel(r as Record<string, unknown>));
-}
+export { listRecurringIncomeRulesForProperty };
 
 /** Same JSON envelope as `GET /api/properties/:propertyId/financials` (summary computed from Supabase ledger). */
 export async function getPropertyFinancials(

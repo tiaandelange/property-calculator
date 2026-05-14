@@ -168,6 +168,16 @@ export function recurringIncomeRuleToCamel(row: Record<string, unknown>): Record
   };
 }
 
+export function recurringInvoiceRuleToCamel(row: Record<string, unknown>): Record<string, unknown> {
+  const c = snakeRowToCamel(row) as Record<string, unknown>;
+  return {
+    ...c,
+    nextRunDate: c.nextRunDate != null ? coerceIsoDateField(c.nextRunDate) : c.nextRunDate,
+    createdAt: c.createdAt != null ? coerceIsoDateField(c.createdAt) : c.createdAt,
+    updatedAt: c.updatedAt != null ? coerceIsoDateField(c.updatedAt) : c.updatedAt
+  };
+}
+
 export function sOpt(v: unknown): string | null {
   return s(v);
 }
