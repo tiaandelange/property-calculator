@@ -43,7 +43,9 @@ export function propertyToDb(payload: Record<string, unknown>): Record<string, u
 }
 
 /** Lists properties for the signed-in user (RLS + `user_id` filter). `month` is ignored until dashboard-summary migrates. */
-export async function listProperties(_params?: { month?: string }): Promise<Record<string, unknown>[]> {
+export type PropertyListItem = Record<string, unknown> & { id: string };
+
+export async function listProperties(_params?: { month?: string }): Promise<PropertyListItem[]> {
   const uid = await requireUserId();
   const sb = getSupabase();
   const { data, error } = await sb
@@ -52,7 +54,7 @@ export async function listProperties(_params?: { month?: string }): Promise<Reco
     .eq("user_id", uid)
     .order("created_at", { ascending: false });
   if (error) throw toError(error);
-  return (data ?? []).map((row) => dbToProperty(row as Record<string, unknown>, "list"));
+  return (data ?? []).map((row) => dbToProperty(row as Record<string, unknown>, "list") as PropertyListItem);
 }
 
 /** Fetches one property by id for the signed-in user. */
@@ -114,4 +116,39 @@ export async function deleteProperty(id: string | number): Promise<void> {
   const sb = getSupabase();
   const { error } = await sb.from("properties").delete().eq("id", String(id)).eq("user_id", uid);
   if (error) throw toError(error);
+}
+
+/** Property workspace “Reports” tab — stored PDFs linked to this property. */
+export async function listPropertyWorkspaceReports(propertyId: string | number): Promise<{
+  reports: Array<{
+    id: string;
+    title: string;
+    description: string;
+    tab: string;
+    href: string | null;
+  }>;
+}> {
+  const uid = await requireUserId();
+  const sb = getSupabase();
+  const pid = String(propertyId);
+  const { data, error } = await sb
+    .from("stored_reports")
+    .select("id, file_name, created_at, metadata")
+    .eq("property_id", pid)
+    .eq("user_id", uid)
+    .order("created_at", { ascending: false });
+  if (error) throw toError(error);
+  const reports = (data ?? []).map((row) => {
+    const meta = (row.metadata ?? {}) as Record<string, unknown>;
+    const title = String(meta.title ?? row.file_name ?? "Report");
+    const description = String(meta.description ?? `Generated ${row.created_at ?? ""}`);
+    return {
+      id: String(row.id),
+      title,
+      description,
+      tab: String(meta.tab ?? "financials"),
+      href: null as string | null
+    };
+  });
+  return { reports };
 }

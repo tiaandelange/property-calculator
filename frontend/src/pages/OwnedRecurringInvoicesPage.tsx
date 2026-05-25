@@ -1,8 +1,6 @@
 import { FormEvent, useEffect, useState } from "react";
 import { Helmet } from "react-helmet-async";
-import { api, authHeader } from "../api/client";
 import { getProperties, getPropertyTenants } from "../api/ownedProperties";
-import { isSupabaseConfigured } from "../lib/supabaseClient";
 import {
   createRecurringInvoiceRule,
   listRecurringInvoiceRules
@@ -36,43 +34,36 @@ export function OwnedRecurringInvoicesPage() {
   async function loadProperties() {
     const rows = await getProperties();
     setProperties(rows);
-    if (!propertyId && rows[0]) setPropertyId(rows[0].id);
+    if (!propertyId && rows[0]) setPropertyId(rows[0].id as string | number);
   }
   async function loadData(pid: string | number) {
     const t = await getPropertyTenants(pid);
     setTenants(Array.isArray(t) ? t : []);
-    if (isSupabaseConfigured) {
-      setRules(await listRecurringInvoiceRules(pid));
-    } else {
-      const r = await api.get(`/properties/${pid}/recurring-invoices`, { headers: authHeader() });
-      setRules(r.data);
-    }
+    setRules(await listRecurringInvoiceRules(pid));
   }
-  useEffect(() => { void loadProperties(); }, []);
-  useEffect(() => { if (propertyId) void loadData(propertyId); }, [propertyId]);
+  useEffect(() => {
+    void loadProperties();
+  }, []);
+  useEffect(() => {
+    if (propertyId) void loadData(propertyId);
+  }, [propertyId]);
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     if (!propertyId) return;
-    if (isSupabaseConfigured) {
-      await createRecurringInvoiceRule(propertyId, form);
-    } else {
-      await api.post(`/properties/${propertyId}/recurring-invoices`, form, { headers: authHeader() });
-    }
+    await createRecurringInvoiceRule(propertyId, form);
     await loadData(propertyId);
   };
   const runDue = async () => {
-    if (isSupabaseConfigured) {
-      await runDueRecurringInvoices();
-    } else {
-      await api.post("/recurring-invoices/run-due", {}, { headers: authHeader() });
-    }
+    await runDueRecurringInvoices();
     if (propertyId) await loadData(propertyId);
   };
 
   return (
     <Section>
-      <Helmet><title>Recurring Invoices | The Property Guy</title></Helmet>
+      <Helmet>
+        <title>Recurring Invoices | The Property Guy</title>
+      </Helmet>
       <Container>
         <PageBreadcrumb items={workspacePage("Recurring Invoices")} />
         <h1 className="pg-h2">Recurring Invoices</h1>
@@ -80,23 +71,102 @@ export function OwnedRecurringInvoicesPage() {
           Recurring invoices will only be emailed if you confirm permission and configure email sending.
         </div>
         <Card>
-          <Field label="Property"><select className="pg-input" value={propertyId} onChange={(e) => setPropertyId(e.target.value === "" ? "" : e.target.value)}>{properties.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></Field>
+          <Field label="Property">
+            <select
+              className="pg-input"
+              value={propertyId}
+              onChange={(e) => setPropertyId(e.target.value === "" ? "" : e.target.value)}
+            >
+              {properties.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          </Field>
           <form onSubmit={submit}>
-            <Field label="Tenant"><select className="pg-input" value={form.tenantId} onChange={(e) => setForm({ ...form, tenantId: e.target.value })}>{tenants.map((t) => <option key={t.id} value={t.id}>{t.firstName} {t.lastName}</option>)}</select></Field>
-            <Field label="Rent amount"><Input type="number" value={form.rentAmount} onChange={(e) => setForm({ ...form, rentAmount: Number(e.target.value) })} required /></Field>
-            <Field label="Invoice day of month"><Input type="number" min={1} max={31} value={form.dayOfMonth} onChange={(e) => setForm({ ...form, dayOfMonth: Number(e.target.value) })} /></Field>
-            <Field label="Next run date"><Input type="date" value={form.nextRunDate} onChange={(e) => setForm({ ...form, nextRunDate: e.target.value })} required /></Field>
-            <Field label="Email tenant"><label className="pg-pill"><input type="checkbox" checked={form.emailTenant} onChange={(e) => setForm({ ...form, emailTenant: e.target.checked })} /> Email tenant</label></Field>
-            <Field label="Tenant permission"><label className="pg-pill"><input type="checkbox" checked={form.tenantPermissionConfirmed} onChange={(e) => setForm({ ...form, tenantPermissionConfirmed: e.target.checked })} /> Permission confirmed</label></Field>
-            <Field label="Enable rule"><label className="pg-pill"><input type="checkbox" checked={form.enabled} onChange={(e) => setForm({ ...form, enabled: e.target.checked })} /> Enabled</label></Field>
+            <Field label="Tenant">
+              <select
+                className="pg-input"
+                value={form.tenantId}
+                onChange={(e) => setForm({ ...form, tenantId: e.target.value })}
+              >
+                {tenants.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.firstName} {t.lastName}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Rent amount">
+              <Input
+                type="number"
+                value={form.rentAmount}
+                onChange={(e) => setForm({ ...form, rentAmount: Number(e.target.value) })}
+                required
+              />
+            </Field>
+            <Field label="Invoice day of month">
+              <Input
+                type="number"
+                min={1}
+                max={31}
+                value={form.dayOfMonth}
+                onChange={(e) => setForm({ ...form, dayOfMonth: Number(e.target.value) })}
+              />
+            </Field>
+            <Field label="Next run date">
+              <Input
+                type="date"
+                value={form.nextRunDate}
+                onChange={(e) => setForm({ ...form, nextRunDate: e.target.value })}
+                required
+              />
+            </Field>
+            <Field label="Email tenant">
+              <label className="pg-pill">
+                <input
+                  type="checkbox"
+                  checked={form.emailTenant}
+                  onChange={(e) => setForm({ ...form, emailTenant: e.target.checked })}
+                />{" "}
+                Email tenant
+              </label>
+            </Field>
+            <Field label="Tenant permission">
+              <label className="pg-pill">
+                <input
+                  type="checkbox"
+                  checked={form.tenantPermissionConfirmed}
+                  onChange={(e) => setForm({ ...form, tenantPermissionConfirmed: e.target.checked })}
+                />{" "}
+                Permission confirmed
+              </label>
+            </Field>
+            <Field label="Enable rule">
+              <label className="pg-pill">
+                <input
+                  type="checkbox"
+                  checked={form.enabled}
+                  onChange={(e) => setForm({ ...form, enabled: e.target.checked })}
+                />{" "}
+                Enabled
+              </label>
+            </Field>
             <Button type="submit">Create Rule</Button>
-            <Button type="button" variant="secondary" onClick={runDue} style={{ marginLeft: 8 }}>Run Due Rules</Button>
+            <Button type="button" variant="secondary" onClick={runDue} style={{ marginLeft: 8 }}>
+              Run Due Rules
+            </Button>
           </form>
         </Card>
         <div style={{ height: 12 }} />
         <Card title="Rules">
           <div style={{ display: "grid", gap: 8 }}>
-            {rules.map((r) => <div key={r.id}>Rule #{r.id}: day {r.dayOfMonth}, amount {r.rentAmount}, enabled {String(r.enabled)}</div>)}
+            {rules.map((r) => (
+              <div key={r.id}>
+                Rule #{r.id}: day {r.dayOfMonth}, amount {r.rentAmount}, enabled {String(r.enabled)}
+              </div>
+            ))}
           </div>
         </Card>
       </Container>

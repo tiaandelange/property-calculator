@@ -1,70 +1,66 @@
-import { api, authHeader } from "./client";
+import { getSupabase } from "../lib/supabaseClient";
 
-/** Normalizes `/api/reports/1/download` to a path relative to axios `baseURL` (which includes `/api`). */
+/** Normalizes legacy `/api/...` paths to same-origin fetch paths. */
 export function normalizeDownloadPath(downloadUrl: string): string {
   const trimmed = downloadUrl.trim();
-  if (trimmed.startsWith("/api/")) return trimmed.slice(4);
-  return trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
+  if (trimmed.startsWith("/api/")) return trimmed;
+  if (trimmed.startsWith("api/")) return `/${trimmed}`;
+  return trimmed;
 }
 
-/** True when the URL is an absolute HTTP(S) link (e.g. Supabase Storage signed URL). */
 export function isAbsoluteHttpUrl(url: string): boolean {
-  const t = url.trim().toLowerCase();
-  return t.startsWith("https://") || t.startsWith("http://");
+  return /^https?:\/\//i.test(url.trim());
 }
 
 /**
- * Downloads a PDF blob. Uses anonymous `fetch` for Supabase signed URLs; otherwise uses the
- * authenticated Express API client for legacy `/api/reports/:id/download` paths.
+ * Fetches a PDF blob using a signed URL or same-origin path with the Supabase session.
+ * Legacy disk-backed `/api/reports/:id/download` paths are no longer served — regenerate the PDF.
  */
 export async function fetchPdfBlob(downloadUrl: string): Promise<Blob> {
-  if (isAbsoluteHttpUrl(downloadUrl)) {
-    const res = await fetch(downloadUrl);
-    if (!res.ok) {
-      throw new Error(`Download failed (${res.status}).`);
-    }
-    return await res.blob();
+  const url = downloadUrl.trim();
+  if (!url) throw new Error("Missing download URL.");
+  if (url.includes("/reports/") && url.includes("/download")) {
+    throw new Error(
+      "This report was saved before Supabase Storage. Open the calculator and use Regenerate PDF."
+    );
   }
-  return downloadAuthenticatedPdf(downloadUrl);
+
+  if (isAbsoluteHttpUrl(url)) {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`Download failed (${res.status}).`);
+    return res.blob();
+  }
+
+  const sb = getSupabase();
+  const { data, error } = await sb.auth.getSession();
+  if (error) throw error;
+  const token = data.session?.access_token;
+  if (!token) throw new Error("Not signed in.");
+
+  const path = normalizeDownloadPath(url);
+  const res = await fetch(path, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  if (!res.ok) throw new Error(`Download failed (${res.status}).`);
+  return res.blob();
 }
 
-export async function downloadAuthenticatedPdf(downloadUrl: string): Promise<Blob> {
-  const rel = normalizeDownloadPath(downloadUrl);
-  try {
-    const res = await api.get(rel, { headers: authHeader(), responseType: "blob" });
-    return res.data as Blob;
-  } catch (e: unknown) {
-    const err = e as { response?: { data?: Blob }; message?: string };
-    const blob = err?.response?.data;
-    if (blob instanceof Blob) {
-      try {
-        const text = await blob.text();
-        const parsed = JSON.parse(text) as { message?: string };
-        throw new Error(parsed?.message ?? "Download failed.");
-      } catch (inner) {
-        if (inner instanceof Error && inner.message !== "Download failed.") throw inner;
-        throw new Error("Download failed.");
-      }
-    }
-    throw new Error(err?.message ?? "Download failed.");
-  }
+export function openPdfBlobInNewTab(blob: Blob): void {
+  const objectUrl = URL.createObjectURL(blob);
+  window.open(objectUrl, "_blank", "noopener,noreferrer");
+  window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
 }
 
-export function triggerPdfFileDownload(blob: Blob, filename: string) {
-  const url = URL.createObjectURL(blob);
+export function triggerPdfFileDownload(blob: Blob, fileName: string): void {
+  const objectUrl = URL.createObjectURL(blob);
   const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.rel = "noopener";
-  document.body.appendChild(a);
+  a.href = objectUrl;
+  a.download = fileName;
   a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
+  window.setTimeout(() => URL.revokeObjectURL(objectUrl), 10_000);
 }
 
-export function openPdfBlobInNewTab(blob: Blob): string {
-  const url = URL.createObjectURL(blob);
-  window.open(url, "_blank", "noopener,noreferrer");
-  window.setTimeout(() => URL.revokeObjectURL(url), 120_000);
-  return url;
+export async function downloadAuthenticatedPdf(downloadUrl: string, fileName: string): Promise<void> {
+  const blob = await fetchPdfBlob(downloadUrl);
+  triggerPdfFileDownload(blob, fileName);
 }

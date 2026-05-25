@@ -6,25 +6,13 @@ import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
 import { Input } from "../components/ui/Input";
 import { getEquityMetrics, updateEquityMetrics } from "../api/ownedProperties";
+import type { EquityMetricRow } from "../services/equityMetricsSupabase";
 import { PageBreadcrumb } from "../components/nav/PageBreadcrumb";
 import { workspacePage } from "../nav/workspaceBreadcrumbs";
 
-type EquityRow = {
-  id: number;
-  name: string;
-  addressLine1: string;
-  city: string;
-  province: string;
-  purchasePrice: number;
-  currentEstimatedValue: number | null;
-  outstandingBondBalance: number | null;
-  equity: number | null;
-  updatedAt?: string;
-};
-
 export function OwnedEquityMetricsPage() {
-  const [rows, setRows] = useState<EquityRow[]>([]);
-  const [draft, setDraft] = useState<Record<number, { currentEstimatedValue: string; outstandingBondBalance: string }>>({});
+  const [rows, setRows] = useState<EquityMetricRow[]>([]);
+  const [draft, setDraft] = useState<Record<string, { currentEstimatedValue: string; outstandingBondBalance: string }>>({});
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -38,8 +26,8 @@ export function OwnedEquityMetricsPage() {
       const data = await getEquityMetrics();
       setRows(data);
       const nextDraft: typeof draft = {};
-      data.forEach((r: EquityRow) => {
-        nextDraft[r.id] = {
+      data.forEach((r) => {
+        nextDraft[String(r.id)] = {
           currentEstimatedValue: r.currentEstimatedValue == null ? "" : String(r.currentEstimatedValue),
           outstandingBondBalance: r.outstandingBondBalance == null ? "" : String(r.outstandingBondBalance)
         };
@@ -70,7 +58,7 @@ export function OwnedEquityMetricsPage() {
     setMessage("");
     try {
       const updates = rows.map((r) => {
-        const d = draft[r.id] ?? { currentEstimatedValue: "", outstandingBondBalance: "" };
+        const d = draft[String(r.id)] ?? { currentEstimatedValue: "", outstandingBondBalance: "" };
         return {
           propertyId: r.id,
           currentEstimatedValue: d.currentEstimatedValue === "" ? null : Number(d.currentEstimatedValue),
@@ -88,12 +76,12 @@ export function OwnedEquityMetricsPage() {
     }
   };
 
-  const saveRow = async (propertyId: number) => {
+  const saveRow = async (propertyId: string | number) => {
     setSaving(true);
     setError("");
     setMessage("");
     try {
-      const d = draft[propertyId];
+      const d = draft[String(propertyId)];
       await updateEquityMetrics([
         {
           propertyId,
@@ -155,7 +143,7 @@ export function OwnedEquityMetricsPage() {
               </thead>
               <tbody>
                 {rows.map((r) => {
-                  const d = draft[r.id] ?? { currentEstimatedValue: "", outstandingBondBalance: "" };
+                  const d = draft[String(r.id)] ?? { currentEstimatedValue: "", outstandingBondBalance: "" };
                   const value = d.currentEstimatedValue === "" ? null : Number(d.currentEstimatedValue);
                   const bond = d.outstandingBondBalance === "" ? null : Number(d.outstandingBondBalance);
                   const equity = value != null && bond != null ? value - bond : null;

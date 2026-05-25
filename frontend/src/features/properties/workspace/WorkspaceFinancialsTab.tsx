@@ -2,7 +2,6 @@ import { FormEvent, useEffect, useMemo, useRef, useState, type ReactNode } from 
 import { Link, useNavigate } from "react-router-dom";
 import { Card } from "../../../components/ui/Card";
 import { Field, Input } from "../../../components/ui/Input";
-import { api, authHeader } from "../../../api/client";
 import { fetchPdfBlob, isAbsoluteHttpUrl, openPdfBlobInNewTab } from "../../../api/pdfBlob";
 import { isSupabaseConfigured } from "../../../lib/supabaseClient";
 import { generateReportViaVercel } from "../../../services/reportsVercel";

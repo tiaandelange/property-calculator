@@ -7,10 +7,9 @@ import { calculators, type FieldDef } from "../data/calculators";
 import { getCalculatorDefaultValues } from "../data/calculatorDefaultValues";
 import { getCalculatorToolPage } from "../data/calculatorToolPageContent";
 import { getToolExplainer } from "../data/calculatorToolExplainerContent";
-import { api, authHeader } from "../api/client";
-import { getSupabase, isSupabaseConfigured } from "../lib/supabaseClient";
+import { getSupabase } from "../lib/supabaseClient";
 import { runCalculatorLocally, saveCalculationResult } from "../services/calculationsSupabase";
-import { downloadAuthenticatedPdf, fetchPdfBlob, isAbsoluteHttpUrl, openPdfBlobInNewTab } from "../api/pdfBlob";
+import { fetchPdfBlob, isAbsoluteHttpUrl, openPdfBlobInNewTab } from "../api/pdfBlob";
 import { generateReportViaVercel } from "../services/reportsVercel";
 import { CalculatorToolHero } from "../components/calculators/CalculatorToolHero";
 import { useCalculatorMobileResults } from "../hooks/useCalculatorMobileResults";
@@ -305,48 +304,39 @@ export function CalculatorPage() {
     setSavedId(null);
     const payload = toPayload(targetSlug, payloadValues);
     try {
-      if (isSupabaseConfigured) {
-        let calcResult: ReturnType<typeof runCalculatorLocally>;
-        try {
-          calcResult = runCalculatorLocally(targetSlug, payload);
-        } catch (calcErr: unknown) {
-          const issues = (calcErr as Error & { issues?: { message?: string }[] })?.issues;
-          const base = formatClientCatch(calcErr);
-          throw issues?.length
-            ? new Error(`Calculator: ${base}: ${issues.map((i) => i.message).filter(Boolean).join(" · ")}`)
-            : new Error(`Calculator: ${base}`);
-        }
-        setResult(calcResult);
-        if (opts?.userInitiated) onCalculateSuccess();
-        const { data: sessionData } = await getSupabase().auth.getSession();
-        if (sessionData.session) {
-          try {
-            const saved = await saveCalculationResult(targetSlug, payload, calcResult);
-            setSavedId(saved.id);
-          } catch (saveErr: unknown) {
-            setSavedId(null);
-            const sm =
-              saveErr instanceof Error
-                ? saveErr.message
-                : saveErr && typeof saveErr === "object" && "message" in saveErr
-                  ? String((saveErr as { message: unknown }).message)
-                  : String(saveErr);
-            throw new Error(
-              `Could not save this run: ${sm}. (Results are still shown; try signing in, or check profile / free uses in Supabase.)`
-            );
-          }
-        } else {
-          setSavedId(null);
-        }
-        lastRunRef.current = JSON.stringify(payloadValues);
-      } else {
-        const res = await api.post(`/calculations/${targetSlug}`, payload, { headers: authHeader() });
-        const calcResult = res.data?.result ?? res.data;
-        setResult(calcResult);
-        if (opts?.userInitiated) onCalculateSuccess();
-        setSavedId(res.data?.id ?? null);
-        lastRunRef.current = JSON.stringify(payloadValues);
+      let calcResult: ReturnType<typeof runCalculatorLocally>;
+      try {
+        calcResult = runCalculatorLocally(targetSlug, payload);
+      } catch (calcErr: unknown) {
+        const issues = (calcErr as Error & { issues?: { message?: string }[] })?.issues;
+        const base = formatClientCatch(calcErr);
+        throw issues?.length
+          ? new Error(`Calculator: ${base}: ${issues.map((i) => i.message).filter(Boolean).join(" · ")}`)
+          : new Error(`Calculator: ${base}`);
       }
+      setResult(calcResult);
+      if (opts?.userInitiated) onCalculateSuccess();
+      const { data: sessionData } = await getSupabase().auth.getSession();
+      if (sessionData.session) {
+        try {
+          const saved = await saveCalculationResult(targetSlug, payload, calcResult);
+          setSavedId(saved.id);
+        } catch (saveErr: unknown) {
+          setSavedId(null);
+          const sm =
+            saveErr instanceof Error
+              ? saveErr.message
+              : saveErr && typeof saveErr === "object" && "message" in saveErr
+                ? String((saveErr as { message: unknown }).message)
+                : String(saveErr);
+          throw new Error(
+            `Could not save this run: ${sm}. (Results are still shown; try signing in, or check profile / free uses in Supabase.)`
+          );
+        }
+      } else {
+        setSavedId(null);
+      }
+      lastRunRef.current = JSON.stringify(payloadValues);
     } catch (err: unknown) {
       const issues = (err as Error & { issues?: { message?: string }[] })?.issues ?? (err as any)?.response?.data?.issues;
       const msg = formatClientCatch(err);
@@ -374,48 +364,41 @@ export function CalculatorPage() {
       setSavedId(null);
       try {
         const payload = toPayload(calcDef.slug, defaults);
-        if (isSupabaseConfigured) {
-          let calcResult: ReturnType<typeof runCalculatorLocally>;
-          try {
-            calcResult = runCalculatorLocally(calcDef.slug, payload);
-          } catch (calcErr: unknown) {
-            if (cancelled) return;
-            const issues = (calcErr as Error & { issues?: { message?: string }[] })?.issues;
-            const base = formatClientCatch(calcErr);
-            throw issues?.length
-              ? new Error(`Calculator: ${base}: ${issues.map((i) => i.message).filter(Boolean).join(" · ")}`)
-              : new Error(`Calculator: ${base}`);
-          }
+        let calcResult: ReturnType<typeof runCalculatorLocally>;
+        try {
+          calcResult = runCalculatorLocally(calcDef.slug, payload);
+        } catch (calcErr: unknown) {
           if (cancelled) return;
-          setResult(calcResult);
-          const { data: sessionData } = await getSupabase().auth.getSession();
-          if (sessionData.session) {
-            try {
-              const saved = await saveCalculationResult(calcDef.slug, payload, calcResult);
-              if (cancelled) return;
-              setSavedId(saved.id);
-            } catch (saveErr: unknown) {
-              if (cancelled) return;
-              setSavedId(null);
-              const sm =
-                saveErr instanceof Error
-                  ? saveErr.message
-                  : saveErr && typeof saveErr === "object" && "message" in saveErr
-                    ? String((saveErr as { message: unknown }).message)
-                    : String(saveErr);
-              throw new Error(
-                `Could not save this run: ${sm}. (Results are still shown; try signing in, or check profile / free uses in Supabase.)`
-              );
-            }
-          } else {
+          const issues = (calcErr as Error & { issues?: { message?: string }[] })?.issues;
+          const base = formatClientCatch(calcErr);
+          throw issues?.length
+            ? new Error(`Calculator: ${base}: ${issues.map((i) => i.message).filter(Boolean).join(" · ")}`)
+            : new Error(`Calculator: ${base}`);
+        }
+        if (cancelled) return;
+        setResult(calcResult);
+        const { data: sessionData } = await getSupabase().auth.getSession();
+        if (sessionData.session) {
+          try {
+            const saved = await saveCalculationResult(calcDef.slug, payload, calcResult);
+            if (cancelled) return;
+            setSavedId(saved.id);
+          } catch (saveErr: unknown) {
             if (cancelled) return;
             setSavedId(null);
+            const sm =
+              saveErr instanceof Error
+                ? saveErr.message
+                : saveErr && typeof saveErr === "object" && "message" in saveErr
+                  ? String((saveErr as { message: unknown }).message)
+                  : String(saveErr);
+            throw new Error(
+              `Could not save this run: ${sm}. (Results are still shown; try signing in, or check profile / free uses in Supabase.)`
+            );
           }
         } else {
-          const res = await api.post(`/calculations/${calcDef.slug}`, payload, { headers: authHeader() });
           if (cancelled) return;
-          setResult(res.data?.result ?? res.data);
-          setSavedId(res.data?.id ?? null);
+          setSavedId(null);
         }
         lastRunRef.current = JSON.stringify(defaults);
       } catch (err: unknown) {
@@ -521,21 +504,13 @@ export function CalculatorPage() {
     setPdfBusy(true);
     setError("");
     try {
-      if (isSupabaseConfigured) {
-        const gen = await generateReportViaVercel({ reportType: "CALCULATION", calculationId: String(savedId) });
-        const downloadUrl = gen.downloadUrl;
-        if (!downloadUrl) throw new Error(gen.error ?? "No download URL returned.");
-        if (isAbsoluteHttpUrl(downloadUrl)) {
-          window.open(downloadUrl, "_blank", "noopener,noreferrer");
-        } else {
-          const blob = await fetchPdfBlob(downloadUrl);
-          openPdfBlobInNewTab(blob);
-        }
+      const gen = await generateReportViaVercel({ reportType: "CALCULATION", calculationId: String(savedId) });
+      const downloadUrl = gen.downloadUrl;
+      if (!downloadUrl) throw new Error(gen.error ?? "No download URL returned.");
+      if (isAbsoluteHttpUrl(downloadUrl)) {
+        window.open(downloadUrl, "_blank", "noopener,noreferrer");
       } else {
-        const gen = await api.post(`/reports/generate`, { reportType: "CALCULATION", calculationId: savedId }, { headers: authHeader() });
-        const downloadUrl = gen.data?.downloadUrl as string | undefined;
-        if (!downloadUrl) throw new Error("No download URL returned.");
-        const blob = await downloadAuthenticatedPdf(downloadUrl);
+        const blob = await fetchPdfBlob(downloadUrl);
         openPdfBlobInNewTab(blob);
       }
     } catch (e: any) {

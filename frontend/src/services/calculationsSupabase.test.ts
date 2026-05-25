@@ -8,6 +8,7 @@ import {
 
 const rpc = vi.fn();
 const from = vi.fn();
+const storageFrom = vi.fn();
 
 vi.mock("../lib/supabaseClient", () => ({
   getSupabase: () => ({
@@ -16,7 +17,8 @@ vi.mock("../lib/supabaseClient", () => ({
       getSession: vi.fn().mockResolvedValue({ data: { session: null } }),
       getUser: vi.fn().mockResolvedValue({ data: { user: { id: "u1" } }, error: null })
     },
-    from
+    from,
+    storage: { from: storageFrom }
   })
 }));
 
@@ -24,6 +26,7 @@ describe("calculationsSupabase", () => {
   beforeEach(() => {
     rpc.mockReset();
     from.mockReset();
+    storageFrom.mockReset();
   });
 
   it("runCalculatorLocally runs transfer-bond-costs for valid payload", () => {
@@ -101,7 +104,9 @@ describe("calculationsSupabase", () => {
                       id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
                       calculation_id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
                       file_name: "calc.pdf",
-                      created_at: "2026-01-02T00:00:00Z"
+                      created_at: "2026-01-02T00:00:00Z",
+                      storage_bucket: "reports",
+                      storage_key: "u1/reports/bbbb.pdf"
                     }
                   ],
                   error: null
@@ -114,10 +119,17 @@ describe("calculationsSupabase", () => {
       return {};
     });
 
+    storageFrom.mockReturnValue({
+      createSignedUrl: vi.fn().mockResolvedValue({
+        data: { signedUrl: "https://signed.example/calc.pdf" },
+        error: null
+      })
+    });
+
     const rows = await listCalculationResults();
     expect(rows).toHaveLength(1);
     expect(rows[0].hasPdf).toBe(true);
-    expect(rows[0].downloadUrl).toContain("/api/reports/");
+    expect(rows[0].downloadUrl).toContain("signed.example");
   });
 
   it("deleteCalculationResult deletes stored_reports then calculator_results", async () => {

@@ -9,7 +9,7 @@ invoices and documents.
 React + Vite + TS  ─►  Supabase (Auth, Postgres RLS, Storage, RPCs)
    (Vercel)              ▲
         │                └── Vercel Functions (PDFs, bond, email, cron)
-        └── Slim Express (Render): health + Stripe only
+        └── Vercel `/api/*` (Stripe, PDFs, bond, cron, email)
 ```
 
 ---
@@ -18,19 +18,17 @@ React + Vite + TS  ─►  Supabase (Auth, Postgres RLS, Storage, RPCs)
 
 ```
 .
-├── backend/                  Slim Express API (Stripe + health); **Prisma retired** from runtime
+├── frontend/                 React + Vite SPA + Vercel Functions (`frontend/api/`)
+├── shared/calculatorShared/  Pure calculator engine (`@calculatorShared` alias)
 ├── supabase/migrations/      Postgres schema, RLS, RPCs (system of record)
-├── frontend/                 React + Vite SPA
+├── backend/                  Legacy Prisma scripts + repo guards (not a runtime API)
 ├── docs/                     Architecture and deployment docs
-│   ├── ARCHITECTURE.md        ← read this first to understand the system
-│   ├── DEPLOYMENT.md          ← step-by-step production deploy
-│   ├── SECRETS.md             ← inventory, rotation cadence, CI/CD pattern
-│   └── deployment/            per-platform deep-dives
-├── render.yaml               Render blueprint (provisions the backend)
-├── railway.json              Railway config (alternative to Render)
-├── docker-compose.yml        Local dev — full stack in containers
-├── docker-compose.prod.yml   Self-hosted production reference
-└── frontend/vercel.json      Vercel build + routing + headers config
+│   ├── ARCHITECTURE.md
+│   ├── DEPLOYMENT.md
+│   ├── MIGRATION_STATUS.md
+│   └── deployment/vercel.md
+├── docker-compose.yml        Optional local containers
+└── frontend/vercel.json      Vercel build + SPA rewrites + function config
 ```
 
 ---
@@ -47,18 +45,15 @@ cd propertyguy
 # 2. Apply Supabase migrations (hosted or `supabase start` + `supabase db reset`)
 #    See supabase/README.md
 
-# 3. Backend (Stripe + health only)
-cd backend
-cp .env.example .env
-npm ci
-npm run dev                         # http://localhost:4000
-
-# 4. Frontend (required: VITE_SUPABASE_* for normal app usage)
-cd ../frontend
+# 3. Frontend (required: VITE_SUPABASE_*)
+cd frontend
 cp .env.example .env.local          # set VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY
 npm ci
-npm run dev                         # http://localhost:5173
-# PDF/bond routes: use `vercel dev` in frontend/ for /api/* serverless handlers
+npm run dev                         # http://localhost:5173 — SPA only
+
+# 4. Vercel Functions locally (PDFs, Stripe, bond, cron)
+#    From frontend/: npx vercel dev
+#    Do not set VITE_API_BASE_URL — same-origin /api in production and vercel dev
 ```
 
 ### Supabase env (optional until you use the Supabase client)
@@ -98,22 +93,20 @@ The SPA is **Vite 5 + React 18 + TypeScript** (not Next.js). Serverless PDF rout
 ### Tests
 
 ```bash
-# Backend
-cd backend
-npm run test                # unit tests
-npm run test:integration    # full route-level integration tests
-npm run verify:public-env   # ensure no server-only secret tokens in frontend/src
-
-# Frontend
 cd frontend
-npm run test
-npm run verify:public-env   # same guard (runs backend script from frontend/)
+npm run test:ci
+npm run build
+npm run verify:public-env
+
+cd ../backend
+npm run test                # shared calculator unit tests
+npm run verify:public-env
 ```
 
-### Full stack in Docker
+### Full stack in Docker (optional)
 
 ```bash
-docker compose up -d --build        # backend + frontend (Vite dev) + Postgres
+docker compose up -d --build        # see docker-compose.yml — Supabase is the DB of record
 ```
 
 ---
@@ -135,18 +128,20 @@ The frontend is a **monorepo subfolder** — set **Root Directory** to `frontend
 | -------- | -------- | ----- |
 | `VITE_SUPABASE_URL` | Yes | Supabase Dashboard → Project Settings → API → Project URL |
 | `VITE_SUPABASE_ANON_KEY` | Yes | Same page → **anon** `public` key only |
-| `VITE_API_BASE_URL` | Yes* | Public Express API, e.g. `https://api.yourdomain.com/api` — needed until all routes are on Supabase |
+| `VITE_API_BASE_URL` | No | **Do not set** — use same-origin `/api` via `vercel dev` or production deploy |
 
-\*If omitted at build time, production defaults to same-origin `/api` (Vercel Functions only). Unmigrated Express routes will fail without `VITE_API_BASE_URL`.
-
-**Vercel serverless** (`frontend/api/reports/generate.ts`, `frontend/api/invoices/[id]/generate-pdf.ts`) also need (server-side, not `VITE_*`):
+**Vercel serverless** (`frontend/api/*` — reports, invoices, bond, subscription, cron) also need (server-side, not `VITE_*`):
 
 | Variable | Notes |
 | -------- | ----- |
 | `SUPABASE_URL` or duplicate `VITE_SUPABASE_URL` | JWT verification + RLS |
 | `SUPABASE_ANON_KEY` or duplicate `VITE_SUPABASE_ANON_KEY` | Same as SPA |
+| `SUPABASE_SERVICE_ROLE_KEY` | Webhooks, cron, admin server routes |
+| `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | `frontend/api/subscription/*` |
+| `FRONTEND_URL` | Stripe checkout success/cancel URLs |
+| `CRON_SECRET` | `frontend/api/cron/run-due` |
 
-Never add `SUPABASE_SERVICE_ROLE_KEY`, `STRIPE_SECRET_KEY`, or `DATABASE_URL` to the Vercel **frontend** project.
+Do not commit these values; set them only in the Vercel project UI.
 
 **Supabase Auth URLs:** Dashboard → Authentication → URL configuration — set **Site URL** and **Redirect URLs** to your Vercel production domain (and `http://localhost:5173` for local dev).
 
@@ -174,7 +169,8 @@ generous free tiers and zero operational overhead:
 | -------- | ---------------------- | ----------------------------------------------- |
 | DNS/CDN  | **Cloudflare**         | DNS, WAF, DDoS protection, HTTPS, edge caching  |
 | Frontend | **Vercel**             | Static SPA hosting, preview deploys, edge CDN   |
-| Backend  | **Render** _(or_ Railway _)_ | Docker host, autoscale, healthchecks, TLS |
+| Backend  | **Vercel** `frontend/api/*` | Serverless routes (Stripe, PDFs, bond, cron) |
+| Legacy   | **Render** _(optional)_ | Health-check only; not required for production |
 | Database | **Supabase**           | Managed Postgres, daily backups, web SQL editor |
 
 **Follow [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)** for a beginner-friendly
@@ -183,15 +179,13 @@ step-by-step walkthrough. Per-platform deep-dives live in
 
 ### One-line summary of what each provider does
 
-- **Supabase**: managed Postgres, Auth, Storage, and RLS. The app is migrating from Prisma-only access to Supabase clients where appropriate; Express may still verify Supabase JWTs during the bridge (see `backend/src/auth/resolveBearerUser.ts`).
-- **Render / Railway**: builds `backend/Dockerfile` from the repo and runs it
-  with secrets injected via the platform's env-var UI. Health-checked at
-  `/api/health`.
-- **Vercel**: builds the SPA from `frontend/` per `vercel.json` (root directory
-  **`frontend`** in the Vercel UI). Requires `VITE_SUPABASE_URL` and
-  `VITE_SUPABASE_ANON_KEY`; `VITE_API_BASE_URL` points at the Express API for
-  routes not yet on Supabase. Same-origin `/api/*` serves Vercel Functions (report
-  and invoice PDFs).
+- **Supabase**: managed Postgres, Auth, Storage, and RLS — the only data plane for the live app.
+- **Vercel**: SPA + all `/api/*` serverless routes (`frontend/api/`). Requires
+  `VITE_SUPABASE_*` at build time and server secrets (`SUPABASE_SERVICE_ROLE_KEY`,
+  Stripe, `FRONTEND_URL`, `CRON_SECRET`) in the Vercel UI. **Do not set**
+  `VITE_API_BASE_URL` in production.
+- **Render** _(optional)_: slim `backend/` health service only; portfolio data and
+  Stripe live on Supabase + Vercel.
 - **Cloudflare**: holds the DNS records for your domain, sits in front of the
   Render backend (WAF + DDoS), and provides the TLS termination for any custom
   subdomain.

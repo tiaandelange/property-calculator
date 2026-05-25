@@ -72,7 +72,7 @@ export function OwnedPropertyFormPage() {
         bondRemainingTermMonths: bondTermYears != null && bondStartDate != null ? null : form.bondRemainingTermMonths ?? null
       };
       const saved = isEdit && id ? await updateProperty(id, propertyPayload) : await createProperty(propertyPayload);
-      const propertyId = isEdit && id ? id : saved?.id;
+      const propertyId = isEdit && id ? id : (saved?.id as string | number | undefined);
       if (propertyId != null && propertyId !== "") invalidatePropertyWorkspace(propertyId);
 
       if (!isEdit) navigate(`/owned-properties/${propertyId}?tab=overview`);

@@ -4,7 +4,7 @@ import { Section } from "../components/ui/Section";
 import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
 import { useState } from "react";
-import { api, authHeader } from "../api/client";
+import { startSubscriptionCheckout } from "../services/subscriptionVercel";
 import { Link } from "react-router-dom";
 import { PageBreadcrumb } from "../components/nav/PageBreadcrumb";
 import { homeThen } from "../nav/workspaceBreadcrumbs";
@@ -17,11 +17,10 @@ export function SubscriptionPage() {
     setLoading(true);
     setMessage("");
     try {
-      const response = await api.post("/subscription/checkout", {}, { headers: authHeader() });
-      if (response.data.checkoutUrl) window.location.href = response.data.checkoutUrl;
-      setMessage("Checkout session created.");
-    } catch (e: any) {
-      setMessage(e?.response?.data?.message ?? "Checkout failed. Make sure you’re logged in.");
+      const { checkoutUrl } = await startSubscriptionCheckout();
+      window.location.href = checkoutUrl;
+    } catch (e: unknown) {
+      setMessage(e instanceof Error ? e.message : "Checkout failed. Make sure you’re logged in.");
     } finally {
       setLoading(false);
     }

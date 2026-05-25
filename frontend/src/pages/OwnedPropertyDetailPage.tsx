@@ -19,8 +19,6 @@ import {
   updateLease,
   unlinkTenantFromProperty
 } from "../api/ownedProperties";
-import { isSupabaseConfigured } from "../lib/supabaseClient";
-import { legacyExpressPropertyId } from "../utils/propertyIds";
 import { WorkspaceTabs } from "../components/workspace/WorkspaceTabs";
 import { invalidatePropertyWorkspace } from "../features/properties/invalidate";
 import { usePropertyWorkspaceRefresh } from "../features/properties/usePropertyWorkspaceRefresh";
@@ -121,7 +119,7 @@ export function OwnedPropertyDetailPage() {
         (ledger) => ({ ok: true as const, ledger }),
         () => ({ ok: false as const })
       );
-      const dashboardPropertyId = isSupabaseConfigured ? (id ?? null) : legacyExpressPropertyId(id);
+      const dashboardPropertyId = id ?? null;
       const dashPromise = getPortfolioDashboardSummary({
         propertyId: dashboardPropertyId,
         month: summaryMonth,

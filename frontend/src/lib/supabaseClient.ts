@@ -50,3 +50,12 @@ export function getSupabase(): SupabaseClient {
   }
   return supabase;
 }
+
+/** Throws when Supabase env vars are missing (portfolio APIs require Supabase). */
+export function assertSupabaseConfigured(): void {
+  if (!isSupabaseConfigured) {
+    throw new Error(
+      "Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in frontend/.env.local."
+    );
+  }
+}

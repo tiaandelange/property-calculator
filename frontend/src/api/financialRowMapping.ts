@@ -126,6 +126,41 @@ export function buildExpenseInsert(
     };
   }
 
+  if (input.futureExpense === true) {
+    const rawDate = input.expenseDate ?? input.expense_date;
+    const ymd =
+      typeof rawDate === "string"
+        ? rawDate.slice(0, 10)
+        : rawDate instanceof Date
+          ? rawDate.toISOString().slice(0, 10)
+          : "";
+    if (!ymd || !/^\d{4}-\d{2}-\d{2}$/.test(ymd)) {
+      throw new Error("expenseDate must be YYYY-MM-DD for a future expense.");
+    }
+    const todayUtc = new Date().toISOString().slice(0, 10);
+    if (ymd <= todayUtc) {
+      throw new Error("Future expenses must have an expense date after today (UTC).");
+    }
+    return {
+      user_id: userId,
+      property_id: propertyId,
+      category: String(input.category ?? "OTHER"),
+      description: String(input.description ?? ""),
+      amount: n(input.amount),
+      expense_date: ymdToUtcNoonIso(ymd),
+      is_recurring: false,
+      recurring_frequency: null,
+      recurring_schedule_parent_id: null,
+      recurring_start_date: null,
+      recurring_end_date: null,
+      recurring_open_ended: false,
+      recurring_month_anchor: null,
+      recurring_day_of_month: null,
+      source: String(input.source ?? "MANUAL_FINANCIAL_ENTRY"),
+      status: String(input.status ?? "ACTIVE")
+    };
+  }
+
   const rawDate = input.expenseDate ?? input.expense_date;
   const ymd =
     typeof rawDate === "string"
@@ -190,6 +225,52 @@ export function buildExpenseUpdatePatch(input: Record<string, unknown>): Record<
   }
   if (input.status != null) patch.status = String(input.status);
   if (input.source != null) patch.source = String(input.source);
+
+  if (input.bondInterestAmount !== undefined) {
+    patch.bond_interest_amount =
+      input.bondInterestAmount === null || input.bondInterestAmount === ""
+        ? null
+        : n(input.bondInterestAmount);
+  }
+  if (input.bondPrincipalAmount !== undefined) {
+    patch.bond_principal_amount =
+      input.bondPrincipalAmount === null || input.bondPrincipalAmount === ""
+        ? null
+        : n(input.bondPrincipalAmount);
+  }
+
+  if (input.recurringStartDate !== undefined) {
+    const raw = input.recurringStartDate;
+    patch.recurring_start_date =
+      raw == null || raw === ""
+        ? null
+        : ymdToUtcNoonIso(
+            typeof raw === "string" ? raw.slice(0, 10) : raw instanceof Date ? raw.toISOString().slice(0, 10) : ""
+          );
+  }
+  if (input.recurringEndDate !== undefined) {
+    const raw = input.recurringEndDate;
+    patch.recurring_end_date =
+      raw == null || raw === ""
+        ? null
+        : ymdToUtcNoonIso(
+            typeof raw === "string" ? raw.slice(0, 10) : raw instanceof Date ? raw.toISOString().slice(0, 10) : ""
+          );
+  }
+  if (input.recurringOpenEnded !== undefined) patch.recurring_open_ended = Boolean(input.recurringOpenEnded);
+  if (input.recurringMonthAnchor != null) patch.recurring_month_anchor = String(input.recurringMonthAnchor);
+  if (input.recurringDayOfMonth !== undefined) {
+    patch.recurring_day_of_month =
+      input.recurringDayOfMonth == null || input.recurringDayOfMonth === "" ? null : Number(input.recurringDayOfMonth);
+  }
+  if (input.isRecurring !== undefined) patch.is_recurring = Boolean(input.isRecurring);
+  if (input.recurringFrequency !== undefined) {
+    patch.recurring_frequency =
+      input.recurringFrequency == null || input.recurringFrequency === ""
+        ? null
+        : String(input.recurringFrequency);
+  }
+
   return patch;
 }
 

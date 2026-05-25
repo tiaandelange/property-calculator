@@ -37,7 +37,7 @@ export function OwnedInvoicesPage() {
   async function loadProperties() {
     const rows = await getProperties();
     setProperties(rows);
-    if (!propertyId && rows[0]) setPropertyId(rows[0].id);
+    if (!propertyId && rows[0]) setPropertyId(rows[0].id as string | number);
   }
   async function loadData(pid: string | number) {
     const [t, i] = await Promise.all([

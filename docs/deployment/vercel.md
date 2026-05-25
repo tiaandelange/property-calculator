@@ -59,16 +59,28 @@ have a separate staging backend):
 | -------- | -------- |
 | `VITE_SUPABASE_URL` | Yes — Auth + Supabase client |
 | `VITE_SUPABASE_ANON_KEY` | Yes — anon key only |
-| `VITE_API_BASE_URL` | Yes — Express API URL (e.g. `https://api.yourdomain.com/api`) until full cutover |
+| `VITE_API_BASE_URL` | **Do not set** in production — use same-origin `/api` on Vercel |
 
-If `VITE_API_BASE_URL` is unset in a **production** build, the SPA defaults to
-same-origin `/api` (Vercel Functions only). Preview/production builds no longer
-fall back to `localhost:4000`.
+Production and preview builds should **omit** `VITE_API_BASE_URL` so the SPA calls
+`/api/*` on the same Vercel deployment (reports, invoices, bond, subscription, cron).
+Local dev may leave it unset and use `vercel dev` for serverless routes, or set
+`http://localhost:4000/api` only if running the legacy health-only Express shim.
 
-**Serverless env** (for `frontend/api/*`): add `SUPABASE_URL` and `SUPABASE_ANON_KEY`
-(or duplicate the `VITE_*` values — handlers accept either). Do **not** set
-`SUPABASE_SERVICE_ROLE_KEY` on this project unless you add a dedicated admin-only
-function that needs it (current PDF routes use anon + user JWT + RLS).
+**Serverless env** (Vercel project → Environment Variables):
+
+| Variable | Purpose |
+| -------- | ------- |
+| `SUPABASE_URL` / `VITE_SUPABASE_URL` | Auth + data (handlers accept either) |
+| `SUPABASE_ANON_KEY` / `VITE_SUPABASE_ANON_KEY` | User JWT verification in API routes |
+| `SUPABASE_SERVICE_ROLE_KEY` | Stripe webhook, cron, privileged writes |
+| `STRIPE_SECRET_KEY` | Checkout session creation |
+| `STRIPE_WEBHOOK_SECRET` | `POST /api/subscription/webhook` |
+| `FRONTEND_URL` | e.g. `https://app.yourdomain.com` for Stripe success/cancel URLs |
+| `CRON_SECRET` | `GET/POST /api/cron/run-due` |
+
+**Stripe webhook URL in Dashboard:** `https://<your-domain>/api/subscription/webhook`
+
+Render/Railway backend is **optional** (health check only); subscription no longer lives there.
 
 ## Custom domain
 

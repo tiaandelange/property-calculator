@@ -9,17 +9,17 @@ import { Button } from "../components/ui/Button";
 
 export function OwnedTenantsPage() {
   const [properties, setProperties] = useState<any[]>([]);
-  const [propertyId, setPropertyId] = useState<number | "">("");
+  const [propertyId, setPropertyId] = useState<string | number | "">("");
   const [tenants, setTenants] = useState<any[]>([]);
   const [form, setForm] = useState<any>({ firstName: "", lastName: "", email: "", phone: "", status: "APPLICANT" });
 
   async function loadProperties() {
     const data = await getProperties();
     setProperties(data);
-    if (!propertyId && data[0]) setPropertyId(data[0].id);
+    if (!propertyId && data[0]) setPropertyId(data[0].id as string | number);
   }
 
-  async function loadTenants(pid: number) {
+  async function loadTenants(pid: string | number) {
     setTenants(await getPropertyTenants(pid));
   }
 

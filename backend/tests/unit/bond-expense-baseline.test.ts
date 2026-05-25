@@ -1,4 +1,4 @@
-import { inferMonthlyBondPaymentForExpenseBaseline } from "../../src/calculatorShared/bondHelpers";
+import { inferMonthlyBondPaymentForExpenseBaseline } from "../../../shared/calculatorShared/bondHelpers";
 
 describe("inferMonthlyBondPaymentForExpenseBaseline", () => {
   const asOf = new Date("2026-05-01T12:00:00.000Z");

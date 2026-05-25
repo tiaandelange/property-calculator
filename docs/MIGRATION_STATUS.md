@@ -2,6 +2,8 @@
 
 This document is the **safe migration baseline**. It records intent, guardrails, phased work, and a snapshot of automated checks. It does not change runtime behaviour by itself.
 
+**Production go-live:** use the step-by-step checklist in [`docs/PRODUCTION_CUTOVER.md`](PRODUCTION_CUTOVER.md) (Supabase, Vercel, Stripe, data migration, validation, rollback). Run [`docs/SECURITY_CHECKLIST.md`](SECURITY_CHECKLIST.md) before signing off.
+
 ## Active branch
 
 Migration work should land on:
@@ -14,12 +16,12 @@ This branch was created from the then-current `main` line as the cutover baselin
 
 ## Current backend (today)
 
-- **Runtime:** Node.js + **Express** (slim: health + Stripe only on Render)
-- **Data access:** **Supabase** Postgres (RLS + RPCs) for all portfolio domains; **no Prisma in production runtime**
+- **Runtime:** **Vercel** SPA + **`frontend/api/*`** serverless (Stripe, PDFs, bond, email, cron). **Express retired** (no `backend/src` server).
+- **Data access:** **Supabase** Postgres (RLS + RPCs) for all portfolio domains; **Prisma retired** from production runtime
 - **Database:** **Supabase Postgres** (`supabase/migrations/`). `DATABASE_URL` is optional and used only by `backend/scripts/legacy-prisma-migration/*`
-- **Auth:** **Supabase Auth** owns identity (`auth.users`). **`public.profiles`** holds app-specific fields (subscription flags, invoice payment JSON, UI prefs) and is provisioned by **`public.handle_new_user()`** after each `auth.users` insert (see `supabase/migrations/20260520120000_auth_profile_provisioning.sql`). **Legacy Express JWT + bcrypt** remain for existing clients until cutover (`resolveBearerUser`, `authRoutes`).
-- **RLS (Postgres):** Phase 4 broad policies in `20260515180000_row_level_security.sql` are refined by **`20260521120000_rls_core_crud_split_policies.sql`** (per-command policies, subscription write lock-down, soft-delete columns on ledger tables). Express + Prisma remain authoritative until queries migrate; deferred app work is listed in [`docs/FOLLOW_UP_RLS_AND_APP_CUTOVER.md`](FOLLOW_UP_RLS_AND_APP_CUTOVER.md).
-- **Files:** Local disk for **legacy** calculation/property summary report PDFs (where not yet in Storage), invoice PDFs, and any remaining disk-backed assets
+- **Auth:** **Supabase Auth** only (`auth.users` + **`public.profiles`** via `handle_new_user()`). No Express JWT login/register.
+- **RLS (Postgres):** Policies in `20260515180000_row_level_security.sql` + **`20260521120000_rls_core_crud_split_policies.sql`**. App reads/writes go through Supabase client or SECURITY DEFINER RPCs.
+- **Files:** **Supabase Storage** (`reports`, `invoices`, `property-documents`). Legacy disk paths (`backend/reports/`, `backend/uploads/`) are not used at runtime.
 
 ---
 
@@ -41,7 +43,7 @@ Use **Vercel Functions** (or equivalent serverless HTTP handlers) for:
 - **Email:** Outbound mail with provider API keys or SMTP secrets (`frontend/api/invoices/[id]/send-email.ts` — invoice send when Supabase is configured)
 - **Other server-only work:** Anything that must not run in the SPA, batch jobs, admin maintenance
 
-The existing Express app remains until feature parity is proven; new surfaces can be added alongside and switched over gradually.
+Express has been decommissioned; new server work belongs in **`frontend/api/`** (Vercel Functions).
 
 ---
 
@@ -52,7 +54,7 @@ The existing Express app remains until feature parity is proven; new surfaces ca
 ## Current frontend (today)
 
 - **Auth (SPA):** **Supabase Auth** via `@supabase/supabase-js` (`frontend/src/lib/supabaseClient.ts` — **only** `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY`). Sign-in and register use `signInWithPassword` / `signUp`; session uses `getSession` + `onAuthStateChange` in `AuthContext`. **`public.profiles`** is read for shell / `fetchMe` after sign-in. **Route guards** (`RequireAuth`) require a Supabase session, not legacy `localStorage` JWTs.
-- **Legacy bridge:** Axios still sends **`Authorization: Bearer <Supabase access_token>`** to Express (`frontend/src/api/client.ts`) so existing `/api/*` routes keep working until data access migrates. **Legacy Express auth routes** (`/api/auth/*`) remain on the server for older clients; the SPA does not call `POST /api/auth/login` or `register` for primary auth.
+- **API calls:** Portfolio data via Supabase client + RPCs; privileged work via same-origin **`fetch("/api/...")`** with Bearer JWT (`authFetch` / `*Vercel.ts` modules). **No Axios / Express backend.**
 - **Data:** When Supabase env is set, **property list/detail/create/update/delete** use **`frontend/src/services/propertiesSupabase.ts`** (`public.properties`, `user_id = auth.uid()` on insert; updates/deletes also filter `user_id`). **Property detail** merges **leases** from **`frontend/src/services/leasesSupabase.ts`** (`listLeasesForProperty` + `mergeLeaseBundleIntoPropertyDetail`) and **invoices** from **`frontend/src/services/invoicesSupabase.ts`** (`listInvoices` merged on `getProperty`). **Tenant CRUD** uses **`tenantsSupabase.ts`**. **Lease CRUD** (list by property, current lease, create, update, delete/archive, cancel) uses **`leasesSupabase.ts`** with SQL RPCs **`create_property_lease`**, **`cancel_lease`**, **`delete_or_archive_lease`** in `supabase/migrations/20260523140000_lease_lifecycle_rpcs.sql` for multi-table parity (tenant link, recurring rent rule, expected income on cancel). Direct Supabase client updates the lease row and syncs **`recurring_income_rules`** on rent/dates/due-day changes (best-effort multi-step, not a single DB transaction). **Ledger income/expense** (list/create/update/soft-delete/hard-delete/mark-received, and **`GET`-style financials bundle** with a client-computed month summary from Supabase rows) uses **`frontend/src/services/financialsSupabase.ts`** + **`frontend/src/api/financialRowMapping.ts`**, with **`ownedProperties`** delegating when `VITE_SUPABASE_*` is set. **Invoice CRUD** (list, get, create with line items via RPC, update header or replace line items via RPC, hard delete via RPC, mark paid) uses **`frontend/src/services/invoicesSupabase.ts`** + **`frontend/src/api/invoiceRowMapping.ts`** and **`ownedProperties`** (`listPropertyInvoices`, `getInvoice`, `createPropertyInvoice`, `updateInvoice`, `hardDeleteInvoice`, `markInvoicePaid`, **`generateInvoicePdf`**) when `VITE_SUPABASE_*` is set; **invoice PDF generate** uses Vercel **`POST /api/invoices/:id/generate-pdf`** (`frontend/api/invoices/[id]/generate-pdf.ts`) — **pdfmake** buffer upload to private bucket **`invoices`**, metadata on **`invoices.pdf_storage_bucket` / `pdf_storage_key`**, signed URL returned; list/detail mint **`createSignedUrl`** client-side; **hard delete** removes Storage object before RPC; **`invoicesVercel.ts`** + **`OwnedInvoicesPage`** / **Financials** workspace use signed URLs (no Express **`sign-download`** / **`download`** when Supabase is configured). **Invoice send email** uses Vercel **`POST /api/invoices/:id/send-email`** when Supabase is configured; **`create-current` invoice from lease** uses RPC **`create_invoice_from_lease`**. **Recurring rules CRUD** (income list/activate/pause, recurring invoice rules CRUD, recurring expense templates CRUD) is in **`frontend/src/services/recurringRulesSupabase.ts`**. **Future-dated expense validation** and **PATCH payloads that touch bond splits or recurring schedule shape** still go to **Express** where they did before. **Portfolio dashboard summary** (`GET /properties/dashboard-summary`) uses **`frontend/src/services/dashboardSupabase.ts`** → **`supabase.rpc('get_dashboard_summary', …)`** when `VITE_SUPABASE_*` is set (`supabase/migrations/20260524180000_get_dashboard_summary_rpc.sql`). **Monthly property statement** (`GET /properties/:id/statement`) uses **`frontend/src/services/statementsSupabase.ts`** → **`supabase.rpc('get_property_monthly_statement', …)`** when `VITE_SUPABASE_*` is set (`supabase/migrations/20260525100000_get_property_monthly_statement_rpc.sql`); **bond statement-row / backfill** use Vercel bond handlers when Supabase is configured. **Admin panel:** when `VITE_SUPABASE_*` is set, **`adminSupabase.ts`** serves **`GET`-equivalent admin status** and **portfolio projection defaults** read/update on **`portfolio_projection_defaults`** (RLS: any authenticated SELECT; UPDATE admin-only); **`POST /api/admin/dev/reset-portfolio-data`** is **not** available over HTTP (**410** — use **`npm run reset:portfolio-data`** in **`backend/`** for local dev). **Profile & saved reports:** when `VITE_SUPABASE_*` is set, **`profileSupabase.ts`** (`getCurrentProfile`, `updateProfile`, `listUserReports`, `deleteUserReport`); invoice payment JSON via RPC **`update_invoice_payment_details`**; trigger blocks JWT writes to billing columns (`20260529130000_profile_invoice_payment_rpc.sql`); **`user.ts`** / **`AccountPage`** / **`AdminPanelPage`** / **`SettingsPage`** delegate; Express **`userRoutes`** + legacy **`GET /api/auth/me`** retained (`@deprecated`). **Calculators** (`/calculators/*`): when `VITE_SUPABASE_*` is set, **`CalculatorPage`** runs **`runCalculatorLocally`** (shared **`backend/src/calculatorShared`** engine) and persists via **`save_calculation_and_decrement_free_use`** + **`public.calculator_results`**; **`DashboardPage`** lists/deletes via **`profileSupabase`**; **calculation PDFs** use same-origin **`POST /api/reports/generate`** (`frontend/api/reports/generate.ts` on **Vercel**) with the Supabase access token — **pdfmake** renders to a buffer (no **`chartjs-node-canvas`**; chart area is a documented placeholder), upload to Storage bucket **`reports`** at **`{user_id}/reports/{report_id}.pdf`**, **`stored_reports`** row with **`storage_bucket` / `storage_key`**, short-lived **`createSignedUrl`** returned to the browser. **`listUserReports`** mints signed URLs when storage metadata is present; legacy rows without storage still use **`/api/reports/:id/download`** (Express). **Property summary PDF** from the workspace: **Financials → Statement** includes **“Property summary PDF”** (same Vercel handler, **`get_property_monthly_statement`** RPC for the current UTC month). **Express** **`POST /api/reports/generate`** remains for Prisma integer ids and is annotated **`@deprecated`** in **`reportRoutes.ts`**. **Property workspace documents** (`OwnedDocumentsPage`): when `VITE_SUPABASE_*` is set, **`frontend/src/services/documentsSupabase.ts`** uploads to Storage bucket **`property-documents`** (`{user_id}/properties/{property_id}/{document_id}-{safe_filename}`), lists/deletes metadata in **`public.property_documents`**, and opens files via **`createSignedUrl`**; **Express** multer routes under **`/api/properties/:id/documents/*`** and **`/api/documents/*`** remain for non-Supabase mode and are marked **`@deprecated`** in code. **`GET /properties/:id/financials/summary`**, equity metrics, property aggregate, and other endpoints remain **Express** when not noted above. **Run-due** (income / invoices / bond-aware expenses) and **cron** use Supabase RPCs + Vercel as documented in the decommission table. When Supabase is not configured, property, tenant, lease, financial, invoice, and dashboard paths fall back to **Express** unchanged.
 
 ---
@@ -61,7 +63,7 @@ The existing Express app remains until feature parity is proven; new surfaces ca
 
 1. **Service role key:** The Supabase **service_role** key must **never** appear in frontend code, environment variables exposed to the client bundle, or public repositories. It belongs only in server/Vercel secret stores and trusted automation.
 
-2. **Decommission gate:** **Prisma is removed from production runtime** (2026-05-29). The slim Express app remains for **Stripe** until optionally moved to Vercel. **`prisma/schema.prisma`** and **`scripts/legacy-prisma-migration/`** are retained for one-off data tools only.
+2. **Decommission gate:** **Prisma and Express are retired from production** (2026-05-29). **`prisma/schema.prisma`** and **`scripts/legacy-prisma-migration/`** remain for one-off data tools only.
 
 ---
 
@@ -95,7 +97,17 @@ Use this as a living checklist; update row status (`[ ]` → `[x]`) in PRs as ph
 - [ ] **Phase 11:** Stripe and subscriptions (checkout, webhooks, subscription state)
 - [x] **Phase 12 (partial):** Frontend Supabase integration — **Auth + profile + saved reports on SPA** when `VITE_SUPABASE_*` set (`profileSupabase.ts`, `user.ts` delegates, `AuthContext` + `AccountPage` / `AdminPanelPage` / `SettingsPage`); list/detail **property** data still Express + Bearer bridge where not migrated in earlier phases.
 - [x] **Phase 13 (partial):** Vercel deployment — **`frontend/vercel.json`** (Vite build, `dist/`, SPA rewrite excluding `/api/*`, security headers, PDF function `includeFiles`); **Root Directory `frontend`**; env contract **`VITE_SUPABASE_URL`**, **`VITE_SUPABASE_ANON_KEY`**, **`VITE_API_BASE_URL`**; **`resolveApiBaseUrl()`** (no `localhost` in production builds); README + [`docs/deployment/vercel.md`](deployment/vercel.md). **Still open:** Stripe webhook URL on backend, full Express decommission.
-- [ ] **Phase 14:** Decommission Express/Prisma — **route-level `@deprecated` + SPA cutover done** for domains in “Replaced” table above; **do not delete backend** until Stripe, bond/backfill, run-due, email, and aggregate migrate
+- [x] **Phase 14:** Decommission Express/Prisma — **Express runtime removed** (`backend/src` deleted; `shared/calculatorShared/` + legacy scripts only). SPA has **no Express fallbacks**. Prisma scripts only under `backend/scripts/legacy-prisma-migration/`.
+
+---
+
+## Production cutover
+
+| Document | Purpose |
+|----------|---------|
+| [`PRODUCTION_CUTOVER.md`](PRODUCTION_CUTOVER.md) | Day-of checklist: Supabase, Vercel, Stripe, migration, UAT, rollback |
+| [`SECURITY_CHECKLIST.md`](SECURITY_CHECKLIST.md) | Pre-release security gate |
+| [`deployment/vercel.md`](deployment/vercel.md) | Vercel root directory, env vars, SPA rewrites |
 
 ---
 
@@ -240,22 +252,33 @@ The **Express app is not removed**. Migrated routes are marked `@deprecated` in 
 | Property aggregate (workspace) | `GET /api/properties/:id/aggregate` | `getProperty` / Supabase detail bundle |
 | Recurring expense schedule create | `POST .../expenses` + `recurringSchedule` | `financialsSupabase` + `buildExpenseInsert` schedule shape |
 
-### Still active on slim Express (Supabase configured)
+### Vercel-only server routes (same-origin `/api`)
 
-| Route / area | Reason |
-|--------------|--------|
-| `POST /api/subscription/checkout`, `POST /api/subscription/webhook`, `POST /api/subscription/cancel` | Stripe secrets on Render; metadata uses **profile UUID**; updates `profiles` + `subscriptions` via service role |
-| `GET /api/health` | Render/Railway healthcheck |
+| Route | Purpose |
+|-------|---------|
+| `POST /api/subscription/checkout`, `cancel`, `webhook` | Stripe (profile UUID metadata → Supabase) |
+| `POST /api/reports/generate`, invoice PDF, bond, run-due, cron | See Phase 23 changelog |
 
-### Retired from Express runtime (handlers removed)
+### Final architecture (production)
 
-All former `ownedPropertiesRoutes`, `authRoutes`, `calculatorRoutes`, `reportRoutes`, `userRoutes`, and `adminRoutes` Prisma handlers. SPA with `VITE_SUPABASE_*` must not depend on them. Legacy disk report download: use Storage signed URLs from `profileSupabase.listUserReports`.
+| Layer | Provider | Responsibility |
+|-------|----------|----------------|
+| SPA | **Vercel** (`frontend/`, `dist/`) | React UI, Supabase Auth session, direct Postgres via anon client + RLS |
+| Serverless | **Vercel** (`frontend/api/*`) | Stripe, PDF generation, bond ledger, invoice email, cron run-due |
+| Database | **Supabase Postgres** | Schema, RLS, RPCs (`supabase/migrations/`) |
+| Files | **Supabase Storage** | Reports, invoices, property documents |
+| Shared logic | **`shared/calculatorShared/`** | Deterministic calculators (Vite alias `@calculatorShared`) |
+| Legacy tools | **`backend/scripts/`** | Prisma migration scripts only — not deployed |
 
-### Frontend audit (Supabase mode)
+### Frontend audit
 
-With `VITE_SUPABASE_*` set, migrated screens go through `ownedProperties.ts` delegates or dedicated `*Supabase.ts` / `*Vercel.ts` modules. **No** SPA calls to `POST /api/auth/login`, `register`, or Prisma-only profile paths. Remaining `api.*` calls are listed in the “Still active” table above.
+With `VITE_SUPABASE_*` set (required for the app), **all** portfolio screens use `ownedProperties.ts` → `*Supabase.ts` or `*Vercel.ts`. **No** `axios`, **no** `VITE_API_BASE_URL`, **no** Express host. Same-origin `/api/*` is served by Vercel Functions (`vercel dev` locally).
 
-**Localhost:** only `apiBase.ts` defaults to `http://localhost:4000/api` in `MODE=development` when `VITE_API_BASE_URL` is unset.
+### Retired
+
+- Entire **Express** app (`backend/src/` removed; see `backend/archive/express-retired/`)
+- **Render** blueprint (`render.yaml` removed)
+- Local disk uploads/reports at runtime (`backend/reports/`, `backend/uploads/` — gitignored legacy folders only)
 
 ---
 
@@ -279,6 +302,8 @@ With `VITE_SUPABASE_*` set, migrated screens go through `ownedProperties.ts` del
 
 | Date | Change |
 |------|--------|
+| 2026-05-29 | **Express retired:** Deleted `backend/src` (server, routes, middleware, Prisma domain services, disk PDF/upload handlers). **`shared/calculatorShared/`** is the canonical calculator package. SPA: removed Express fallbacks (`api/client`, `apiBase`, axios); `ownedProperties.ts` is Supabase-only; property workspace reports via `stored_reports`. **`render.yaml`** and **`backend/Dockerfile`** removed. README + this doc updated. |
+| 2026-05-29 | **Full Vercel cutover:** Stripe → `frontend/api/subscription/*` (checkout, cancel, webhook with raw body). **Do not set** `VITE_API_BASE_URL` in production (same-origin `/api`). Expense bond-split PATCH + future-dated create via Supabase; legacy report rows without Storage show **Regenerate PDF** (no Express disk download). Render backend **health-only** optional. |
 | 2026-05-29 | **Prisma removed from production runtime:** Deleted `src/config/db.ts` and all Prisma-backed Express route modules. **Slim API:** health + Stripe (`subscriptionRoutes` → Supabase `profiles`/`subscriptions` with UUID metadata). Auth bridge: `resolveBearerUser` reads `public.profiles` by JWT `sub`. **Legacy:** `backend/scripts/legacy-prisma-migration/` + `prisma/schema.prisma` (dev scripts only; `prisma` + `@prisma/client` are devDependencies). **Build:** `npm run build` = `tsc` only; Docker image has no Prisma generate. **Frontend:** equity metrics + recurring expense schedules on Supabase; `fetchPropertyAggregate` → `getProperty`. Tests: backend unit + `api-slim` integration; frontend 127 Vitest. |
 | 2026-05-29 | **Phase 23 — special operations:** Bond ledger on **Vercel** (`frontend/api/properties/[propertyId]/bond/preview-at-date`, `statement-row`, `backfill-statement-rows`; `bondHelpers.ts` + `bondLedgerServer.ts`). **SQL RPCs** `create_invoice_from_lease`, `run_financial_historical_backfill` (`20260529140000_special_operations_rpcs.sql`) via **`operationsSupabase.ts`**. **Invoice email** Vercel handler + **`invoicesEmailVercel.ts`**. **Run-due:** income/invoices → existing RPCs (`recurringRunDueSupabase.ts`); expenses → Vercel bond-aware materialiser; **cron** `/api/cron/run-due` (income + invoice RPCs at scale; expense stub RPC in cron — call expense Vercel separately for full bond splits). **`ownedProperties.ts`** delegates bond/backfill/create-current/send-email; **Financials / Recurring Invoices / Invoices** pages wired. Express routes **`@deprecated`**. Vitest: `recurringRunDueSupabase.test.ts`, `invoicesEmailVercel.test.ts`, `bondOperationsVercel.test.ts`, `bondYmd.test.ts`, `supabaseServiceRole.test.ts`. **Vercel env:** `CRON_SECRET`, `SUPABASE_SERVICE_ROLE_KEY`, optional `SMTP_*` for send-email. |
 | 2026-05-29 | **Express route decommission (partial):** `@deprecated` on migrated handlers (`authRoutes`, `userRoutes`, `calculatorRoutes`, `reportRoutes`, `adminRoutes`, key `ownedPropertiesRoutes`). **SPA fixes:** metrics pages use `getPortfolioDashboardSummary`; recurring invoice list/create + recurring income activate use Supabase when configured. **Docs:** “Express route decommission” table (replaced vs still active). Backend **not** removed. |

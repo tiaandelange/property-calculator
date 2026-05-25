@@ -1,6 +1,6 @@
 /**
  * Requires a **Supabase Auth** session (`getSession` / `onAuthStateChange` in `AuthProvider`).
- * Express legacy JWTs are not used for route access; the axios client still attaches the
+ * Supabase session is required for protected routes; legacy Express JWTs are not used.
  * Supabase access token when calling the Node API until those routes are migrated.
  */
 import type React from "react";

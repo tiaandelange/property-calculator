@@ -1,4 +1,4 @@
-import { irrBisection, solveIrrPeriodicCashFlows } from "../../src/utils/irrSolver";
+import { irrBisection, solveIrrPeriodicCashFlows } from "../../../shared/calculatorShared/irrSolver";
 
 describe("irrSolver", () => {
   test("bisection finds root for textbook two-period flow", () => {

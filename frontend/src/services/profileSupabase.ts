@@ -198,19 +198,19 @@ export async function listUserReports(): Promise<SavedUserReportRow[]> {
     rows.map(async (r) => {
       const pdf = latestPdf.get(r.id);
       let downloadUrl: string | null = null;
-      if (pdf?.storage_bucket && pdf.storage_key) {
+      const hasStoragePdf = Boolean(pdf?.storage_bucket && pdf.storage_key);
+      if (hasStoragePdf && pdf) {
         const { data: signed, error: signErr } = await sb.storage
-          .from(pdf.storage_bucket)
-          .createSignedUrl(pdf.storage_key, 600);
+          .from(pdf.storage_bucket!)
+          .createSignedUrl(pdf.storage_key!, 600);
         if (!signErr && signed?.signedUrl) downloadUrl = signed.signedUrl;
-      } else if (pdf) {
-        downloadUrl = `/api/reports/${pdf.id}/download`;
       }
       return {
         id: r.id,
         type: r.type,
         created_at: r.created_at,
-        hasPdf: Boolean(pdf),
+        hasPdf: hasStoragePdf,
+        legacyPdfOnly: Boolean(pdf && !hasStoragePdf),
         reportId: pdf?.id ?? null,
         downloadUrl,
         input: asObject(r.input_json),

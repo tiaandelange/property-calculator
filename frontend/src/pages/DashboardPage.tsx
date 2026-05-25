@@ -1,9 +1,7 @@
 import { useMemo, useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { Link } from "react-router-dom";
-import { api, authHeader } from "../api/client";
 import { fetchPdfBlob, triggerPdfFileDownload } from "../api/pdfBlob";
-import { isSupabaseConfigured } from "../lib/supabaseClient";
 import { deleteUserReport, listUserReports } from "../services/profileSupabase";
 import { generateReportViaVercel } from "../services/reportsVercel";
 import { Card } from "../components/ui/Card";
@@ -19,6 +17,7 @@ type Report = {
   type: string;
   created_at: string;
   hasPdf: boolean;
+  legacyPdfOnly?: boolean;
   reportId?: string | number | null;
   downloadUrl: string | null;
   input: Record<string, unknown>;
@@ -44,12 +43,7 @@ export function DashboardPage() {
     setLoading(true);
     setError("");
     try {
-      if (isSupabaseConfigured) {
-        setReports(await listUserReports());
-      } else {
-        const res = await api.get("/user/reports", { headers: authHeader() });
-        setReports(res.data);
-      }
+      setReports(await listUserReports());
     } catch (e: any) {
       setError(e?.response?.data?.message ?? e?.message ?? "Failed to load reports. Are you logged in?");
     } finally {
@@ -61,11 +55,7 @@ export function DashboardPage() {
     setError("");
     setPdfBusyCalcId(calculationId);
     try {
-      if (isSupabaseConfigured) {
-        await generateReportViaVercel({ reportType: "CALCULATION", calculationId: String(calculationId) });
-      } else {
-        await api.post(`/reports/generate`, { reportType: "CALCULATION", calculationId }, { headers: authHeader() });
-      }
+      await generateReportViaVercel({ reportType: "CALCULATION", calculationId: String(calculationId) });
       await load();
     } catch (e: any) {
       setError(e?.response?.data?.message ?? e?.message ?? "Failed to generate report.");
@@ -92,11 +82,7 @@ export function DashboardPage() {
   const del = async (id: string | number) => {
     setError("");
     try {
-      if (isSupabaseConfigured) {
-        await deleteUserReport(String(id));
-      } else {
-        await api.delete(`/user/reports/${id}`, { headers: authHeader() });
-      }
+      await deleteUserReport(String(id));
       await load();
     } catch (e: any) {
       setError(e?.response?.data?.message ?? e?.message ?? "Failed to delete report.");
@@ -195,7 +181,7 @@ export function DashboardPage() {
                         </Button>
                       ) : (
                         <Button variant="secondary" loading={pdfBusyCalcId === r.id} onClick={() => void generate(r.id)}>
-                          Generate PDF
+                          {r.legacyPdfOnly ? "Regenerate PDF" : "Generate PDF"}
                         </Button>
                       )}
                       <Button variant="ghost" onClick={() => del(r.id)}>

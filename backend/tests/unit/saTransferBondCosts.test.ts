@@ -2,7 +2,7 @@ import {
   calculateSouthAfricanTransferAndBondCosts,
   calculateTransferDutySA,
   propertyValueForDuty
-} from "../../src/utils/saTransferBondCosts";
+} from "../../../shared/calculatorShared/saTransferBondCosts";
 
 describe("calculateTransferDutySA", () => {
   test("1: 1_000_000 => 0", () => {

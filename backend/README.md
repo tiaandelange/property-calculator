@@ -1,50 +1,25 @@
-# Property Guy — Backend (slim API)
+# Legacy tools (`backend/`)
 
-Production runtime is **Supabase-first**. This package runs a small **Express** app:
+This directory is **not** a production API server. Express was retired; the live stack is **Vercel + Supabase**.
 
-- `GET /api/health`
-- `POST /api/subscription/checkout` and `POST /api/subscription/cancel` (Bearer = Supabase access JWT)
-- `POST /api/subscription/webhook` (Stripe → updates `public.profiles` + `public.subscriptions` by **profile UUID**)
+## What remains
 
-Portfolio CRUD, PDFs, statements, bond ledger, and admin live in **`frontend/api/*`** (Vercel) and **Supabase RPC/RLS**.
+| Path | Purpose |
+|------|---------|
+| `prisma/` | Historical schema for one-off migration scripts |
+| `scripts/legacy-prisma-migration/` | Export/reset/cleanup utilities against old Prisma DB |
+| `scripts/verify-public-frontend-env.mjs` | Ensures no service-role or Stripe secrets in `frontend/src` |
+| `tests/unit/` | Unit tests for `shared/calculatorShared/` |
+| `archive/express-retired/` | Pointer to retired Express runtime |
 
-## Local setup
+## Scripts
 
 ```bash
-cp .env.example .env
+cd backend
 npm ci
-npm run dev    # http://localhost:4000
+npm run verify:public-env
+npm test                    # calculator shared library tests
+npm run reset:portfolio-data   # local dev only — requires DATABASE_URL
 ```
 
-Required for auth on subscription routes:
-
-- `SUPABASE_URL`
-- `SUPABASE_JWT_SECRET` (Dashboard → Settings → API → JWT Secret)
-- `SUPABASE_SERVICE_ROLE_KEY` (webhook + profile lookup)
-
-Optional: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `FRONTEND_URL` / `FRONTEND_URLS`.
-
-## Build & deploy
-
-```bash
-npm run build   # tsc only — no Prisma generate
-npm start
-```
-
-Docker: `backend/Dockerfile` (repo root context). No Prisma client in the image.
-
-## Legacy Prisma scripts
-
-One-off maintenance scripts live in **`scripts/legacy-prisma-migration/`** (not part of runtime):
-
-```bash
-npm run prisma:generate   # devDependency only
-npm run reset:portfolio-data -- --email you@example.com --confirm RESET
-```
-
-They need `DATABASE_URL` and `@prisma/client` from devDependencies. See `scripts/legacy-prisma-migration/README.md`.
-
-## Schema source of truth
-
-- **SQL:** `supabase/migrations/`
-- **Reference only:** `prisma/schema.prisma` (historical; do not use for production deploys)
+Set `DATABASE_URL` only when running legacy Prisma scripts. Production does not use Prisma.

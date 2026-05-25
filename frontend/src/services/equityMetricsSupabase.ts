@@ -5,7 +5,20 @@ function toError(e: { message?: string }): Error {
   return new Error(e.message || "Equity metrics request failed.");
 }
 
-export async function listEquityMetrics(): Promise<{ properties: Record<string, unknown>[] }> {
+export type EquityMetricRow = {
+  id: string;
+  name: string;
+  addressLine1: string | null;
+  city: string | null;
+  province: string | null;
+  purchasePrice: number | null;
+  currentEstimatedValue: number | null;
+  outstandingBondBalance: number | null;
+  equity: number | null;
+  updatedAt: string | null;
+};
+
+export async function listEquityMetrics(): Promise<{ properties: EquityMetricRow[] }> {
   const sb = getSupabase();
   const { data: userData, error: userErr } = await sb.auth.getUser();
   if (userErr) throw toError(userErr);

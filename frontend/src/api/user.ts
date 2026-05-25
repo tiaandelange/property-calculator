@@ -1,6 +1,5 @@
-import { api, authHeader } from "./client";
 import type { UiColorScheme } from "../theme/uiColorScheme";
-import { isSupabaseConfigured } from "../lib/supabaseClient";
+import { assertSupabaseConfigured } from "../lib/supabaseClient";
 import {
   getCurrentProfile,
   updateProfile,
@@ -10,25 +9,15 @@ import {
 
 export type { UiColorScheme, InvoicePaymentDetailsPayload, MeResponse };
 
-/** @deprecated Prefer `getCurrentProfile()` from `profileSupabase`. */
 export async function fetchMe(): Promise<MeResponse> {
-  if (!isSupabaseConfigured) {
-    throw new Error("Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.");
-  }
+  assertSupabaseConfigured();
   return getCurrentProfile();
 }
 
 export async function patchProfileInvoicePaymentDetails(
   invoicePaymentDetails: InvoicePaymentDetailsPayload
 ): Promise<{ invoicePaymentDetails: unknown }> {
-  if (!isSupabaseConfigured) {
-    const res = await api.patch<{ invoicePaymentDetails: unknown }>(
-      "/user/profile",
-      { invoicePaymentDetails },
-      { headers: authHeader() }
-    );
-    return res.data;
-  }
+  assertSupabaseConfigured();
   const updated = await updateProfile({ invoicePaymentDetails });
   return { invoicePaymentDetails: updated.invoicePaymentDetails ?? invoicePaymentDetails };
 }
@@ -36,14 +25,7 @@ export async function patchProfileInvoicePaymentDetails(
 export async function patchProfileUiColorScheme(
   uiColorScheme: UiColorScheme
 ): Promise<{ uiColorScheme: UiColorScheme }> {
-  if (!isSupabaseConfigured) {
-    const res = await api.patch<{ uiColorScheme: UiColorScheme }>(
-      "/user/profile",
-      { uiColorScheme },
-      { headers: authHeader() }
-    );
-    return res.data;
-  }
+  assertSupabaseConfigured();
   await updateProfile({ uiColorScheme });
   return { uiColorScheme };
 }

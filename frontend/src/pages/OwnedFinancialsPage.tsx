@@ -2,8 +2,6 @@ import { FormEvent, useEffect, useState } from "react";
 import { invalidatePropertyWorkspace } from "../features/properties/invalidate";
 import { usePropertyWorkspaceRefresh } from "../features/properties/usePropertyWorkspaceRefresh";
 import { Helmet } from "react-helmet-async";
-import { api, authHeader } from "../api/client";
-import { isSupabaseConfigured } from "../lib/supabaseClient";
 import { activateRecurringIncomeRule } from "../services/recurringRulesSupabase";
 import { runDueRecurringIncome } from "../services/recurringRunDueSupabase";
 import {
@@ -96,7 +94,7 @@ export function OwnedFinancialsPage() {
           : pid.trim()
         : null;
     if (!propertyId && presetPid != null) setPropertyId(presetPid);
-    else if (!propertyId && rows[0]) setPropertyId(rows[0].id);
+    else if (!propertyId && rows[0]) setPropertyId(rows[0].id as string | number);
 
   }
   async function loadSummary(pid: string | number) {
@@ -215,21 +213,13 @@ export function OwnedFinancialsPage() {
   };
 
   const runExpectedIncome = async () => {
-    if (isSupabaseConfigured) {
-      await runDueRecurringIncome();
-    } else {
-      await api.post(`/recurring-income/run-due`, {}, { headers: authHeader() });
-    }
+    await runDueRecurringIncome();
     if (propertyId !== "") await loadSummary(propertyId);
     invalidatePropertyWorkspace();
   };
 
   const activateRecurring = async (id: string | number) => {
-    if (isSupabaseConfigured) {
-      await activateRecurringIncomeRule(id);
-    } else {
-      await api.post(`/recurring-income/${id}/activate`, {}, { headers: authHeader() });
-    }
+    await activateRecurringIncomeRule(id);
     await refreshSummaryAndBroadcast(propertyId);
   };
 

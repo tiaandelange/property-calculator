@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { Helmet } from "react-helmet-async";
-import { Link, useParams, useSearchParams } from "react-router-dom";
-import { api } from "../api/client";
+import { Link, useSearchParams } from "react-router-dom";
 import { Container } from "../components/ui/Container";
 import { Section } from "../components/ui/Section";
 import { Card } from "../components/ui/Card";
@@ -11,11 +10,8 @@ import { getSupabase, isSupabaseConfigured } from "../lib/supabaseClient";
 import { formatAuthError } from "../utils/authErrors";
 import type { EmailOtpType } from "@supabase/supabase-js";
 
-/**
- * Supabase email confirmation (`token_hash` + `type` query) or legacy Express `/confirm-email/:token`.
- */
+/** Supabase email confirmation (`token_hash` + `type` query params). */
 export function ConfirmEmailPage() {
-  const { token: legacyToken } = useParams();
   const [searchParams] = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
@@ -27,52 +23,47 @@ export function ConfirmEmailPage() {
     let cancelled = false;
 
     async function run() {
-      if (tokenHash && typeParam && isSupabaseConfigured) {
-        const sb = getSupabase();
-        const { error } = await sb.auth.verifyOtp({
-          token_hash: tokenHash,
-          type: typeParam as EmailOtpType
-        });
-        if (cancelled) return;
-        setLoading(false);
-        if (error) {
-          setMessage({ kind: "error", text: formatAuthError(error) });
-          return;
-        }
-        setMessage({ kind: "ok", text: "Email confirmed. You can sign in." });
-        return;
-      }
-
-      if (legacyToken) {
-        try {
-          const res = await api.get(`/auth/confirm-email/${legacyToken}`);
-          if (cancelled) return;
-          setMessage({ kind: "ok", text: res.data?.message ?? "Email confirmed (legacy server)." });
-        } catch (e: unknown) {
-          if (cancelled) return;
-          const msg =
-            (e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? "Invalid token";
-          setMessage({ kind: "error", text: msg });
-        } finally {
-          if (!cancelled) setLoading(false);
+      if (!tokenHash || !typeParam) {
+        if (!cancelled) {
+          setLoading(false);
+          setMessage({
+            kind: "error",
+            text: "Missing confirmation parameters. Open the link from your email, or go back to sign in."
+          });
         }
         return;
       }
 
-      if (!cancelled) {
-        setLoading(false);
-        setMessage({
-          kind: "error",
-          text: "Missing confirmation parameters. Open the link from your email, or go back to sign in."
-        });
+      if (!isSupabaseConfigured) {
+        if (!cancelled) {
+          setLoading(false);
+          setMessage({
+            kind: "error",
+            text: "Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY."
+          });
+        }
+        return;
       }
+
+      const sb = getSupabase();
+      const { error } = await sb.auth.verifyOtp({
+        token_hash: tokenHash,
+        type: typeParam as EmailOtpType
+      });
+      if (cancelled) return;
+      setLoading(false);
+      if (error) {
+        setMessage({ kind: "error", text: formatAuthError(error) });
+        return;
+      }
+      setMessage({ kind: "ok", text: "Email confirmed. You can sign in." });
     }
 
     void run();
     return () => {
       cancelled = true;
     };
-  }, [tokenHash, typeParam, legacyToken]);
+  }, [tokenHash, typeParam]);
 
   return (
     <Section>
