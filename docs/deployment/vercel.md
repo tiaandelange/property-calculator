@@ -52,10 +52,23 @@ Three environments live in Vercel:
 | Preview       | Any non-`main` push or pull request                           |
 | Development   | The `vercel dev` local CLI (not used here — we use `npm run dev`) |
 
-For our app, **set the same `VITE_API_BASE_URL` for Production AND Preview**
-(unless you have a separate staging backend). If you forget to set Preview,
-the preview deploy will try to hit the dev backend on `localhost:4000` and
-fail.
+For our app, **set the same variables for Production AND Preview** (unless you
+have a separate staging backend):
+
+| Variable | Required |
+| -------- | -------- |
+| `VITE_SUPABASE_URL` | Yes — Auth + Supabase client |
+| `VITE_SUPABASE_ANON_KEY` | Yes — anon key only |
+| `VITE_API_BASE_URL` | Yes — Express API URL (e.g. `https://api.yourdomain.com/api`) until full cutover |
+
+If `VITE_API_BASE_URL` is unset in a **production** build, the SPA defaults to
+same-origin `/api` (Vercel Functions only). Preview/production builds no longer
+fall back to `localhost:4000`.
+
+**Serverless env** (for `frontend/api/*`): add `SUPABASE_URL` and `SUPABASE_ANON_KEY`
+(or duplicate the `VITE_*` values — handlers accept either). Do **not** set
+`SUPABASE_SERVICE_ROLE_KEY` on this project unless you add a dedicated admin-only
+function that needs it (current PDF routes use anon + user JWT + RLS).
 
 ## Custom domain
 

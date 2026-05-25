@@ -6,6 +6,22 @@ import {
   rpcInvoiceCreateResultToClient
 } from "../api/invoiceRowMapping";
 
+const INVOICES_BUCKET = "invoices";
+const SIGNED_URL_TTL_SEC = 600;
+
+async function attachSignedPdfDownloadUrl(
+  mapped: Record<string, unknown>
+): Promise<Record<string, unknown>> {
+  if (!mapped.hasPdf) return mapped;
+  const bucket = String(mapped.pdfStorageBucket ?? INVOICES_BUCKET);
+  const key = mapped.pdfStorageKey != null ? String(mapped.pdfStorageKey) : "";
+  if (!key.trim()) return mapped;
+  const sb = getSupabase();
+  const { data, error } = await sb.storage.from(bucket).createSignedUrl(key, SIGNED_URL_TTL_SEC);
+  if (error || !data?.signedUrl) return mapped;
+  return { ...mapped, downloadUrl: data.signedUrl };
+}
+
 function toError(e: PostgrestError | Error): Error {
   if ("code" in e && "message" in e) {
     const pe = e as PostgrestError;
@@ -77,7 +93,8 @@ export async function listInvoices(propertyId: string | number): Promise<Record<
     .eq("property_id", String(propertyId))
     .order("created_at", { ascending: false });
   if (error) throw toError(error);
-  return (data ?? []).map((r) => dbInvoiceBundleToClient(r as Record<string, unknown>));
+  const mapped = (data ?? []).map((r) => dbInvoiceBundleToClient(r as Record<string, unknown>));
+  return Promise.all(mapped.map((row) => attachSignedPdfDownloadUrl(row)));
 }
 
 export async function getInvoice(id: string | number): Promise<Record<string, unknown>> {
@@ -90,7 +107,7 @@ export async function getInvoice(id: string | number): Promise<Record<string, un
     .maybeSingle();
   if (error) throw toError(error);
   if (!data) throw new Error("Invoice not found");
-  return dbInvoiceBundleToClient(data as Record<string, unknown>);
+  return attachSignedPdfDownloadUrl(dbInvoiceBundleToClient(data as Record<string, unknown>));
 }
 
 export async function createInvoice(
@@ -201,8 +218,17 @@ export async function updateInvoice(
 }
 
 export async function deleteInvoice(id: string | number): Promise<{ message: string }> {
-  await requireUserId();
+  const uid = await requireUserId();
   const sb = getSupabase();
+  const { data: row } = await sb
+    .from("invoices")
+    .select("pdf_storage_bucket,pdf_storage_key")
+    .eq("id", String(id))
+    .eq("user_id", uid)
+    .maybeSingle();
+  if (row?.pdf_storage_key && row?.pdf_storage_bucket) {
+    await sb.storage.from(String(row.pdf_storage_bucket)).remove([String(row.pdf_storage_key)]);
+  }
   const { data, error } = await sb.rpc("hard_delete_invoice", { p_id: String(id) });
   if (error) throw toError(error);
   const r = (data ?? {}) as { message?: string };

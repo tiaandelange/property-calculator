@@ -2,6 +2,12 @@ import { FormEvent, useEffect, useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { api, authHeader } from "../api/client";
 import { getProperties, getPropertyTenants } from "../api/ownedProperties";
+import { isSupabaseConfigured } from "../lib/supabaseClient";
+import {
+  createRecurringInvoiceRule,
+  listRecurringInvoiceRules
+} from "../services/recurringRulesSupabase";
+import { runDueRecurringInvoices } from "../services/recurringRunDueSupabase";
 import { Container } from "../components/ui/Container";
 import { Section } from "../components/ui/Section";
 import { Card } from "../components/ui/Card";
@@ -33,12 +39,14 @@ export function OwnedRecurringInvoicesPage() {
     if (!propertyId && rows[0]) setPropertyId(rows[0].id);
   }
   async function loadData(pid: string | number) {
-    const [t, r] = await Promise.all([
-      getPropertyTenants(pid),
-      api.get(`/properties/${pid}/recurring-invoices`, { headers: authHeader() })
-    ]);
+    const t = await getPropertyTenants(pid);
     setTenants(Array.isArray(t) ? t : []);
-    setRules(r.data);
+    if (isSupabaseConfigured) {
+      setRules(await listRecurringInvoiceRules(pid));
+    } else {
+      const r = await api.get(`/properties/${pid}/recurring-invoices`, { headers: authHeader() });
+      setRules(r.data);
+    }
   }
   useEffect(() => { void loadProperties(); }, []);
   useEffect(() => { if (propertyId) void loadData(propertyId); }, [propertyId]);
@@ -46,11 +54,19 @@ export function OwnedRecurringInvoicesPage() {
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     if (!propertyId) return;
-    await api.post(`/properties/${propertyId}/recurring-invoices`, form, { headers: authHeader() });
+    if (isSupabaseConfigured) {
+      await createRecurringInvoiceRule(propertyId, form);
+    } else {
+      await api.post(`/properties/${propertyId}/recurring-invoices`, form, { headers: authHeader() });
+    }
     await loadData(propertyId);
   };
   const runDue = async () => {
-    await api.post("/recurring-invoices/run-due", {}, { headers: authHeader() });
+    if (isSupabaseConfigured) {
+      await runDueRecurringInvoices();
+    } else {
+      await api.post("/recurring-invoices/run-due", {}, { headers: authHeader() });
+    }
     if (propertyId) await loadData(propertyId);
   };
 

@@ -4,6 +4,7 @@ import { api, authHeader } from "../api/client";
 import { getProperties } from "../api/ownedProperties";
 import { invalidatePropertyWorkspace } from "../features/properties/invalidate";
 import { usePropertyWorkspaceRefresh } from "../features/properties/usePropertyWorkspaceRefresh";
+import { resolveApiOrigin } from "../lib/apiBase";
 import { isSupabaseConfigured } from "../lib/supabaseClient";
 import {
   deletePropertyDocument,
@@ -112,10 +113,7 @@ export function OwnedDocumentsPage() {
       const res = await api.post(`/documents/${id}/sign-download`, undefined, { headers: authHeader() });
       const url = res.data?.url as string | undefined;
       if (!url) throw new Error("Could not get signed download URL.");
-      const baseHost = (import.meta.env.VITE_API_BASE_URL ?? import.meta.env.VITE_API_URL ?? "http://localhost:4000/api").replace(
-        /\/api\/?$/,
-        ""
-      );
+      const baseHost = resolveApiOrigin();
       window.open(`${baseHost}${url}`, "_blank", "noopener,noreferrer");
     } catch (err: any) {
       setError(err?.response?.data?.message ?? err?.message ?? "Download failed");

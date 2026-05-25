@@ -2,6 +2,11 @@ import { ZodError } from "zod";
 import { calculate } from "@calculatorShared/calculatorEngine";
 import type { CalculatorResult } from "@calculatorShared/calculatorTypes";
 import { getSupabase } from "../lib/supabaseClient";
+import {
+  deleteUserReport,
+  listUserReports,
+  type SavedUserReportRow
+} from "./profileSupabase";
 
 function toError(e: unknown): Error {
   if (e instanceof Error) return e;
@@ -30,16 +35,7 @@ function asObject(v: unknown): Record<string, unknown> {
   return {};
 }
 
-export type SavedCalculationReportRow = {
-  id: string;
-  type: string;
-  created_at: string;
-  hasPdf: boolean;
-  reportId: string | null;
-  downloadUrl: string | null;
-  input: Record<string, unknown>;
-  result: Record<string, unknown>;
-};
+export type SavedCalculationReportRow = SavedUserReportRow;
 
 /** Pure deterministic math + validation (same engine as Express `POST /api/calculations/:type`). */
 export function runCalculatorLocally(type: string, input: Record<string, unknown>): CalculatorResult {
@@ -95,86 +91,8 @@ export async function saveCalculationResult(
   };
 }
 
-/** Saved runs for the signed-in user (workspace dashboard). */
-export async function listCalculationResults(): Promise<SavedCalculationReportRow[]> {
-  const sb = getSupabase();
-  const { data: sessionData, error: sessionErr } = await sb.auth.getUser();
-  if (sessionErr) throw toError(sessionErr);
-  const uid = sessionData.user?.id;
-  if (!uid) throw new Error("Not signed in.");
+/** @deprecated Use `listUserReports` from `profileSupabase`. */
+export const listCalculationResults = listUserReports;
 
-  const { data: calcs, error: e1 } = await sb
-    .from("calculator_results")
-    .select("id,type,created_at,input_json,result_json")
-    .order("created_at", { ascending: false });
-
-  if (e1) throw toError(e1);
-
-  const rows = (calcs ?? []) as Array<{
-    id: string;
-    type: string;
-    created_at: string;
-    input_json: unknown;
-    result_json: unknown;
-  }>;
-
-  if (rows.length === 0) return [];
-
-  const ids = rows.map((r) => r.id);
-
-  const { data: reports, error: e2 } = await sb
-    .from("stored_reports")
-    .select("id,calculation_id,file_name,created_at,storage_bucket,storage_key")
-    .eq("user_id", uid)
-    .in("calculation_id", ids)
-    .order("created_at", { ascending: false });
-
-  if (e2) throw toError(e2);
-
-  const latestPdf = new Map<
-    string,
-    { id: string; file_name: string; storage_bucket: string | null; storage_key: string | null }
-  >();
-  for (const s of reports ?? []) {
-    const cid = s.calculation_id as string | null;
-    if (cid && !latestPdf.has(cid)) {
-      latestPdf.set(cid, {
-        id: String(s.id),
-        file_name: String(s.file_name),
-        storage_bucket: (s.storage_bucket as string | null) ?? null,
-        storage_key: (s.storage_key as string | null) ?? null
-      });
-    }
-  }
-
-  return Promise.all(
-    rows.map(async (r) => {
-      const pdf = latestPdf.get(r.id);
-      let downloadUrl: string | null = null;
-      if (pdf?.storage_bucket && pdf.storage_key) {
-        const { data: signed, error: signErr } = await sb.storage
-          .from(pdf.storage_bucket)
-          .createSignedUrl(pdf.storage_key, 600);
-        if (!signErr && signed?.signedUrl) downloadUrl = signed.signedUrl;
-      } else if (pdf) {
-        downloadUrl = `/api/reports/${pdf.id}/download`;
-      }
-      return {
-        id: r.id,
-        type: r.type,
-        created_at: r.created_at,
-        hasPdf: Boolean(pdf),
-        reportId: pdf?.id ?? null,
-        downloadUrl,
-        input: asObject(r.input_json),
-        result: asObject(r.result_json)
-      };
-    })
-  );
-}
-
-export async function deleteCalculationResult(id: string): Promise<void> {
-  const sb = getSupabase();
-  const { error } = await sb.from("calculator_results").delete().eq("id", id);
-  if (error) throw toError(error);
-}
+/** @deprecated Use `deleteUserReport` from `profileSupabase`. */
+export const deleteCalculationResult = deleteUserReport;

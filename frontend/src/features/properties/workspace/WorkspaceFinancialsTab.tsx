@@ -3,12 +3,13 @@ import { Link, useNavigate } from "react-router-dom";
 import { Card } from "../../../components/ui/Card";
 import { Field, Input } from "../../../components/ui/Input";
 import { api, authHeader } from "../../../api/client";
-import { downloadAuthenticatedPdf, fetchPdfBlob, isAbsoluteHttpUrl, openPdfBlobInNewTab } from "../../../api/pdfBlob";
+import { fetchPdfBlob, isAbsoluteHttpUrl, openPdfBlobInNewTab } from "../../../api/pdfBlob";
 import { isSupabaseConfigured } from "../../../lib/supabaseClient";
 import { generateReportViaVercel } from "../../../services/reportsVercel";
 import {
   backfillBondStatementRows,
   createCurrentInvoiceFromLease,
+  generateInvoicePdf,
   createPropertyExpense,
   deletePropertyExpense,
   hardDeleteInvoice,
@@ -233,7 +234,7 @@ export function WorkspaceFinancialsTab({
   const [statementConfirmBusy, setStatementConfirmBusy] = useState(false);
   const [statementFeedback, setStatementFeedback] = useState<string | null>(null);
   const [summaryPdfBusy, setSummaryPdfBusy] = useState(false);
-  const [invoicePdfBusyId, setInvoicePdfBusyId] = useState<number | null>(null);
+  const [invoicePdfBusyId, setInvoicePdfBusyId] = useState<string | number | null>(null);
   const [invoicePdfBanner, setInvoicePdfBanner] = useState<string | null>(null);
 
   useEffect(() => {
@@ -324,20 +325,30 @@ export function WorkspaceFinancialsTab({
     }
   }
 
-  async function viewInvoicePdf(invoiceId: number) {
+  async function viewInvoicePdf(invoiceId: string | number) {
     setInvoicePdfBusyId(invoiceId);
     setInvoicePdfBanner(null);
     try {
-      await api.post(`/invoices/${invoiceId}/generate-pdf`, {}, { headers: authHeader() });
-      const blob = await downloadAuthenticatedPdf(`/api/invoices/${invoiceId}/download`);
-      openPdfBlobInNewTab(blob);
+      const gen = await generateInvoicePdf(invoiceId);
+      const downloadUrl = gen.downloadUrl;
+      if (!downloadUrl) throw new Error(gen.error ?? "No download URL returned.");
+      if (isAbsoluteHttpUrl(downloadUrl)) {
+        window.open(downloadUrl, "_blank", "noopener,noreferrer");
+      } else {
+        const blob = await fetchPdfBlob(downloadUrl);
+        openPdfBlobInNewTab(blob);
+      }
       setInvoicePdfBanner("Invoice PDF opened in a new tab. Use your browser save or print controls to download if needed.");
-    } catch (e: any) {
-      const apiMsg = e?.response?.data?.message;
+    } catch (e: unknown) {
+      const apiMsg = e && typeof e === "object" && "response" in e
+        ? (e as { response?: { data?: { message?: string } } }).response?.data?.message
+        : undefined;
       window.alert(
         typeof apiMsg === "string" && apiMsg.trim()
           ? apiMsg
-          : e?.message ?? "Could not generate or open invoice PDF."
+          : e instanceof Error
+            ? e.message
+            : "Could not generate or open invoice PDF."
       );
     } finally {
       setInvoicePdfBusyId(null);
@@ -1331,10 +1342,12 @@ export function WorkspaceFinancialsTab({
                           <button
                             className="pg-btn pg-btn-secondary"
                             type="button"
-                            disabled={invoicePdfBusyId === Number(inv.id)}
+                            disabled={invoicePdfBusyId === inv.id || invoicePdfBusyId === Number(inv.id)}
                             onClick={() => void viewInvoicePdf(Number(inv.id))}
                           >
-                            {invoicePdfBusyId === Number(inv.id) ? "Working…" : "View Invoice"}
+                            {invoicePdfBusyId === inv.id || invoicePdfBusyId === Number(inv.id)
+                              ? "Working…"
+                              : "View Invoice"}
                           </button>
                           <button className="pg-btn pg-btn-ghost" type="button" disabled title="Coming soon">
                             Send Invoice

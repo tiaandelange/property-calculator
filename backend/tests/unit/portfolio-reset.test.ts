@@ -1,5 +1,5 @@
-import { assertPortfolioResetAllowed } from "../../src/utils/portfolioResetGuards";
-import { exportPortfolioBackup, resetPortfolioData } from "../../src/services/portfolioResetService";
+import { assertPortfolioResetAllowed } from "../../scripts/legacy-prisma-migration/portfolioResetGuards";
+import { exportPortfolioBackup, resetPortfolioData } from "../../scripts/legacy-prisma-migration/portfolioResetService";
 
 function makePrismaMock(overrides: any = {}) {
   const tx: any = {};

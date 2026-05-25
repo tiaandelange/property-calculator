@@ -120,13 +120,28 @@ describe("calculationsSupabase", () => {
     expect(rows[0].downloadUrl).toContain("/api/reports/");
   });
 
-  it("deleteCalculationResult deletes by id", async () => {
-    const eq = vi.fn().mockResolvedValue({ error: null });
-    from.mockReturnValue({
-      delete: vi.fn(() => ({ eq }))
+  it("deleteCalculationResult deletes stored_reports then calculator_results", async () => {
+    const eqChain = () => ({
+      eq: vi.fn().mockResolvedValue({ data: [], error: null })
+    });
+    const delChain = () => ({
+      eq: vi.fn(() => ({ eq: vi.fn().mockResolvedValue({ error: null }) }))
+    });
+
+    from.mockImplementation((table: string) => {
+      if (table === "stored_reports") {
+        return {
+          select: vi.fn(() => ({ eq: vi.fn(() => eqChain()) })),
+          delete: vi.fn(() => delChain())
+        };
+      }
+      if (table === "calculator_results") {
+        return { delete: vi.fn(() => delChain()) };
+      }
+      return {};
     });
     await deleteCalculationResult("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa");
+    expect(from).toHaveBeenCalledWith("stored_reports");
     expect(from).toHaveBeenCalledWith("calculator_results");
-    expect(eq).toHaveBeenCalledWith("id", "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa");
   });
 });

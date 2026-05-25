@@ -11,12 +11,15 @@ import {
 const getUser = vi.fn();
 const from = vi.fn();
 const rpc = vi.fn();
+const storageRemove = vi.fn(() => Promise.resolve({ data: [], error: null }));
+const storageFrom = vi.fn(() => ({ remove: storageRemove }));
 
 vi.mock("../lib/supabaseClient", () => ({
   getSupabase: () => ({
     auth: { getUser },
     from,
-    rpc
+    rpc,
+    storage: { from: storageFrom }
   })
 }));
 
@@ -25,6 +28,8 @@ describe("invoicesSupabase", () => {
     getUser.mockReset();
     from.mockReset();
     rpc.mockReset();
+    storageRemove.mockClear();
+    storageFrom.mockClear();
   });
 
   it("listInvoices throws when logged out", async () => {
@@ -201,10 +206,25 @@ describe("invoicesSupabase", () => {
     expect(rpc).toHaveBeenCalledWith("update_invoice_with_line_items", expect.any(Object));
   });
 
-  it("deleteInvoice calls hard_delete_invoice RPC", async () => {
+  it("deleteInvoice removes storage object then calls hard_delete_invoice RPC", async () => {
     getUser.mockResolvedValue({ data: { user: { id: "u1" } }, error: null });
+    from.mockReturnValue({
+      select: vi.fn(() => ({
+        eq: vi.fn(() => ({
+          eq: vi.fn(() => ({
+            maybeSingle: vi.fn(() =>
+              Promise.resolve({
+                data: { pdf_storage_bucket: "invoices", pdf_storage_key: "u1/invoices/inv-9.pdf" },
+                error: null
+              })
+            )
+          }))
+        }))
+      }))
+    });
     rpc.mockResolvedValue({ data: { message: "Deleted" }, error: null });
     const out = await deleteInvoice("inv-9");
+    expect(storageRemove).toHaveBeenCalledWith(["u1/invoices/inv-9.pdf"]);
     expect(rpc).toHaveBeenCalledWith("hard_delete_invoice", { p_id: "inv-9" });
     expect(out.message).toBe("Deleted");
   });

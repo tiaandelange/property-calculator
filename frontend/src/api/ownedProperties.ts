@@ -5,8 +5,13 @@ import * as tenantsSupabase from "../services/tenantsSupabase";
 import * as leasesSupabase from "../services/leasesSupabase";
 import * as financialsSupabase from "../services/financialsSupabase";
 import * as invoicesSupabase from "../services/invoicesSupabase";
+import { generateInvoicePdfViaVercel } from "../services/invoicesVercel";
 import * as dashboardSupabase from "../services/dashboardSupabase";
 import * as statementsSupabase from "../services/statementsSupabase";
+import * as operationsSupabase from "../services/operationsSupabase";
+import * as equityMetricsSupabase from "../services/equityMetricsSupabase";
+import * as bondOperationsVercel from "../services/bondOperationsVercel";
+import { sendInvoiceEmailViaVercel } from "../services/invoicesEmailVercel";
 
 /** Normalizes errors from Axios or Supabase-thrown `Error` for UI copy. */
 export function propertyApiErrorMessage(e: unknown): string {
@@ -220,17 +225,32 @@ export async function cancelLease(leaseId: string | number, payload: Record<stri
 }
 
 export async function getEquityMetrics() {
+  if (isSupabaseConfigured) {
+    const out = await equityMetricsSupabase.listEquityMetrics();
+    return out.properties;
+  }
   const res = await api.get("/properties/metrics/equity", { headers: authHeader() });
   return res.data?.properties ?? [];
 }
 
-export async function updateEquityMetrics(updates: Array<{ propertyId: number; currentEstimatedValue: number | null; outstandingBondBalance: number | null }>) {
+export async function updateEquityMetrics(
+  updates: Array<{ propertyId: string | number; currentEstimatedValue: number | null; outstandingBondBalance: number | null }>
+) {
+  if (isSupabaseConfigured) {
+    return equityMetricsSupabase.updateEquityMetrics(updates);
+  }
   const res = await api.patch("/properties/metrics/equity", { updates }, { headers: authHeader() });
   return res.data;
 }
 
 /** Bond → statement: amortised amounts for `dueDate` (profile as-of that date for remaining term). */
 export async function previewBondStatementAtDate(propertyId: string | number, dueDate: string) {
+  if (isSupabaseConfigured) {
+    return bondOperationsVercel.previewBondAtDate(String(propertyId), dueDate) as Promise<{
+      dueDate: string;
+      bondFinance: Record<string, unknown>;
+    }>;
+  }
   const res = await api.get(`/properties/${propertyId}/bond/preview-at-date`, {
     params: { dueDate },
     headers: authHeader()
@@ -239,11 +259,23 @@ export async function previewBondStatementAtDate(propertyId: string | number, du
 }
 
 export async function postBondStatementRow(propertyId: string | number, dueDate: string) {
+  if (isSupabaseConfigured) {
+    return bondOperationsVercel.postBondStatementRow(String(propertyId), dueDate) as Promise<{
+      expense: Record<string, unknown>;
+    }>;
+  }
   const res = await api.post(`/properties/${propertyId}/bond/statement-row`, { dueDate }, { headers: authHeader() });
   return res.data as { expense: Record<string, unknown> };
 }
 
 export async function backfillBondStatementRows(propertyId: string | number, startDate: string, endDate: string) {
+  if (isSupabaseConfigured) {
+    return bondOperationsVercel.backfillBondStatementRows(String(propertyId), startDate, endDate) as Promise<{
+      createdCount: number;
+      createdIds: string[];
+      skipped: Array<{ dueYmd: string; reason: string }>;
+    }>;
+  }
   const res = await api.post(
     `/properties/${propertyId}/bond/backfill-statement-rows`,
     { startDate, endDate },
@@ -260,9 +292,7 @@ function expenseCreateUsesExpress(
     isRecurring?: boolean;
   } & Record<string, unknown>
 ): boolean {
-  if (payload.recurringSchedule === true) return true;
   if (payload.futureExpense === true) return true;
-  if (payload.isRecurring === true) return true;
   return false;
 }
 
@@ -429,6 +459,15 @@ export async function hardDeleteInvoice(invoiceId: string | number) {
   return res.data;
 }
 
+/** Generate invoice PDF (Vercel + Storage when Supabase env is set). */
+export async function generateInvoicePdf(invoiceId: string | number) {
+  if (isSupabaseConfigured) {
+    return generateInvoicePdfViaVercel(String(invoiceId));
+  }
+  const res = await api.post(`/invoices/${invoiceId}/generate-pdf`, {}, { headers: authHeader() });
+  return res.data;
+}
+
 export async function updatePropertyIncome(incomeId: string | number, payload: Record<string, unknown>) {
   if (isSupabaseConfigured) {
     return financialsSupabase.updateIncome(incomeId, payload);
@@ -458,13 +497,31 @@ export async function getPropertyStatement(
 }
 
 export async function postPropertyFinancialBackfill(propertyId: string | number, body: Record<string, unknown>) {
+  if (isSupabaseConfigured) {
+    return operationsSupabase.runFinancialHistoricalBackfill(String(propertyId), body);
+  }
   const res = await api.post(`/properties/${propertyId}/financials/backfill`, body, { headers: authHeader() });
   return res.data;
 }
 
 export async function createCurrentInvoiceFromLease(propertyId: string | number, leaseId?: string | number) {
+  if (isSupabaseConfigured) {
+    const leaseUuid =
+      leaseId != null && String(leaseId).trim() !== "" && /^[0-9a-f-]{36}$/i.test(String(leaseId))
+        ? String(leaseId)
+        : null;
+    return operationsSupabase.createInvoiceFromLease(String(propertyId), leaseUuid);
+  }
   const body = leaseId != null && String(leaseId).trim() !== "" ? { leaseId } : {};
   const res = await api.post(`/properties/${propertyId}/invoices/create-current`, body, { headers: authHeader() });
+  return res.data;
+}
+
+export async function sendInvoiceEmail(invoiceId: string | number) {
+  if (isSupabaseConfigured) {
+    return sendInvoiceEmailViaVercel(String(invoiceId));
+  }
+  const res = await api.post(`/invoices/${invoiceId}/send-email`, {}, { headers: authHeader() });
   return res.data;
 }
 

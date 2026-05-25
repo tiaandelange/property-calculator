@@ -1,7 +1,7 @@
 import jwt from "jsonwebtoken";
-import type { SubscriptionStatus, UserRole } from "@prisma/client";
-import { db } from "../config/db.js";
+import { getSupabaseAdminClient, isSupabaseServiceConfigured } from "../config/supabaseClient.js";
 import { env } from "../config/env.js";
+import type { SubscriptionStatus, UserRole } from "../types/domain.js";
 
 export interface AuthJwtPayload {
   sub: string;
@@ -10,8 +10,9 @@ export interface AuthJwtPayload {
   subscription_status: SubscriptionStatus;
 }
 
+/** Authenticated user id — Supabase `profiles.id` / `auth.users.id` (UUID). */
 export type ResolvedBearerUser = {
-  userId: number;
+  userId: string;
   email: string;
   role: UserRole;
   subscriptionStatus: SubscriptionStatus;
@@ -19,10 +20,10 @@ export type ResolvedBearerUser = {
 
 export type ResolveBearerUserResult =
   | { ok: true; user: ResolvedBearerUser }
-  | { ok: false; reason: "invalid" | "supabase_no_app_user" };
+  | { ok: false; reason: "invalid" | "profile_missing" };
 
 export const NO_APP_USER_MESSAGE =
-  "No application user matches this Supabase login. Create a PropertyGuy user with the same email (e.g. prisma seed or legacy /register), then try again.";
+  "No application profile for this account. Sign out and sign in again, or contact support.";
 
 function tryLegacyJwt(token: string): AuthJwtPayload | null {
   try {
@@ -30,17 +31,6 @@ function tryLegacyJwt(token: string): AuthJwtPayload | null {
   } catch {
     return null;
   }
-}
-
-function legacyToResolved(payload: AuthJwtPayload): ResolvedBearerUser | null {
-  const id = Number(payload.sub);
-  if (Number.isNaN(id)) return null;
-  return {
-    userId: id,
-    email: payload.email,
-    role: payload.role,
-    subscriptionStatus: payload.subscription_status
-  };
 }
 
 function audAllowsAuthenticatedAudience(aud: jwt.JwtPayload["aud"]): boolean {
@@ -61,8 +51,9 @@ function emailFromSupabasePayload(payload: jwt.JwtPayload): string {
 }
 
 /**
- * Resolves a Bearer token to a Prisma `User` id + role fields.
- * Supports legacy app JWTs (`JWT_SECRET`) and Supabase access tokens (`SUPABASE_JWT_SECRET`).
+ * Resolves a Bearer token to app profile fields.
+ * Primary path: Supabase access JWT (`sub` → `public.profiles`).
+ * Legacy path: app JWT (`JWT_SECRET`) with numeric `sub` is no longer supported for data APIs.
  */
 export async function resolveBearerUser(token: string): Promise<ResolveBearerUserResult> {
   const trimmed = token.trim();
@@ -72,12 +63,11 @@ export async function resolveBearerUser(token: string): Promise<ResolveBearerUse
 
   const legacy = tryLegacyJwt(trimmed);
   if (legacy) {
-    const resolved = legacyToResolved(legacy);
-    if (resolved) return { ok: true, user: resolved };
+    return { ok: false, reason: "invalid" };
   }
 
   const supabaseSecret = env.SUPABASE_JWT_SECRET;
-  if (!supabaseSecret) {
+  if (!supabaseSecret || !isSupabaseServiceConfigured) {
     return { ok: false, reason: "invalid" };
   }
 
@@ -95,32 +85,36 @@ export async function resolveBearerUser(token: string): Promise<ResolveBearerUse
     return { ok: false, reason: "invalid" };
   }
 
-  const email = emailFromSupabasePayload(payload);
-  if (!email) {
+  const sub = typeof payload.sub === "string" ? payload.sub.trim() : "";
+  if (!sub) {
     return { ok: false, reason: "invalid" };
   }
 
-  const user = await db.user.findFirst({
-    where: { email: { equals: email, mode: "insensitive" } },
-    select: {
-      id: true,
-      email: true,
-      role: true,
-      subscription_status: true
-    }
-  });
+  const email = emailFromSupabasePayload(payload);
 
-  if (!user) {
-    return { ok: false, reason: "supabase_no_app_user" };
+  const sb = getSupabaseAdminClient();
+  const { data: profile, error } = await sb
+    .from("profiles")
+    .select("id, role, subscription_status")
+    .eq("id", sub)
+    .maybeSingle();
+
+  if (error) {
+    console.error("[auth] profile lookup failed", error.message);
+    return { ok: false, reason: "invalid" };
+  }
+
+  if (!profile) {
+    return { ok: false, reason: "profile_missing" };
   }
 
   return {
     ok: true,
     user: {
-      userId: user.id,
-      email: user.email,
-      role: user.role,
-      subscriptionStatus: user.subscription_status
+      userId: String(profile.id),
+      email,
+      role: profile.role as UserRole,
+      subscriptionStatus: profile.subscription_status as SubscriptionStatus
     }
   };
 }

@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import { api, authHeader } from "../api/client";
 import { fetchPdfBlob, triggerPdfFileDownload } from "../api/pdfBlob";
 import { isSupabaseConfigured } from "../lib/supabaseClient";
-import { deleteCalculationResult, listCalculationResults } from "../services/calculationsSupabase";
+import { deleteUserReport, listUserReports } from "../services/profileSupabase";
 import { generateReportViaVercel } from "../services/reportsVercel";
 import { Card } from "../components/ui/Card";
 import { Container } from "../components/ui/Container";
@@ -45,7 +45,7 @@ export function DashboardPage() {
     setError("");
     try {
       if (isSupabaseConfigured) {
-        setReports(await listCalculationResults());
+        setReports(await listUserReports());
       } else {
         const res = await api.get("/user/reports", { headers: authHeader() });
         setReports(res.data);
@@ -93,7 +93,7 @@ export function DashboardPage() {
     setError("");
     try {
       if (isSupabaseConfigured) {
-        await deleteCalculationResult(String(id));
+        await deleteUserReport(String(id));
       } else {
         await api.delete(`/user/reports/${id}`, { headers: authHeader() });
       }

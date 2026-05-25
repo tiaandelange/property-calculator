@@ -2,7 +2,7 @@
  * Express auth middleware — delegates token resolution to {@link resolveBearerUser}.
  */
 import { NextFunction, Request, Response } from "express";
-import type { SubscriptionStatus, UserRole } from "@prisma/client";
+import type { SubscriptionStatus, UserRole } from "../types/domain.js";
 import {
   NO_APP_USER_MESSAGE,
   resolveBearerUser,
@@ -12,7 +12,7 @@ import {
 export type { AuthJwtPayload } from "../auth/resolveBearerUser.js";
 
 export interface AuthRequest extends Request {
-  userId?: number;
+  userId?: string;
   userEmail?: string;
   userRole?: UserRole;
   userSubscriptionStatus?: SubscriptionStatus;
@@ -45,7 +45,7 @@ export async function requireAuth(req: AuthRequest, res: Response, next: NextFun
       console.log(`[auth] userId=${req.userId} ${req.method} ${req.path}`);
       return next();
     }
-    if (result.reason === "supabase_no_app_user") {
+    if (result.reason === "profile_missing") {
       return res.status(401).json({ message: NO_APP_USER_MESSAGE });
     }
     return res.status(401).json({ message: "Invalid token" });

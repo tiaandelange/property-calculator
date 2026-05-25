@@ -20,15 +20,27 @@ function mapLineItem(row: Record<string, unknown>): Record<string, unknown> {
   };
 }
 
+function invoiceHasPdf(row: Record<string, unknown>, c: Record<string, unknown>): boolean {
+  const storageKey = c.pdfStorageKey ?? (row as Record<string, unknown>).pdf_storage_key;
+  if (storageKey != null && String(storageKey).trim() !== "") return true;
+  const pdfRaw = c.pdfPath ?? (row as Record<string, unknown>).pdf_path;
+  return Boolean(pdfRaw && String(pdfRaw).trim() !== "");
+}
+
 /** One invoice row from `invoices` (snake_case or camel). */
 export function dbInvoiceToClient(row: Record<string, unknown>): Record<string, unknown> {
   const c = snakeRowToCamel(row) as Record<string, unknown>;
-  const pdfRaw = c.pdfPath ?? (row as Record<string, unknown>).pdf_path;
   const id = c.id;
-  const hasPdf = Boolean(pdfRaw && String(pdfRaw).trim() !== "");
+  const hasPdf = invoiceHasPdf(row, c);
   const core = { ...c } as Record<string, unknown>;
   delete core.pdfPath;
   delete core.pdf_path;
+  delete core.pdfStorageBucket;
+  delete core.pdfStorageKey;
+  delete core.pdf_storage_bucket;
+  delete core.pdf_storage_key;
+  const storageKey = (row as Record<string, unknown>).pdf_storage_key ?? c.pdfStorageKey;
+  const storageBucket = (row as Record<string, unknown>).pdf_storage_bucket ?? c.pdfStorageBucket;
   return {
     ...core,
     id,
@@ -40,7 +52,15 @@ export function dbInvoiceToClient(row: Record<string, unknown>): Record<string, 
     paidAt: c.paidAt != null ? coerceIsoDateField(c.paidAt) : c.paidAt,
     archivedAt: c.archivedAt != null ? coerceIsoDateField(c.archivedAt) : c.archivedAt,
     hasPdf,
-    downloadUrl: hasPdf && id != null ? `/api/invoices/${id}/download` : null
+    /** Filled with Supabase signed URL in `invoicesSupabase`; legacy Express uses `/api/invoices/:id/download`. */
+    downloadUrl:
+      hasPdf && id != null && storageKey && storageBucket
+        ? null
+        : hasPdf && id != null
+          ? `/api/invoices/${id}/download`
+          : null,
+    pdfStorageBucket: storageBucket ?? null,
+    pdfStorageKey: storageKey ?? null
   };
 }
 

@@ -3,6 +3,9 @@ import { invalidatePropertyWorkspace } from "../features/properties/invalidate";
 import { usePropertyWorkspaceRefresh } from "../features/properties/usePropertyWorkspaceRefresh";
 import { Helmet } from "react-helmet-async";
 import { api, authHeader } from "../api/client";
+import { isSupabaseConfigured } from "../lib/supabaseClient";
+import { activateRecurringIncomeRule } from "../services/recurringRulesSupabase";
+import { runDueRecurringIncome } from "../services/recurringRunDueSupabase";
 import {
   createPropertyIncome,
   createPropertyExpense,
@@ -165,25 +168,21 @@ export function OwnedFinancialsPage() {
       window.alert("Choose a calendar day between 1 and 31.");
       return;
     }
-    await api.post(
-      `/properties/${propertyId}/expenses`,
-      {
-        category: recurringSchedule.category,
-        description: recurringSchedule.description,
-        amount: Number(recurringSchedule.amount),
-        recurringSchedule: true,
-        recurringStartDate: recurringSchedule.recurringStartDate,
-        recurringEndDate: recurringSchedule.recurringOpenEnded ? null : recurringSchedule.recurringEndDate || null,
-        recurringOpenEnded: Boolean(recurringSchedule.recurringOpenEnded),
-        recurringMonthAnchor: recurringSchedule.recurringMonthAnchor,
-        ...(recurringSchedule.recurringMonthAnchor === "DAY_OF_MONTH"
-          ? { recurringDayOfMonth: recurringSchedule.recurringDayOfMonth }
-          : {}),
-        source: "MANUAL_FINANCIAL_ENTRY",
-        status: "ACTIVE"
-      },
-      { headers: authHeader() }
-    );
+    await createPropertyExpense(propertyId, {
+      category: recurringSchedule.category,
+      description: recurringSchedule.description,
+      amount: Number(recurringSchedule.amount),
+      recurringSchedule: true,
+      recurringStartDate: recurringSchedule.recurringStartDate,
+      recurringEndDate: recurringSchedule.recurringOpenEnded ? null : recurringSchedule.recurringEndDate || null,
+      recurringOpenEnded: Boolean(recurringSchedule.recurringOpenEnded),
+      recurringMonthAnchor: recurringSchedule.recurringMonthAnchor,
+      ...(recurringSchedule.recurringMonthAnchor === "DAY_OF_MONTH"
+        ? { recurringDayOfMonth: recurringSchedule.recurringDayOfMonth }
+        : {}),
+      source: "MANUAL_FINANCIAL_ENTRY",
+      status: "ACTIVE"
+    });
     const d = todayYmd();
     setRecurringSchedule({
       category: recurringSchedule.category,
@@ -216,13 +215,21 @@ export function OwnedFinancialsPage() {
   };
 
   const runExpectedIncome = async () => {
-    await api.post(`/recurring-income/run-due`, {}, { headers: authHeader() });
+    if (isSupabaseConfigured) {
+      await runDueRecurringIncome();
+    } else {
+      await api.post(`/recurring-income/run-due`, {}, { headers: authHeader() });
+    }
     if (propertyId !== "") await loadSummary(propertyId);
     invalidatePropertyWorkspace();
   };
 
   const activateRecurring = async (id: string | number) => {
-    await api.post(`/recurring-income/${id}/activate`, {}, { headers: authHeader() });
+    if (isSupabaseConfigured) {
+      await activateRecurringIncomeRule(id);
+    } else {
+      await api.post(`/recurring-income/${id}/activate`, {}, { headers: authHeader() });
+    }
     await refreshSummaryAndBroadcast(propertyId);
   };
 

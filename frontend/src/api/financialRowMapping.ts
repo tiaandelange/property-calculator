@@ -1,4 +1,9 @@
 import { snakeRowToCamel } from "./propertyRowMapping";
+import {
+  firstDueYmdOnOrAfter,
+  ymdToUtcNoonIso,
+  type RecurringExpenseMonthAnchor
+} from "../utils/recurringExpenseAnchor";
 
 function n(v: unknown): number {
   const x = typeof v === "number" ? v : Number(v);
@@ -9,12 +14,6 @@ function s(v: unknown): string | null {
   if (v == null) return null;
   const t = String(v).trim();
   return t === "" ? null : t;
-}
-
-function ymdToUtcNoonIso(ymd: string): string {
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd.trim());
-  if (!m) return new Date(ymd).toISOString();
-  return `${m[1]}-${m[2]}-${m[3]}T12:00:00.000Z`;
 }
 
 function coerceIsoDateField(v: unknown): string {
@@ -90,6 +89,43 @@ export function buildExpenseInsert(
   propertyId: string,
   input: Record<string, unknown>
 ): Record<string, unknown> {
+  if (input.recurringSchedule === true) {
+    const anchor = String(input.recurringMonthAnchor ?? "FIRST_OF_MONTH") as RecurringExpenseMonthAnchor;
+    const startYmd =
+      typeof input.recurringStartDate === "string" ? input.recurringStartDate.slice(0, 10) : null;
+    if (!startYmd || !/^\d{4}-\d{2}-\d{2}$/.test(startYmd)) {
+      throw new Error("recurringStartDate must be YYYY-MM-DD");
+    }
+    const openEnded = Boolean(input.recurringOpenEnded);
+    const endYmd =
+      openEnded || input.recurringEndDate == null || input.recurringEndDate === ""
+        ? null
+        : String(input.recurringEndDate).slice(0, 10);
+    const dom =
+      anchor === "DAY_OF_MONTH" && input.recurringDayOfMonth != null
+        ? Number(input.recurringDayOfMonth)
+        : null;
+    const firstDue = firstDueYmdOnOrAfter(startYmd, anchor, dom);
+    return {
+      user_id: userId,
+      property_id: propertyId,
+      category: String(input.category ?? "OTHER"),
+      description: String(input.description ?? ""),
+      amount: n(input.amount),
+      expense_date: ymdToUtcNoonIso(firstDue),
+      is_recurring: true,
+      recurring_frequency: "MONTHLY",
+      recurring_schedule_parent_id: null,
+      recurring_start_date: ymdToUtcNoonIso(startYmd),
+      recurring_end_date: endYmd ? ymdToUtcNoonIso(endYmd) : null,
+      recurring_open_ended: openEnded,
+      recurring_month_anchor: anchor,
+      recurring_day_of_month: anchor === "DAY_OF_MONTH" ? dom : null,
+      source: String(input.source ?? "MANUAL_FINANCIAL_ENTRY"),
+      status: String(input.status ?? "ACTIVE")
+    };
+  }
+
   const rawDate = input.expenseDate ?? input.expense_date;
   const ymd =
     typeof rawDate === "string"
@@ -105,8 +141,8 @@ export function buildExpenseInsert(
     description: String(input.description ?? ""),
     amount: n(input.amount),
     expense_date: ymdToUtcNoonIso(ymd),
-    is_recurring: false,
-    recurring_frequency: null,
+    is_recurring: Boolean(input.isRecurring),
+    recurring_frequency: input.recurringFrequency != null ? String(input.recurringFrequency) : null,
     recurring_schedule_parent_id: null,
     recurring_start_date: null,
     recurring_end_date: null,

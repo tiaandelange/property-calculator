@@ -1,8 +1,15 @@
 import { FormEvent, useEffect, useState } from "react";
 import { Helmet } from "react-helmet-async";
-import { api, authHeader } from "../api/client";
-import { downloadAuthenticatedPdf, triggerPdfFileDownload } from "../api/pdfBlob";
-import { getProperties, getPropertyTenants, listPropertyInvoices, createPropertyInvoice, markInvoicePaid } from "../api/ownedProperties";
+import { fetchPdfBlob, triggerPdfFileDownload } from "../api/pdfBlob";
+import {
+  generateInvoicePdf,
+  getProperties,
+  getPropertyTenants,
+  listPropertyInvoices,
+  createPropertyInvoice,
+  markInvoicePaid,
+  sendInvoiceEmail
+} from "../api/ownedProperties";
 import { invalidatePropertyWorkspace } from "../features/properties/invalidate";
 import { usePropertyWorkspaceRefresh } from "../features/properties/usePropertyWorkspaceRefresh";
 import { Container } from "../components/ui/Container";
@@ -61,20 +68,28 @@ export function OwnedInvoicesPage() {
   const generatePdf = async (id: string | number) => {
     setInvoicePdfBusyId(id);
     try {
-      await api.post(`/invoices/${id}/generate-pdf`, {}, { headers: authHeader() });
+      await generateInvoicePdf(id);
       if (propertyId) await loadData(propertyId);
+    } catch (e: unknown) {
+      window.alert(e instanceof Error ? e.message : "Failed to generate invoice PDF.");
     } finally {
       setInvoicePdfBusyId(null);
     }
   };
 
-  const downloadPdf = async (id: string | number, invoiceNumber: string) => {
-    setInvoicePdfBusyId(id);
+  const downloadPdf = async (inv: { id: string | number; invoiceNumber: string; downloadUrl?: string | null }) => {
+    setInvoicePdfBusyId(inv.id);
     try {
-      const blob = await downloadAuthenticatedPdf(`/api/invoices/${id}/download`);
-      triggerPdfFileDownload(blob, `${invoiceNumber.replace(/\s+/g, "_")}.pdf`);
-    } catch (e: any) {
-      window.alert(e?.message ?? "Download failed. Generate the PDF first.");
+      let url = inv.downloadUrl;
+      if (!url) {
+        const gen = await generateInvoicePdf(inv.id);
+        url = gen.downloadUrl ?? null;
+      }
+      if (!url) throw new Error("No download URL. Generate the PDF first.");
+      const blob = await fetchPdfBlob(url);
+      triggerPdfFileDownload(blob, `${String(inv.invoiceNumber).replace(/\s+/g, "_")}.pdf`);
+    } catch (e: unknown) {
+      window.alert(e instanceof Error ? e.message : "Download failed. Generate the PDF first.");
     } finally {
       setInvoicePdfBusyId(null);
     }
@@ -85,7 +100,7 @@ export function OwnedInvoicesPage() {
     invalidatePropertyWorkspace(propertyId);
   };
   const sendEmail = async (id: string | number) => {
-    await api.post(`/invoices/${id}/send-email`, {}, { headers: authHeader() });
+    await sendInvoiceEmail(id);
     if (propertyId) await loadData(propertyId);
   };
 
@@ -120,7 +135,7 @@ export function OwnedInvoicesPage() {
                     variant="ghost"
                     loading={invoicePdfBusyId === inv.id}
                     disabled={!inv.hasPdf}
-                    onClick={() => void downloadPdf(inv.id, inv.invoiceNumber)}
+                    onClick={() => void downloadPdf(inv)}
                   >
                     Download PDF
                   </Button>

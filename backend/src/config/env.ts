@@ -8,7 +8,7 @@ import dotenv from "dotenv";
  *
  * ### Server-only secrets (must NEVER appear in `frontend/` or any `VITE_*` key)
  * These belong in `backend/.env`, Render/Railway/Vercel **server** env, or CI secrets:
- * - `DATABASE_URL` — Postgres for Prisma (until decommissioned).
+ * - `DATABASE_URL` — optional; only for `scripts/legacy-prisma-migration/*` (not used by runtime API).
  * - `JWT_SECRET` — legacy app JWT signing + HMAC download URLs (until retired).
  * - `SUPABASE_JWT_SECRET` — verifies Supabase access tokens on Express during the **legacy bridge**
  *   (`resolveBearerUser`). Still server-only; not bundled to the SPA.

@@ -10,8 +10,18 @@
     "silent": true
   },
 
+  "crons": [
+    {
+      "path": "/api/cron/run-due",
+      "schedule": "0 6 * * *"
+    }
+  ],
+
   "functions": {
     "api/reports/generate.ts": {
+      "includeFiles": "assets/fonts/**"
+    },
+    "api/invoices/[id]/generate-pdf.ts": {
       "includeFiles": "assets/fonts/**"
     }
   },

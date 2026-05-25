@@ -1,7 +1,6 @@
-import { api, authHeader } from "../../api/client";
+import { getProperty } from "../../api/ownedProperties";
 
-/** Full canonical envelope (use when you need alerts, counts, or historical lease summaries). */
+/** Property workspace bundle — uses Supabase `getProperty` when configured (Express aggregate retired). */
 export async function fetchPropertyAggregate(id: string | number) {
-  const res = await api.get(`/properties/${id}/aggregate`, { headers: authHeader() });
-  return res.data;
+  return getProperty(id);
 }

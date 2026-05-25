@@ -7,8 +7,8 @@
 #      every env var marked `sync: false` (everything that isn't safe to commit).
 #
 # What it does NOT do:
-#   - Provision a database. We use Supabase for that. Paste your Supabase
-#     connection string into the `DATABASE_URL` prompt.
+#   - Run portfolio CRUD (Supabase + Vercel). This service is health + Stripe only.
+#   - Require Prisma at build time.
 #   - Provision the frontend. The frontend lives on Vercel — see
 #     `frontend/vercel.json`.
 #
@@ -47,7 +47,14 @@ services:
         value: no-reply@example.com
 
       # ---- Secrets — you'll be prompted for these in the Render UI ----------
-      - key: DATABASE_URL          # Supabase pooled connection string
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_JWT_SECRET
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      # Optional: legacy Prisma scripts only (not used by runtime API)
+      - key: DATABASE_URL
         sync: false
       - key: FRONTEND_URLS         # comma-separated allow-list, e.g. https://app.example.com,https://www.example.com
         sync: false

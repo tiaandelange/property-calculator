@@ -1,85 +1,50 @@
-# Property Guy — Backend
+# Property Guy — Backend (slim API)
 
-Express API, Prisma ORM, and Postgres. For **Supabase-first** SQL migrations and RLS, see the repo root `supabase/` folder.
+Production runtime is **Supabase-first**. This package runs a small **Express** app:
+
+- `GET /api/health`
+- `POST /api/subscription/checkout` and `POST /api/subscription/cancel` (Bearer = Supabase access JWT)
+- `POST /api/subscription/webhook` (Stripe → updates `public.profiles` + `public.subscriptions` by **profile UUID**)
+
+Portfolio CRUD, PDFs, statements, bond ledger, and admin live in **`frontend/api/*`** (Vercel) and **Supabase RPC/RLS**.
 
 ## Local setup
 
-1. Copy env template and adjust values:
+```bash
+cp .env.example .env
+npm ci
+npm run dev    # http://localhost:4000
+```
 
-   ```bash
-   cp .env.example .env
-   ```
+Required for auth on subscription routes:
 
-2. Install dependencies and generate Prisma client:
+- `SUPABASE_URL`
+- `SUPABASE_JWT_SECRET` (Dashboard → Settings → API → JWT Secret)
+- `SUPABASE_SERVICE_ROLE_KEY` (webhook + profile lookup)
 
-   ```bash
-   npm install
-   npx prisma generate
-   ```
+Optional: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `FRONTEND_URL` / `FRONTEND_URLS`.
 
-3. Run migrations against your database (local Docker or hosted Postgres):
+## Build & deploy
 
-   ```bash
-   npx prisma migrate deploy
-   ```
+```bash
+npm run build   # tsc only — no Prisma generate
+npm start
+```
 
-4. Start the API:
+Docker: `backend/Dockerfile` (repo root context). No Prisma client in the image.
 
-   ```bash
-   npm run dev
-   ```
+## Legacy Prisma scripts
 
-## Environment variables
+One-off maintenance scripts live in **`scripts/legacy-prisma-migration/`** (not part of runtime):
 
-Values are loaded in development via `src/config/env.ts` (see file header for **server-only vs public** rules). Production hosts inject `process.env` directly.
+```bash
+npm run prisma:generate   # devDependency only
+npm run reset:portfolio-data -- --email you@example.com --confirm RESET
+```
 
-### Server-only (never `VITE_*`, never under `frontend/src` except guarded docs)
+They need `DATABASE_URL` and `@prisma/client` from devDependencies. See `scripts/legacy-prisma-migration/README.md`.
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `DATABASE_URL` | Yes | Postgres connection string for Prisma. |
-| `JWT_SECRET` | Yes in production | Legacy app JWT signing + signed download HMAC. |
-| `JWT_EXPIRES_IN` | No | Legacy JWT lifetime (default `1h`). |
-| `SUPABASE_JWT_SECRET` | If using Supabase Auth with Express | Dashboard → **Settings** → **API** → **JWT Secret**. Verifies Supabase access tokens during the **legacy bridge** (`resolveBearerUser`). **Server-only.** |
-| `SUPABASE_SERVICE_ROLE_KEY` | If using `supabaseClient` | **service_role** key. **Bypasses RLS** — trusted backend / Vercel **server** functions only; **never** expose to the SPA. |
-| `STRIPE_SECRET_KEY` | If billing enabled | Stripe **secret** API key (`sk_…`). **Server-only.** |
-| `STRIPE_WEBHOOK_SECRET` | If webhooks enabled | Webhook signing secret (`whsec_…`). **Server-only.** |
+## Schema source of truth
 
-### Backend public / shared with SPA (not secret, still use `process.env` on server)
-
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `SUPABASE_URL` | If using Supabase JS on the server | Project URL (same value as `VITE_SUPABASE_URL` on the frontend). |
-| `SUPABASE_ANON_KEY` | Optional on this server | **anon** key for future **RLS-respecting** server calls with a user JWT. The browser uses `VITE_SUPABASE_ANON_KEY`; **RLS** must protect data. |
-
-### CORS / runtime
-
-| Variable | Description |
-|----------|-------------|
-| `FRONTEND_URL` / `FRONTEND_URLS` | Allowed browser origins. |
-| `PORT`, `NODE_ENV`, `TRUST_PROXY` | Standard runtime (see `.env.example`). |
-
-Production: set secrets in your host (Render, Railway, Vercel server, etc.); do not rely on committed `.env` files.
-
-## Supabase client (server — service role)
-
-`src/config/supabaseClient.ts` exports:
-
-- **`supabaseClient`** — `SupabaseClient | null` from `createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)` when both are set; otherwise `null` so tests and DB-only dev still run.
-- **`getSupabaseServiceClient()`** / **`getSupabaseAdminClient()`** — same accessor; throws if not configured.
-- **`isSupabaseServiceConfigured`** — boolean guard.
-
-Use this for admin operations (backfills, webhooks, jobs that must bypass RLS). End-user flows should use the **anon** key + user session on the client with **RLS**, or Prisma until migrated.
-
-## Scripts
-
-See `package.json`. Notable:
-
-| Script | Purpose |
-|--------|---------|
-| `dev` / `start` | Run Express locally / production build. |
-| `build` | `prisma generate` + `tsc`. |
-| `test` / `test:integration` | Jest suites. |
-| `verify:public-env` | Fails if forbidden server-only token strings appear under `frontend/src` (guards against accidental `SUPABASE_SERVICE_ROLE_KEY` / Stripe secrets in the bundle). |
-
-Maintenance: `confirm:admin`, cleanup scripts, portfolio backup/reset, etc.
+- **SQL:** `supabase/migrations/`
+- **Reference only:** `prisma/schema.prisma` (historical; do not use for production deploys)

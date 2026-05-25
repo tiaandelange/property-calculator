@@ -4,7 +4,7 @@ import { Container } from "../components/ui/Container";
 import { Section } from "../components/ui/Section";
 import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
-import { api, authHeader } from "../api/client";
+import { getPortfolioDashboardSummary } from "../api/ownedProperties";
 import { PageBreadcrumb } from "../components/nav/PageBreadcrumb";
 import { workspacePage } from "../nav/workspaceBreadcrumbs";
 
@@ -17,8 +17,7 @@ export function OwnedReturnsMetricsPage() {
     setLoading(true);
     setError("");
     try {
-      const res = await api.get("/properties/dashboard-summary", { headers: authHeader() });
-      setData(res.data);
+      setData(await getPortfolioDashboardSummary());
     } catch (e: any) {
       console.error("[Returns] load failed", e);
       setError(e?.response?.data?.message ?? "Failed to load returns.");
