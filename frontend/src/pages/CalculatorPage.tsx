@@ -13,6 +13,7 @@ import { runCalculatorLocally, saveCalculationResult } from "../services/calcula
 import { downloadAuthenticatedPdf, fetchPdfBlob, isAbsoluteHttpUrl, openPdfBlobInNewTab } from "../api/pdfBlob";
 import { generateReportViaVercel } from "../services/reportsVercel";
 import { CalculatorToolHero } from "../components/calculators/CalculatorToolHero";
+import { useCalculatorMobileResults } from "../hooks/useCalculatorMobileResults";
 import { Container } from "../components/ui/Container";
 import { Section } from "../components/ui/Section";
 import { Grid } from "../components/ui/Grid";
@@ -296,8 +297,9 @@ export function CalculatorPage() {
   const lastRunRef = useRef<string>("");
   const [savedId, setSavedId] = useState<string | number | null>(null);
   const [pdfBusy, setPdfBusy] = useState(false);
+  const { focusResults, onCalculateSuccess, showInputs } = useCalculatorMobileResults(slug);
 
-  const runWithValues = useCallback(async (targetSlug: string, payloadValues: Record<string, any>) => {
+  const runWithValues = useCallback(async (targetSlug: string, payloadValues: Record<string, any>, opts?: { userInitiated?: boolean }) => {
     setError("");
     setLoading(true);
     setSavedId(null);
@@ -315,6 +317,7 @@ export function CalculatorPage() {
             : new Error(`Calculator: ${base}`);
         }
         setResult(calcResult);
+        if (opts?.userInitiated) onCalculateSuccess();
         const { data: sessionData } = await getSupabase().auth.getSession();
         if (sessionData.session) {
           try {
@@ -340,6 +343,7 @@ export function CalculatorPage() {
         const res = await api.post(`/calculations/${targetSlug}`, payload, { headers: authHeader() });
         const calcResult = res.data?.result ?? res.data;
         setResult(calcResult);
+        if (opts?.userInitiated) onCalculateSuccess();
         setSavedId(res.data?.id ?? null);
         lastRunRef.current = JSON.stringify(payloadValues);
       }
@@ -350,7 +354,7 @@ export function CalculatorPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [onCalculateSuccess]);
 
   useEffect(() => {
     if (!slug) return;
@@ -444,8 +448,8 @@ export function CalculatorPage() {
     );
   }
 
-  const run = async () => {
-    await runWithValues(calc.slug, values);
+  const run = async (userInitiated = true) => {
+    await runWithValues(calc.slug, values, { userInitiated });
   };
 
   const submit = async (e: FormEvent) => {
@@ -480,7 +484,7 @@ export function CalculatorPage() {
     if (!result) return;
     const current = JSON.stringify(values);
     if (current === lastRunRef.current) return;
-    const t = window.setTimeout(() => void run(), 450);
+    const t = window.setTimeout(() => void runWithValues(calc.slug, values), 450);
     return () => window.clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoUpdate, hasAllRequired, values]);
@@ -552,11 +556,17 @@ export function CalculatorPage() {
     .map((s) => calculators.find((c) => c.slug === s))
     .filter(Boolean) as typeof calculators;
 
-  const calculatorDetailLayoutClass =
-    `pg-calculator-detail-layout${calc.slug !== "monthly-payment" ? " pg-calculator-detail-layout--split-4060" : ""}`;
+  const calculatorDetailLayoutClass = [
+    "pg-calculator-detail-layout",
+    calc.slug !== "monthly-payment" ? "pg-calculator-detail-layout--split-4060" : "",
+    focusResults ? "pg-calculator-detail-layout--mobile-results" : ""
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   const calculatorWorkspace = (
     <Grid cols={2} className={calculatorDetailLayoutClass}>
+        <div id="calculator-inputs-pane" className="pg-calculator-pane pg-calculator-pane--inputs">
         <Card title="Inputs">
           <form onSubmit={submit}>
             {calc.groups.map((group) => (
@@ -801,7 +811,7 @@ export function CalculatorPage() {
               >
                 Reset
               </Button>
-              <label className="pg-pill" style={{ cursor: "pointer" }}>
+              <label className="pg-pill pg-calculator-live-update" style={{ cursor: "pointer" }}>
                 <input
                   type="checkbox"
                   checked={autoUpdate}
@@ -824,8 +834,20 @@ export function CalculatorPage() {
             </div>
           </form>
         </Card>
+        </div>
 
+        <div className="pg-calculator-pane pg-calculator-pane--results">
         <Card title="Results">
+          {focusResults ? (
+            <div className="pg-calculator-mobile-recalc-bar">
+              <Button type="button" variant="secondary" onClick={showInputs}>
+                Edit inputs
+              </Button>
+              <Button type="button" onClick={() => void run(true)} loading={loading}>
+                Recalculate
+              </Button>
+            </div>
+          ) : null}
           <div className="pg-calculator-results-stack">
             {!result && !error ? (
               <div className="pg-muted">Run the calculator to see key metrics and charts.</div>
@@ -962,6 +984,7 @@ export function CalculatorPage() {
             ) : null}
           </div>
         </Card>
+        </div>
     </Grid>
   );
 
