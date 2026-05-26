@@ -15,6 +15,7 @@ import {
 import { RecurringExpensesSection } from "../financials/RecurringExpensesSection";
 import { PropertyFinancialSummaryPanel } from "../financials/PropertyFinancialSummaryPanel";
 import { ExpenseCategoriesCard } from "../financials/ExpenseCategoriesCard";
+import { RecurringExpenseModal } from "../financials/RecurringExpenseModal";
 import { propertyFinancialsStatementUrl } from "../../financials/financialDirectoryUtils";
 
 ChartJS.register(ArcElement, Tooltip, Legend);
@@ -514,6 +515,7 @@ export function WorkspaceFinancialsTab({
         description: expenseCategoryLabel(defaultExpenseCategory),
         amount: ""
       });
+      setShowAddRecurring(false);
       await onReload();
     } catch (err: any) {
       window.alert(err?.response?.data?.message ?? "Could not save schedule.");
@@ -597,9 +599,19 @@ export function WorkspaceFinancialsTab({
   }
 
   function handleRecurringEdit(item: RecurringExpenseDisplayItem) {
-    openScheduleEditor(item.raw);
     setShowAddRecurring(false);
+    openScheduleEditor(item.raw);
   }
+
+  function closeRecurringModal() {
+    setShowAddRecurring(false);
+    closeScheduleEditor();
+  }
+
+  const recurringModalOpen = showAddRecurring || scheduleEditor != null;
+  const recurringModalSaving = scheduleEditor
+    ? scheduleBusyId === scheduleEditor.id
+    : recurringScheduleSaving;
 
   const downloadPropertySummaryPdf = async () => {
     setSummaryPdfBusy(true);
@@ -1154,8 +1166,8 @@ export function WorkspaceFinancialsTab({
             loading={loading}
             isMobile={isMobile}
             onAdd={() => {
+              closeScheduleEditor();
               setShowAddRecurring(true);
-              setScheduleEditor(null);
             }}
             onEdit={handleRecurringEdit}
             onStop={(item) => void archiveSchedule(item.raw)}
@@ -2287,6 +2299,29 @@ export function WorkspaceFinancialsTab({
           </div>
         ) : null}
       </div>
+
+      <RecurringExpenseModal
+        open={recurringModalOpen}
+        mode={scheduleEditor ? "edit" : "add"}
+        form={scheduleEditor ?? recurringScheduleForm}
+        onPatch={(patch) => {
+          if (scheduleEditor) {
+            setScheduleEditor({ ...scheduleEditor, ...patch });
+          } else {
+            setRecurringScheduleForm({ ...recurringScheduleForm, ...patch });
+          }
+        }}
+        onSubmit={(e) => {
+          if (scheduleEditor) {
+            void submitScheduleEditor(e);
+          } else {
+            void submitRecurringSchedule(e);
+          }
+        }}
+        onClose={closeRecurringModal}
+        saving={recurringModalSaving}
+        categoryOptions={RECURRING_SCHEDULE_CATEGORY_OPTIONS}
+      />
 
       {bondBackfillOpen ? (
         <div

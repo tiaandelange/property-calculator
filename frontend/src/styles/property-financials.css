@@ -549,6 +549,24 @@
   margin: 0 auto 12px;
 }
 
+.pg-pfin-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 90;
+  padding: 16px;
+}
+
+.pg-pfin-modal {
+  width: 100%;
+  max-width: 560px;
+  max-height: calc(100vh - 32px);
+  overflow: auto;
+}
+
 .pg-pfin-category-list {
   list-style: none;
   margin: 0;
