@@ -39,7 +39,6 @@ export function FinancialsListPage() {
   const [items, setItems] = useState<FinancialStatementRow[]>([]);
   const [metrics, setMetrics] = useState<FinancialDirectoryMetrics>(EMPTY_METRICS);
   const [properties, setProperties] = useState<Array<{ id: string; name: string }>>([]);
-  const [warnings, setWarnings] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [page, setPage] = useState(1);
@@ -61,7 +60,6 @@ export function FinancialsListPage() {
       setItems(res.items);
       setMetrics(res.metrics);
       setProperties(res.properties);
-      setWarnings(res.warnings);
     } catch (e: unknown) {
       console.error("[FinancialsList] load failed", e);
       setError(propertyApiErrorMessage(e));
@@ -149,12 +147,6 @@ export function FinancialsListPage() {
           </div>
 
           {error ? <div className="pg-alert pg-alert-error">{error}</div> : null}
-          {warnings.length > 0 ? (
-            <div className="pg-alert" style={{ marginBottom: 12 }}>
-              {warnings.slice(0, 3).join(" · ")}
-              {warnings.length > 3 ? ` (+${warnings.length - 3} more)` : ""}
-            </div>
-          ) : null}
 
           <FinancialMetricCards metrics={metrics} loading={loading && !items.length} propertyId={filters.propertyId} />
 

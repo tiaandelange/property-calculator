@@ -7,6 +7,13 @@ import type {
 } from "../features/financials/financialDirectoryTypes";
 import { localCalendarMonth } from "../features/financials/financialDirectoryUtils";
 
+/** Known Supabase RPC parity notices — not shown in the UI. */
+function isInternalStatementWarning(message: string): boolean {
+  return /materializeDueRecurringExpenses|applyDepositGrowthForCurrentPropertyLeases|Express statement may differ/i.test(
+    message
+  );
+}
+
 const EMPTY_METRICS: FinancialDirectoryMetrics = {
   receivedThisMonth: 0,
   expectedThisMonth: 0,
@@ -94,7 +101,9 @@ export async function getFinancialsDirectory(opts?: {
     const stmtWarnings = statement.warnings;
     if (Array.isArray(stmtWarnings)) {
       for (const w of stmtWarnings) {
-        if (typeof w === "string" && w.trim()) warnings.push(`${property.name}: ${w}`);
+        if (typeof w === "string" && w.trim() && !isInternalStatementWarning(w)) {
+          warnings.push(`${property.name}: ${w}`);
+        }
       }
     }
 

@@ -63,21 +63,14 @@ export function FinancialMetricCards({
 
   const mobile = (
     <div className="pg-fins-metrics pg-fins-metrics--mobile pg-fins-mobile-only">
-      <PortfolioMetricCard
-        label="Net cash flow"
-        value={loading ? "…" : fmtZar(metrics.netCashFlow)}
-        icon={TrendingUp}
-        iconAccent={metrics.netCashFlow >= 0 ? "success" : "danger"}
-        highlighted
-        compact
-      />
-      <div className="pg-fins-metrics-row">
+      <div className="pg-fins-metrics-row pg-fins-metrics-row--income-expenses">
         <PortfolioMetricCard
           label="Income"
           value={loading ? "…" : fmtZar(metrics.receivedThisMonth)}
           icon={ArrowUpCircle}
           iconAccent="success"
           compact
+          to={finTo}
         />
         <PortfolioMetricCard
           label="Expenses"
@@ -85,8 +78,18 @@ export function FinancialMetricCards({
           icon={ArrowDownCircle}
           iconAccent="warning"
           compact
+          to={finTo}
         />
       </div>
+      <PortfolioMetricCard
+        label="Net cash flow"
+        value={loading ? "…" : fmtZar(metrics.netCashFlow)}
+        icon={TrendingUp}
+        iconAccent={metrics.netCashFlow >= 0 ? "success" : "danger"}
+        highlighted
+        compact
+        to={finTo}
+      />
     </div>
   );
 
