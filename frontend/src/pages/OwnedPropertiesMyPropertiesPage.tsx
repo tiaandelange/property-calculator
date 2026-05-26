@@ -180,7 +180,7 @@ export function OwnedPropertiesMyPropertiesPage() {
                   const cash = Number(p.monthlyCashFlowAfterDebtService ?? p.netCashFlow ?? 0);
                   const noi = Number(p.monthlyNOI ?? 0);
                   return (
-                    <div key={p.id} style={{ border: "1px solid rgba(255,255,255,.08)", borderRadius: 10, padding: 10 }}>
+                    <div key={p.id} className="pg-workspace-inset">
                       <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "start" }}>
                         <div style={{ minWidth: 260 }}>
                           <div style={{ display: "flex", gap: 10, alignItems: "baseline", flexWrap: "wrap" }}>
@@ -242,7 +242,7 @@ export function OwnedPropertiesMyPropertiesPage() {
               const cash = Number(p.monthlyCashFlowAfterDebtService ?? p.netCashFlow ?? 0);
               const noi = Number(p.monthlyNOI ?? 0);
               return (
-                <div key={p.id} className="pg-property-card" style={{ border: "1px solid rgba(255,255,255,0.06)" }}>
+                <div key={p.id} className="pg-property-card pg-workspace-card">
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start" }}>
                     <div>
                       <h3 style={{ margin: 0 }}>{p.name}</h3>

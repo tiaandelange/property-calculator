@@ -15,7 +15,7 @@ export type RecentPropertyCard = {
 
 function PropertyCard({ property }: { property: RecentPropertyCard }) {
   return (
-    <Link to={`/owned-properties/${property.id}`} className="pg-pdash-property-card">
+    <Link to={`/owned-properties/${property.id}`} className="pg-workspace-card pg-pdash-property-card">
       <div className="pg-pdash-property-thumb" aria-hidden>
         <Home size={22} />
       </div>
@@ -64,7 +64,7 @@ export function RecentPropertiesSection({
       {loading ? (
         <div className="pg-pdash-properties-grid pg-pdash-properties-grid--loading">
           {Array.from({ length: skeletonCount }, (_, i) => (
-            <div key={i} className="pg-pdash-property-card pg-pdash-property-card--skeleton" aria-hidden />
+            <div key={i} className="pg-workspace-card pg-pdash-property-card pg-pdash-property-card--skeleton" aria-hidden />
           ))}
         </div>
       ) : visible.length ? (

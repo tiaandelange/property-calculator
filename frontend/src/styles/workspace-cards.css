@@ -1,0 +1,137 @@
+/**
+ * Unified workspace card theme (matches portfolio dashboard tiles).
+ * Applied inside `.pg-dashboard-shell` for signed-in pages.
+ */
+
+.pg-dashboard-shell {
+  --workspace-section-gap: clamp(16px, 1.5vw, 24px);
+  --workspace-card-radius: 18px;
+  --workspace-card-pad: clamp(18px, 1.5vw, 24px);
+  --workspace-inset-radius: 14px;
+}
+
+/* Vertical rhythm between page sections (metrics, filters, tables). */
+.pg-workspace-page,
+.pg-dashboard-shell .pg-pdash,
+.pg-dashboard-shell .pg-tenants {
+  display: flex;
+  flex-direction: column;
+  gap: var(--workspace-section-gap);
+}
+
+.pg-workspace-page > *,
+.pg-dashboard-shell .pg-pdash > *,
+.pg-dashboard-shell .pg-tenants > * {
+  margin-bottom: 0;
+}
+
+/* Shared card surface */
+.pg-workspace-card,
+.pg-dashboard-shell .pg-card,
+.pg-dashboard-shell .pg-dashboard-card,
+.pg-dashboard-shell .pg-stat-card,
+.pg-dashboard-shell .pg-metric-card,
+.pg-dashboard-shell .pg-property-card,
+.pg-dashboard-shell .pg-pdash-metric,
+.pg-dashboard-shell .pg-pdash-panel,
+.pg-dashboard-shell .pg-pdash-property-card,
+.pg-dashboard-shell .pg-tenants-list-panel,
+.pg-dashboard-shell .pg-tenants-mobile-card,
+.pg-dashboard-shell .pg-empty-state {
+  background: var(--dash-card-bg, var(--surface));
+  border: 1px solid var(--dash-border, var(--border-soft));
+  border-radius: var(--workspace-card-radius);
+  box-shadow: var(--shadow-card, none);
+  color: var(--dash-text-primary, var(--text-primary));
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease;
+}
+
+.pg-dashboard-shell .pg-card--elevated,
+.pg-dashboard-shell .pg-dashboard-card--elevated,
+.pg-dashboard-shell .pg-stat-card--elevated,
+.pg-dashboard-shell .pg-metric-card--elevated {
+  background: var(--dash-surface-secondary, var(--surface-elevated));
+}
+
+.pg-dashboard-shell .pg-card:hover,
+.pg-dashboard-shell .pg-property-card:hover,
+.pg-dashboard-shell .pg-pdash-property-card:hover,
+.pg-dashboard-shell .pg-tenants-mobile-card:hover {
+  border-color: color-mix(in srgb, var(--primary) 28%, var(--dash-border, var(--border-soft)));
+}
+
+.pg-dashboard-shell .pg-card-pad,
+.pg-dashboard-shell .pg-dashboard-card {
+  padding: var(--workspace-card-pad);
+}
+
+.pg-dashboard-shell .pg-stat-card,
+.pg-dashboard-shell .pg-metric-card {
+  padding: var(--workspace-card-pad);
+}
+
+.pg-dashboard-shell .pg-pdash-metric,
+.pg-dashboard-shell .pg-pdash-panel {
+  padding: var(--workspace-card-pad);
+}
+
+.pg-dashboard-shell .pg-pdash-metric:hover,
+.pg-dashboard-shell .pg-pdash-metric--link:hover {
+  border-color: color-mix(in srgb, var(--primary) 28%, var(--dash-border, var(--border-soft)));
+  background: var(--dash-surface-secondary, var(--surface-muted));
+}
+
+/* Card grids */
+.pg-dashboard-shell .pg-grid,
+.pg-dashboard-shell .pg-pdash-metrics-row,
+.pg-dashboard-shell .pg-pdash-metrics-row--primary,
+.pg-dashboard-shell .pg-pdash-metrics-row--secondary,
+.pg-dashboard-shell .pg-tenants-metrics--desktop,
+.pg-dashboard-shell .pg-tenants-metrics--mobile {
+  gap: var(--workspace-section-gap);
+}
+
+/* Nested rows inside a card (lists, ledger lines, etc.) */
+.pg-workspace-inset,
+.pg-dashboard-shell .pg-workspace-inset {
+  border: 1px solid var(--dash-border, var(--border-soft));
+  border-radius: var(--workspace-inset-radius);
+  padding: 12px 14px;
+  background: color-mix(in srgb, var(--dash-card-bg, var(--surface)) 88%, var(--dash-surface-secondary, var(--surface-muted)));
+}
+
+.pg-workspace-inset-list,
+.pg-dashboard-shell .pg-workspace-inset-list {
+  display: grid;
+  gap: 10px;
+}
+
+.pg-workspace-inset-row,
+.pg-dashboard-shell .pg-workspace-inset-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* Stack of cards with consistent spacing */
+.pg-workspace-card-stack {
+  display: grid;
+  gap: var(--workspace-section-gap);
+}
+
+.pg-dashboard-shell .pg-card-title,
+.pg-dashboard-shell .pg-dashboard-card-header h3,
+.pg-dashboard-shell .pg-pdash-panel-title {
+  color: var(--dash-text-secondary, var(--text-secondary));
+}
+
+.pg-dashboard-shell .pg-muted,
+.pg-dashboard-shell .pg-stat-hint,
+.pg-dashboard-shell .pg-stat-title {
+  color: var(--dash-text-secondary, var(--text-muted));
+}

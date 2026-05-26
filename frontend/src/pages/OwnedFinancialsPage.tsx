@@ -287,7 +287,7 @@ export function OwnedFinancialsPage() {
           {(recurringIncomeRules?.length ?? 0) ? (
             <div style={{ display: "grid", gap: 8 }}>
               {recurringIncomeRules.map((r: any) => (
-                <div key={r.id} style={{ border: "1px solid rgba(255,255,255,.08)", borderRadius: 10, padding: 10, display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+                <div key={r.id} className="pg-workspace-inset pg-workspace-inset-row">
                   <div>
                     <div><strong>{r.category}</strong> — R {Number(r.amount ?? 0).toLocaleString()} / {r.frequency}</div>
                     <div className="pg-muted">Day {r.dayOfMonth} | Status: {r.status}</div>
@@ -306,7 +306,7 @@ export function OwnedFinancialsPage() {
           {(incomeEntries?.length ?? 0) ? (
             <div style={{ display: "grid", gap: 8 }}>
               {incomeEntries.map((inc: any) => (
-                <div key={inc.id} style={{ border: "1px solid rgba(255,255,255,.08)", borderRadius: 10, padding: 10, display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+                <div key={inc.id} className="pg-workspace-inset pg-workspace-inset-row">
                   <div>
                     <div><strong>{inc.category}</strong> — {inc.description}</div>
                     <div className="pg-muted">{new Date(inc.incomeDate).toLocaleDateString()} | {inc.source} | {inc.status}</div>
@@ -330,7 +330,7 @@ export function OwnedFinancialsPage() {
           {(expenses?.length ?? 0) ? (
             <div style={{ display: "grid", gap: 8 }}>
               {expenses.map((ex: any) => (
-                <div key={ex.id} style={{ border: "1px solid rgba(255,255,255,.08)", borderRadius: 10, padding: 10, display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+                <div key={ex.id} className="pg-workspace-inset pg-workspace-inset-row">
                   <div>
                     <div><strong>{ex.category}</strong> — {ex.description}</div>
                     <div className="pg-muted">{new Date(ex.expenseDate).toLocaleDateString()} | {ex.source} | {ex.status} {ex.isRecurring ? "| recurring" : ""}</div>

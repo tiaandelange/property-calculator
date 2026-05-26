@@ -8,8 +8,8 @@
 }
 
 .pg-pdash {
-  --pdash-gap: clamp(14px, 1.4vw, 24px);
-  --pdash-card-pad: clamp(18px, 1.5vw, 24px);
+  --pdash-gap: var(--workspace-section-gap, clamp(14px, 1.4vw, 24px));
+  --pdash-card-pad: var(--workspace-card-pad, clamp(18px, 1.5vw, 24px));
   --pdash-chart-h: 300px;
   width: 100%;
   max-width: none;
@@ -66,7 +66,6 @@
 .pg-pdash-metrics-row {
   display: grid;
   gap: var(--pdash-gap);
-  margin-bottom: var(--pdash-gap);
 }
 
 .pg-pdash-metrics-row--primary {
@@ -84,18 +83,7 @@
 }
 
 .pg-pdash-metric {
-  background: var(--dash-card-bg, var(--surface));
-  border: 1px solid var(--dash-border, var(--border-soft));
-  border-radius: 18px;
   padding: var(--pdash-card-pad);
-  box-shadow: var(--shadow-card, none);
-  transition: border-color 0.2s ease, background 0.2s ease;
-}
-
-.pg-pdash-metric:hover,
-.pg-pdash-metric--link:hover {
-  border-color: color-mix(in srgb, var(--primary) 28%, var(--dash-border, var(--border-soft)));
-  background: var(--dash-surface-secondary, var(--surface-muted));
 }
 
 .pg-pdash-metric--link {
@@ -172,8 +160,7 @@
 .pg-pdash-mobile-stats {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-  margin-bottom: var(--pdash-gap);
+  gap: var(--pdash-gap);
 }
 
 /* Middle grid */
@@ -181,7 +168,6 @@
   display: grid;
   grid-template-columns: minmax(0, 1.75fr) minmax(280px, 1fr);
   gap: var(--pdash-gap);
-  margin-bottom: var(--pdash-gap);
   align-items: stretch;
 }
 
@@ -193,13 +179,9 @@
   grid-template-columns: minmax(0, 2.35fr) minmax(320px, 1fr);
 }
 
-/* Panels */
+/* Panels — base surface from workspace-cards.css */
 .pg-pdash-panel {
-  background: var(--dash-card-bg, var(--surface));
-  border: 1px solid var(--dash-border, var(--border-soft));
-  border-radius: 18px;
   padding: var(--pdash-card-pad);
-  box-shadow: var(--shadow-card, none);
   min-width: 0;
 }
 
@@ -382,17 +364,12 @@
   gap: 14px;
   align-items: stretch;
   padding: 14px;
-  border-radius: 16px;
-  border: 1px solid var(--dash-border, var(--border-soft));
-  background: var(--dash-card-bg, var(--surface));
   text-decoration: none;
   color: inherit;
   min-width: 0;
-  transition: border-color 0.2s ease, transform 0.2s ease;
 }
 
 .pg-pdash-property-card:hover {
-  border-color: color-mix(in srgb, var(--primary) 30%, var(--dash-border, var(--border-soft)));
   transform: translateY(-1px);
 }
 

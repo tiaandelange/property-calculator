@@ -114,7 +114,7 @@ export function TenantsListPage() {
       </Helmet>
       <Container className="pg-container--tenants-dashboard">
         <PageBreadcrumb items={workspacePage("Tenants")} />
-        <div className="pg-tenants">
+        <div className="pg-tenants pg-workspace-page">
           <div className="pg-tenants-toolbar">
             <h1 className="pg-h2 pg-tenants-desktop-only" style={{ margin: 0 }}>
               Tenants
@@ -132,35 +132,32 @@ export function TenantsListPage() {
 
           <TenantControlsBar filters={filters} onChange={patchFilters} properties={properties} />
 
-          <section className="pg-tenants-list-panel" aria-busy={loading}>
-            {!loading && filtered.length === 0 ? (
-              <div className="pg-tenants-empty">
-                <h2>No tenants found</h2>
-                <p>
-                  {items.length === 0
-                    ? "Add your first tenant to start tracking leases and rent."
-                    : "Try adjusting your search or filters."}
-                </p>
-                <Link className="pg-btn pg-btn-primary" to="/tenants/new">
-                  Add Tenant
-                </Link>
+          {!loading && filtered.length === 0 ? (
+            <section className="pg-tenants-empty pg-workspace-card" aria-busy={loading}>
+              <h2>No tenants found</h2>
+              <p>
+                {items.length === 0
+                  ? "Add your first tenant to start tracking leases and rent."
+                  : "Try adjusting your search or filters."}
+              </p>
+              <Link className="pg-btn pg-btn-primary" to="/tenants/new">
+                Add Tenant
+              </Link>
+            </section>
+          ) : (
+            <>
+              <section className="pg-tenants-list-panel pg-workspace-card pg-tenants-desktop-only" aria-busy={loading}>
+                <TenantDesktopTable items={pageItems} loading={loading} />
+                <TenantPagination page={page} totalItems={filtered.length} onPageChange={setPage} />
+              </section>
+              <div className="pg-tenants-mobile-only pg-workspace-card-stack" aria-busy={loading}>
+                <TenantMobileList items={pageItems} loading={loading} />
+                <section className="pg-workspace-card pg-tenants-pagination-panel">
+                  <TenantPagination page={page} totalItems={filtered.length} onPageChange={setPage} />
+                </section>
               </div>
-            ) : (
-              <>
-                <div className="pg-tenants-desktop-only">
-                  <TenantDesktopTable items={pageItems} loading={loading} />
-                </div>
-                <div className="pg-tenants-mobile-only">
-                  <TenantMobileList items={pageItems} loading={loading} />
-                </div>
-                <TenantPagination
-                  page={page}
-                  totalItems={filtered.length}
-                  onPageChange={setPage}
-                />
-              </>
-            )}
-          </section>
+            </>
+          )}
         </div>
       </Container>
     </Section>

@@ -389,7 +389,7 @@ export function OwnedPropertiesPortfolioDashboardPage() {
       </Helmet>
       <Container className="pg-container--portfolio-dashboard">
         <PageBreadcrumb items={[PG_WORKSPACE_DASH, { label: "Portfolio overview" }]} />
-        <div className={`pg-pdash pg-pdash--${desktopLayout.tier}`}>
+        <div className={`pg-pdash pg-workspace-page pg-pdash--${desktopLayout.tier}`}>
           <div className="pg-pdash-toolbar">
             <div>
               <h1 className="pg-h2" style={{ margin: 0 }}>

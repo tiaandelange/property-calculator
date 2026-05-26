@@ -57,7 +57,7 @@ export function RecentActivityPanel({
   const items = limit != null ? allItems.slice(0, limit) : allItems;
 
   return (
-    <div className="pg-pdash-panel pg-pdash-activity-panel">
+    <div className="pg-workspace-card pg-pdash-panel pg-pdash-activity-panel">
       <div className="pg-pdash-panel-head">
         <h2 className="pg-pdash-panel-title">Recent Activity</h2>
       </div>

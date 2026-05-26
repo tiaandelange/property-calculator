@@ -27,6 +27,7 @@ export function PortfolioMetricCard({
   ariaLabel?: string;
 }) {
   const className = [
+    "pg-workspace-card",
     "pg-pdash-metric",
     highlighted ? "pg-pdash-metric--highlight" : "",
     compact ? "pg-pdash-metric--compact" : "",

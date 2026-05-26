@@ -6,7 +6,7 @@ import { TenantRowActions } from "./TenantRowActions";
 
 export function TenantMobileCard({ tenant }: { tenant: TenantListItem }) {
   return (
-    <article className="pg-tenants-mobile-card">
+    <article className="pg-tenants-mobile-card pg-workspace-card">
       <div className="pg-tenants-mobile-card-top">
         <div className="pg-tenants-mobile-card-id">
           <span className="pg-tenants-avatar" aria-hidden>
@@ -50,7 +50,7 @@ export function TenantMobileList({
     return (
       <div className="pg-tenants-mobile-list">
         {[0, 1, 2].map((i) => (
-          <div key={i} className="pg-tenants-mobile-card pg-tenants-mobile-card--skeleton" aria-hidden />
+          <div key={i} className="pg-workspace-card pg-tenants-mobile-card pg-tenants-mobile-card--skeleton" aria-hidden />
         ))}
       </div>
     );

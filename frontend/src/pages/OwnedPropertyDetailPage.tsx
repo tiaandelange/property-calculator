@@ -418,7 +418,7 @@ export function OwnedPropertyDetailPage() {
                   {(data.tenants?.length ?? 0) ? (
                     <div style={{ display: "grid", gap: 10 }}>
                       {data.tenants.map((t: any) => (
-                        <div key={t.id} style={{ border: "1px solid rgba(255,255,255,.08)", borderRadius: 10, padding: 10 }}>
+                        <div key={t.id} className="pg-workspace-inset">
                           <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
                             <div>
                               <div>
@@ -536,7 +536,7 @@ export function OwnedPropertyDetailPage() {
                         {data.leases
                           .filter((l: any) => !currentLeaseIdSet.has(String(l.id)))
                           .map((l: any) => (
-                            <div key={l.id} style={{ border: "1px solid rgba(255,255,255,.08)", borderRadius: 10, padding: 10 }}>
+                            <div key={l.id} className="pg-workspace-inset">
                               <div className="pg-muted" style={{ marginBottom: 6 }}>
                                 Tenant:{" "}
                                 {l.tenant?.id ? (
@@ -599,7 +599,7 @@ export function OwnedPropertyDetailPage() {
                     ) : (reportsCatalog?.reports ?? []).length ? (
                       <ul style={{ margin: 0, paddingLeft: 0, listStyle: "none", display: "grid", gap: 10 }}>
                         {reportsCatalog.reports.map((r: any) => (
-                          <li key={r.id} style={{ border: "1px solid rgba(255,255,255,.08)", borderRadius: 10, padding: 12 }}>
+                          <li key={r.id} className="pg-workspace-inset">
                             <div style={{ fontWeight: 600 }}>{r.title}</div>
                             <div className="pg-muted" style={{ fontSize: 13, marginTop: 4 }}>
                               {r.description}

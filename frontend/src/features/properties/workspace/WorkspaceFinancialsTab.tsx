@@ -1318,7 +1318,8 @@ export function WorkspaceFinancialsTab({
                 return (
                   <div
                     key={lease.id}
-                    style={{ border: "1px solid rgba(255,255,255,.08)", borderRadius: 12, padding: 14, display: "grid", gap: 10 }}
+                    className="pg-workspace-inset"
+                    style={{ display: "grid", gap: 10 }}
                   >
                     <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: 10 }}>
                       <div>
@@ -1456,7 +1457,7 @@ export function WorkspaceFinancialsTab({
               const growth = d.depositAnnualGrowthPercent != null ? Number(d.depositAnnualGrowthPercent) : null;
               const monthlyNominal = growth != null && growth > 0 ? growth / 12 : null;
               return (
-                <div key={d.leaseId} style={{ border: "1px solid rgba(255,255,255,.08)", borderRadius: 10, padding: 12 }}>
+                <div key={d.leaseId} className="pg-workspace-inset">
                   <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: 10, alignItems: "flex-start" }}>
                     <div>
                       <div style={{ fontWeight: 600 }}>{d.tenantName ?? "Tenant"}</div>
@@ -1587,7 +1588,7 @@ export function WorkspaceFinancialsTab({
           ) : null}
           <div style={{ display: "grid", gap: 10 }}>
             {futureChargesLandlord.map((fc: any, i: number) => (
-              <div key={`${fc.source}-${i}`} style={{ border: "1px solid rgba(255,255,255,.08)", borderRadius: 10, padding: 12 }}>
+              <div key={`${fc.source}-${i}`} className="pg-workspace-inset">
                 <div className="pg-muted" style={{ fontSize: 13 }}>
                   {expenseCategoryLabel(String(fc.category ?? ""))}
                 </div>
@@ -1770,7 +1771,7 @@ export function WorkspaceFinancialsTab({
               const rowBusy = scheduleBusyId === sid;
               const uiLocked = scheduleBusyId != null;
               return (
-                <div key={String(rc.id)} style={{ border: "1px solid rgba(255,255,255,.08)", borderRadius: 10, padding: 12 }}>
+                <div key={String(rc.id)} className="pg-workspace-inset">
                   {!editing ? (
                     <>
                       <div className="pg-muted" style={{ fontSize: 13 }}>
@@ -2022,17 +2023,7 @@ export function WorkspaceFinancialsTab({
               </Field>
 
               {statement?.bondFinance ? (
-                <div
-                  style={{
-                    border: "1px solid rgba(255,255,255,.1)",
-                    borderRadius: 10,
-                    padding: 14,
-                    marginTop: 4,
-                    display: "grid",
-                    gap: 10,
-                    maxWidth: 560
-                  }}
-                >
+                <div className="pg-workspace-inset" style={{ marginTop: 4, display: "grid", gap: 10, maxWidth: 560 }}>
                   <div className="pg-card-title" style={{ margin: 0 }}>
                     Calculated this period (from profile)
                   </div>

@@ -125,7 +125,7 @@ export function OwnedInvoicesPage() {
         <Card title="Invoice list">
           <div style={{ display: "grid", gap: 10 }}>
             {invoices.map((inv) => (
-              <div key={inv.id} style={{ border: "1px solid rgba(255,255,255,.08)", borderRadius: 10, padding: 10 }}>
+              <div key={inv.id} className="pg-workspace-inset">
                 <div>{inv.invoiceNumber} - {inv.status} - Total: {inv.total}</div>
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
                   <Button variant="ghost" loading={invoicePdfBusyId === inv.id} onClick={() => void generatePdf(inv.id)}>

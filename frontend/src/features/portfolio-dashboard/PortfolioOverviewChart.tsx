@@ -105,7 +105,7 @@ export function PortfolioOverviewChart({
   );
 
   return (
-    <div className="pg-pdash-panel pg-pdash-chart-panel">
+    <div className="pg-workspace-card pg-pdash-panel pg-pdash-chart-panel">
       <div className="pg-pdash-panel-head">
         <h2 className="pg-pdash-panel-title">Portfolio Overview</h2>
         <select

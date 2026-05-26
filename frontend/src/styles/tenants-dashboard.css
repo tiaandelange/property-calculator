@@ -7,7 +7,7 @@
 }
 
 .pg-tenants {
-  --tenants-gap: clamp(14px, 1.4vw, 22px);
+  --tenants-gap: var(--workspace-section-gap, clamp(14px, 1.4vw, 22px));
   width: 100%;
   max-width: none;
   margin: 0;
@@ -22,7 +22,6 @@
   justify-content: space-between;
   gap: 12px;
   flex-wrap: wrap;
-  margin-bottom: var(--tenants-gap);
 }
 
 .pg-tenants-toolbar-actions {
@@ -35,7 +34,6 @@
 .pg-tenants-metrics {
   display: grid;
   gap: var(--tenants-gap);
-  margin-bottom: var(--tenants-gap);
 }
 
 .pg-tenants-metrics--desktop {
@@ -48,10 +46,6 @@
 }
 
 /* Controls */
-.pg-tenants-controls {
-  margin-bottom: var(--tenants-gap);
-}
-
 .pg-tenants-controls-row {
   display: flex;
   align-items: center;
@@ -126,13 +120,9 @@
   margin-left: auto;
 }
 
-/* Table */
+/* Table panel — surface from workspace-cards.css */
 .pg-tenants-list-panel {
-  background: var(--dash-card-bg, var(--surface));
-  border: 1px solid var(--dash-border, var(--border-soft));
-  border-radius: 18px;
   overflow: hidden;
-  box-shadow: var(--shadow-card, none);
 }
 
 .pg-tenants-table-wrap {
@@ -314,17 +304,17 @@
 
 .pg-tenants-mobile-list {
   display: grid;
-  gap: 12px;
-  padding: 12px;
+  gap: var(--workspace-section-gap, 16px);
 }
 
 .pg-tenants-mobile-card {
-  padding: 14px 16px;
-  border-radius: 16px;
-  border: 1px solid var(--border-soft);
-  background: var(--surface);
+  padding: var(--workspace-card-pad, 18px);
   display: grid;
   gap: 10px;
+}
+
+.pg-tenants-pagination-panel {
+  padding: var(--workspace-card-pad, 18px);
 }
 
 .pg-tenants-mobile-card--skeleton {
