@@ -328,6 +328,25 @@
 .pg-dashboard-shell .pg-main-workspace {
   background: var(--dash-page-bg, var(--background));
   color: var(--dash-text-primary, var(--text));
+  width: 100%;
+  max-width: none;
+  padding: 0 0 32px;
+  box-sizing: border-box;
+}
+
+/* Use full main-column width (sidebar → right edge), not the 1200px marketing container. */
+.pg-dashboard-shell .pg-section {
+  padding: 0;
+  width: 100%;
+}
+
+.pg-dashboard-shell .pg-container {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding-left: clamp(20px, 2.5vw, 40px);
+  padding-right: clamp(20px, 2.5vw, 40px);
+  box-sizing: border-box;
 }
 
 .pg-dashboard-shell .pg-card {
