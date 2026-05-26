@@ -1029,17 +1029,18 @@ export function WorkspaceFinancialsTab({
     const now = new Date();
     const ms = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
     const me = new Date(now.getFullYear(), now.getMonth() + 1, 1).getTime();
-    const map = new Map<number, any>();
+    const map = new Map<string, any>();
     for (const inv of propertyInvoices) {
       if (inv.status === "CANCELLED") continue;
       const lid = inv.leaseId;
       if (lid == null) continue;
       const t = new Date(inv.invoiceDate).getTime();
       if (Number.isNaN(t) || t < ms || t >= me) continue;
-      const prev = map.get(lid);
+      const key = String(lid);
+      const prev = map.get(key);
       const prevTs = prev ? new Date(prev.createdAt ?? prev.invoiceDate).getTime() : -1;
       const curTs = new Date(inv.createdAt ?? inv.invoiceDate).getTime();
-      if (!prev || curTs >= prevTs) map.set(lid, inv);
+      if (!prev || curTs >= prevTs) map.set(key, inv);
     }
     return map;
   }, [propertyInvoices]);
@@ -1478,7 +1479,7 @@ export function WorkspaceFinancialsTab({
               {currentLeases.map((lease: any) => {
                 const tn = lease.tenant;
                 const label = tn ? `${tn.firstName ?? ""} ${tn.lastName ?? ""}`.trim() : `Lease #${lease.id}`;
-                const inv = invoiceThisMonthByLeaseId.get(Number(lease.id));
+                const inv = invoiceThisMonthByLeaseId.get(String(lease.id));
                 return (
                   <div
                     key={lease.id}
@@ -1493,7 +1494,7 @@ export function WorkspaceFinancialsTab({
                         </div>
                       </div>
                       {!inv ? (
-                        <button className="pg-btn pg-btn-primary" type="button" onClick={() => void createInvoiceForLease(Number(lease.id))}>
+                        <button className="pg-btn pg-btn-primary" type="button" onClick={() => void createInvoiceForLease(String(lease.id))}>
                           Generate invoice
                         </button>
                       ) : (
@@ -1506,10 +1507,10 @@ export function WorkspaceFinancialsTab({
                           <button
                             className="pg-btn pg-btn-secondary"
                             type="button"
-                            disabled={invoicePdfBusyId === inv.id || invoicePdfBusyId === Number(inv.id)}
-                            onClick={() => void viewInvoicePdf(Number(inv.id))}
+                            disabled={invoicePdfBusyId === inv.id || invoicePdfBusyId === String(inv.id)}
+                            onClick={() => void viewInvoicePdf(String(inv.id))}
                           >
-                            {invoicePdfBusyId === inv.id || invoicePdfBusyId === Number(inv.id)
+                            {invoicePdfBusyId === inv.id || invoicePdfBusyId === String(inv.id)
                               ? "Working…"
                               : "View Invoice"}
                           </button>

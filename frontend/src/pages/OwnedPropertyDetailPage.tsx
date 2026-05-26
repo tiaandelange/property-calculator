@@ -11,10 +11,12 @@ import {
   createPropertyTenant,
   deleteLease,
   getProperty,
+  getPropertyTenants,
   getPropertyStatement,
   getPropertyWorkspaceReports,
   getTenants,
   getPortfolioDashboardSummary,
+  getTenantsEligibleForProperty,
   linkTenantToProperty,
   updateLease,
   unlinkTenantFromProperty
@@ -50,6 +52,7 @@ export function OwnedPropertyDetailPage() {
   const [data, setData] = useState<any>(null);
   const [error, setError] = useState("");
   const [allTenants, setAllTenants] = useState<any[]>([]);
+  const [eligibleTenants, setEligibleTenants] = useState<any[]>([]);
   const [perf, setPerf] = useState<any>(null);
   const [linkTenantId, setLinkTenantId] = useState<string | "">("");
   const [newTenant, setNewTenant] = useState<any>({ firstName: "", lastName: "", email: "", phone: "", idNumber: "" });
@@ -123,15 +126,18 @@ export function OwnedPropertyDetailPage() {
         month: summaryMonth,
         bustCache: true
       });
-      const [prop, tenants, dash, ledgerOutcome] = await Promise.all([
+      const [prop, tenants, dash, ledgerOutcome, propTenants, eligible] = await Promise.all([
         getProperty(id, { bustCache: true, month: summaryMonth }),
         getTenants(),
         dashPromise,
-        ledgerOutcomePromise
+        ledgerOutcomePromise,
+        getPropertyTenants(id),
+        getTenantsEligibleForProperty(id)
       ]);
       if (seq !== loadSeqRef.current) return;
-      setData(prop);
+      setData({ ...prop, tenants: propTenants });
       setAllTenants(tenants);
+      setEligibleTenants(eligible);
       setPerf(dash);
       setStmt((prev: any) => (ledgerOutcome.ok ? ledgerOutcome.ledger : prev));
     } catch (e: any) {
@@ -383,8 +389,8 @@ export function OwnedPropertyDetailPage() {
                         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                             <select className="pg-input" value={linkTenantId} onChange={(e) => setLinkTenantId(e.target.value === "" ? "" : e.target.value)}>
                             <option value="">Select tenant</option>
-                            {allTenants
-                              .filter((t: any) => t.propertyId == null)
+                            {eligibleTenants
+                              .filter((t: any) => t.propertyId == null || String(t.propertyId) === String(id))
                               .map((t: any) => (
                                 <option key={t.id} value={t.id}>
                                   {t.firstName} {t.lastName}
