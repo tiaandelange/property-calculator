@@ -523,12 +523,18 @@ select.pg-input:focus,
 
 /* --- Metric / stat cards --- */
 .pg-stat-card,
+.pg-metric-card,
+.pg-dashboard-card,
+.pg-card:not(.pg-home-light-card) {
+  color: var(--text-primary);
+}
+
+.pg-stat-card,
 .pg-metric-card {
   display: flex;
   flex-direction: column;
   gap: 4px;
   padding: 20px 22px;
-  color: var(--text-primary);
 }
 
 .pg-stat-card-layout {

@@ -3444,7 +3444,7 @@ html[data-theme="light"] .pg-color-scheme-switch[data-on="false"] .pg-color-sche
   height: 28px;
 }
 
-.pg-home-qstart-card-title {
+.pg-home-qstart-card.pg-home-light-card .pg-home-qstart-card-title {
   margin: 0;
   font-size: 16px;
   font-weight: 900;
@@ -3453,7 +3453,7 @@ html[data-theme="light"] .pg-color-scheme-switch[data-on="false"] .pg-color-sche
   color: var(--home-light-card-text);
 }
 
-.pg-home-qstart-card-desc {
+.pg-home-qstart-card.pg-home-light-card .pg-home-qstart-card-desc {
   margin: 0;
   flex: 1 1 auto;
   font-size: 13px;
@@ -3934,7 +3934,9 @@ html[data-theme="light"] .pg-color-scheme-switch[data-on="false"] .pg-color-sche
   color: var(--home-band-muted);
 }
 
-.pg-home-light-card {
+/* White marketing cards only (homepage / hub light bands) */
+.pg-home-light-section .pg-home-light-card,
+.pg-calc-hub-light .pg-calc-hub-popular-card {
   border: 1px solid var(--home-light-card-border);
   background: var(--home-light-card-bg);
   box-shadow: var(--home-band-card-shadow);
@@ -3942,19 +3944,54 @@ html[data-theme="light"] .pg-color-scheme-switch[data-on="false"] .pg-color-sche
 }
 
 .pg-home-light-section .pg-home-light-card .pg-card-title,
-.pg-home-light-card .pg-home-qstart-card-title,
-.pg-home-light-card .pg-home-quick-title {
+.pg-home-light-section .pg-home-light-card .pg-home-qstart-card-title,
+.pg-home-light-section .pg-home-light-card .pg-home-quick-title,
+.pg-calc-hub-light .pg-calc-hub-popular-title {
   color: var(--home-light-card-text);
 }
 
 .pg-home-light-section .pg-home-light-card .pg-muted,
-.pg-home-light-card .pg-home-qstart-card-desc,
-.pg-home-light-card .pg-home-quick-desc {
+.pg-home-light-section .pg-home-light-card .pg-home-qstart-card-desc,
+.pg-home-light-section .pg-home-light-card .pg-home-quick-desc,
+.pg-calc-hub-light .pg-calc-hub-popular-desc {
   color: var(--home-light-card-muted);
 }
 
-.pg-home-light-card .pg-home-qstart-card-cta {
+.pg-home-light-section .pg-home-light-card .pg-home-qstart-card-cta {
   color: var(--primary);
+}
+
+/* App / calculator tool: dark cards must use theme text (not marketing light-card tokens) */
+.pg-calculator-tool-navy .pg-card.pg-home-light-card,
+.pg-app:not(.pg-app--marketing-public) .pg-card,
+.pg-app:not(.pg-app--marketing-public) .pg-stat-card,
+.pg-app:not(.pg-app--marketing-public) .pg-metric-card,
+.pg-app:not(.pg-app--marketing-public) .pg-dashboard-card,
+.pg-app:not(.pg-app--marketing-public) .pg-property-card {
+  color: var(--text-primary);
+}
+
+.pg-calculator-tool-navy .pg-card.pg-home-light-card {
+  background: var(--calc-tool-card-bg);
+  border-color: var(--calc-tool-card-border);
+  color: var(--calc-tool-text);
+}
+
+.pg-calculator-tool-navy .pg-card.pg-home-light-card .pg-card-title {
+  color: var(--calc-tool-text);
+}
+
+.pg-calculator-tool-navy .pg-card.pg-home-light-card .pg-muted {
+  color: var(--calc-tool-muted);
+}
+
+.pg-app:not(.pg-app--marketing-public) .pg-stat-title,
+.pg-app:not(.pg-app--marketing-public) .pg-metric-card .pg-stat-title {
+  color: var(--text-muted);
+}
+
+.pg-app:not(.pg-app--marketing-public) .pg-stat-hint {
+  color: var(--text-muted);
 }
 
 .pg-calc-hub-light .pg-calc-hub-card .pg-card {

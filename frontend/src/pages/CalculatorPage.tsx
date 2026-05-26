@@ -989,7 +989,7 @@ export function CalculatorPage() {
       <div style={{ height: 24 }} />
 
       <Grid cols={2} className={calculatorDetailLayoutClass}>
-        <Card className="pg-home-light-card" title="Tips">
+        <Card title="Tips">
           <div style={{ display: "grid", gap: 10 }}>
             <div className="pg-muted">Use multiple metrics to avoid blind spots.</div>
             <div className="pg-muted">Stress-test assumptions (interest rate, vacancy, repairs).</div>
@@ -997,7 +997,7 @@ export function CalculatorPage() {
           </div>
         </Card>
 
-        <Card className="pg-home-light-card" title={relatedLinks.length ? "Related calculators" : "More calculators"}>
+        <Card title={relatedLinks.length ? "Related calculators" : "More calculators"}>
           {relatedLinks.length ? (
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
               {relatedLinks.map((c) => (
