@@ -1925,6 +1925,11 @@ const buyVsRentSchema = scenarioSchema.extend({
   rentEscalation: percent.min(0).max(30).default(6)
 });
 
+/** Convert an annual rate (percent) to an equivalent monthly compound factor. */
+function buyVsRentMonthlyFactor(annualPercent: number): number {
+  return Math.pow(1 + annualPercent / 100, 1 / 12);
+}
+
 function buyVsRentNetEquity(
   propertyValue: number,
   loanBalance: number,
@@ -2009,9 +2014,15 @@ function calcBuyVsRent(input: z.infer<typeof buyVsRentSchema>): CalculatorResult
   let leviesMonthly = BUY_VS_RENT_BACKGROUND.leviesMonthly;
 
   const monthlyInvestRate = BUY_VS_RENT_BACKGROUND.investmentReturn / 100 / 12;
+  const monthlyChart = years === 1;
+  const totalMonths = years * 12;
   const rentWealthSeries: number[] = [];
   const buyEquitySeries: number[] = [];
-  const yearLabels: string[] = [];
+  const chartLabels: string[] = [];
+
+  const propertyGrowthMonthly = buyVsRentMonthlyFactor(input.propertyAppreciation);
+  const rentGrowthMonthly = buyVsRentMonthlyFactor(input.rentEscalation);
+  const ownershipInflationMonthly = buyVsRentMonthlyFactor(BUY_VS_RENT_BACKGROUND.ownershipCostInflation);
 
   let totalRentPaid = 0;
   let yearOneRent = input.monthlyRent;
@@ -2020,6 +2031,7 @@ function calcBuyVsRent(input: z.infer<typeof buyVsRentSchema>): CalculatorResult
   for (let y = 1; y <= years; y += 1) {
     for (let m = 0; m < 12; m += 1) {
       const monthIdx = (y - 1) * 12 + m;
+      const monthNumber = monthIdx + 1;
       const scheduleRow = amort?.schedule[monthIdx];
       const bondPayment = scheduleRow?.payment ?? 0;
       if (scheduleRow) loanBalance = scheduleRow.balance;
@@ -2038,24 +2050,49 @@ function calcBuyVsRent(input: z.infer<typeof buyVsRentSchema>): CalculatorResult
       if (BUY_VS_RENT_BACKGROUND.investMonthlySavings) {
         investBalance += Math.max(monthlyBuyTotal - monthlyRentTotal, 0);
       }
+
+      if (monthlyChart) {
+        propertyValue *= propertyGrowthMonthly;
+        monthlyRent *= rentGrowthMonthly;
+        ratesMonthly *= ownershipInflationMonthly;
+        insuranceMonthly *= ownershipInflationMonthly;
+        leviesMonthly *= ownershipInflationMonthly;
+
+        const isFinalMonth = monthNumber === totalMonths;
+        let rentNet = investBalance;
+        if (BUY_VS_RENT_BACKGROUND.includeRentalDepositRefund && isFinalMonth) {
+          rentNet += monthlyRent * BUY_VS_RENT_BACKGROUND.rentalDepositMonths;
+        }
+
+        const buyNet =
+          isFinalMonth && BUY_VS_RENT_BACKGROUND.includeSellingCosts
+            ? buyVsRentNetEquity(propertyValue, loanBalance, purchasePrice, true)
+            : propertyValue - loanBalance;
+
+        rentWealthSeries.push(round2(rentNet));
+        buyEquitySeries.push(round2(buyNet));
+        chartLabels.push(`Month ${monthNumber}`);
+      }
     }
 
-    propertyValue *= 1 + input.propertyAppreciation / 100;
-    monthlyRent *= 1 + input.rentEscalation / 100;
-    ratesMonthly *= 1 + BUY_VS_RENT_BACKGROUND.ownershipCostInflation / 100;
-    insuranceMonthly *= 1 + BUY_VS_RENT_BACKGROUND.ownershipCostInflation / 100;
-    leviesMonthly *= 1 + BUY_VS_RENT_BACKGROUND.ownershipCostInflation / 100;
+    if (!monthlyChart) {
+      propertyValue *= 1 + input.propertyAppreciation / 100;
+      monthlyRent *= 1 + input.rentEscalation / 100;
+      ratesMonthly *= 1 + BUY_VS_RENT_BACKGROUND.ownershipCostInflation / 100;
+      insuranceMonthly *= 1 + BUY_VS_RENT_BACKGROUND.ownershipCostInflation / 100;
+      leviesMonthly *= 1 + BUY_VS_RENT_BACKGROUND.ownershipCostInflation / 100;
 
-    let rentNet = investBalance;
-    if (BUY_VS_RENT_BACKGROUND.includeRentalDepositRefund && y === years) {
-      rentNet += monthlyRent * BUY_VS_RENT_BACKGROUND.rentalDepositMonths;
+      let rentNet = investBalance;
+      if (BUY_VS_RENT_BACKGROUND.includeRentalDepositRefund && y === years) {
+        rentNet += monthlyRent * BUY_VS_RENT_BACKGROUND.rentalDepositMonths;
+      }
+
+      buyEquitySeries.push(
+        round2(buyVsRentNetEquity(propertyValue, loanBalance, purchasePrice, BUY_VS_RENT_BACKGROUND.includeSellingCosts))
+      );
+      rentWealthSeries.push(round2(rentNet));
+      chartLabels.push(`Year ${y}`);
     }
-
-    buyEquitySeries.push(
-      round2(buyVsRentNetEquity(propertyValue, loanBalance, purchasePrice, BUY_VS_RENT_BACKGROUND.includeSellingCosts))
-    );
-    rentWealthSeries.push(round2(rentNet));
-    yearLabels.push(`Year ${y}`);
   }
 
   const rentWealthEnd = rentWealthSeries[rentWealthSeries.length - 1] ?? initialCashAvailableToInvestIfRenting;
@@ -2081,9 +2118,9 @@ function calcBuyVsRent(input: z.infer<typeof buyVsRentSchema>): CalculatorResult
   const chartData = [
     {
       chartType: "line" as const,
-      title: `Wealth position over ${periodLabel}`,
+      title: monthlyChart ? "Wealth position over 12 months" : `Wealth position over ${periodLabel}`,
       data: {
-        labels: yearLabels,
+        labels: chartLabels,
         datasets: [
           {
             label: "Rent + invest",

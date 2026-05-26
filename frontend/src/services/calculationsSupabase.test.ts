@@ -59,6 +59,23 @@ describe("calculationsSupabase", () => {
     expect(Number(r.breakdown?.transferDuty)).toBeGreaterThanOrEqual(0);
   });
 
+  it("buy-vs-rent with 1 year shows 12 monthly chart points", () => {
+    const r = runCalculatorLocally("buy-vs-rent", {
+      purchasePrice: 1_500_000,
+      monthlyRent: 12_000,
+      depositAmount: 150_000,
+      interestRate: 11.75,
+      analysisYears: 1,
+      propertyAppreciation: 5,
+      rentEscalation: 6
+    });
+    const line = r.chartData?.find((c) => c.chartType === "line");
+    expect(line?.data?.labels).toHaveLength(12);
+    expect(line?.data?.labels?.[0]).toBe("Month 1");
+    expect(line?.data?.labels?.[11]).toBe("Month 12");
+    expect((line?.data?.datasets?.[0]?.data as number[])?.length).toBe(12);
+  });
+
   it("saveCalculationResult calls save_calculation_and_decrement_free_use RPC", async () => {
     const result = runCalculatorLocally("monthly-payment", {
       bondAmount: 1_000_000,
