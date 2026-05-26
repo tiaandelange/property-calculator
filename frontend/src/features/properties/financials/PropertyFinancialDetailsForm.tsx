@@ -3,18 +3,11 @@ import { Input } from "../../../components/ui/Input";
 import { PropertyFormField } from "../form/PropertyFormField";
 
 export type FinancialDetailsFormState = {
-  monthlyRent: string;
-  depositHeld: string;
-  purchasePrice: string;
-  marketValue: string;
   leviesMonthly: string;
   ratesAndTaxesMonthly: string;
   maintenanceMonthly: string;
   expectedMonthlyIncome: string;
   expectedMonthlyExpenses: string;
-  rentDueDay: string;
-  leaseStartDate: string;
-  leaseEndDate: string;
   notes: string;
 };
 
@@ -25,31 +18,28 @@ function str(v: unknown): string {
 
 export function buildFinancialDetailsInitial(
   propertyDetail: Record<string, unknown> | null,
-  primaryLease: Record<string, unknown> | null,
-  depositHeldTotal: number
+  _primaryLease: Record<string, unknown> | null,
+  _depositHeldTotal: number
 ): FinancialDetailsFormState {
   const pf = propertyDetail ?? {};
   return {
-    monthlyRent: str(primaryLease?.monthlyRent),
-    depositHeld: depositHeldTotal > 0 ? String(depositHeldTotal) : str(primaryLease?.depositAmount),
-    purchasePrice: str(pf.purchasePrice),
-    marketValue: str(pf.currentEstimatedValue),
     leviesMonthly: str(pf.leviesMonthly),
     ratesAndTaxesMonthly: str(pf.ratesAndTaxesMonthly),
     maintenanceMonthly: str(pf.maintenanceMonthly),
     expectedMonthlyIncome: str(pf.expectedMonthlyIncome),
     expectedMonthlyExpenses: str(pf.expectedMonthlyExpenses),
-    rentDueDay: str(primaryLease?.rentDueDay),
-    leaseStartDate: primaryLease?.startDate ? String(primaryLease.startDate).slice(0, 10) : "",
-    leaseEndDate: primaryLease?.endDate ? String(primaryLease.endDate).slice(0, 10) : "",
     notes: str(pf.notes)
   };
 }
 
 export function PropertyFinancialDetailsForm({
   propertyDetail,
-  primaryLease,
-  depositHeldTotal,
+  primaryLease: _primaryLease,
+  depositHeldTotal: _depositHeldTotal,
+  combinedMonthlyRent,
+  combinedDepositHeld,
+  purchasePrice,
+  marketValue,
   compact,
   onSubmit,
   saving,
@@ -58,18 +48,22 @@ export function PropertyFinancialDetailsForm({
   propertyDetail: Record<string, unknown> | null;
   primaryLease: Record<string, unknown> | null;
   depositHeldTotal: number;
+  combinedMonthlyRent: number;
+  combinedDepositHeld: number;
+  purchasePrice: number;
+  marketValue: number;
   compact?: boolean;
   onSubmit: (state: FinancialDetailsFormState) => Promise<void>;
   saving?: boolean;
   formId?: string;
 }) {
   const [form, setForm] = useState<FinancialDetailsFormState>(() =>
-    buildFinancialDetailsInitial(propertyDetail, primaryLease, depositHeldTotal)
+    buildFinancialDetailsInitial(propertyDetail, _primaryLease, _depositHeldTotal)
   );
 
   useEffect(() => {
-    setForm(buildFinancialDetailsInitial(propertyDetail, primaryLease, depositHeldTotal));
-  }, [propertyDetail, primaryLease, depositHeldTotal]);
+    setForm(buildFinancialDetailsInitial(propertyDetail, _primaryLease, _depositHeldTotal));
+  }, [propertyDetail, _primaryLease, _depositHeldTotal]);
 
   const patch = (p: Partial<FinancialDetailsFormState>) => setForm((prev) => ({ ...prev, ...p }));
 
@@ -80,29 +74,17 @@ export function PropertyFinancialDetailsForm({
 
   const fields = (
     <>
-      <PropertyFormField label="Monthly rent">
-        <div className="pg-pfin-input-suffix">
-          <Input value={form.monthlyRent} onChange={(e) => patch({ monthlyRent: e.target.value })} type="number" min={0} />
-          <span className="pg-pfin-input-suffix__tag">ZAR</span>
-        </div>
+      <PropertyFormField label="Monthly rent" help="Derived from active leases (read-only).">
+        <div className="pg-pfin-readonly">R {Math.round(combinedMonthlyRent).toLocaleString()}</div>
       </PropertyFormField>
-      <PropertyFormField label="Deposit held">
-        <div className="pg-pfin-input-suffix">
-          <Input value={form.depositHeld} onChange={(e) => patch({ depositHeld: e.target.value })} type="number" min={0} />
-          <span className="pg-pfin-input-suffix__tag">ZAR</span>
-        </div>
+      <PropertyFormField label="Deposit held" help="Derived from active lease deposits (read-only).">
+        <div className="pg-pfin-readonly">R {Math.round(combinedDepositHeld).toLocaleString()}</div>
       </PropertyFormField>
-      <PropertyFormField label="Purchase price">
-        <div className="pg-pfin-input-suffix">
-          <Input value={form.purchasePrice} onChange={(e) => patch({ purchasePrice: e.target.value })} type="number" min={0} />
-          <span className="pg-pfin-input-suffix__tag">ZAR</span>
-        </div>
+      <PropertyFormField label="Purchase price" help="Property value (read-only).">
+        <div className="pg-pfin-readonly">{purchasePrice > 0 ? `R ${Math.round(purchasePrice).toLocaleString()}` : "—"}</div>
       </PropertyFormField>
-      <PropertyFormField label="Market value">
-        <div className="pg-pfin-input-suffix">
-          <Input value={form.marketValue} onChange={(e) => patch({ marketValue: e.target.value })} type="number" min={0} />
-          <span className="pg-pfin-input-suffix__tag">ZAR</span>
-        </div>
+      <PropertyFormField label="Market value" help="Property value (read-only).">
+        <div className="pg-pfin-readonly">{marketValue > 0 ? `R ${Math.round(marketValue).toLocaleString()}` : "—"}</div>
       </PropertyFormField>
       <PropertyFormField label="HOA / levies">
         <div className="pg-pfin-input-suffix">
@@ -154,32 +136,6 @@ export function PropertyFinancialDetailsForm({
           <span className="pg-pfin-input-suffix__tag">ZAR</span>
         </div>
       </PropertyFormField>
-      <PropertyFormField label="Rent due day">
-        <Input
-          value={form.rentDueDay}
-          onChange={(e) => patch({ rentDueDay: e.target.value })}
-          type="number"
-          min={1}
-          max={31}
-          disabled={!primaryLease}
-        />
-      </PropertyFormField>
-      <PropertyFormField label="Lease start date">
-        <Input
-          type="date"
-          value={form.leaseStartDate}
-          onChange={(e) => patch({ leaseStartDate: e.target.value })}
-          disabled={!primaryLease}
-        />
-      </PropertyFormField>
-      <PropertyFormField label="Lease end date">
-        <Input
-          type="date"
-          value={form.leaseEndDate}
-          onChange={(e) => patch({ leaseEndDate: e.target.value })}
-          disabled={!primaryLease}
-        />
-      </PropertyFormField>
       <PropertyFormField label="Financial notes" className="pg-pfin-grid__span-2">
         <textarea
           className="pg-input pg-pfin-textarea"
@@ -200,10 +156,7 @@ export function PropertyFinancialDetailsForm({
         </header>
         <form id={formId} className="pg-pfin-grid pg-pfin-grid--2" onSubmit={handleSubmit}>
           <PropertyFormField label="Monthly rent">
-            <div className="pg-pfin-input-suffix">
-              <Input value={form.monthlyRent} onChange={(e) => patch({ monthlyRent: e.target.value })} type="number" />
-              <span className="pg-pfin-input-suffix__tag">ZAR</span>
-            </div>
+            <div className="pg-pfin-readonly">R {Math.round(combinedMonthlyRent).toLocaleString()}</div>
           </PropertyFormField>
           <PropertyFormField label="Rates & taxes">
             <div className="pg-pfin-input-suffix">
@@ -225,9 +178,6 @@ export function PropertyFinancialDetailsForm({
               <span className="pg-pfin-input-suffix__tag">ZAR</span>
             </div>
           </PropertyFormField>
-          <a href="#pfin-full-details" className="pg-pfin-link-all">
-            View all financial details
-          </a>
         </form>
       </section>
     );
@@ -239,7 +189,7 @@ export function PropertyFinancialDetailsForm({
         <h2 className="pg-pfin-section__title">Income &amp; Financial Details</h2>
         <p className="pg-pfin-section__desc">
           Property and lease figures used for reporting, IRR assumptions, and cash-flow forecasts.
-          {!primaryLease ? " Add an active lease to edit rent and lease dates." : null}
+          {" "}Monthly rent and deposits are derived from leases and are read-only here.
         </p>
       </header>
       <form id={formId} className="pg-pfin-grid" onSubmit={handleSubmit}>

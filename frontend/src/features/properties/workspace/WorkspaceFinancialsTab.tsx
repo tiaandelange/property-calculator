@@ -14,6 +14,7 @@ import {
 } from "../financials/PropertyFinancialDetailsForm";
 import { RecurringExpensesSection } from "../financials/RecurringExpensesSection";
 import { PropertyFinancialSummaryPanel } from "../financials/PropertyFinancialSummaryPanel";
+import { ExpenseCategoriesCard } from "../financials/ExpenseCategoriesCard";
 import { propertyFinancialsStatementUrl } from "../../financials/financialDirectoryUtils";
 
 ChartJS.register(ArcElement, Tooltip, Legend);
@@ -579,7 +580,6 @@ export function WorkspaceFinancialsTab({
         return Number.isFinite(x) ? x : null;
       };
       const payload: Record<string, unknown> = {
-        currentEstimatedValue: parseOpt(state.marketValue),
         leviesMonthly: parseOpt(state.leviesMonthly),
         ratesAndTaxesMonthly: parseOpt(state.ratesAndTaxesMonthly),
         maintenanceMonthly: parseOpt(state.maintenanceMonthly),
@@ -587,19 +587,7 @@ export function WorkspaceFinancialsTab({
         expectedMonthlyExpenses: parseOpt(state.expectedMonthlyExpenses),
         notes: state.notes.trim() || null
       };
-      const pp = parseOpt(state.purchasePrice);
-      if (pp != null) payload.purchasePrice = pp;
       await updateProperty(propertyId, payload);
-      if (primaryLease?.id != null) {
-        const rentDue = parseOpt(state.rentDueDay);
-        await updateLease(primaryLease.id as string | number, {
-          monthlyRent: parseOpt(state.monthlyRent),
-          depositAmount: parseOpt(state.depositHeld),
-          rentDueDay: rentDue != null ? Math.min(31, Math.max(1, Math.floor(rentDue))) : null,
-          startDate: state.leaseStartDate || undefined,
-          endDate: state.leaseEndDate || undefined
-        });
-      }
       await onReload();
     } catch (err: unknown) {
       window.alert(propertyApiErrorMessage(err) || "Could not save financial details.");
@@ -611,11 +599,6 @@ export function WorkspaceFinancialsTab({
   function handleRecurringEdit(item: RecurringExpenseDisplayItem) {
     openScheduleEditor(item.raw);
     setShowAddRecurring(false);
-    const el = document.getElementById("pf-tools-recurring");
-    if (el && el.tagName === "DETAILS") {
-      (el as HTMLDetailsElement).open = true;
-      el.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
   }
 
   const downloadPropertySummaryPdf = async () => {
@@ -1085,6 +1068,10 @@ export function WorkspaceFinancialsTab({
 
   const propertyDisplayName = String((propertyDetail as Record<string, unknown> | null)?.name ?? financialOverview.propertyName);
   const unitLabel = financialOverview.unitLabel;
+  const combinedMonthlyRent = (currentLeases as any[]).reduce((a, l) => a + Number(l.monthlyRent ?? 0), 0);
+  const combinedDepositHeld = (currentLeases as any[]).reduce((a, l) => a + Number(l.depositAmount ?? 0), 0);
+  const purchasePrice = Number((propertyDetail as any)?.purchasePrice ?? 0);
+  const marketValue = Number((propertyDetail as any)?.currentEstimatedValue ?? 0);
 
   return (
     <div className="pg-pfin-page">
@@ -1137,6 +1124,10 @@ export function WorkspaceFinancialsTab({
               propertyDetail={propertyDetail as Record<string, unknown> | null}
               primaryLease={primaryLease}
               depositHeldTotal={depositHeldTotal}
+              combinedMonthlyRent={combinedMonthlyRent}
+              combinedDepositHeld={combinedDepositHeld}
+              purchasePrice={purchasePrice}
+              marketValue={marketValue}
               compact
               saving={financialDetailsSaving}
               onSubmit={saveFinancialDetails}
@@ -1149,6 +1140,10 @@ export function WorkspaceFinancialsTab({
               propertyDetail={propertyDetail as Record<string, unknown> | null}
               primaryLease={primaryLease}
               depositHeldTotal={depositHeldTotal}
+              combinedMonthlyRent={combinedMonthlyRent}
+              combinedDepositHeld={combinedDepositHeld}
+              purchasePrice={purchasePrice}
+              marketValue={marketValue}
               saving={financialDetailsSaving}
               onSubmit={saveFinancialDetails}
             />
@@ -1161,16 +1156,13 @@ export function WorkspaceFinancialsTab({
             onAdd={() => {
               setShowAddRecurring(true);
               setScheduleEditor(null);
-              const el = document.getElementById("pf-tools-recurring");
-              if (el && el.tagName === "DETAILS") {
-                (el as HTMLDetailsElement).open = true;
-                el.scrollIntoView({ behavior: "smooth", block: "start" });
-              }
             }}
             onEdit={handleRecurringEdit}
             onStop={(item) => void archiveSchedule(item.raw)}
             onDelete={(item) => void hardDeleteSchedule(item.raw)}
           />
+
+          {isMobile ? <ExpenseCategoriesCard overview={financialOverview} /> : null}
 
           <div className="pg-pfin-sticky-save">
             <button
@@ -1184,7 +1176,8 @@ export function WorkspaceFinancialsTab({
             </button>
           </div>
 
-          <div className="pg-pfin-tools">
+          {false ? (
+            <div className="pg-pfin-tools">
             <p className="pg-muted" style={{ fontSize: 13, margin: "0 0 4px" }}>
               YTD ({ytdCalendar.year}): revenue {fmt(ytdCalendar.revenue)} · expenses {fmt(ytdCalendar.expenses)} · cash flow{" "}
               <span style={{ color: ytdCalendar.cashFlow >= 0 ? "var(--success)" : "var(--danger)" }}>{fmt(ytdCalendar.cashFlow)}</span>
@@ -2278,16 +2271,20 @@ export function WorkspaceFinancialsTab({
           )}
         </Card>
             </details>
-          </div>
+            </div>
+          ) : null}
         </div>
 
         {!isMobile ? (
-          <PropertyFinancialSummaryPanel
-            overview={financialOverview}
-            propertyName={propertyDisplayName}
-            unitLabel={unitLabel}
-            addressLine={financialOverview.addressLine}
-          />
+          <div className="pg-pfin-right">
+            <PropertyFinancialSummaryPanel
+              overview={financialOverview}
+              propertyName={propertyDisplayName}
+              unitLabel={unitLabel}
+              addressLine={financialOverview.addressLine}
+            />
+            <ExpenseCategoriesCard overview={financialOverview} />
+          </div>
         ) : null}
       </div>
 

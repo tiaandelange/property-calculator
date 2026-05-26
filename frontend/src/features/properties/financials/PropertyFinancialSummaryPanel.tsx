@@ -1,7 +1,6 @@
 import { useMemo } from "react";
-import { Doughnut } from "react-chartjs-2";
 import { Home, Lightbulb } from "lucide-react";
-import { getChartCategoryPalette, getChartSemanticColors } from "../../../theme/cssTokens";
+import { getChartSemanticColors } from "../../../theme/cssTokens";
 import { fmtZar, type PropertyFinancialOverview } from "./propertyFinancialsAdapter";
 
 export function PropertyFinancialSummaryPanel({
@@ -16,25 +15,6 @@ export function PropertyFinancialSummaryPanel({
   addressLine: string | null;
 }) {
   const colors = useMemo(() => getChartSemanticColors(), []);
-  const palette = useMemo(() => getChartCategoryPalette(), []);
-
-  const doughnutData = useMemo(() => {
-    const labels = overview.expenseCategories.map((c) => c.label);
-    const data = overview.expenseCategories.map((c) => c.amount);
-    if (!data.length) {
-      return null;
-    }
-    return {
-      labels,
-      datasets: [
-        {
-          data,
-          backgroundColor: palette.slice(0, labels.length),
-          borderWidth: 0
-        }
-      ]
-    };
-  }, [overview.expenseCategories, palette]);
 
   const leaseBadgeClass =
     overview.leaseStatus === "Active"
@@ -107,35 +87,6 @@ export function PropertyFinancialSummaryPanel({
               <i className="pg-pfin-dot pg-pfin-dot--expense" /> Expenses
             </span>
           </div>
-        </div>
-
-        <div className="pg-pfin-summary__categories">
-          <h3 className="pg-pfin-summary__subheading">Expense categories</h3>
-          {doughnutData ? (
-            <div className="pg-pfin-summary__chart">
-              <Doughnut
-                data={doughnutData}
-                options={{
-                  responsive: true,
-                  maintainAspectRatio: true,
-                  plugins: { legend: { display: false } }
-                }}
-              />
-            </div>
-          ) : null}
-          <ul className="pg-pfin-category-list">
-            {overview.expenseCategories.map((c, i) => (
-              <li key={c.key}>
-                <span className="pg-pfin-dot" style={{ background: palette[i % palette.length] }} />
-                <span className="pg-pfin-category-list__label">{c.label}</span>
-                <span className="pg-pfin-category-list__amt">{fmtZar(c.amount)}</span>
-                <span className="pg-pfin-category-list__pct">{c.pct}%</span>
-              </li>
-            ))}
-            {overview.expenseCategories.length === 0 ? (
-              <li className="pg-muted">No recurring expense categories yet.</li>
-            ) : null}
-          </ul>
         </div>
 
         <div className="pg-pfin-summary__tip">

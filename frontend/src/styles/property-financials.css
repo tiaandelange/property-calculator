@@ -101,6 +101,13 @@
   min-width: 0;
 }
 
+.pg-pfin-right {
+  display: grid;
+  gap: 24px;
+  align-content: start;
+  min-width: 0;
+}
+
 .pg-pfin-section {
   background: var(--surface);
   border: 1px solid var(--border-soft);
@@ -181,6 +188,18 @@
   border: 1px solid var(--border);
   border-left: none;
   border-radius: 0 8px 8px 0;
+}
+
+.pg-pfin-readonly {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border-soft);
+  background: var(--surface-muted);
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
 }
 
 .pg-pfin-textarea {
@@ -521,6 +540,11 @@
 }
 
 .pg-pfin-summary__chart {
+  max-width: 160px;
+  margin: 0 auto 12px;
+}
+
+.pg-pfin-cats__chart {
   max-width: 160px;
   margin: 0 auto 12px;
 }
