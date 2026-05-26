@@ -12,6 +12,8 @@ import { runCalculatorLocally, saveCalculationResult } from "../services/calcula
 import { fetchPdfBlob, isAbsoluteHttpUrl, openPdfBlobInNewTab } from "../api/pdfBlob";
 import { generateReportViaVercel } from "../services/reportsVercel";
 import { CalculatorToolHero } from "../components/calculators/CalculatorToolHero";
+import { BuyVsRentSimpleResults } from "../components/calculators/BuyVsRentSimpleResults";
+import type { SimpleBuyVsRentCoreResult } from "@calculatorShared/buyVsRentSimple/simpleBuyVsRentTypes";
 import { useCalculatorMobileResults } from "../hooks/useCalculatorMobileResults";
 import { Container } from "../components/ui/Container";
 import { Section } from "../components/ui/Section";
@@ -862,16 +864,31 @@ export function CalculatorPage() {
 
             {result ? (
               <div style={{ display: "grid", gap: 16 }}>
-                <div className="pg-calculator-kpi-grid">
-                  {summary.map((m: any) => (
-                    <Card key={m.key} pad={false} className="pg-card-pad pg-calculator-kpi-card">
-                      <div className="pg-kpi">
-                        <div className="pg-kpi-value">{formatResultsMetricDisplay(m)}</div>
-                        <div className="pg-kpi-label">{m.label}</div>
-                      </div>
-                    </Card>
-                  ))}
-                </div>
+                {calc.slug === "buy-vs-rent" && result.breakdown?.simple ? (
+                  <BuyVsRentSimpleResults
+                    core={result.breakdown.simple as SimpleBuyVsRentCoreResult}
+                    charts={chartsToRender as never}
+                    interpretationText={result.interpretation?.text ?? ""}
+                    warnings={result.interpretation?.warnings ?? []}
+                    assumptions={(result.assumptionsUsed?.assumptions as string[]) ?? []}
+                    assumptionsNote={result.assumptionsUsed?.note as string | undefined}
+                    upgradePrompt={
+                      result.assumptionsUsed?.upgradePrompt as { title: string; body: string } | undefined
+                    }
+                    getChartOptions={(base) => mergeThemedChartOptions(base) as Record<string, unknown>}
+                  />
+                ) : calc.slug !== "buy-vs-rent" ? (
+                  <div className="pg-calculator-kpi-grid">
+                    {summary.map((m: any) => (
+                      <Card key={m.key} pad={false} className="pg-card-pad pg-calculator-kpi-card">
+                        <div className="pg-kpi">
+                          <div className="pg-kpi-value">{formatResultsMetricDisplay(m)}</div>
+                          <div className="pg-kpi-label">{m.label}</div>
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                ) : null}
 
                 {calc.slug === "transfer-bond-costs" && result?.breakdown?.transferCosts ? (
                   <Card title="Detailed cost breakdown">
@@ -941,23 +958,8 @@ export function CalculatorPage() {
                   </Card>
                 ) : null}
 
-                {calc.slug === "buy-vs-rent" && Array.isArray(result?.assumptionsUsed?.assumptions) ? (
-                  <details className="pg-calculator-assumptions-used">
-                    <summary>Assumptions used</summary>
-                    <ul style={{ margin: "8px 0 0", paddingLeft: 18, fontSize: 13, lineHeight: 1.5 }}>
-                      {(result.assumptionsUsed.assumptions as string[]).map((a: string) => (
-                        <li key={a}>{a}</li>
-                      ))}
-                    </ul>
-                    {result?.assumptionsUsed?.disclaimer ? (
-                      <p className="pg-muted" style={{ margin: "8px 0 0", fontSize: 12 }}>
-                        {String(result.assumptionsUsed.disclaimer)}
-                      </p>
-                    ) : null}
-                  </details>
-                ) : null}
-
-                {chartsToRender.map((ch, idx) => {
+                {calc.slug !== "buy-vs-rent"
+                  ? chartsToRender.map((ch, idx) => {
                   const opts = isMortgageStandalone
                     ? (ch.options as any)
                     : (mergeThemedChartOptions(ch.options as Record<string, unknown>) as any);
@@ -974,9 +976,10 @@ export function CalculatorPage() {
                       </div>
                     </Card>
                   );
-                })}
+                    })
+                  : null}
 
-                {result?.interpretation?.text ? (
+                {calc.slug !== "buy-vs-rent" && result?.interpretation?.text ? (
                   <Card title="Interpretation">
                     <div className="pg-muted">{result.interpretation.text}</div>
                     {result.interpretation.warnings?.length ? (

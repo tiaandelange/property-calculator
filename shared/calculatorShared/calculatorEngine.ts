@@ -21,6 +21,10 @@ import {
   type TransactionType
 } from "./saTransferBondCosts.js";
 import { solveIrrPeriodicCashFlows } from "./irrSolver.js";
+import {
+  mapSimpleBuyVsRentToCalculatorResult,
+  runSimpleBuyVsRentCalculator
+} from "./buyVsRentSimple/simpleBuyVsRentCalculator.js";
 
 type AnyInput = Record<string, unknown>;
 
@@ -1882,358 +1886,38 @@ function calcOER(input: z.infer<typeof oerSchema>): CalculatorResult {
 }
 
 // Buy vs Rent (simple free-user comparison)
-/** Same transfer/bond fee defaults as the Transfer & Bond Costs calculator. */
-const BUY_VS_RENT_SA_TRANSFER = {
-  transactionType: "TRANSFER_DUTY" as const,
-  buyerType: "INDIVIDUAL" as const,
-  propertyUse: "INVESTMENT" as const,
-  includeBondRegistration: true,
-  municipalRatesClearanceProvision: 7500,
-  postagesAndPettiesEstimate: 1200,
-  ficaFeeEstimate: 850,
-  deedsSearchFeeEstimate: 500,
-  electronicInstructionFeeEstimate: 650,
-  vatRate: 15,
-  attorneyFeeMode: "ESTIMATE" as const,
-  feeYear: "2026_2027" as const,
-  isFirstTimeBuyer: false,
-  sellerVatRegistered: false
-};
-
-const BUY_VS_RENT_BACKGROUND = {
-  bondTermYears: 20,
-  investmentReturn: 8,
-  maintenancePercent: 1,
-  ownershipCostInflation: 6,
-  sellingCostPercent: 5,
-  capitalGainsTaxPercent: 0,
-  renterOtherMonthlyCosts: 0,
-  rentalDepositMonths: 1,
-  includeSellingCosts: true,
-  includeRentalDepositRefund: true,
-  investMonthlySavings: true,
-  leviesMonthly: 0
-} as const;
-
-const buyVsRentSchema = scenarioSchema.extend({
-  purchasePrice: money.positive(),
-  monthlyRent: money.nonnegative(),
-  depositAmount: money.nonnegative(),
-  interestRate: percent.min(0).max(30).default(11.75),
-  analysisYears: z.coerce.number().int().min(1).max(30),
-  propertyAppreciation: percent.min(-20).max(30).default(5),
-  rentEscalation: percent.min(0).max(30).default(6)
-});
-
-/** Convert an annual rate (percent) to an equivalent monthly compound factor. */
-function buyVsRentMonthlyFactor(annualPercent: number): number {
-  return Math.pow(1 + annualPercent / 100, 1 / 12);
-}
-
-function buyVsRentNetEquity(
-  propertyValue: number,
-  loanBalance: number,
-  purchasePrice: number,
-  includeSelling: boolean
-): number {
-  let net = propertyValue - loanBalance;
-  if (includeSelling) {
-    net -= propertyValue * (BUY_VS_RENT_BACKGROUND.sellingCostPercent / 100);
-    const gain = propertyValue - purchasePrice;
-    if (gain > 0 && BUY_VS_RENT_BACKGROUND.capitalGainsTaxPercent > 0) {
-      net -= gain * (BUY_VS_RENT_BACKGROUND.capitalGainsTaxPercent / 100);
+const buyVsRentSchema = scenarioSchema
+  .extend({
+    purchasePrice: money.positive(),
+    monthlyRent: money.nonnegative(),
+    depositAmount: money.nonnegative(),
+    interestRate: percent.min(0).max(30).default(11.75),
+    analysisYears: z.coerce.number().int().min(5).max(30),
+    propertyAppreciation: percent.min(-20).max(30).default(5),
+    rentEscalation: percent.min(0).max(30).default(6)
+  })
+  .superRefine((data, ctx) => {
+    if (data.depositAmount >= data.purchasePrice) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Deposit must be less than the property price",
+        path: ["depositAmount"]
+      });
     }
-  }
-  return net;
-}
+  });
 
 function calcBuyVsRent(input: z.infer<typeof buyVsRentSchema>): CalculatorResult {
-  const warnings: string[] = [];
-  const years = Math.round(input.analysisYears);
-  const purchasePrice = input.purchasePrice;
-  const depositAmount = clamp(input.depositAmount, 0, purchasePrice);
-  const bondAmount = Math.max(0, purchasePrice - depositAmount);
-
-  requirePositive("Property price", purchasePrice, warnings);
-  if (input.monthlyRent <= 0) warnings.push("Monthly rent is R0 — the rent path focuses on invested cash only.");
-  if (input.depositAmount > purchasePrice) {
-    warnings.push("Deposit exceeds property price — bond amount is treated as zero.");
-  }
-  if (bondAmount <= 0) warnings.push("No bond required at these inputs — compare is mainly cash vs rent.");
-
-  const sa = calculateSouthAfricanTransferAndBondCosts({
-    purchasePrice,
-    marketValue: null,
-    bondAmount,
-    depositAmount,
-    transactionType: BUY_VS_RENT_SA_TRANSFER.transactionType,
-    buyerType: BUY_VS_RENT_SA_TRANSFER.buyerType,
-    includeBondRegistration: bondAmount > 0 && BUY_VS_RENT_SA_TRANSFER.includeBondRegistration,
-    province: null,
-    municipality: null,
-    municipalRatesClearanceProvision: BUY_VS_RENT_SA_TRANSFER.municipalRatesClearanceProvision,
-    postagesAndPettiesEstimate: BUY_VS_RENT_SA_TRANSFER.postagesAndPettiesEstimate,
-    ficaFeeEstimate: BUY_VS_RENT_SA_TRANSFER.ficaFeeEstimate,
-    deedsSearchFeeEstimate: BUY_VS_RENT_SA_TRANSFER.deedsSearchFeeEstimate,
-    electronicInstructionFeeEstimate: BUY_VS_RENT_SA_TRANSFER.electronicInstructionFeeEstimate,
-    vatRate: BUY_VS_RENT_SA_TRANSFER.vatRate,
-    attorneyFeeMode: BUY_VS_RENT_SA_TRANSFER.attorneyFeeMode,
-    manualTransferAttorneyFee: null,
-    manualBondAttorneyFee: null,
-    includeDepositInCashRequired: false,
-    feeYear: BUY_VS_RENT_SA_TRANSFER.feeYear,
-    isFirstTimeBuyer: BUY_VS_RENT_SA_TRANSFER.isFirstTimeBuyer,
-    sellerVatRegistered: BUY_VS_RENT_SA_TRANSFER.sellerVatRegistered,
-    propertyUse: BUY_VS_RENT_SA_TRANSFER.propertyUse
+  const core = runSimpleBuyVsRentCalculator({
+    purchasePrice: input.purchasePrice,
+    monthlyRent: input.monthlyRent,
+    depositAmount: input.depositAmount,
+    interestRate: input.interestRate,
+    analysisYears: Math.round(input.analysisYears),
+    propertyAppreciation: input.propertyAppreciation,
+    rentEscalation: input.rentEscalation,
+    scenarioName: input.scenarioName
   });
-  for (const w of sa.warnings) {
-    if (!warnings.includes(w)) warnings.push(w);
-  }
-
-  const upfrontBuyingCosts = sa.totals.totalTransferAndBondCosts;
-  const buyerInitialCashOut = depositAmount + upfrontBuyingCosts;
-  const renterInitialCashOut = input.monthlyRent * BUY_VS_RENT_BACKGROUND.rentalDepositMonths;
-  const initialCashAvailableToInvestIfRenting = Math.max(buyerInitialCashOut - renterInitialCashOut, 0);
-
-  const amort =
-    bondAmount > 0
-      ? calculateAmortisationSchedule({
-          principal: bondAmount,
-          annualInterestRatePercent: input.interestRate,
-          termYears: BUY_VS_RENT_BACKGROUND.bondTermYears
-        })
-      : null;
-
-  let propertyValue = purchasePrice;
-  let monthlyRent = input.monthlyRent;
-  let loanBalance = bondAmount;
-  let investBalance = initialCashAvailableToInvestIfRenting;
-
-  let ratesMonthly = purchasePrice * 0.001;
-  let insuranceMonthly = purchasePrice * 0.0005;
-  let leviesMonthly = BUY_VS_RENT_BACKGROUND.leviesMonthly;
-
-  const monthlyInvestRate = BUY_VS_RENT_BACKGROUND.investmentReturn / 100 / 12;
-  const monthlyChart = years === 1;
-  const totalMonths = years * 12;
-  const rentWealthSeries: number[] = [];
-  const buyEquitySeries: number[] = [];
-  const chartLabels: string[] = [];
-
-  const propertyGrowthMonthly = buyVsRentMonthlyFactor(input.propertyAppreciation);
-  const rentGrowthMonthly = buyVsRentMonthlyFactor(input.rentEscalation);
-  const ownershipInflationMonthly = buyVsRentMonthlyFactor(BUY_VS_RENT_BACKGROUND.ownershipCostInflation);
-
-  let totalRentPaid = 0;
-  let yearOneRent = input.monthlyRent;
-  let yearOneOwn = 0;
-
-  for (let y = 1; y <= years; y += 1) {
-    for (let m = 0; m < 12; m += 1) {
-      const monthIdx = (y - 1) * 12 + m;
-      const monthNumber = monthIdx + 1;
-      const scheduleRow = amort?.schedule[monthIdx];
-      const bondPayment = scheduleRow?.payment ?? 0;
-      if (scheduleRow) loanBalance = scheduleRow.balance;
-
-      const maintenanceMonthly = (propertyValue * BUY_VS_RENT_BACKGROUND.maintenancePercent) / 100 / 12;
-      const monthlyOwnership = ratesMonthly + insuranceMonthly + leviesMonthly + maintenanceMonthly;
-      const monthlyBuyTotal = bondPayment + monthlyOwnership;
-      const monthlyRentTotal = monthlyRent + BUY_VS_RENT_BACKGROUND.renterOtherMonthlyCosts;
-
-      if (y === 1 && m === 0) yearOneOwn = monthlyBuyTotal;
-
-      investBalance *= 1 + monthlyInvestRate;
-      investBalance -= monthlyRent;
-      totalRentPaid += monthlyRent;
-
-      if (BUY_VS_RENT_BACKGROUND.investMonthlySavings) {
-        investBalance += Math.max(monthlyBuyTotal - monthlyRentTotal, 0);
-      }
-
-      if (monthlyChart) {
-        propertyValue *= propertyGrowthMonthly;
-        monthlyRent *= rentGrowthMonthly;
-        ratesMonthly *= ownershipInflationMonthly;
-        insuranceMonthly *= ownershipInflationMonthly;
-        leviesMonthly *= ownershipInflationMonthly;
-
-        const isFinalMonth = monthNumber === totalMonths;
-        let rentNet = investBalance;
-        if (BUY_VS_RENT_BACKGROUND.includeRentalDepositRefund && isFinalMonth) {
-          rentNet += monthlyRent * BUY_VS_RENT_BACKGROUND.rentalDepositMonths;
-        }
-
-        const buyNet =
-          isFinalMonth && BUY_VS_RENT_BACKGROUND.includeSellingCosts
-            ? buyVsRentNetEquity(propertyValue, loanBalance, purchasePrice, true)
-            : propertyValue - loanBalance;
-
-        rentWealthSeries.push(round2(rentNet));
-        buyEquitySeries.push(round2(buyNet));
-        chartLabels.push(`Month ${monthNumber}`);
-      }
-    }
-
-    if (!monthlyChart) {
-      propertyValue *= 1 + input.propertyAppreciation / 100;
-      monthlyRent *= 1 + input.rentEscalation / 100;
-      ratesMonthly *= 1 + BUY_VS_RENT_BACKGROUND.ownershipCostInflation / 100;
-      insuranceMonthly *= 1 + BUY_VS_RENT_BACKGROUND.ownershipCostInflation / 100;
-      leviesMonthly *= 1 + BUY_VS_RENT_BACKGROUND.ownershipCostInflation / 100;
-
-      let rentNet = investBalance;
-      if (BUY_VS_RENT_BACKGROUND.includeRentalDepositRefund && y === years) {
-        rentNet += monthlyRent * BUY_VS_RENT_BACKGROUND.rentalDepositMonths;
-      }
-
-      buyEquitySeries.push(
-        round2(buyVsRentNetEquity(propertyValue, loanBalance, purchasePrice, BUY_VS_RENT_BACKGROUND.includeSellingCosts))
-      );
-      rentWealthSeries.push(round2(rentNet));
-      chartLabels.push(`Year ${y}`);
-    }
-  }
-
-  const rentWealthEnd = rentWealthSeries[rentWealthSeries.length - 1] ?? initialCashAvailableToInvestIfRenting;
-  const buyEquityEnd = buyEquitySeries[buyEquitySeries.length - 1] ?? propertyValue - loanBalance;
-  const grossEquityEnd = propertyValue - loanBalance;
-  const netAdvantageBuy = round2(buyEquityEnd - rentWealthEnd);
-  const tieThreshold = 25_000;
-
-  let verdict: "buy" | "rent" | "tie" = "tie";
-  if (netAdvantageBuy > tieThreshold) verdict = "buy";
-  else if (netAdvantageBuy < -tieThreshold) verdict = "rent";
-
-  const periodLabel = years === 1 ? "1 year" : `${years} years`;
-
-  const summary = [
-    metric("netAdvantageBuy", "Net difference (buy − rent)", "currency", netAdvantageBuy),
-    metric("buyEquityEnd", `Net home position after ${periodLabel}`, "currency", buyEquityEnd),
-    metric("rentWealthEnd", `Rent + invest after ${periodLabel}`, "currency", rentWealthEnd),
-    metric("monthlyRentYear1", "Monthly rent (year 1)", "currency", yearOneRent),
-    metric("monthlyOwnYear1", "Monthly cost to own (year 1)", "currency", yearOneOwn)
-  ];
-
-  const chartData = [
-    {
-      chartType: "line" as const,
-      title: monthlyChart ? "Wealth position over 12 months" : `Wealth position over ${periodLabel}`,
-      data: {
-        labels: chartLabels,
-        datasets: [
-          {
-            label: "Rent + invest",
-            data: rentWealthSeries,
-            borderColor: "#60a5fa",
-            backgroundColor: "rgba(96, 165, 250, 0.12)",
-            tension: 0.25,
-            fill: false
-          },
-          {
-            label: BUY_VS_RENT_BACKGROUND.includeSellingCosts ? "Buy (net after sell)" : "Buy (home equity)",
-            data: buyEquitySeries,
-            borderColor: "#8b5cf6",
-            backgroundColor: "rgba(139, 92, 246, 0.12)",
-            tension: 0.25,
-            fill: false
-          }
-        ]
-      },
-      options: { plugins: { legend: { display: true } } }
-    },
-    {
-      chartType: "bar" as const,
-      title: "Monthly cost comparison (year 1)",
-      data: {
-        labels: ["Rent", "Own (bond + ownership)"],
-        datasets: [
-          {
-            label: "Monthly ZAR",
-            data: [round2(yearOneRent), round2(yearOneOwn)],
-            backgroundColor: ["#60a5fa", "#8b5cf6"]
-          }
-        ]
-      }
-    }
-  ];
-
-  const interpretationText =
-    verdict === "buy"
-      ? `Over ${periodLabel}, buying may put you about ${formatCurrency(Math.abs(netAdvantageBuy))} ahead on this comparison. ` +
-        `Your net home position is about ${formatCurrency(buyEquityEnd)}` +
-        (BUY_VS_RENT_BACKGROUND.includeSellingCosts ? " after selling costs" : "") +
-        ` versus about ${formatCurrency(rentWealthEnd)} if you rented and invested the cash you would have used to buy. ` +
-        `In year one, owning costs about ${formatCurrency(yearOneOwn)} per month (bond repayment plus rates, insurance and maintenance) compared with rent of ${formatCurrency(yearOneRent)}.`
-      : verdict === "rent"
-        ? `Over ${periodLabel}, renting and investing may put you about ${formatCurrency(Math.abs(netAdvantageBuy))} ahead on this comparison. ` +
-          `Your rent + invest balance could reach about ${formatCurrency(rentWealthEnd)} versus about ${formatCurrency(buyEquityEnd)} net home position if you bought. ` +
-          `In year one, rent is ${formatCurrency(yearOneRent)} per month compared with about ${formatCurrency(yearOneOwn)} to own.`
-        : `Over ${periodLabel}, buying and renting look fairly close (within ${formatCurrency(tieThreshold)}). ` +
-          `Net home position is about ${formatCurrency(buyEquityEnd)} versus about ${formatCurrency(rentWealthEnd)} if you rented. ` +
-          `Try different stay lengths, growth rates and interest rates before you decide.`;
-
-  if (yearOneOwn > yearOneRent * 1.25) {
-    warnings.push("Year-one owning costs are higher than rent — appreciation and equity build drive the buy case over time.");
-  }
-  if (investBalance < 0) {
-    warnings.push("The rent + invest balance turns negative in the model — check rent, stay period and investment return assumptions.");
-  }
-
-  const assumptionsList = [
-    `Bond term: ${BUY_VS_RENT_BACKGROUND.bondTermYears} years at ${formatPercent(input.interestRate)}`,
-    `Investment return on savings: ${formatPercent(BUY_VS_RENT_BACKGROUND.investmentReturn)} p.a.`,
-    `Maintenance: ${formatPercent(BUY_VS_RENT_BACKGROUND.maintenancePercent)} p.a. of property value`,
-    `Ownership costs inflation: ${formatPercent(BUY_VS_RENT_BACKGROUND.ownershipCostInflation)} p.a. (rates & insurance)`,
-    `Rates & taxes estimate: 0.1% of property value per month (year one)`,
-    `Insurance estimate: 0.05% of property value per month (year one)`,
-    `Upfront transfer & bond costs: ${formatCurrency(upfrontBuyingCosts)} (transfer duty ${formatCurrency(sa.transferCosts.transferDuty)}, transfer fees ${formatCurrency(sa.totals.totalTransferCosts)}, bond registration ${formatCurrency(sa.totals.totalBondRegistrationCosts)})`,
-    ...sa.assumptions,
-    BUY_VS_RENT_BACKGROUND.includeSellingCosts
-      ? `Selling costs at exit: ${formatPercent(BUY_VS_RENT_BACKGROUND.sellingCostPercent)} of property value`
-      : "Selling costs not deducted",
-    BUY_VS_RENT_BACKGROUND.investMonthlySavings
-      ? "Monthly savings invested when renting is cheaper than owning"
-      : "Monthly savings while renting not reinvested",
-    BUY_VS_RENT_BACKGROUND.includeRentalDepositRefund
-      ? `Rental deposit (${BUY_VS_RENT_BACKGROUND.rentalDepositMonths} month) refunded at end`
-      : "Rental deposit not refunded",
-    `Property growth (your input): ${formatPercent(input.propertyAppreciation)} p.a.`,
-    `Rent escalation (your input): ${formatPercent(input.rentEscalation)} p.a.`
-  ];
-
-  return {
-    ...baseResult("buy-vs-rent", input.scenarioName),
-    summary,
-    breakdown: {
-      purchasePrice,
-      depositAmount,
-      bondAmount,
-      analysisYears: years,
-      upfrontBuyingCosts: round2(upfrontBuyingCosts),
-      transferDuty: round2(sa.transferCosts.transferDuty),
-      totalTransferCosts: round2(sa.totals.totalTransferCosts),
-      totalBondRegistrationCosts: round2(sa.totals.totalBondRegistrationCosts),
-      buyerInitialCashOut: round2(buyerInitialCashOut),
-      renterInitialCashOut: round2(renterInitialCashOut),
-      initialCashAvailableToInvestIfRenting: round2(initialCashAvailableToInvestIfRenting),
-      grossEquityEnd: round2(grossEquityEnd),
-      totalRentPaid: round2(totalRentPaid),
-      rentWealthEnd,
-      buyEquityEnd,
-      netAdvantageBuy,
-      verdict,
-      yearOneOwn: round2(yearOneOwn),
-      yearOneRent: round2(yearOneRent)
-    },
-    interpretation: { text: interpretationText, warnings },
-    chartData,
-    assumptionsUsed: {
-      assumptions: assumptionsList,
-      disclaimer:
-        "Illustrative model only — not financial, tax or legal advice. Actual transfer duty, bank fees and market returns will differ."
-    }
-  };
+  return mapSimpleBuyVsRentToCalculatorResult(core, input.scenarioName);
 }
 
 // Extras: Square footage / area

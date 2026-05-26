@@ -31,7 +31,7 @@ export const CALCULATOR_TOOL_EXPLAINER: Partial<Record<string, CalculatorToolExp
   },
   "buy-vs-rent": {
     usageExplained:
-      "Enter property price, rent, deposit, bond rate, how long you will stay, and expected property and rent growth. Upfront transfer duty and bond registration use the same SARS brackets and fee tables as the Transfer & Bond Costs calculator; bond repayment, ownership costs, selling costs at exit, and rent-plus-invest paths run in the background — expand Assumptions used below the results for detail.",
+      "Enter property price, rent, deposit, bond rate, how long you will stay (5 years or more), and expected property and rent growth. We compare estimated buying versus renting positions year by year — including bond repayment, ownership costs, upfront costs, and investing if you rent. Expand Assumptions used below the results for background defaults.",
     advantages: [
       "Only a handful of inputs — designed for a quick first-pass decision, not a full underwriting model.",
       "Plain-English conclusion plus charts for monthly cost and wealth position over time.",

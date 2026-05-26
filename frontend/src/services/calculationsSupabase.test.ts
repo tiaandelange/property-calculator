@@ -51,29 +51,12 @@ describe("calculationsSupabase", () => {
       rentEscalation: 6
     });
     expect(r.calculator).toBe("buy-vs-rent");
-    expect(r.summary?.length).toBeGreaterThan(0);
-    expect(r.chartData?.length).toBe(2);
-    expect(r.interpretation?.text).toMatch(/buy|rent/i);
-    expect(r.breakdown?.verdict).toMatch(/buy|rent|tie/);
-    expect(Number(r.breakdown?.upfrontBuyingCosts)).toBeGreaterThan(0);
-    expect(Number(r.breakdown?.transferDuty)).toBeGreaterThanOrEqual(0);
-  });
-
-  it("buy-vs-rent with 1 year shows 12 monthly chart points", () => {
-    const r = runCalculatorLocally("buy-vs-rent", {
-      purchasePrice: 1_500_000,
-      monthlyRent: 12_000,
-      depositAmount: 150_000,
-      interestRate: 11.75,
-      analysisYears: 1,
-      propertyAppreciation: 5,
-      rentEscalation: 6
-    });
-    const line = r.chartData?.find((c) => c.chartType === "line");
-    expect(line?.data?.labels).toHaveLength(12);
-    expect(line?.data?.labels?.[0]).toBe("Month 1");
-    expect(line?.data?.labels?.[11]).toBe("Month 12");
-    expect((line?.data?.datasets?.[0]?.data as number[])?.length).toBe(12);
+    expect(r.summary?.length).toBe(5);
+    expect(r.chartData?.length).toBe(3);
+    expect(r.interpretation?.text).toMatch(/buying|renting|close/i);
+    expect(["buy", "rent", "close"]).toContain(r.breakdown?.verdict);
+    expect(Number(r.breakdown?.bondAmount)).toBe(1_350_000);
+    expect(r.breakdown?.simple).toBeTruthy();
   });
 
   it("saveCalculationResult calls save_calculation_and_decrement_free_use RPC", async () => {
