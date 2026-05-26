@@ -2028,11 +2028,11 @@ textarea {
   align-items: flex-start;
   padding: 16px 18px;
   border-radius: var(--radius-md);
-  border: 1px solid var(--home-band-border);
-  background: #fff;
+  border: 1px solid var(--home-light-card-border);
+  background: var(--home-light-card-bg);
   box-shadow: var(--home-band-card-shadow);
   text-decoration: none;
-  color: inherit;
+  color: var(--home-light-card-text);
   transition: border-color 0.18s ease, transform 0.18s ease;
 }
 
@@ -2050,7 +2050,7 @@ textarea {
   font-size: 15px;
   font-weight: 800;
   letter-spacing: -0.01em;
-  color: var(--home-band-text);
+  color: var(--home-light-card-text);
   margin-bottom: 6px;
 }
 
@@ -2058,7 +2058,7 @@ textarea {
   margin: 0;
   font-size: 13px;
   line-height: 1.45;
-  color: var(--home-band-muted);
+  color: var(--home-light-card-muted);
 }
 
 .pg-calc-hub-understand {
@@ -2078,15 +2078,16 @@ textarea {
 .pg-calc-hub-understand-card {
   padding: 16px 18px;
   border-radius: var(--radius-md);
-  border: 1px solid var(--home-band-border);
-  background: #fff;
+  border: 1px solid var(--home-light-card-border);
+  background: var(--home-light-card-bg);
+  color: var(--home-light-card-text);
 }
 
 .pg-calc-hub-understand-card-title {
   font-size: 14px;
   font-weight: 800;
   margin-bottom: 8px;
-  color: var(--home-band-text);
+  color: var(--home-light-card-text);
 }
 
 .pg-calc-hub-understand-card-body {
@@ -3449,7 +3450,7 @@ html[data-theme="light"] .pg-color-scheme-switch[data-on="false"] .pg-color-sche
   font-weight: 900;
   letter-spacing: -0.02em;
   line-height: 1.25;
-  color: var(--home-band-text);
+  color: var(--home-light-card-text);
 }
 
 .pg-home-qstart-card-desc {
@@ -3457,7 +3458,7 @@ html[data-theme="light"] .pg-color-scheme-switch[data-on="false"] .pg-color-sche
   flex: 1 1 auto;
   font-size: 13px;
   line-height: 1.45;
-  color: var(--home-band-muted);
+  color: var(--home-light-card-muted);
 }
 
 .pg-home-qstart-card-cta {
@@ -3543,20 +3544,9 @@ html[data-theme="light"] .pg-color-scheme-switch[data-on="false"] .pg-color-sche
   padding: 2px 0;
 }
 
-.pg-home-trust-strip-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--home-trust-strip-icon-border);
-  background: var(--home-trust-strip-icon-bg);
-  color: var(--home-trust-strip-icon-color);
-}
-
-.pg-home-trust-strip-icon-svg {
-  display: block;
+/* Lucide IconContainer supplies accent tint; avoid washing out icon colour */
+.pg-home-trust-strip-icon.pg-icon-container {
+  flex-shrink: 0;
 }
 
 .pg-home-trust-strip-value {
@@ -3945,32 +3935,40 @@ html[data-theme="light"] .pg-color-scheme-switch[data-on="false"] .pg-color-sche
 }
 
 .pg-home-light-card {
-  border: 1px solid var(--home-band-border);
-  background: #fff;
+  border: 1px solid var(--home-light-card-border);
+  background: var(--home-light-card-bg);
   box-shadow: var(--home-band-card-shadow);
-  color: var(--home-band-text);
+  color: var(--home-light-card-text);
 }
 
-.pg-home-light-section .pg-home-light-card .pg-card-title {
-  color: var(--home-band-text);
+.pg-home-light-section .pg-home-light-card .pg-card-title,
+.pg-home-light-card .pg-home-qstart-card-title,
+.pg-home-light-card .pg-home-quick-title {
+  color: var(--home-light-card-text);
 }
 
-.pg-home-light-section .pg-home-light-card .pg-muted {
-  color: var(--home-band-muted);
+.pg-home-light-section .pg-home-light-card .pg-muted,
+.pg-home-light-card .pg-home-qstart-card-desc,
+.pg-home-light-card .pg-home-quick-desc {
+  color: var(--home-light-card-muted);
+}
+
+.pg-home-light-card .pg-home-qstart-card-cta {
+  color: var(--primary);
 }
 
 .pg-calc-hub-light .pg-calc-hub-card .pg-card {
-  background: #fff;
-  border-color: var(--home-band-border);
-  color: var(--home-band-text);
+  background: var(--home-light-card-bg);
+  border-color: var(--home-light-card-border);
+  color: var(--home-light-card-text);
 }
 
 .pg-calc-hub-light .pg-calc-hub-card .pg-card-title {
-  color: var(--home-band-text);
+  color: var(--home-light-card-text);
 }
 
 .pg-calc-hub-light .pg-calc-hub-card .pg-lead {
-  color: var(--home-band-muted);
+  color: var(--home-light-card-muted);
 }
 
 /* --- Features / benefits (#why-us) — same card grid as popular calculators --- */

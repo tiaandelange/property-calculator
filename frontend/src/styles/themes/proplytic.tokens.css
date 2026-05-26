@@ -81,6 +81,12 @@
   --home-band-muted: var(--text-secondary);
   --home-band-border: var(--border);
 
+  /* White marketing cards (always light surface + dark readable text in dark mode) */
+  --home-light-card-bg: #ffffff;
+  --home-light-card-text: #0f172a;
+  --home-light-card-muted: #475569;
+  --home-light-card-border: #e2e8f0;
+
   --home-hero-border: var(--border);
   --home-hero-surface: linear-gradient(
     180deg,
@@ -351,6 +357,11 @@ html[data-theme="light"] {
   --home-band-text: var(--text-primary);
   --home-band-muted: var(--text-secondary);
   --home-band-border: var(--border);
+
+  --home-light-card-bg: var(--surface);
+  --home-light-card-text: var(--text-primary);
+  --home-light-card-muted: var(--text-secondary);
+  --home-light-card-border: var(--border);
 
   --home-hero-border: var(--border);
   --home-hero-surface: linear-gradient(
