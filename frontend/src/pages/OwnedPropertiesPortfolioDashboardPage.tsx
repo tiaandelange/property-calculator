@@ -26,6 +26,7 @@ import {
   type PortfolioChartRange
 } from "../features/portfolio-dashboard/portfolioDashboardUtils";
 import { usePortfolioDesktopLayout } from "../features/portfolio-dashboard/usePortfolioDesktopLayout";
+import { PortfolioAnalysisSplitSection } from "../features/portfolio-dashboard/PortfolioAnalysisSplitSection";
 
 function parseTypesParam(search: string) {
   const raw = new URLSearchParams(search).get("types");
@@ -363,6 +364,14 @@ export function OwnedPropertiesPortfolioDashboardPage() {
         <RecentActivityPanel data={data} limit={desktopLayout.activityLimit} />
       </div>
       <div className="pg-pdash-desktop-only">
+        <PortfolioAnalysisSplitSection
+          data={data}
+          properties={properties}
+          propertyTypes={selectedTypes}
+          propertyId={propertyId}
+        />
+      </div>
+      <div className="pg-pdash-desktop-only">
         <RecentPropertiesSection
           properties={recentPropertyCards}
           loading={propertiesLoading}
@@ -374,9 +383,15 @@ export function OwnedPropertiesPortfolioDashboardPage() {
 
   const mobileStack = hasProperties ? (
     <div className="pg-pdash-mobile-stack pg-pdash-mobile-only">
-      <RecentPropertiesSection properties={recentPropertyCards} loading={propertiesLoading} />
       <PortfolioOverviewChart data={data} range={chartRange} onRangeChange={setChartRange} />
       <RecentActivityPanel data={data} />
+      <PortfolioAnalysisSplitSection
+        data={data}
+        properties={properties}
+        propertyTypes={selectedTypes}
+        propertyId={propertyId}
+      />
+      <RecentPropertiesSection properties={recentPropertyCards} loading={propertiesLoading} />
     </div>
   ) : null;
 

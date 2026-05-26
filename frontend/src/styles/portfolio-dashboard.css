@@ -171,6 +171,87 @@
   align-items: stretch;
 }
 
+/* 30-year projection: table + chart (50 / 50) */
+.pg-pdash-analysis-split {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--pdash-gap);
+  align-items: stretch;
+  margin-bottom: var(--pdash-gap);
+}
+
+.pg-pdash-analysis-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.pg-pdash-projection-table-wrap {
+  overflow: auto;
+  max-height: min(420px, 55vh);
+  margin: 0 -4px;
+  padding: 0 4px;
+  border-radius: 10px;
+  border: 1px solid var(--dash-border, var(--border-soft));
+}
+
+.pg-pdash-projection-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.pg-pdash-projection-table th,
+.pg-pdash-projection-table td {
+  padding: 8px 10px;
+  text-align: right;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--dash-border, var(--border-soft));
+}
+
+.pg-pdash-projection-table th:first-child,
+.pg-pdash-projection-table td:first-child {
+  text-align: left;
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--dash-surface, var(--surface));
+}
+
+.pg-pdash-projection-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  font-weight: 700;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--dash-text-secondary, var(--text-secondary));
+  background: var(--dash-surface-secondary, var(--surface-muted));
+}
+
+.pg-pdash-projection-table thead th:first-child {
+  z-index: 3;
+}
+
+.pg-pdash-projection-table tbody tr:hover td {
+  background: var(--dash-surface-secondary, var(--surface-muted));
+}
+
+.pg-pdash-chart-wrap--projection {
+  flex: 1;
+  min-height: 280px;
+}
+
+.pg-pdash--wide .pg-pdash-chart-wrap--projection {
+  min-height: 300px;
+}
+
+.pg-pdash--ultra .pg-pdash-chart-wrap--projection {
+  min-height: 320px;
+}
+
 .pg-pdash--wide .pg-pdash-middle {
   grid-template-columns: minmax(0, 2.1fr) minmax(300px, 1fr);
 }
@@ -502,6 +583,14 @@
     display: none;
   }
 
+  .pg-pdash-analysis-split {
+    grid-template-columns: 1fr;
+  }
+
+  .pg-pdash-projection-table-wrap {
+    max-height: 320px;
+  }
+
   .pg-pdash-properties-section.pg-pdash-desktop-only {
     display: none;
   }
@@ -546,6 +635,10 @@
   }
 
   .pg-pdash-middle {
+    grid-template-columns: 1fr;
+  }
+
+  .pg-pdash-analysis-split {
     grid-template-columns: 1fr;
   }
 }
