@@ -182,6 +182,7 @@ export const calculators: CalculatorDef[] = [
             type: "select",
             required: true,
             options: [
+              { label: "1 year", value: 1 },
               { label: "5 years", value: 5 },
               { label: "10 years", value: 10 },
               { label: "15 years", value: 15 },

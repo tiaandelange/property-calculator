@@ -55,6 +55,8 @@ describe("calculationsSupabase", () => {
     expect(r.chartData?.length).toBe(2);
     expect(r.interpretation?.text).toMatch(/buy|rent/i);
     expect(r.breakdown?.verdict).toMatch(/buy|rent|tie/);
+    expect(Number(r.breakdown?.upfrontBuyingCosts)).toBeGreaterThan(0);
+    expect(Number(r.breakdown?.transferDuty)).toBeGreaterThanOrEqual(0);
   });
 
   it("saveCalculationResult calls save_calculation_and_decrement_free_use RPC", async () => {

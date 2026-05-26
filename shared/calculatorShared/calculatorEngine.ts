@@ -1882,13 +1882,29 @@ function calcOER(input: z.infer<typeof oerSchema>): CalculatorResult {
 }
 
 // Buy vs Rent (simple free-user comparison)
+/** Same transfer/bond fee defaults as the Transfer & Bond Costs calculator. */
+const BUY_VS_RENT_SA_TRANSFER = {
+  transactionType: "TRANSFER_DUTY" as const,
+  buyerType: "INDIVIDUAL" as const,
+  propertyUse: "INVESTMENT" as const,
+  includeBondRegistration: true,
+  municipalRatesClearanceProvision: 7500,
+  postagesAndPettiesEstimate: 1200,
+  ficaFeeEstimate: 850,
+  deedsSearchFeeEstimate: 500,
+  electronicInstructionFeeEstimate: 650,
+  vatRate: 15,
+  attorneyFeeMode: "ESTIMATE" as const,
+  feeYear: "2026_2027" as const,
+  isFirstTimeBuyer: false,
+  sellerVatRegistered: false
+};
+
 const BUY_VS_RENT_BACKGROUND = {
   bondTermYears: 20,
   investmentReturn: 8,
   maintenancePercent: 1,
   ownershipCostInflation: 6,
-  transferAndLegalCostPercent: 4,
-  bondRegistrationCostPercent: 1,
   sellingCostPercent: 5,
   capitalGainsTaxPercent: 0,
   renterOtherMonthlyCosts: 0,
@@ -1940,9 +1956,36 @@ function calcBuyVsRent(input: z.infer<typeof buyVsRentSchema>): CalculatorResult
   }
   if (bondAmount <= 0) warnings.push("No bond required at these inputs — compare is mainly cash vs rent.");
 
-  const upfrontBuyingCosts =
-    purchasePrice * (BUY_VS_RENT_BACKGROUND.transferAndLegalCostPercent / 100) +
-    bondAmount * (BUY_VS_RENT_BACKGROUND.bondRegistrationCostPercent / 100);
+  const sa = calculateSouthAfricanTransferAndBondCosts({
+    purchasePrice,
+    marketValue: null,
+    bondAmount,
+    depositAmount,
+    transactionType: BUY_VS_RENT_SA_TRANSFER.transactionType,
+    buyerType: BUY_VS_RENT_SA_TRANSFER.buyerType,
+    includeBondRegistration: bondAmount > 0 && BUY_VS_RENT_SA_TRANSFER.includeBondRegistration,
+    province: null,
+    municipality: null,
+    municipalRatesClearanceProvision: BUY_VS_RENT_SA_TRANSFER.municipalRatesClearanceProvision,
+    postagesAndPettiesEstimate: BUY_VS_RENT_SA_TRANSFER.postagesAndPettiesEstimate,
+    ficaFeeEstimate: BUY_VS_RENT_SA_TRANSFER.ficaFeeEstimate,
+    deedsSearchFeeEstimate: BUY_VS_RENT_SA_TRANSFER.deedsSearchFeeEstimate,
+    electronicInstructionFeeEstimate: BUY_VS_RENT_SA_TRANSFER.electronicInstructionFeeEstimate,
+    vatRate: BUY_VS_RENT_SA_TRANSFER.vatRate,
+    attorneyFeeMode: BUY_VS_RENT_SA_TRANSFER.attorneyFeeMode,
+    manualTransferAttorneyFee: null,
+    manualBondAttorneyFee: null,
+    includeDepositInCashRequired: false,
+    feeYear: BUY_VS_RENT_SA_TRANSFER.feeYear,
+    isFirstTimeBuyer: BUY_VS_RENT_SA_TRANSFER.isFirstTimeBuyer,
+    sellerVatRegistered: BUY_VS_RENT_SA_TRANSFER.sellerVatRegistered,
+    propertyUse: BUY_VS_RENT_SA_TRANSFER.propertyUse
+  });
+  for (const w of sa.warnings) {
+    if (!warnings.includes(w)) warnings.push(w);
+  }
+
+  const upfrontBuyingCosts = sa.totals.totalTransferAndBondCosts;
   const buyerInitialCashOut = depositAmount + upfrontBuyingCosts;
   const renterInitialCashOut = input.monthlyRent * BUY_VS_RENT_BACKGROUND.rentalDepositMonths;
   const initialCashAvailableToInvestIfRenting = Math.max(buyerInitialCashOut - renterInitialCashOut, 0);
@@ -2025,10 +2068,12 @@ function calcBuyVsRent(input: z.infer<typeof buyVsRentSchema>): CalculatorResult
   if (netAdvantageBuy > tieThreshold) verdict = "buy";
   else if (netAdvantageBuy < -tieThreshold) verdict = "rent";
 
+  const periodLabel = years === 1 ? "1 year" : `${years} years`;
+
   const summary = [
     metric("netAdvantageBuy", "Net difference (buy − rent)", "currency", netAdvantageBuy),
-    metric("buyEquityEnd", `Net home position after ${years} years`, "currency", buyEquityEnd),
-    metric("rentWealthEnd", `Rent + invest after ${years} years`, "currency", rentWealthEnd),
+    metric("buyEquityEnd", `Net home position after ${periodLabel}`, "currency", buyEquityEnd),
+    metric("rentWealthEnd", `Rent + invest after ${periodLabel}`, "currency", rentWealthEnd),
     metric("monthlyRentYear1", "Monthly rent (year 1)", "currency", yearOneRent),
     metric("monthlyOwnYear1", "Monthly cost to own (year 1)", "currency", yearOneOwn)
   ];
@@ -2036,7 +2081,7 @@ function calcBuyVsRent(input: z.infer<typeof buyVsRentSchema>): CalculatorResult
   const chartData = [
     {
       chartType: "line" as const,
-      title: `Wealth position over ${years} years`,
+      title: `Wealth position over ${periodLabel}`,
       data: {
         labels: yearLabels,
         datasets: [
@@ -2078,16 +2123,16 @@ function calcBuyVsRent(input: z.infer<typeof buyVsRentSchema>): CalculatorResult
 
   const interpretationText =
     verdict === "buy"
-      ? `Over ${years} years, buying may put you about ${formatCurrency(Math.abs(netAdvantageBuy))} ahead on this comparison. ` +
+      ? `Over ${periodLabel}, buying may put you about ${formatCurrency(Math.abs(netAdvantageBuy))} ahead on this comparison. ` +
         `Your net home position is about ${formatCurrency(buyEquityEnd)}` +
         (BUY_VS_RENT_BACKGROUND.includeSellingCosts ? " after selling costs" : "") +
         ` versus about ${formatCurrency(rentWealthEnd)} if you rented and invested the cash you would have used to buy. ` +
         `In year one, owning costs about ${formatCurrency(yearOneOwn)} per month (bond repayment plus rates, insurance and maintenance) compared with rent of ${formatCurrency(yearOneRent)}.`
       : verdict === "rent"
-        ? `Over ${years} years, renting and investing may put you about ${formatCurrency(Math.abs(netAdvantageBuy))} ahead on this comparison. ` +
+        ? `Over ${periodLabel}, renting and investing may put you about ${formatCurrency(Math.abs(netAdvantageBuy))} ahead on this comparison. ` +
           `Your rent + invest balance could reach about ${formatCurrency(rentWealthEnd)} versus about ${formatCurrency(buyEquityEnd)} net home position if you bought. ` +
           `In year one, rent is ${formatCurrency(yearOneRent)} per month compared with about ${formatCurrency(yearOneOwn)} to own.`
-        : `Over ${years} years, buying and renting look fairly close (within ${formatCurrency(tieThreshold)}). ` +
+        : `Over ${periodLabel}, buying and renting look fairly close (within ${formatCurrency(tieThreshold)}). ` +
           `Net home position is about ${formatCurrency(buyEquityEnd)} versus about ${formatCurrency(rentWealthEnd)} if you rented. ` +
           `Try different stay lengths, growth rates and interest rates before you decide.`;
 
@@ -2105,7 +2150,8 @@ function calcBuyVsRent(input: z.infer<typeof buyVsRentSchema>): CalculatorResult
     `Ownership costs inflation: ${formatPercent(BUY_VS_RENT_BACKGROUND.ownershipCostInflation)} p.a. (rates & insurance)`,
     `Rates & taxes estimate: 0.1% of property value per month (year one)`,
     `Insurance estimate: 0.05% of property value per month (year one)`,
-    `Upfront buying costs: ${formatPercent(BUY_VS_RENT_BACKGROUND.transferAndLegalCostPercent)} of price + ${formatPercent(BUY_VS_RENT_BACKGROUND.bondRegistrationCostPercent)} of bond`,
+    `Upfront transfer & bond costs: ${formatCurrency(upfrontBuyingCosts)} (transfer duty ${formatCurrency(sa.transferCosts.transferDuty)}, transfer fees ${formatCurrency(sa.totals.totalTransferCosts)}, bond registration ${formatCurrency(sa.totals.totalBondRegistrationCosts)})`,
+    ...sa.assumptions,
     BUY_VS_RENT_BACKGROUND.includeSellingCosts
       ? `Selling costs at exit: ${formatPercent(BUY_VS_RENT_BACKGROUND.sellingCostPercent)} of property value`
       : "Selling costs not deducted",
@@ -2128,6 +2174,9 @@ function calcBuyVsRent(input: z.infer<typeof buyVsRentSchema>): CalculatorResult
       bondAmount,
       analysisYears: years,
       upfrontBuyingCosts: round2(upfrontBuyingCosts),
+      transferDuty: round2(sa.transferCosts.transferDuty),
+      totalTransferCosts: round2(sa.totals.totalTransferCosts),
+      totalBondRegistrationCosts: round2(sa.totals.totalBondRegistrationCosts),
       buyerInitialCashOut: round2(buyerInitialCashOut),
       renterInitialCashOut: round2(renterInitialCashOut),
       initialCashAvailableToInvestIfRenting: round2(initialCashAvailableToInvestIfRenting),
