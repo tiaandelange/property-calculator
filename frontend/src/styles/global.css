@@ -7,6 +7,7 @@
 @import "./financials-dashboard.css";
 @import "./workspace-cards.css";
 @import "./property-form.css";
+@import "./property-financials.css";
 
 /* Structural tokens (spacing + typography). Palette: proplytic.tokens.css */
 :root {

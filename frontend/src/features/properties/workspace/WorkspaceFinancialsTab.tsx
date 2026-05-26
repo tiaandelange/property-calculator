@@ -1,5 +1,22 @@
 import { FormEvent, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { Chart as ChartJS, ArcElement, Legend, Tooltip } from "chart.js";
+import { useMediaQuery } from "../../../hooks/useMediaQuery";
+import {
+  buildPropertyFinancialOverview,
+  mapRecurringCharges,
+  type RecurringExpenseDisplayItem
+} from "../financials/propertyFinancialsAdapter";
+import { PropertyFinancialMetricCards } from "../financials/PropertyFinancialMetricCards";
+import {
+  PropertyFinancialDetailsForm,
+  type FinancialDetailsFormState
+} from "../financials/PropertyFinancialDetailsForm";
+import { RecurringExpensesSection } from "../financials/RecurringExpensesSection";
+import { PropertyFinancialSummaryPanel } from "../financials/PropertyFinancialSummaryPanel";
+import { propertyFinancialsStatementUrl } from "../../financials/financialDirectoryUtils";
+
+ChartJS.register(ArcElement, Tooltip, Legend);
 import { Card } from "../../../components/ui/Card";
 import { Field, Input } from "../../../components/ui/Input";
 import { fetchPdfBlob, isAbsoluteHttpUrl, openPdfBlobInNewTab } from "../../../api/pdfBlob";
@@ -235,6 +252,9 @@ export function WorkspaceFinancialsTab({
   const [summaryPdfBusy, setSummaryPdfBusy] = useState(false);
   const [invoicePdfBusyId, setInvoicePdfBusyId] = useState<string | number | null>(null);
   const [invoicePdfBanner, setInvoicePdfBanner] = useState<string | null>(null);
+  const [financialDetailsSaving, setFinancialDetailsSaving] = useState(false);
+  const [showAddRecurring, setShowAddRecurring] = useState(false);
+  const isMobile = useMediaQuery("(max-width: 767px)");
 
   useEffect(() => {
     statementDraftRef.current = statementDraft;
@@ -244,13 +264,21 @@ export function WorkspaceFinancialsTab({
   }, [statementEditingRowId]);
 
   useEffect(() => {
-    if (finSub !== "statement") {
-      statementDraftRef.current = null;
-      statementEditingRowIdRef.current = null;
-      setStatementEditingRowId(null);
-      setStatementDraft(null);
-      setStatementConfirm(null);
-      setStatementFeedback(null);
+    const legacyFin = ["statement", "invoice", "expenses", "deposits", "future", "recurring", "bond"];
+    if (!legacyFin.includes(finSub)) return;
+    const idMap: Record<string, string> = {
+      statement: "pf-tools-statement",
+      invoice: "pf-tools-invoice",
+      expenses: "pf-tools-expenses",
+      deposits: "pf-tools-deposits",
+      future: "pf-tools-future",
+      recurring: "pf-tools-recurring",
+      bond: "pf-tools-bond"
+    };
+    const el = document.getElementById(idMap[finSub]);
+    if (el && el.tagName === "DETAILS") {
+      (el as HTMLDetailsElement).open = true;
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
     }
   }, [finSub]);
 
@@ -510,6 +538,85 @@ export function WorkspaceFinancialsTab({
   );
 
   const setSub = (key: string) => navigate(`/owned-properties/${propertyId}?tab=financials&fin=${key}`, { replace: true });
+
+  const primaryLease = useMemo(() => {
+    const active = (currentLeases as Record<string, unknown>[]).filter((l) =>
+      ["ACTIVE", "MONTH_TO_MONTH"].includes(String(l.status ?? ""))
+    );
+    return active[0] ?? (currentLeases[0] as Record<string, unknown> | undefined) ?? null;
+  }, [currentLeases]);
+
+  const depositHeldTotal = useMemo(
+    () => (deposits as Record<string, unknown>[]).reduce((a, d) => a + Number(d.amount ?? 0), 0),
+    [deposits]
+  );
+
+  const financialOverview = useMemo(
+    () =>
+      buildPropertyFinancialOverview({
+        propertyId,
+        propertyDetail: propertyDetail as Record<string, unknown> | null,
+        currentLeases,
+        recurringChargesLandlord,
+        statement: statement as Record<string, unknown> | null,
+        deposits
+      }),
+    [propertyId, propertyDetail, currentLeases, recurringChargesLandlord, statement, deposits]
+  );
+
+  const recurringDisplayItems = useMemo(
+    () => mapRecurringCharges(recurringChargesLandlord),
+    [recurringChargesLandlord]
+  );
+
+  async function saveFinancialDetails(state: FinancialDetailsFormState) {
+    setFinancialDetailsSaving(true);
+    try {
+      const parseOpt = (s: string) => {
+        const t = String(s ?? "").trim();
+        if (t === "") return null;
+        const x = Number(t);
+        return Number.isFinite(x) ? x : null;
+      };
+      const payload: Record<string, unknown> = {
+        currentEstimatedValue: parseOpt(state.marketValue),
+        leviesMonthly: parseOpt(state.leviesMonthly),
+        ratesAndTaxesMonthly: parseOpt(state.ratesAndTaxesMonthly),
+        maintenanceMonthly: parseOpt(state.maintenanceMonthly),
+        expectedMonthlyIncome: parseOpt(state.expectedMonthlyIncome),
+        expectedMonthlyExpenses: parseOpt(state.expectedMonthlyExpenses),
+        notes: state.notes.trim() || null
+      };
+      const pp = parseOpt(state.purchasePrice);
+      if (pp != null) payload.purchasePrice = pp;
+      await updateProperty(propertyId, payload);
+      if (primaryLease?.id != null) {
+        const rentDue = parseOpt(state.rentDueDay);
+        await updateLease(primaryLease.id as string | number, {
+          monthlyRent: parseOpt(state.monthlyRent),
+          depositAmount: parseOpt(state.depositHeld),
+          rentDueDay: rentDue != null ? Math.min(31, Math.max(1, Math.floor(rentDue))) : null,
+          startDate: state.leaseStartDate || undefined,
+          endDate: state.leaseEndDate || undefined
+        });
+      }
+      await onReload();
+    } catch (err: unknown) {
+      window.alert(propertyApiErrorMessage(err) || "Could not save financial details.");
+    } finally {
+      setFinancialDetailsSaving(false);
+    }
+  }
+
+  function handleRecurringEdit(item: RecurringExpenseDisplayItem) {
+    openScheduleEditor(item.raw);
+    setShowAddRecurring(false);
+    const el = document.getElementById("pf-tools-recurring");
+    if (el && el.tagName === "DETAILS") {
+      (el as HTMLDetailsElement).open = true;
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }
 
   const downloadPropertySummaryPdf = async () => {
     setSummaryPdfBusy(true);
@@ -937,16 +1044,6 @@ export function WorkspaceFinancialsTab({
     return map;
   }, [propertyInvoices]);
 
-  const finPipeItems = [
-    { key: "statement", label: "Statement" },
-    { key: "invoice", label: "Lease invoices" },
-    { key: "expenses", label: "Expenses" },
-    { key: "deposits", label: "Deposits" },
-    { key: "future", label: "Future charges" },
-    { key: "recurring", label: "Recurring charges" },
-    { key: "bond", label: "Bond payment" }
-  ];
-
   const ytdCalendar = useMemo(() => {
     const now = new Date();
     const year = now.getFullYear();
@@ -985,54 +1082,119 @@ export function WorkspaceFinancialsTab({
     };
   }, [rows]);
 
+  const propertyDisplayName = String((propertyDetail as Record<string, unknown> | null)?.name ?? financialOverview.propertyName);
+  const unitLabel = financialOverview.unitLabel;
+
   return (
-    <div style={{ display: "grid", gap: 16 }}>
-      <div className="pg-fin-ytd-grid">
-        <div className="pg-fin-ytd-card">
-          <div className="pg-fin-ytd-card-title">Total revenue ({ytdCalendar.year})</div>
-          <div className="pg-fin-ytd-card-value">{fmt(ytdCalendar.revenue)}</div>
-          <div className="pg-muted" style={{ fontSize: 12, marginTop: 8 }}>
-            Received income and paid invoices, Jan–latest activity ({ytdCalendar.periodLabel})
-          </div>
+    <div className="pg-pfin-page">
+      <header className="pg-pfin-page-header">
+        <div>
+          <h1 className="pg-pfin-page-header__title">Property Financials</h1>
+          <p className="pg-pfin-page-header__context">
+            {propertyDisplayName}
+            {unitLabel ? ` · Unit ${unitLabel}` : null}
+          </p>
         </div>
-        <div className="pg-fin-ytd-card">
-          <div className="pg-fin-ytd-card-title">Total expenses ({ytdCalendar.year})</div>
-          <div className="pg-fin-ytd-card-value">{fmt(ytdCalendar.expenses)}</div>
-          <div className="pg-muted" style={{ fontSize: 12, marginTop: 8 }}>
-            Active expense ledger entries ({ytdCalendar.periodLabel})
-          </div>
+        <div className="pg-pfin-page-header__actions">
+          <Link className="pg-btn pg-btn-secondary" to={`/owned-properties/${propertyId}?tab=overview`}>
+            View Property
+          </Link>
+          <Link className="pg-btn pg-btn-ghost" to={propertyFinancialsStatementUrl(propertyId, "statement")}>
+            Manage Income
+          </Link>
+          <Link className="pg-btn pg-btn-ghost" to={propertyFinancialsStatementUrl(propertyId, "expenses")}>
+            Manage Expenses
+          </Link>
+          <button
+            type="submit"
+            form="pfin-details-form"
+            className="pg-btn pg-btn-primary pg-pfin-save-header"
+            disabled={financialDetailsSaving}
+          >
+            {financialDetailsSaving ? "Saving…" : "Save Changes"}
+          </button>
         </div>
-        <div className="pg-fin-ytd-card">
-          <div className="pg-fin-ytd-card-title">Cash flow ({ytdCalendar.year})</div>
-          <div className="pg-fin-ytd-card-value" style={{ color: ytdCalendar.cashFlow >= 0 ? "var(--success)" : "var(--danger)" }}>
-            {fmt(ytdCalendar.cashFlow)}
-          </div>
-          <div className="pg-muted" style={{ fontSize: 12, marginTop: 8 }}>
-            Revenue − expenses ({ytdCalendar.periodLabel})
-          </div>
-        </div>
-      </div>
+      </header>
 
-      <nav className="pg-fin-pipe-nav" aria-label="Financials sections">
-        {finPipeItems.map((t, i) => (
-          <span key={t.key} style={{ display: "inline-flex", alignItems: "center" }}>
-            {i > 0 ? <span className="pg-fin-pipe-sep" aria-hidden>|</span> : null}
+      {loading ? (
+        <div className="pg-pfin-metrics pg-pfin-metrics--compact">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="pg-pfin-metric-card pg-muted" style={{ minHeight: 76 }}>
+              Loading…
+            </div>
+          ))}
+        </div>
+      ) : (
+        <PropertyFinancialMetricCards overview={financialOverview} compact={isMobile} />
+      )}
+
+      <div className="pg-pfin-layout">
+        <div className="pg-pfin-main">
+          {isMobile ? (
+            <PropertyFinancialDetailsForm
+              formId="pfin-details-form"
+              propertyDetail={propertyDetail as Record<string, unknown> | null}
+              primaryLease={primaryLease}
+              depositHeldTotal={depositHeldTotal}
+              compact
+              saving={financialDetailsSaving}
+              onSubmit={saveFinancialDetails}
+            />
+          ) : null}
+
+          {!isMobile ? (
+            <PropertyFinancialDetailsForm
+              formId="pfin-details-form"
+              propertyDetail={propertyDetail as Record<string, unknown> | null}
+              primaryLease={primaryLease}
+              depositHeldTotal={depositHeldTotal}
+              saving={financialDetailsSaving}
+              onSubmit={saveFinancialDetails}
+            />
+          ) : null}
+
+          <RecurringExpensesSection
+            items={recurringDisplayItems}
+            loading={loading}
+            isMobile={isMobile}
+            onAdd={() => {
+              setShowAddRecurring(true);
+              setScheduleEditor(null);
+              const el = document.getElementById("pf-tools-recurring");
+              if (el && el.tagName === "DETAILS") {
+                (el as HTMLDetailsElement).open = true;
+                el.scrollIntoView({ behavior: "smooth", block: "start" });
+              }
+            }}
+            onEdit={handleRecurringEdit}
+            onStop={(item) => void archiveSchedule(item.raw)}
+            onDelete={(item) => void hardDeleteSchedule(item.raw)}
+          />
+
+          <div className="pg-pfin-sticky-save">
             <button
-              type="button"
-              className={`pg-fin-pipe-link${finSub === t.key ? " is-active" : ""}`}
-              aria-current={finSub === t.key ? "page" : undefined}
-              onClick={() => setSub(t.key)}
+              type="submit"
+              form="pfin-details-form"
+              className="pg-btn pg-btn-primary"
+              style={{ width: "100%", justifyContent: "center" }}
+              disabled={financialDetailsSaving}
             >
-              {t.label}
+              {financialDetailsSaving ? "Saving…" : "Save Changes"}
             </button>
-          </span>
-        ))}
-      </nav>
+          </div>
 
-      {loading ? <div className="pg-muted">Loading ledger…</div> : null}
+          <div className="pg-pfin-tools">
+            <p className="pg-muted" style={{ fontSize: 13, margin: "0 0 4px" }}>
+              YTD ({ytdCalendar.year}): revenue {fmt(ytdCalendar.revenue)} · expenses {fmt(ytdCalendar.expenses)} · cash flow{" "}
+              <span style={{ color: ytdCalendar.cashFlow >= 0 ? "var(--success)" : "var(--danger)" }}>{fmt(ytdCalendar.cashFlow)}</span>
+            </p>
 
-      {!loading && finSub === "statement" ? (
-        <>
+            {loading ? <div className="pg-muted">Loading ledger…</div> : null}
+
+            <details id="pf-tools-statement" className="pg-pfin-tools__item" open={finSub === "statement"}>
+              <summary>Transaction ledger (statement)</summary>
+              {!loading ? (
+          <div>
           {statementFeedback ? (
             <div className="pg-alert pg-alert-error" role="alert" style={{ marginBottom: 12 }}>
               {statementFeedback}
@@ -1294,10 +1456,12 @@ export function WorkspaceFinancialsTab({
               </table>
             </div>
           ) : null}
-        </>
-      ) : null}
+          </div>
+              ) : null}
+            </details>
 
-      {finSub === "invoice" ? (
+            <details id="pf-tools-invoice" open={finSub === "invoice"}>
+              <summary>Lease invoices</summary>
         <Card title="Lease invoices (this calendar month)">
           {invoicePdfBanner ? (
             <div className="pg-alert" style={{ marginBottom: 12 }}>
@@ -1369,9 +1533,10 @@ export function WorkspaceFinancialsTab({
             </button>
           </div>
         </Card>
-      ) : null}
+            </details>
 
-      {finSub === "expenses" ? (
+            <details id="pf-tools-expenses" open={finSub === "expenses"}>
+              <summary>One-off expenses</summary>
         <Card title="Expenses">
           <div className="pg-muted" style={{ marginBottom: 14 }}>
             One-off property costs only — each line posts once on the payment date and appears on the{" "}
@@ -1447,9 +1612,10 @@ export function WorkspaceFinancialsTab({
             </div>
           </form>
         </Card>
-      ) : null}
+            </details>
 
-      {finSub === "deposits" ? (
+            <details id="pf-tools-deposits" open={finSub === "deposits"}>
+              <summary>Deposits held</summary>
         <Card title="Deposits held">
           {(deposits?.length ?? 0) === 0 ? <div className="pg-muted">No active lease deposits.</div> : null}
           <div style={{ display: "grid", gap: 8 }}>
@@ -1499,9 +1665,10 @@ export function WorkspaceFinancialsTab({
             })}
           </div>
         </Card>
-      ) : null}
+            </details>
 
-      {finSub === "future" ? (
+            <details id="pf-tools-future" open={finSub === "future"}>
+              <summary>Future charges</summary>
         <Card title="Future charges">
           <div className="pg-muted" style={{ marginBottom: 14 }}>
             <strong>Charges</strong> are <strong>money you owe on the property</strong> (rates, levies, repairs, bond payments, etc.) with a{" "}
@@ -1603,9 +1770,10 @@ export function WorkspaceFinancialsTab({
             ))}
           </div>
         </Card>
-      ) : null}
+            </details>
 
-      {finSub === "recurring" ? (
+            <details id="pf-tools-recurring" open={finSub === "recurring" || showAddRecurring}>
+              <summary>Recurring charge schedules (add / edit)</summary>
         <Card title="Recurring charges">
           <div className="pg-muted" style={{ marginBottom: 14 }}>
             <strong>Monthly schedules</strong> are separate from one-off{" "}
@@ -1937,9 +2105,10 @@ export function WorkspaceFinancialsTab({
             })}
           </div>
         </Card>
-      ) : null}
+            </details>
 
-      {finSub === "bond" ? (
+            <details id="pf-tools-bond" open={finSub === "bond"}>
+              <summary>Bond payment profile</summary>
         <Card title="Bond payment">
           <div className="pg-muted" style={{ marginBottom: 16 }}>
             Linked to this property&apos;s bond fields (same as Add / Edit property). Home-loan schedules are kept here —{" "}
@@ -2107,7 +2276,19 @@ export function WorkspaceFinancialsTab({
             </form>
           )}
         </Card>
-      ) : null}
+            </details>
+          </div>
+        </div>
+
+        {!isMobile ? (
+          <PropertyFinancialSummaryPanel
+            overview={financialOverview}
+            propertyName={propertyDisplayName}
+            unitLabel={unitLabel}
+            addressLine={financialOverview.addressLine}
+          />
+        ) : null}
+      </div>
 
       {bondBackfillOpen ? (
         <div

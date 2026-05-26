@@ -296,31 +296,35 @@ export function OwnedPropertyDetailPage() {
         {error ? <div className="pg-alert pg-alert-error">{error}</div> : null}
         {data ? (
           <>
-            <div
-              style={{
-                display: "flex",
-                flexWrap: "wrap",
-                alignItems: "center",
-                justifyContent: "space-between",
-                gap: 12,
-                marginTop: 8,
-                rowGap: 8
-              }}
-            >
-              <h1 className="pg-workspace-title" style={{ margin: 0 }}>
-                {data.name}
-              </h1>
-              <Link className="pg-btn pg-btn-secondary" to={`/owned-properties/${id}/edit`}>
-                Edit Property
-              </Link>
-            </div>
-            <div className="pg-workspace-subtitle pg-muted" style={{ marginTop: 6, marginBottom: 14 }}>
-              {titleAddress !== data.name ? <span>{titleAddress}</span> : null}
-              {titleAddress !== data.name ? <span> · </span> : null}
-              {(INV_SHORT[data.investmentType] ?? data.investmentType) ?? "Property"}
-              {" · "}
-              {occupancySubtitle}
-            </div>
+            {tab !== "financials" ? (
+              <>
+                <div
+                  style={{
+                    display: "flex",
+                    flexWrap: "wrap",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 12,
+                    marginTop: 8,
+                    rowGap: 8
+                  }}
+                >
+                  <h1 className="pg-workspace-title" style={{ margin: 0 }}>
+                    {data.name}
+                  </h1>
+                  <Link className="pg-btn pg-btn-secondary" to={`/owned-properties/${id}/edit`}>
+                    Edit Property
+                  </Link>
+                </div>
+                <div className="pg-workspace-subtitle pg-muted" style={{ marginTop: 6, marginBottom: 14 }}>
+                  {titleAddress !== data.name ? <span>{titleAddress}</span> : null}
+                  {titleAddress !== data.name ? <span> · </span> : null}
+                  {(INV_SHORT[data.investmentType] ?? data.investmentType) ?? "Property"}
+                  {" · "}
+                  {occupancySubtitle}
+                </div>
+              </>
+            ) : null}
 
             <WorkspaceTabs
               basePath={`/owned-properties/${id}`}
