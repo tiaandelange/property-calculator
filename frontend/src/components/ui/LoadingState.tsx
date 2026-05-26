@@ -16,11 +16,12 @@ export function LoadingState({
   );
 }
 
-export function SkeletonGrid({ count = 3 }: { count?: number }) {
+export function SkeletonGrid({ count = 3, columns }: { count?: number; columns?: 2 | 3 | 4 }) {
+  const colClass = columns ? `pg-skeleton-grid--cols-${columns}` : "";
   return (
-    <div className="pg-skeleton-grid" aria-hidden="true">
+    <div className={["pg-skeleton-grid", colClass].filter(Boolean).join(" ")} aria-hidden="true">
       {Array.from({ length: count }, (_, i) => (
-        <div key={i} />
+        <div key={i} className="pg-skeleton-block" />
       ))}
     </div>
   );

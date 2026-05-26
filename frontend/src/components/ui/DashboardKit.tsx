@@ -1,5 +1,10 @@
 import type React from "react";
-import { IconBox, type IconContainerAccent } from "./IconContainer";
+import {
+  getDashboardStatIconConfig,
+  inferDashboardStatIconPreset,
+  type DashboardStatIconPreset
+} from "../../icons/dashboardStatIcons";
+import { IconBox, IconContainer, type IconContainerAccent } from "./IconContainer";
 
 export type StatusTone = "default" | "success" | "warning" | "danger" | "accent" | "info" | "primary";
 
@@ -21,6 +26,41 @@ function iconToneForStat(
   return "neutral";
 }
 
+function resolvePreset(
+  title: string,
+  iconPreset?: DashboardStatIconPreset | "auto"
+): DashboardStatIconPreset | undefined {
+  if (!iconPreset || iconPreset === "auto") return inferDashboardStatIconPreset(title);
+  return iconPreset;
+}
+
+function StatCardIcon({
+  title,
+  icon,
+  iconPreset,
+  iconTone,
+  tone
+}: {
+  title: string;
+  icon?: React.ReactNode;
+  iconPreset?: DashboardStatIconPreset | "auto";
+  iconTone?: IconContainerAccent;
+  tone: "default" | "accent" | "primary" | "success" | "danger" | "warning" | "info";
+}): React.ReactNode {
+  if (icon) {
+    return (
+      <IconBox tone={iconTone ?? iconToneForStat(tone)} size="md">
+        {icon}
+      </IconBox>
+    );
+  }
+  if (iconPreset === undefined) return null;
+  const preset = resolvePreset(title, iconPreset);
+  if (!preset) return null;
+  const { icon: Icon, accent } = getDashboardStatIconConfig(preset);
+  return <IconContainer icon={Icon} accent={iconTone ?? accent} size="md" />;
+}
+
 export function PageShell({ children }: { children: React.ReactNode }) {
   return <div className="pg-page-shell">{children}</div>;
 }
@@ -31,6 +71,7 @@ export function StatCard({
   hint,
   tone = "default",
   icon,
+  iconPreset,
   iconTone,
   onClick,
   ariaLabel,
@@ -41,6 +82,8 @@ export function StatCard({
   hint?: string;
   tone?: "default" | "accent" | "primary" | "success" | "danger" | "warning" | "info";
   icon?: React.ReactNode;
+  /** Lucide preset; `"auto"` infers from title. Omit to hide icons unless `icon` is passed. */
+  iconPreset?: DashboardStatIconPreset | "auto";
   iconTone?: IconContainerAccent;
   onClick?: () => void;
   ariaLabel?: string;
@@ -49,13 +92,19 @@ export function StatCard({
   const clickable = Boolean(onClick);
   const statTone =
     tone === "accent" ? "accent" : tone === "primary" ? "primary" : tone === "info" ? "info" : tone;
+  const iconEl = (
+    <StatCardIcon title={title} icon={icon} iconPreset={iconPreset} iconTone={iconTone} tone={tone} />
+  );
+  const showIcon = iconEl != null;
+
   return (
     <div
       className={[
         "pg-stat-card",
         `pg-stat-${statTone}`,
         elevated ? "pg-stat-card--elevated" : "",
-        clickable ? "pg-stat-card--clickable" : ""
+        clickable ? "pg-stat-card--clickable" : "",
+        iconEl ? "pg-stat-card--with-icon" : ""
       ]
         .filter(Boolean)
         .join(" ")}
@@ -74,16 +123,14 @@ export function StatCard({
           : undefined
       }
     >
-      {icon ? (
-        <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
-          <IconBox tone={iconTone ?? iconToneForStat(tone)} size="md">
-            {icon}
-          </IconBox>
-          <div style={{ flex: 1, minWidth: 0 }}>
+      {iconEl ? (
+        <div className="pg-stat-card-layout">
+          {iconEl}
+          <div className="pg-stat-card-main">
             <div className="pg-stat-title">{title}</div>
             <div className="pg-stat-value">{value}</div>
             {hint ? <div className="pg-stat-hint">{hint}</div> : null}
-            {clickable ? <div className="pg-stat-hint" style={{ marginTop: 6 }}>View details</div> : null}
+            {clickable ? <div className="pg-stat-hint pg-stat-card-cta-hint">View details</div> : null}
           </div>
         </div>
       ) : (
@@ -91,7 +138,7 @@ export function StatCard({
           <div className="pg-stat-title">{title}</div>
           <div className="pg-stat-value">{value}</div>
           {hint ? <div className="pg-stat-hint">{hint}</div> : null}
-          {clickable ? <div className="pg-stat-hint" style={{ marginTop: 6 }}>View details</div> : null}
+          {clickable ? <div className="pg-stat-hint pg-stat-card-cta-hint">View details</div> : null}
         </>
       )}
     </div>
@@ -103,7 +150,8 @@ export function MetricCard({
   value,
   subtitle,
   icon,
-  iconTone = "primary",
+  iconPreset,
+  iconTone,
   onClick,
   ariaLabel,
   elevated
@@ -112,18 +160,31 @@ export function MetricCard({
   value: React.ReactNode;
   subtitle?: string;
   icon?: React.ReactNode;
+  iconPreset?: DashboardStatIconPreset | "auto";
   iconTone?: IconContainerAccent;
   onClick?: () => void;
   ariaLabel?: string;
   elevated?: boolean;
 }) {
   const clickable = Boolean(onClick);
+  const iconEl = (
+    <StatCardIcon
+      title={title}
+      icon={icon}
+      iconPreset={iconPreset}
+      iconTone={iconTone ?? "primary"}
+      tone="default"
+    />
+  );
+  const showIcon = iconEl != null;
+
   return (
     <div
       className={[
         "pg-metric-card",
         elevated ? "pg-metric-card--elevated" : "",
-        clickable ? "pg-metric-card--clickable" : ""
+        clickable ? "pg-metric-card--clickable" : "",
+        iconEl ? "pg-metric-card--with-icon" : ""
       ]
         .filter(Boolean)
         .join(" ")}
@@ -142,14 +203,14 @@ export function MetricCard({
           : undefined
       }
     >
-      {icon ? (
-        <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
-          <IconBox tone={iconTone}>{icon}</IconBox>
-          <div style={{ flex: 1, minWidth: 0 }}>
+      {iconEl ? (
+        <div className="pg-stat-card-layout">
+          {iconEl}
+          <div className="pg-stat-card-main">
             <div className="pg-stat-title">{title}</div>
             <div className="pg-metric-value">{value}</div>
             {subtitle ? <div className="pg-stat-hint">{subtitle}</div> : null}
-            {clickable ? <div className="pg-stat-hint" style={{ marginTop: 6 }}>View details</div> : null}
+            {clickable ? <div className="pg-stat-hint pg-stat-card-cta-hint">View details</div> : null}
           </div>
         </div>
       ) : (
@@ -157,7 +218,7 @@ export function MetricCard({
           <div className="pg-stat-title">{title}</div>
           <div className="pg-metric-value">{value}</div>
           {subtitle ? <div className="pg-stat-hint">{subtitle}</div> : null}
-          {clickable ? <div className="pg-stat-hint" style={{ marginTop: 6 }}>View details</div> : null}
+          {clickable ? <div className="pg-stat-hint pg-stat-card-cta-hint">View details</div> : null}
         </>
       )}
     </div>
@@ -181,7 +242,7 @@ export function DashboardCard({
         <h3>{title}</h3>
         {actions}
       </div>
-      <div>{children}</div>
+      <div className="pg-dashboard-card-body">{children}</div>
     </div>
   );
 }
@@ -199,9 +260,25 @@ export function StatusPill({
 /** Alias for StatusPill — soft-filled semantic badge. */
 export const Badge = StatusPill;
 
-export function EmptyState({ title, body, actions }: { title: string; body: string; actions?: React.ReactNode }) {
+export function EmptyState({
+  title,
+  body,
+  actions,
+  iconPreset
+}: {
+  title: string;
+  body: string;
+  actions?: React.ReactNode;
+  iconPreset?: DashboardStatIconPreset;
+}) {
+  const iconConfig = iconPreset ? getDashboardStatIconConfig(iconPreset) : null;
   return (
     <div className="pg-empty-state">
+      {iconConfig ? (
+        <div className="pg-empty-state-icon">
+          <IconContainer icon={iconConfig.icon} accent={iconConfig.accent} size="lg" />
+        </div>
+      ) : null}
       <h2>{title}</h2>
       <p>{body}</p>
       {actions ? <div className="pg-empty-actions">{actions}</div> : null}
@@ -232,3 +309,4 @@ export function AlertBanner({
 }
 
 export { LoadingState, SkeletonGrid } from "./LoadingState";
+export type { DashboardStatIconPreset } from "../../icons/dashboardStatIcons";

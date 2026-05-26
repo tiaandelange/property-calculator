@@ -436,23 +436,10 @@ textarea {
   padding: 0;
 }
 
-.pg-card {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: var(--r-lg);
-  box-shadow: var(--shadow-sm);
-  transition: border-color 0.2s ease, transform 0.2s ease;
-}
-.pg-card:hover {
-  border-color: var(--accent-45);
-  transform: translateY(-1px);
-}
-.pg-card-pad {
-  padding: 24px;
-}
+/* Card primitives: ui-components.css */
 .pg-card-title {
   font-size: 14px;
-  color: var(--text2);
+  color: var(--text-secondary);
   margin: 0 0 8px;
 }
 
@@ -702,15 +689,7 @@ textarea {
   padding: 28px;
 }
 .pg-page-shell { display: grid; gap: 28px; }
-.pg-stat-card,
-.pg-metric-card,
-.pg-dashboard-card,
-.pg-property-card {
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  background: var(--card);
-  padding: 24px;
-}
+/* Stat/metric/dashboard cards: ui-components.css */
 .pg-dashboard-card-header {
   display: flex;
   align-items: center;
@@ -719,35 +698,6 @@ textarea {
   margin-bottom: 14px;
 }
 .pg-dashboard-card-header h3 { margin: 0; }
-.pg-stat-title {
-  color: var(--text2);
-  font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: .08em;
-}
-.pg-stat-value { margin-top: 10px; font-size: 30px; font-weight: 900; }
-.pg-metric-value { margin-top: 8px; font-size: 24px; font-weight: 800; }
-.pg-stat-hint { margin-top: 8px; color: var(--text2); font-size: 12px; }
-.pg-stat-accent .pg-stat-value { color: var(--accent); }
-.pg-stat-success .pg-stat-value { color: var(--success); }
-.pg-stat-warning .pg-stat-value { color: var(--warning); }
-.pg-stat-danger .pg-stat-value { color: var(--danger); }
-.pg-status-pill {
-  display: inline-flex;
-  align-items: center;
-  padding: 6px 10px;
-  border-radius: 999px;
-  border: 1px solid var(--border);
-  font-size: 12px;
-}
-.pg-status-success { color: var(--success); border-color: rgba(32,201,151,.45); background: rgba(32,201,151,.12); }
-.pg-status-warning { color: var(--warning); border-color: rgba(255,176,32,.45); background: rgba(255,176,32,.12); }
-.pg-status-danger { color: var(--danger); border-color: rgba(255,77,79,.45); background: rgba(255,77,79,.12); }
-.pg-status-accent {
-  color: var(--accent);
-  border-color: var(--accent-35);
-  background: var(--accent-16);
-}
 .pg-alert-banner {
   display: flex;
   justify-content: space-between;

@@ -9,7 +9,7 @@ import { Grid } from "../components/ui/Grid";
 import { Button } from "../components/ui/Button";
 import { getProperties, getProperty } from "../api/ownedProperties";
 import { PROPERTY_DATA_INVALIDATION } from "../features/properties/invalidate";
-import { AlertBanner, DashboardCard, EmptyState, MetricCard, StatCard, StatusPill } from "../components/ui/DashboardKit";
+import { AlertBanner, DashboardCard, EmptyState, MetricCard, SkeletonGrid, StatCard, StatusPill } from "../components/ui/DashboardKit";
 import { getChartCategoryPalette, getChartSemanticColors } from "../theme/cssTokens";
 
 ChartJS.register(ArcElement, BarElement, CategoryScale, LinearScale, Legend, Tooltip, PointElement, LineElement);
@@ -184,9 +184,10 @@ export function OwnedPropertiesDashboardPage() {
           </div>
         </div>
         {error ? <div className="pg-alert pg-alert-error" style={{ marginTop: 12 }}>{error}</div> : null}
-        {loading ? <div className="pg-skeleton-grid"><div /><div /><div /></div> : null}
+        {loading ? <SkeletonGrid count={6} columns={3} /> : null}
         {showEmpty ? (
           <EmptyState
+            iconPreset="portfolio-value"
             title="Start building your portfolio dashboard"
             body="Add your first property to track rent, expenses, leases, documents and portfolio equity."
             actions={
@@ -205,15 +206,31 @@ export function OwnedPropertiesDashboardPage() {
                 value={stats.missingBond > 0 ? "Missing data" : `R ${stats.portfolioEquity.toLocaleString()}`}
                 hint="Total property value less outstanding bonds."
                 tone="accent"
+                iconPreset="portfolio-value"
                 onClick={() => navigate("/owned-properties/metrics/equity")}
                 ariaLabel="View portfolio equity details"
               />
-              <StatCard title="Total Properties" value={stats.total} onClick={() => navigate("/owned-properties")} ariaLabel="View all owned properties" />
-              <StatCard title="Occupied Properties" value={`${stats.occupied} (${stats.occupancyRate.toFixed(0)}%)`} onClick={() => navigate("/owned-properties/metrics/leases")} ariaLabel="View lease details" />
+              <StatCard
+                title="Total Properties"
+                value={stats.total}
+                iconPreset="total-properties"
+                onClick={() => navigate("/owned-properties")}
+                ariaLabel="View all owned properties"
+              />
+              <StatCard
+                title="Occupied Properties"
+                value={`${stats.occupied} (${stats.occupancyRate.toFixed(0)}%)`}
+                iconPreset="occupancy"
+                iconTone="success"
+                onClick={() => navigate("/owned-properties/metrics/leases")}
+                ariaLabel="View lease details"
+              />
               <StatCard
                 title="Monthly Net Cash Flow"
                 value={`R ${stats.netCashFlow.toLocaleString()}`}
                 tone={stats.netCashFlow >= 0 ? "success" : "danger"}
+                iconPreset="cash-flow"
+                iconTone={stats.netCashFlow >= 0 ? "success" : "danger"}
                 onClick={() => navigate("/owned-properties/metrics/cash-flow")}
                 ariaLabel="View cash flow details"
               />
@@ -221,6 +238,8 @@ export function OwnedPropertiesDashboardPage() {
                 title="Rent Due / Overdue"
                 value={`${stats.rentAttentionCount} rent items need attention`}
                 tone={stats.overdueRentCount > 0 ? "danger" : stats.dueSoonRentCount > 0 ? "warning" : "success"}
+                iconPreset="rent-due"
+                iconTone={stats.overdueRentCount > 0 ? "danger" : stats.dueSoonRentCount > 0 ? "warning" : "success"}
                 onClick={() => navigate("/owned-properties/metrics/rent-due")}
                 ariaLabel="View rent due and overdue details"
               />
@@ -228,18 +247,34 @@ export function OwnedPropertiesDashboardPage() {
                 title="Lease Renewals"
                 value={`${stats.leasesToRenewCount} leases to renew`}
                 tone={stats.expiringSoon > 0 || stats.monthToMonth > 0 ? "warning" : "success"}
+                iconPreset="leases"
+                iconTone={stats.expiringSoon > 0 || stats.monthToMonth > 0 ? "warning" : "primary"}
                 onClick={() => navigate("/owned-properties/metrics/leases")}
                 ariaLabel="View lease renewals details"
               />
             </Grid>
             <div style={{ height: 12 }} />
             <Grid cols={3}>
-              <MetricCard title="Deposits Held" value={`R ${stats.depositsHeld.toLocaleString()}`} onClick={() => navigate("/owned-properties/metrics/deposits")} ariaLabel="View deposits held details" />
-              <MetricCard title="Monthly Rent Roll" value={`R ${stats.monthlyRentRoll.toLocaleString()}`} />
-              <MetricCard title="Monthly Expenses" value={`R ${stats.monthlyExpenses.toLocaleString()}`} />
-              <MetricCard title="Vacancy Count" value={stats.vacant} />
-              <MetricCard title="Average Gross Yield" value={stats.averageGrossYield == null ? "Missing data" : `${(stats.averageGrossYield * 100).toFixed(2)}%`} />
-              <MetricCard title="Average Net Yield" value={stats.averageNetYield == null ? "Missing data" : `${(stats.averageNetYield * 100).toFixed(2)}%`} />
+              <MetricCard
+                title="Deposits Held"
+                value={`R ${stats.depositsHeld.toLocaleString()}`}
+                iconPreset="deposits"
+                onClick={() => navigate("/owned-properties/metrics/deposits")}
+                ariaLabel="View deposits held details"
+              />
+              <MetricCard title="Monthly Rent Roll" value={`R ${stats.monthlyRentRoll.toLocaleString()}`} iconPreset="monthly-income" />
+              <MetricCard title="Monthly Expenses" value={`R ${stats.monthlyExpenses.toLocaleString()}`} iconPreset="expenses" />
+              <MetricCard title="Vacancy Count" value={stats.vacant} iconPreset="vacancy" />
+              <MetricCard
+                title="Average Gross Yield"
+                value={stats.averageGrossYield == null ? "Missing data" : `${(stats.averageGrossYield * 100).toFixed(2)}%`}
+                iconPreset="yield"
+              />
+              <MetricCard
+                title="Average Net Yield"
+                value={stats.averageNetYield == null ? "Missing data" : `${(stats.averageNetYield * 100).toFixed(2)}%`}
+                iconPreset="yield"
+              />
             </Grid>
             <div style={{ height: 12 }} />
             <DashboardCard title="Alerts & Actions">
