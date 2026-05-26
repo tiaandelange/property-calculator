@@ -3,8 +3,6 @@ import { Link } from "react-router-dom";
 import { calculatorRouteForSlug } from "../../data/homepageCalculators";
 import { HomeHeroImage } from "../home/HomeHeroImage";
 import { Container } from "../ui/Container";
-import { PageBreadcrumb } from "../nav/PageBreadcrumb";
-import { calculatorsTrail } from "../../nav/workspaceBreadcrumbs";
 import {
   formatRand,
   HUB_MORTGAGE_PRICE_MAX,
@@ -154,7 +152,6 @@ export function CalculatorHubMortgageSection() {
         <div className="pg-home-hero-grid pg-calc-hub-hero-grid">
           <div className="pg-home-hero-col--copy">
             <div className="pg-calc-hub-hero-copy-stack">
-              <PageBreadcrumb items={calculatorsTrail("Mortgage calculator")} />
               <h1 className="pg-calc-hub-hero-title">
                 Calculate your monthly <span className="pg-calc-hub-hero-accent">mortgage</span> repayments.
               </h1>

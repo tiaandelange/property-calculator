@@ -4,8 +4,6 @@ import { Link, useSearchParams } from "react-router-dom";
 import { Container } from "../components/ui/Container";
 import { Section } from "../components/ui/Section";
 import { Card } from "../components/ui/Card";
-import { PageBreadcrumb } from "../components/nav/PageBreadcrumb";
-import { homeThen } from "../nav/workspaceBreadcrumbs";
 import { getSupabase, isSupabaseConfigured } from "../lib/supabaseClient";
 import { formatAuthError } from "../utils/authErrors";
 import type { EmailOtpType } from "@supabase/supabase-js";
@@ -72,7 +70,6 @@ export function ConfirmEmailPage() {
         <meta name="description" content="Confirm your email for The Property Guy." />
       </Helmet>
       <Container>
-        <PageBreadcrumb items={homeThen("Confirm email")} />
         <div style={{ maxWidth: 620, margin: "0 auto" }}>
           <Card>
             <h1 className="pg-h2" style={{ marginTop: 0 }}>

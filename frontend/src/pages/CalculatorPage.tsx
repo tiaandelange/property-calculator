@@ -21,8 +21,6 @@ import { Grid } from "../components/ui/Grid";
 import { Card } from "../components/ui/Card";
 import { Field, Input } from "../components/ui/Input";
 import { Button } from "../components/ui/Button";
-import { PageBreadcrumb } from "../components/nav/PageBreadcrumb";
-import { calculatorsTrail } from "../nav/workspaceBreadcrumbs";
 
 ChartJS.register(ArcElement, BarElement, CategoryScale, LinearScale, Legend, Tooltip, PointElement, LineElement);
 
@@ -442,7 +440,6 @@ export function CalculatorPage() {
     return (
       <Section>
         <Container>
-          <PageBreadcrumb items={calculatorsTrail("Calculator not found")} />
           <Card>
             <h1 className="pg-h2" style={{ marginTop: 0 }}>
               Calculator not found
@@ -1121,7 +1118,6 @@ export function CalculatorPage() {
         <div className="pg-calc-hub-dark-band pg-calculator-tool-hero-band">
           <div className="pg-calc-hub-hero-base" aria-hidden="true" />
           <Container className="pg-container--marketing-wide pg-calc-hub-dark-band-inner">
-            <PageBreadcrumb items={calculatorsTrail(calc.name)} />
             <div style={{ display: "grid", gap: 10, marginBottom: 8 }}>
               <h1 className="pg-h2" style={{ margin: 0 }}>
                 {calc.name}
@@ -1143,7 +1139,6 @@ export function CalculatorPage() {
     <Section className="pg-calc-hub-page pg-calculator-detail-page">
       {helmet}
       <CalculatorToolHero
-        breadcrumbCurrent={calc.name}
         titleBefore={themedPage!.titleBefore}
         accent={themedPage!.accent}
         titleAfter={themedPage!.titleAfter}

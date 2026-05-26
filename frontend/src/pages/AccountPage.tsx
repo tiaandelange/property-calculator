@@ -3,8 +3,6 @@ import { Helmet } from "react-helmet-async";
 import { fetchMe, patchProfileInvoicePaymentDetails } from "../api/user";
 import type { InvoicePaymentDetailsPayload } from "../api/user";
 import { useAuth } from "../contexts/AuthContext";
-import { PageBreadcrumb } from "../components/nav/PageBreadcrumb";
-import { workspacePage } from "../nav/workspaceBreadcrumbs";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { Container } from "../components/ui/Container";
@@ -119,7 +117,6 @@ export function AccountPage() {
         <meta name="description" content="Manage your profile and invoice payment details shown on tenant invoices." />
       </Helmet>
       <Container>
-        <PageBreadcrumb items={workspacePage("Account")} />
         <h1 className="pg-h2" style={{ margin: "8px 0 0" }}>
           Account
         </h1>

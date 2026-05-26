@@ -15,8 +15,6 @@ import { Section } from "../components/ui/Section";
 import { Card } from "../components/ui/Card";
 import { Field, Input } from "../components/ui/Input";
 import { Button } from "../components/ui/Button";
-import { PageBreadcrumb } from "../components/nav/PageBreadcrumb";
-import { workspacePage } from "../nav/workspaceBreadcrumbs";
 
 export function OwnedLeasesPage() {
   const [properties, setProperties] = useState<any[]>([]);
@@ -107,7 +105,6 @@ export function OwnedLeasesPage() {
     <Section>
       <Helmet><title>Leases | The Property Guy</title></Helmet>
       <Container>
-        <PageBreadcrumb items={workspacePage("Leases")} />
         <h1 className="pg-h2">Leases</h1>
         {error ? <div className="pg-alert pg-alert-error" style={{ marginBottom: 12 }}>{error}</div> : null}
         <Card>

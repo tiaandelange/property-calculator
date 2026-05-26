@@ -24,8 +24,6 @@ import { invalidatePropertyWorkspace } from "../features/properties/invalidate";
 import { usePropertyWorkspaceRefresh } from "../features/properties/usePropertyWorkspaceRefresh";
 import { WorkspaceFinancialsTab } from "../features/properties/workspace/WorkspaceFinancialsTab";
 import { WorkspaceOverviewTab } from "../features/properties/workspace/WorkspaceOverviewTab";
-import { PageBreadcrumb } from "../components/nav/PageBreadcrumb";
-import { workspaceMyProperties } from "../nav/workspaceBreadcrumbs";
 
 /** YYYY-MM in the user's local calendar (avoid UTC drift from `toISOString().slice(0, 7)`). */
 function localCalendarMonth(d = new Date()) {
@@ -298,8 +296,6 @@ export function OwnedPropertyDetailPage() {
         {error ? <div className="pg-alert pg-alert-error">{error}</div> : null}
         {data ? (
           <>
-            <PageBreadcrumb items={workspaceMyProperties(data.name)} />
-
             <div
               style={{
                 display: "flex",

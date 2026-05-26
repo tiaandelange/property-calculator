@@ -1,7 +1,5 @@
 import { Helmet } from "react-helmet-async";
 import { Link } from "react-router-dom";
-import { PageBreadcrumb } from "../components/nav/PageBreadcrumb";
-import { PG_WORKSPACE_DASH } from "../nav/workspaceBreadcrumbs";
 import { Card } from "../components/ui/Card";
 import { Container } from "../components/ui/Container";
 import { Section } from "../components/ui/Section";
@@ -34,7 +32,6 @@ export function SettingsPage() {
         <title>Settings | The Property Guy</title>
       </Helmet>
       <Container>
-        <PageBreadcrumb items={[PG_WORKSPACE_DASH, { label: "Settings" }]} />
         <h1 className="pg-h2" style={{ margin: "8px 0 0" }}>
           Settings
         </h1>

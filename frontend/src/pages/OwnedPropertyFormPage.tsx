@@ -14,8 +14,6 @@ import {
   updateProperty
 } from "../api/ownedProperties";
 import { invalidatePropertyWorkspace } from "../features/properties/invalidate";
-import { PageBreadcrumb } from "../components/nav/PageBreadcrumb";
-import { workspaceMyProperties } from "../nav/workspaceBreadcrumbs";
 
 const BOND_TERM_YEAR_OPTIONS = [5, 10, 15, 20, 25, 30] as const;
 
@@ -104,9 +102,6 @@ export function OwnedPropertyFormPage() {
     <Section>
       <Helmet><title>{isEdit ? "Edit Property" : "Add Property"} | The Property Guy</title></Helmet>
       <Container>
-        <PageBreadcrumb
-          items={workspaceMyProperties(isEdit ? (form.name?.trim() ? form.name.trim() : "Edit property") : "Add property")}
-        />
         <Card>
           <h1 className="pg-h2">{isEdit ? "Edit Property" : "Add Property"}</h1>
           {error ? <div className="pg-alert pg-alert-error">{error}</div> : null}

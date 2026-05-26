@@ -9,8 +9,6 @@ import { Button } from "../components/ui/Button";
 import { getProperties } from "../api/ownedProperties";
 import { usePropertyWorkspaceRefresh } from "../features/properties/usePropertyWorkspaceRefresh";
 import { StatusPill } from "../components/ui/DashboardKit";
-import { PageBreadcrumb } from "../components/nav/PageBreadcrumb";
-import { workspacePage } from "../nav/workspaceBreadcrumbs";
 
 function displayType(t: string | null | undefined) {
   const map: Record<string, string> = {
@@ -101,7 +99,6 @@ export function OwnedPropertiesMyPropertiesPage() {
     <Section>
       <Helmet><title>My Properties | The Property Guy</title></Helmet>
       <Container>
-        <PageBreadcrumb items={workspacePage("My Properties")} />
         <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
           <div>
             <h1 className="pg-h2" style={{ margin: 0 }}>My Properties</h1>

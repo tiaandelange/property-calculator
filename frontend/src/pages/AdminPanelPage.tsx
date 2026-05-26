@@ -6,8 +6,6 @@ import { fetchMe, patchProfileUiColorScheme } from "../api/user";
 import { useAuth } from "../contexts/AuthContext";
 import { UiColorSchemeSwitch } from "../components/ui/UiColorSchemeSwitch";
 import { applyUiColorScheme, normalizeUiColorScheme, type UiColorScheme } from "../theme/uiColorScheme";
-import { PageBreadcrumb } from "../components/nav/PageBreadcrumb";
-import { PG_WORKSPACE_DASH } from "../nav/workspaceBreadcrumbs";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { Container } from "../components/ui/Container";
@@ -111,7 +109,6 @@ export function AdminPanelPage() {
           <title>Admin | The Property Guy</title>
         </Helmet>
         <Container>
-          <PageBreadcrumb items={[PG_WORKSPACE_DASH, { label: "Admin" }]} />
           <h1 className="pg-h2">Admin panel</h1>
           <p className="pg-muted">You need an administrator account to view this page.</p>
           <Link className="pg-btn pg-btn-secondary" to="/settings" style={{ marginTop: 12, display: "inline-block" }}>
@@ -128,8 +125,6 @@ export function AdminPanelPage() {
         <title>Admin — projection metrics | The Property Guy</title>
       </Helmet>
       <Container>
-        <PageBreadcrumb items={[PG_WORKSPACE_DASH, { label: "Settings", to: "/settings" }, { label: "Admin metrics" }]} />
-
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12, flexWrap: "wrap" }}>
           <h1 className="pg-h2" style={{ margin: "8px 0 0" }}>
             Admin metrics

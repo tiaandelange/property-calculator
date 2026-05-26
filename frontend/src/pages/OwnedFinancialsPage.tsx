@@ -21,8 +21,6 @@ import { Card } from "../components/ui/Card";
 import { Field, Input } from "../components/ui/Input";
 import { Button } from "../components/ui/Button";
 import { useLocation } from "react-router-dom";
-import { PageBreadcrumb } from "../components/nav/PageBreadcrumb";
-import { workspacePage } from "../nav/workspaceBreadcrumbs";
 
 const RECURRING_ANCHOR_OPTIONS: Array<{ value: "FIRST_OF_MONTH" | "LAST_OF_MONTH" | "DAY_OF_MONTH"; label: string }> = [
   { value: "FIRST_OF_MONTH", label: "1st of the month" },
@@ -250,7 +248,6 @@ export function OwnedFinancialsPage() {
     <Section>
       <Helmet><title>Financials | The Property Guy</title></Helmet>
       <Container>
-        <PageBreadcrumb items={workspacePage("Financials")} />
         <h1 className="pg-h2">Financials</h1>
         <Card>
           <Field label="Property">

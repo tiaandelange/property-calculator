@@ -8,8 +8,6 @@ import { Button } from "../components/ui/Button";
 import { EmptyState } from "../components/ui/DashboardKit";
 import { getPortfolioDashboardSummary, getProperties, getTenants } from "../api/ownedProperties";
 import { PROPERTY_DATA_INVALIDATION } from "../features/properties/invalidate";
-import { PageBreadcrumb } from "../components/nav/PageBreadcrumb";
-import { PG_WORKSPACE_DASH } from "../nav/workspaceBreadcrumbs";
 import { useAuth } from "../contexts/AuthContext";
 import { PortfolioMetricCard } from "../features/portfolio-dashboard/PortfolioMetricCard";
 import { PortfolioOverviewChart } from "../features/portfolio-dashboard/PortfolioOverviewChart";
@@ -388,7 +386,6 @@ export function OwnedPropertiesPortfolioDashboardPage() {
         <title>Portfolio Dashboard | The Property Guy</title>
       </Helmet>
       <Container className="pg-container--portfolio-dashboard">
-        <PageBreadcrumb items={[PG_WORKSPACE_DASH, { label: "Portfolio overview" }]} />
         <div className={`pg-pdash pg-workspace-page pg-pdash--${desktopLayout.tier}`}>
           <div className="pg-pdash-toolbar">
             <div>

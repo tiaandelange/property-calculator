@@ -6,8 +6,6 @@ import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
 import { Field, Input } from "../components/ui/Input";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { PageBreadcrumb } from "../components/nav/PageBreadcrumb";
-import { homeThen } from "../nav/workspaceBreadcrumbs";
 import { getSupabase, isSupabaseConfigured } from "../lib/supabaseClient";
 import { formatAuthError } from "../utils/authErrors";
 import { useAuth } from "../contexts/AuthContext";
@@ -107,7 +105,6 @@ export function LoginPage() {
         <meta name="description" content="Sign in or create an account to save calculations and generate reports." />
       </Helmet>
       <Container>
-        <PageBreadcrumb items={homeThen("Sign in")} />
         <div className="pg-auth-layout">
           <div className="pg-auth-marketing">
             <h2 className="pg-h2" style={{ marginTop: 0 }}>

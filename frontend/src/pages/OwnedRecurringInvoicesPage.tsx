@@ -11,8 +11,6 @@ import { Section } from "../components/ui/Section";
 import { Card } from "../components/ui/Card";
 import { Field, Input } from "../components/ui/Input";
 import { Button } from "../components/ui/Button";
-import { PageBreadcrumb } from "../components/nav/PageBreadcrumb";
-import { workspacePage } from "../nav/workspaceBreadcrumbs";
 
 export function OwnedRecurringInvoicesPage() {
   const [properties, setProperties] = useState<any[]>([]);
@@ -65,7 +63,6 @@ export function OwnedRecurringInvoicesPage() {
         <title>Recurring Invoices | The Property Guy</title>
       </Helmet>
       <Container>
-        <PageBreadcrumb items={workspacePage("Recurring Invoices")} />
         <h1 className="pg-h2">Recurring Invoices</h1>
         <div className="pg-alert" style={{ marginBottom: 12 }}>
           Recurring invoices will only be emailed if you confirm permission and configure email sending.

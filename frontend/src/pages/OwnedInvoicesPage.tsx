@@ -17,8 +17,6 @@ import { Section } from "../components/ui/Section";
 import { Card } from "../components/ui/Card";
 import { Field, Input } from "../components/ui/Input";
 import { Button } from "../components/ui/Button";
-import { PageBreadcrumb } from "../components/nav/PageBreadcrumb";
-import { workspacePage } from "../nav/workspaceBreadcrumbs";
 
 export function OwnedInvoicesPage() {
   const [invoicePdfBusyId, setInvoicePdfBusyId] = useState<string | number | null>(null);
@@ -108,7 +106,6 @@ export function OwnedInvoicesPage() {
     <Section>
       <Helmet><title>Invoices | The Property Guy</title></Helmet>
       <Container>
-        <PageBreadcrumb items={workspacePage("Invoices")} />
         <h1 className="pg-h2">Invoices</h1>
         <Card>
           <Field label="Property"><select className="pg-input" value={propertyId} onChange={(e) => setPropertyId(e.target.value === "" ? "" : e.target.value)}>{properties.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></Field>

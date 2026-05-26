@@ -6,8 +6,6 @@ import { Section } from "../components/ui/Section";
 import { Button } from "../components/ui/Button";
 import { getProperties, getTenantsDirectory } from "../api/ownedProperties";
 import { PROPERTY_DATA_INVALIDATION } from "../features/properties/invalidate";
-import { PageBreadcrumb } from "../components/nav/PageBreadcrumb";
-import { workspacePage } from "../nav/workspaceBreadcrumbs";
 import { TenantMetricCards } from "../features/tenants/TenantMetricCards";
 import { TenantControlsBar, type TenantFilters } from "../features/tenants/TenantControlsBar";
 import { TenantDesktopTable } from "../features/tenants/TenantDesktopTable";
@@ -113,7 +111,6 @@ export function TenantsListPage() {
         <title>Tenants | The Property Guy</title>
       </Helmet>
       <Container className="pg-container--tenants-dashboard">
-        <PageBreadcrumb items={workspacePage("Tenants")} />
         <div className="pg-tenants pg-workspace-page">
           <div className="pg-tenants-toolbar">
             <h1 className="pg-h2 pg-tenants-desktop-only" style={{ margin: 0 }}>

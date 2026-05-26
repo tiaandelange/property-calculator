@@ -9,8 +9,6 @@ import { Container } from "../components/ui/Container";
 import { Grid } from "../components/ui/Grid";
 import { Section } from "../components/ui/Section";
 import { Button } from "../components/ui/Button";
-import { PageBreadcrumb } from "../components/nav/PageBreadcrumb";
-import { workspacePage } from "../nav/workspaceBreadcrumbs";
 
 type Report = {
   id: string | number;
@@ -101,7 +99,6 @@ export function DashboardPage() {
         <meta name="description" content="View, generate and download your saved property calculation reports." />
       </Helmet>
       <Container>
-        <PageBreadcrumb items={workspacePage("Saved reports")} />
         <div style={{ display: "flex", gap: 16, alignItems: "flex-end", justifyContent: "space-between", flexWrap: "wrap" }}>
           <div>
             <h1 className="pg-h2" style={{ margin: 0 }}>

@@ -6,8 +6,6 @@ import { Section } from "../components/ui/Section";
 import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
 import { getPortfolioDashboardSummary } from "../api/ownedProperties";
-import { PageBreadcrumb } from "../components/nav/PageBreadcrumb";
-import { workspacePage } from "../nav/workspaceBreadcrumbs";
 import { getChartCategoryPalette } from "../theme/cssTokens";
 
 export function OwnedExpensesMetricsPage() {
@@ -44,7 +42,6 @@ export function OwnedExpensesMetricsPage() {
     <Section>
       <Helmet><title>Expenses | The Property Guy</title></Helmet>
       <Container>
-        <PageBreadcrumb items={workspacePage("Expenses")} />
         <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
           <div>
             <h1 className="pg-h2" style={{ margin: 0 }}>Expenses</h1>

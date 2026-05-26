@@ -5,8 +5,6 @@ import { Section } from "../components/ui/Section";
 import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
 import { getPortfolioDashboardSummary } from "../api/ownedProperties";
-import { PageBreadcrumb } from "../components/nav/PageBreadcrumb";
-import { workspacePage } from "../nav/workspaceBreadcrumbs";
 
 export function OwnedReturnsMetricsPage() {
   const [data, setData] = useState<any>(null);
@@ -34,7 +32,6 @@ export function OwnedReturnsMetricsPage() {
     <Section>
       <Helmet><title>Returns | The Property Guy</title></Helmet>
       <Container>
-        <PageBreadcrumb items={workspacePage("Returns")} />
         <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
           <div>
             <h1 className="pg-h2" style={{ margin: 0 }}>Returns</h1>

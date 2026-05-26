@@ -1,11 +1,8 @@
 import type { ReactNode } from "react";
 import { HomeHeroImage } from "../home/HomeHeroImage";
 import { Container } from "../ui/Container";
-import { PageBreadcrumb } from "../nav/PageBreadcrumb";
-import { calculatorsTrail } from "../../nav/workspaceBreadcrumbs";
 
 export function CalculatorToolHero({
-  breadcrumbCurrent,
   titleBefore,
   accent,
   titleAfter,
@@ -16,7 +13,6 @@ export function CalculatorToolHero({
   loading,
   workspaceBelow
 }: {
-  breadcrumbCurrent: string;
   titleBefore: string;
   accent: string;
   titleAfter: string;
@@ -35,7 +31,6 @@ export function CalculatorToolHero({
         <div className="pg-home-hero-grid pg-calc-hub-hero-grid">
           <div className="pg-home-hero-col--copy">
             <div className="pg-calc-hub-hero-copy-stack">
-              <PageBreadcrumb items={calculatorsTrail(breadcrumbCurrent)} />
               <h1 className="pg-calc-hub-hero-title">
                 {titleBefore}
                 <span className="pg-calc-hub-hero-accent">{accent}</span>

@@ -14,8 +14,6 @@ import { Section } from "../components/ui/Section";
 import { Card } from "../components/ui/Card";
 import { Field, Input } from "../components/ui/Input";
 import { Button } from "../components/ui/Button";
-import { PageBreadcrumb } from "../components/nav/PageBreadcrumb";
-import { workspacePage } from "../nav/workspaceBreadcrumbs";
 
 export function OwnedDocumentsPage() {
   const [properties, setProperties] = useState<any[]>([]);
@@ -94,7 +92,6 @@ export function OwnedDocumentsPage() {
         <title>Documents | The Property Guy</title>
       </Helmet>
       <Container>
-        <PageBreadcrumb items={workspacePage("Documents")} />
         <h1 className="pg-h2">Property documents</h1>
         {error ? (
           <div className="pg-alert pg-alert-error" role="alert">

@@ -5,8 +5,6 @@ import { Section } from "../components/ui/Section";
 import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
 import { getProperties, getProperty } from "../api/ownedProperties";
-import { PageBreadcrumb } from "../components/nav/PageBreadcrumb";
-import { workspacePage } from "../nav/workspaceBreadcrumbs";
 
 export function OwnedRentDueMetricsPage() {
   const [details, setDetails] = useState<any[]>([]);
@@ -63,7 +61,6 @@ export function OwnedRentDueMetricsPage() {
     <Section>
       <Helmet><title>Rent Due / Overdue | The Property Guy</title></Helmet>
       <Container>
-        <PageBreadcrumb items={workspacePage("Rent Due / Overdue")} />
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
           <div>
             <h1 className="pg-h2" style={{ margin: 0 }}>Rent Due / Overdue</h1>

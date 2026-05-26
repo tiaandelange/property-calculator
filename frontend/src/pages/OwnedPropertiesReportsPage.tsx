@@ -3,15 +3,12 @@ import { Container } from "../components/ui/Container";
 import { Section } from "../components/ui/Section";
 import { Card } from "../components/ui/Card";
 import { Link } from "react-router-dom";
-import { PageBreadcrumb } from "../components/nav/PageBreadcrumb";
-import { workspacePage } from "../nav/workspaceBreadcrumbs";
 
 export function OwnedPropertiesReportsPage() {
   return (
     <Section>
       <Helmet><title>Owned Properties Reports | The Property Guy</title></Helmet>
       <Container>
-        <PageBreadcrumb items={workspacePage("Reports")} />
         <h1 className="pg-h2" style={{ marginTop: 0 }}>Reports</h1>
         <Card>
           <div className="pg-muted">

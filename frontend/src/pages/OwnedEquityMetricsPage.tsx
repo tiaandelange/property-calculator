@@ -7,8 +7,6 @@ import { Button } from "../components/ui/Button";
 import { Input } from "../components/ui/Input";
 import { getEquityMetrics, updateEquityMetrics } from "../api/ownedProperties";
 import type { EquityMetricRow } from "../services/equityMetricsSupabase";
-import { PageBreadcrumb } from "../components/nav/PageBreadcrumb";
-import { workspacePage } from "../nav/workspaceBreadcrumbs";
 
 export function OwnedEquityMetricsPage() {
   const [rows, setRows] = useState<EquityMetricRow[]>([]);
@@ -103,7 +101,6 @@ export function OwnedEquityMetricsPage() {
     <Section>
       <Helmet><title>Portfolio Equity | The Property Guy</title></Helmet>
       <Container>
-        <PageBreadcrumb items={workspacePage("Portfolio Equity")} />
         <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
           <div>
             <h1 className="pg-h2" style={{ margin: 0 }}>Portfolio Equity</h1>
