@@ -298,8 +298,9 @@
   display: block;
 }
 
-.pg-tenants-mobile-only {
-  display: none;
+.pg-tenants-mobile-only,
+.pg-tenants-mobile-only.pg-workspace-card-stack {
+  display: none !important;
 }
 
 .pg-tenants-mobile-list {
@@ -453,8 +454,9 @@
     display: none !important;
   }
 
-  .pg-tenants-mobile-only {
-    display: block;
+  .pg-tenants-mobile-only,
+  .pg-tenants-mobile-only.pg-workspace-card-stack {
+    display: grid !important;
   }
 
   .pg-tenants-toolbar h1 {
