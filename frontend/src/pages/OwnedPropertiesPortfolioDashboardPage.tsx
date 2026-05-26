@@ -1,20 +1,32 @@
 import { useEffect, useMemo, useState } from "react";
 import { Helmet } from "react-helmet-async";
-import { Doughnut, Line, Bar } from "react-chartjs-2";
-import { Chart as ChartJS, ArcElement, BarElement, CategoryScale, Legend, LinearScale, LineElement, PointElement, Tooltip } from "chart.js";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
+import { Briefcase, DollarSign, Home, Percent, Users } from "lucide-react";
 import { Container } from "../components/ui/Container";
 import { Section } from "../components/ui/Section";
 import { Button } from "../components/ui/Button";
-import { Card } from "../components/ui/Card";
 import { EmptyState } from "../components/ui/DashboardKit";
-import { getPortfolioDashboardSummary } from "../api/ownedProperties";
+import { getPortfolioDashboardSummary, getProperties, getTenants } from "../api/ownedProperties";
 import { PROPERTY_DATA_INVALIDATION } from "../features/properties/invalidate";
 import { PageBreadcrumb } from "../components/nav/PageBreadcrumb";
 import { PG_WORKSPACE_DASH } from "../nav/workspaceBreadcrumbs";
-import { getChartCategoryPalette, getChartSemanticColors } from "../theme/cssTokens";
-
-ChartJS.register(ArcElement, BarElement, CategoryScale, LinearScale, Legend, Tooltip, PointElement, LineElement);
+import { useAuth } from "../contexts/AuthContext";
+import { PortfolioMetricCard } from "../features/portfolio-dashboard/PortfolioMetricCard";
+import { PortfolioOverviewChart } from "../features/portfolio-dashboard/PortfolioOverviewChart";
+import { RecentActivityPanel } from "../features/portfolio-dashboard/RecentActivityPanel";
+import {
+  RecentPropertiesSection,
+  type RecentPropertyCard
+} from "../features/portfolio-dashboard/RecentPropertiesSection";
+import {
+  changeFromSeries,
+  displayUserName,
+  fmtZar,
+  formatChangeLine,
+  type MonthIncomeExpenseRow,
+  type NoiTrendRow,
+  type PortfolioChartRange
+} from "../features/portfolio-dashboard/portfolioDashboardUtils";
 
 function parseTypesParam(search: string) {
   const raw = new URLSearchParams(search).get("types");
@@ -37,18 +49,16 @@ function parsePropertyParam(search: string): string | number | null {
   return Number.isNaN(n) ? null : n;
 }
 
-function fmtZar(n: unknown): string {
-  const x = Number(n);
-  if (!Number.isFinite(x)) return "—";
-  return `R ${Math.round(x).toLocaleString()}`;
-}
-
 export function OwnedPropertiesPortfolioDashboardPage() {
-  const navigate = useNavigate();
   const { search } = useLocation();
-  const [data, setData] = useState<any>(null);
+  const { session, profile } = useAuth();
+  const [data, setData] = useState<Record<string, unknown> | null>(null);
+  const [properties, setProperties] = useState<Record<string, unknown>[]>([]);
+  const [tenantCount, setTenantCount] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [propertiesLoading, setPropertiesLoading] = useState(false);
   const [error, setError] = useState("");
+  const [chartRange, setChartRange] = useState<PortfolioChartRange>("THIS_YEAR");
   const [selectedTypes, setSelectedTypes] = useState<string[]>(() => parseTypesParam(search));
   const [month, setMonth] = useState<string | null>(() => parseMonthParam(search) ?? new Date().toISOString().slice(0, 7));
   const [propertyId, setPropertyId] = useState<string | number | null>(() => parsePropertyParam(search));
@@ -58,18 +68,35 @@ export function OwnedPropertiesPortfolioDashboardPage() {
     setError("");
     try {
       const res = await getPortfolioDashboardSummary({ propertyTypes: types, month: nextMonth, propertyId: nextPropertyId });
-      setData(res);
-    } catch (e: any) {
+      setData(res as Record<string, unknown>);
+    } catch (e: unknown) {
       console.error("[PortfolioDashboard] load failed", e);
-      setError(e?.response?.data?.message ?? e?.message ?? "Failed to load portfolio dashboard.");
+      const err = e as { response?: { data?: { message?: string } }; message?: string };
+      setError(err?.response?.data?.message ?? err?.message ?? "Failed to load portfolio dashboard.");
     } finally {
       setLoading(false);
     }
   };
 
+  const loadProperties = async () => {
+    setPropertiesLoading(true);
+    try {
+      const [props, tenants] = await Promise.all([getProperties(), getTenants().catch(() => [])]);
+      setProperties(props as Record<string, unknown>[]);
+      setTenantCount(Array.isArray(tenants) ? tenants.length : 0);
+    } catch (e) {
+      console.warn("[PortfolioDashboard] properties list failed", e);
+      setProperties([]);
+      setTenantCount(0);
+    } finally {
+      setPropertiesLoading(false);
+    }
+  };
+
   useEffect(() => {
     void load();
-  }, []); // initial
+    void loadProperties();
+  }, []);
 
   useEffect(() => {
     const next = parseTypesParam(search);
@@ -84,587 +111,265 @@ export function OwnedPropertiesPortfolioDashboardPage() {
   useEffect(() => {
     const handler = () => {
       void load(selectedTypes, month, propertyId);
+      void loadProperties();
     };
     window.addEventListener(PROPERTY_DATA_INVALIDATION, handler);
     return () => window.removeEventListener(PROPERTY_DATA_INVALIDATION, handler);
   }, [selectedTypes, month, propertyId]);
 
-  const hasProperties = (data?.kpis?.totalProperties?.value ?? data?.totalProperties ?? 0) > 0;
-  const chartColors = useMemo(() => getChartSemanticColors(), []);
-  const chartPalette = useMemo(() => getChartCategoryPalette(), []);
+  const k = (data?.kpis ?? {}) as Record<string, unknown>;
+  const hasProperties = Number((k.totalProperties as { value?: number })?.value ?? data?.totalProperties ?? 0) > 0;
 
-  const noiTrend = useMemo(() => {
-    const rows = data?.charts?.monthlyNOITrend ?? [];
-    return {
-      labels: rows.map((r: any) => r.label),
-      datasets: [
-        {
-          label: "Monthly NOI",
-          data: rows.map((r: any) => r.noi),
-          borderColor: chartColors.success,
-          backgroundColor: chartColors.successSoft
-        }
-      ]
-    };
-  }, [data, chartColors]);
-
-  const expenseMix = useMemo(() => {
-    const rows = (data?.charts?.incomeExpenseComposition ?? []).filter((r: any) => r.type === "expense");
-    const labels = rows.map((r: any) => r.category);
-    const values = rows.map((r: any) => r.amount);
-    const colors = labels.map((_l: any, idx: number) => chartPalette[idx % chartPalette.length]);
-    return { labels, datasets: [{ data: values, backgroundColor: colors }] };
-  }, [data, chartPalette]);
-
-  const incomeVsExpenseByProperty = useMemo(() => {
-    const rows = data?.charts?.cashFlowByProperty ?? [];
-    return {
-      labels: rows.map((r: any) => r.name),
-      datasets: [
-        {
-          label: "Income",
-          data: rows.map((r: any) => r.monthlyIncome ?? 0),
-          backgroundColor: chartColors.successSoft,
-          borderColor: chartColors.success
-        },
-        {
-          label: "Expenses",
-          data: rows.map((r: any) => r.monthlyExpenses ?? 0),
-          backgroundColor: chartColors.warningSoft,
-          borderColor: chartColors.warning
-        }
-      ]
-    };
-  }, [data, chartColors]);
-
-  const k = data?.kpis ?? {};
   const monthlyIncomeFromLeases = Number(
-    data?.contractualMonthlyRentFromLeases ?? k?.monthlyNOI?.contractualMonthlyRentFromLeases ?? 0
+    data?.contractualMonthlyRentFromLeases ??
+      (k.monthlyNOI as { contractualMonthlyRentFromLeases?: number })?.contractualMonthlyRentFromLeases ??
+      0
   );
   const monthlyExpensesAllIn = Number(
-    k?.monthlyExpenses?.value ??
-      (Number(data?.totalMonthlyOperatingExpenses ?? 0) + Number(data?.totalMonthlyDebtService ?? 0))
+    (k.monthlyExpenses as { value?: number })?.value ??
+      Number(data?.totalMonthlyOperatingExpenses ?? 0) + Number(data?.totalMonthlyDebtService ?? 0)
   );
   const monthlyLeaseBasisCashFlow = monthlyIncomeFromLeases - monthlyExpensesAllIn;
-  const investedRaw = k?.trueCashOnCashROI?.totalCashInvested;
+  const investedRaw = (k.trueCashOnCashROI as { totalCashInvested?: number })?.totalCashInvested;
   const totalCashInvestedForCoc =
     investedRaw != null && Number(investedRaw) > 0 ? Number(investedRaw) : null;
-  /** Annualised cash-on-cash: (monthly lease-basis cash flow × 12) ÷ cash invested */
   const cashOnCashAnnualPercent =
     totalCashInvestedForCoc != null ? ((monthlyLeaseBasisCashFlow * 12) / totalCashInvestedForCoc) * 100 : null;
 
-  const monthlyOperatingExpenses = Number(k?.monthlyNOI?.operatingExpenses ?? data?.totalMonthlyOperatingExpenses ?? 0);
-  const irrBaselineLabel = (c?: string) => {
-    switch (c) {
-      case "STATEMENT_LEDGER_LEASE_INCOME_FLOOR":
-        return "trailing‑12 · lease rent floor";
-      case "STATEMENT_LEDGER_AVG":
-        return "trailing‑12 ledger";
-      case "EXPECTED_MONTHLY":
-        return "expected monthly (form)";
-      case "MODELED_FALLBACK":
-        return "modeled (lease/STR)";
-      default:
-        return c ?? "—";
-    }
-  };
+  const portfolioEquity = Number(data?.portfolioEquity ?? 0);
+  const totalPropertyCount = Number((k.totalProperties as { value?: number })?.value ?? data?.totalProperties ?? 0);
+  const userName = displayUserName(session?.user?.email, profile?.full_name ?? null);
 
-  const irrVp = k?.portfolioIRR?.valuePercent;
-  const portfolioIrrPct =
-    irrVp != null && Number.isFinite(Number(irrVp)) ? Number(irrVp) : null;
-  const irrDiag = k?.portfolioIRR?.diagnostics as
-    | {
-        statusCode?: string;
-        statusMessage?: string;
-        filteredPropertyCount?: number;
-        eligiblePropertyCount?: number;
-        irrSolveAttempted?: boolean;
-        cf0?: number | null;
-        yearlyCashFlows?: number[];
-        sumUndiscountedCashFlows?: number;
-        holdingHorizonYears?: number;
-        propertyInputs?: Array<{
-          propertyId?: number;
-          propertyName?: string;
-          invested?: number;
-          holdingYears?: number;
-          baseMonthlyIncome?: number;
-          baseMonthlyExpenseTotal?: number;
-          operatingBaseline?: string;
-          bondExitBasis?: string;
-          bondBalanceAtExit?: number;
-        }>;
-      }
-    | undefined;
-  const irrProj = k?.portfolioIRR?.projectionGrowth as
-    | { rentalIncomeGrowthPercentAnnual?: number; totalExpensesGrowthPercentAnnual?: number }
-    | undefined;
+  const charts = (data?.charts ?? {}) as Record<string, unknown>;
+  const mie = (charts.monthlyIncomeExpenses ?? []) as MonthIncomeExpenseRow[];
+  const noiTrend = (charts.monthlyNOITrend ?? []) as NoiTrendRow[];
 
-  const analysisOverTime = k?.portfolioAnalysisOverTime as
-    | {
-        projectionGrowth?: { rentalIncomeGrowthPercentAnnual?: number; totalExpensesGrowthPercentAnnual?: number };
-        appreciationDefaultPercent?: number;
-        bondHorizonCapYears?: number;
-        analysisLimitedByBondSchedule?: boolean;
-        columns?: Array<{
-          year: number;
-          headerLabel: string;
-          totalExpectedIncomeAnnual: number;
-          totalExpensesAnnual: number;
-          totalAnnualCashFlow: number;
-          cashOnCashRoiPercent: number | null;
-          totalPropertyValue: number;
-          totalEquity: number;
-          totalLoanBalance: number;
-          irrPercent: number | null;
-        }>;
-        explanation?: string;
-      }
-    | undefined;
+  const incomeChange = formatChangeLine(
+    changeFromSeries(mie.map((r) => Number(r.income ?? 0)).filter((n) => Number.isFinite(n))) ??
+      changeFromSeries(noiTrend.map((r) => Number(r.income ?? r.noi ?? 0)))
+  );
 
-  const leasesExpiringSoon = Number(data?.leases?.expiringSoon ?? 0);
-  const leasesMonthToMonth = Number(data?.leases?.monthToMonth ?? 0);
-  const rentDueSoon = Number(data?.rentDue?.dueSoon ?? 0);
-  const rentOverdue = Number(data?.rentDue?.overdue ?? 0);
-  const currentValue = Number(data?.totalCurrentEstimatedValue ?? 0);
-  const bondBalance = Number(data?.totalOutstandingBondBalance ?? 0);
-  const missingDocs = Number(data?.missingData?.missingLeaseDocuments ?? 0);
-  const missingExpenses = Number(data?.missingData?.missingExpenseData ?? 0);
-  const missingValues = Number(data?.missingData?.missingCurrentEstimatedValue ?? 0);
-  const missingBonds = Number(data?.missingData?.missingOutstandingBondBalance ?? 0);
-  const negativeCashFlowProps = (data?.charts?.cashFlowByProperty ?? []).filter((r: any) => Number(r.netCashFlow ?? 0) < 0).length;
+  const cashFlowChange = formatChangeLine(changeFromSeries(mie.map((r) => Number(r.netCashFlow ?? 0))));
+
+  const analysisCols = (
+    (k.portfolioAnalysisOverTime as { columns?: Array<{ totalEquity?: number }> })?.columns ?? []
+  ).filter((c) => c.totalEquity != null);
+  const equityChange =
+    analysisCols.length >= 2
+      ? formatChangeLine(
+          changeFromSeries(analysisCols.map((c) => Number(c.totalEquity))) ??
+            null
+        )
+      : formatChangeLine(null);
+
+  const recentPropertyCards = useMemo((): RecentPropertyCard[] => {
+    const leaseIds = new Set(
+      ((charts.leaseTimeline as Array<{ propertyId?: string }>) ?? []).map((r) => String(r.propertyId))
+    );
+    const cashById = new Map(
+      ((charts.cashFlowByProperty as Array<{ propertyId?: string; monthlyIncome?: number; netCashFlow?: number }>) ??
+        []).map((r) => [String(r.propertyId), r])
+    );
+    const negativeIds = new Set(
+      ((charts.cashFlowByProperty as Array<{ propertyId?: string; netCashFlow?: number }>) ?? [])
+        .filter((r) => Number(r.netCashFlow ?? 0) < 0)
+        .map((r) => String(r.propertyId))
+    );
+
+    return [...properties]
+      .sort(
+        (a, b) =>
+          new Date(String(b.createdAt ?? 0)).getTime() - new Date(String(a.createdAt ?? 0)).getTime()
+      )
+      .slice(0, 8)
+      .map((p) => {
+        const id = String(p.id);
+        const cash = cashById.get(id);
+        const address = [p.addressLine1, p.city].filter(Boolean).join(", ") || "Address not set";
+        const hasLease = leaseIds.has(id);
+        const isNegative = negativeIds.has(id);
+        return {
+          id,
+          name: String(p.name ?? "Property"),
+          address,
+          monthlyRent:
+            cash?.monthlyIncome != null
+              ? Number(cash.monthlyIncome)
+              : Number(p.monthlyRent ?? p.combinedMonthlyLeaseRent ?? 0) || null,
+          status: isNegative ? "issue" : hasLease ? "occupied" : "vacant",
+          statusLabel: isNegative ? "Cash flow issue" : undefined
+        } satisfies RecentPropertyCard;
+      });
+  }, [properties, charts]);
+
+  const desktopMetrics = (
+    <div className="pg-pdash-metrics-row pg-pdash-desktop-only">
+      <PortfolioMetricCard
+        label="Total Portfolio Value (Net Worth)"
+        value={loading && !data ? "…" : fmtZar(portfolioEquity)}
+        changeText={equityChange.text}
+        changeTone={equityChange.tone}
+        icon={Briefcase}
+        iconAccent="primary"
+      />
+      <PortfolioMetricCard
+        label="Monthly Income"
+        value={loading && !data ? "…" : fmtZar(monthlyIncomeFromLeases)}
+        changeText={incomeChange.text}
+        changeTone={incomeChange.tone}
+        icon={DollarSign}
+        iconAccent="success"
+      />
+      <PortfolioMetricCard
+        label="Total Properties"
+        value={loading && !data ? "…" : totalPropertyCount.toLocaleString()}
+        changeText="— 0% vs last month"
+        changeTone="neutral"
+        icon={Home}
+        iconAccent="info"
+      />
+      <PortfolioMetricCard
+        label="Cash on Cash ROI"
+        value={
+          loading && !data
+            ? "…"
+            : cashOnCashAnnualPercent == null
+              ? "—"
+              : `${cashOnCashAnnualPercent.toFixed(1)}%`
+        }
+        changeText={cashFlowChange.text}
+        changeTone={cashFlowChange.tone}
+        icon={Percent}
+        iconAccent="warning"
+      />
+    </div>
+  );
+
+  const mobileWelcome = (
+    <div className="pg-pdash-welcome pg-pdash-mobile-only">
+      <p className="pg-pdash-welcome-kicker">Welcome back,</p>
+      <h2 className="pg-pdash-welcome-name">{userName} 👋</h2>
+    </div>
+  );
+
+  const mobileHero = (
+    <div className="pg-pdash-mobile-only">
+      <PortfolioMetricCard
+        label="Total Portfolio Value (Net Worth)"
+        value={loading && !data ? "…" : fmtZar(portfolioEquity)}
+        changeText={equityChange.text}
+        changeTone={equityChange.tone}
+        icon={Briefcase}
+        iconAccent="primary"
+        highlighted
+      />
+      <div className="pg-pdash-mobile-stats">
+        <PortfolioMetricCard
+          label="Properties"
+          value={loading && !data ? "…" : totalPropertyCount.toLocaleString()}
+          icon={Home}
+          iconAccent="info"
+          compact
+        />
+        <PortfolioMetricCard
+          label="Tenants"
+          value={propertiesLoading ? "…" : tenantCount.toLocaleString()}
+          icon={Users}
+          iconAccent="primary"
+          compact
+        />
+        <PortfolioMetricCard
+          label="Monthly Income"
+          value={loading && !data ? "…" : fmtZar(monthlyIncomeFromLeases)}
+          icon={DollarSign}
+          iconAccent="success"
+          compact
+        />
+      </div>
+    </div>
+  );
+
+  const mainPanels = hasProperties ? (
+    <>
+      <div className="pg-pdash-middle pg-pdash-desktop-only">
+        <PortfolioOverviewChart data={data} range={chartRange} onRangeChange={setChartRange} />
+        <RecentActivityPanel data={data} />
+      </div>
+      <div className="pg-pdash-desktop-only">
+        <RecentPropertiesSection properties={recentPropertyCards} loading={propertiesLoading} />
+      </div>
+    </>
+  ) : null;
+
+  const mobileStack = hasProperties ? (
+    <div className="pg-pdash-mobile-stack pg-pdash-mobile-only">
+      <RecentPropertiesSection properties={recentPropertyCards} loading={propertiesLoading} />
+      <PortfolioOverviewChart data={data} range={chartRange} onRangeChange={setChartRange} />
+      <RecentActivityPanel data={data} />
+    </div>
+  ) : null;
 
   return (
     <Section>
-      <Helmet><title>Portfolio Dashboard | The Property Guy</title></Helmet>
+      <Helmet>
+        <title>Portfolio Dashboard | The Property Guy</title>
+      </Helmet>
       <Container>
         <PageBreadcrumb items={[PG_WORKSPACE_DASH, { label: "Portfolio overview" }]} />
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
-          <div>
-            <h1 className="pg-h2" style={{ margin: 0 }}>Portfolio Dashboard</h1>
-            <div className="pg-muted" style={{ marginTop: 6 }}>
-              Monitor performance, risks and next actions across your portfolio.
+        <div className="pg-pdash">
+          <div className="pg-pdash-toolbar">
+            <div>
+              <h1 className="pg-h2" style={{ margin: 0 }}>
+                Portfolio Dashboard
+              </h1>
+              <p className="pg-muted" style={{ marginTop: 6 }}>
+                Monitor performance, risks and next actions across your portfolio.
+              </p>
+            </div>
+            <div className="pg-pdash-toolbar-actions">
+              <Button onClick={() => load()} loading={loading}>
+                Refresh
+              </Button>
+              <Link className="pg-btn pg-btn-secondary" to="/owned-properties/new">
+                Add Property
+              </Link>
+              <Link className="pg-btn pg-btn-ghost" to="/financials">
+                Add income/expense
+              </Link>
+              <Link className="pg-btn pg-btn-ghost" to="/dashboard">
+                My reports
+              </Link>
             </div>
           </div>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "flex-end",
-              gap: 10,
-              flexWrap: "wrap",
-              flex: "1 1 auto",
-              minWidth: 0,
-              marginLeft: "auto"
-            }}
-          >
-            <Button onClick={() => load()} loading={loading}>Refresh</Button>
-            <Link className="pg-btn pg-btn-secondary" to="/owned-properties/new">Add Property</Link>
-            <Link className="pg-btn pg-btn-ghost" to="/financials">Add income/expense</Link>
-            <Link className="pg-btn pg-btn-ghost" to="/dashboard">My reports</Link>
-          </div>
-        </div>
 
-        {!error ? (
-          <div
-            role="status"
-            aria-live="polite"
-            style={{
-              textAlign: "center",
-              marginTop: 18,
-              marginBottom: 0,
-              paddingLeft: 12,
-              paddingRight: 12
-            }}
-          >
-            <p
-              style={{
-                margin: 0,
-                fontSize: "clamp(1rem, 2.2vw, 1.25rem)",
-                fontWeight: 500,
-                lineHeight: 1.35,
-                letterSpacing: "0.03em",
-                color: "var(--text2)"
-              }}
-            >
-              Portfolio Equity / Net Worth:
-            </p>
-            <p
-              style={{
-                margin: "12px 0 0",
-                fontSize: "clamp(1.85rem, 5.5vw, 3rem)",
-                fontWeight: 700,
-                lineHeight: 1.12,
-                letterSpacing: "0.02em",
-                color: "var(--text2)"
-              }}
-            >
-              {loading && data == null
-                ? "…"
-                : `R ${Number(data?.portfolioEquity ?? 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
-            </p>
-          </div>
-        ) : null}
+          {error ? <div className="pg-alert pg-alert-error">{error}</div> : null}
 
-        {error ? <div className="pg-alert pg-alert-error" style={{ marginTop: 12 }}>{error}</div> : null}
-
-        <div style={{ height: 12 }} />
-
-        {!hasProperties && !loading ? (
-          <div style={{ marginTop: 12 }}>
+          {!hasProperties && !loading ? (
             <EmptyState
               title="Add your first property"
               body="Track equity, cash flow, tenants, leases and reports across your portfolio."
               actions={
                 <>
-                  <Link className="pg-btn pg-btn-primary" to="/owned-properties/new">Add Property</Link>
-                  <Link className="pg-btn pg-btn-ghost" to="/calculators/cash-on-cash-return">Open Calculators</Link>
+                  <Link className="pg-btn pg-btn-primary" to="/owned-properties/new">
+                    Add Property
+                  </Link>
+                  <Link className="pg-btn pg-btn-ghost" to="/calculators/cash-on-cash-return">
+                    Open Calculators
+                  </Link>
                 </>
               }
             />
-          </div>
-        ) : null}
-
-        {hasProperties ? (
-          <>
-            <div style={{ height: 12 }} />
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 10 }}>
-              <div className="pg-stat-card" style={{ padding: 14, border: "1px solid rgba(255,255,255,0.06)" }}>
-                <div className="pg-stat-title">Monthly income</div>
-                <div className="pg-stat-value" style={{ color: "var(--success)" }}>R {monthlyIncomeFromLeases.toLocaleString()}</div>
-                <div className="pg-stat-hint">Total contractual rent from active leases.</div>
-              </div>
-              <div className="pg-stat-card" style={{ padding: 14, border: "1px solid rgba(255,255,255,0.06)" }}>
-                <div className="pg-stat-title">Monthly expenses</div>
-                <div className="pg-stat-value">R {monthlyExpensesAllIn.toLocaleString()}</div>
-                <div className="pg-stat-hint">Operating costs plus bond payments.</div>
-              </div>
-              <div className="pg-stat-card" style={{ padding: 14, border: "1px solid rgba(255,255,255,0.06)" }}>
-                <div className="pg-stat-title">Monthly cash flow</div>
-                <div className="pg-stat-value" style={{ color: monthlyLeaseBasisCashFlow >= 0 ? "var(--success)" : "var(--danger)" }}>
-                  R {monthlyLeaseBasisCashFlow.toLocaleString()}
-                </div>
-                <div className="pg-stat-hint">Lease income minus total expenses.</div>
-              </div>
-              <div className="pg-stat-card" style={{ padding: 14, border: "1px solid rgba(255,255,255,0.06)" }}>
-                <div className="pg-stat-title">Cash on cash ROI</div>
-                <div
-                  className="pg-stat-value"
-                  style={{
-                    color:
-                      cashOnCashAnnualPercent == null
-                        ? undefined
-                        : cashOnCashAnnualPercent >= 0
-                          ? "var(--success)"
-                          : "var(--danger)"
-                  }}
-                >
-                  {cashOnCashAnnualPercent == null ? "—" : `${cashOnCashAnnualPercent.toFixed(1)}%`}
-                </div>
-                <div className="pg-stat-hint">Annualised: monthly cash flow × 12 ÷ cash invested.</div>
-              </div>
-            </div>
-
-            <div style={{ height: 10 }} />
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 10 }}>
-              <div className="pg-stat-card" style={{ padding: 14, border: "1px solid rgba(255,255,255,0.06)" }}>
-                <div className="pg-stat-title">Portfolio IRR</div>
-                <div
-                  className="pg-stat-value"
-                  style={{
-                    color:
-                      portfolioIrrPct == null ? undefined : portfolioIrrPct >= 0 ? "var(--success)" : "var(--danger)"
-                  }}
-                >
-                  {portfolioIrrPct == null ? "Insufficient data" : `${portfolioIrrPct.toFixed(2)}%`}
-                </div>
-                {irrDiag ? (
-                  <details style={{ marginTop: 12 }}>
-                    <summary className="pg-muted" style={{ cursor: "pointer", fontSize: 12 }}>
-                      Show IRR calculation detail{irrDiag.statusCode ? ` (${irrDiag.statusCode})` : ""}
-                    </summary>
-                    <div
-                      style={{
-                        marginTop: 10,
-                        paddingTop: 10,
-                        borderTop: "1px solid rgba(255,255,255,0.08)",
-                        fontSize: 12,
-                        lineHeight: 1.5
-                      }}
-                    >
-                      <p style={{ margin: "0 0 8px" }}>{irrDiag.statusMessage ?? "No message."}</p>
-                      <div className="pg-muted" style={{ marginBottom: 6 }}>
-                        Properties in filter: {irrDiag.filteredPropertyCount ?? "—"} · Eligible for IRR:{" "}
-                        {irrDiag.eligiblePropertyCount ?? "—"} · Solver run:{" "}
-                        {irrDiag.irrSolveAttempted ? "yes" : "no"}
-                      </div>
-                      {irrProj ? (
-                        <div className="pg-muted" style={{ marginBottom: 6 }}>
-                          Admin growth assumptions: rental +{irrProj.rentalIncomeGrowthPercentAnnual ?? "—"}% / yr, expenses +
-                          {irrProj.totalExpensesGrowthPercentAnnual ?? "—"}% / yr
-                        </div>
-                      ) : null}
-                      <div style={{ marginBottom: 4 }}>
-                        <strong>CF₀</strong> (upfront, should be negative): {fmtZar(irrDiag.cf0 ?? null)}
-                      </div>
-                      <div style={{ marginBottom: 8 }}>
-                        <strong>Sum of all CF</strong> (undiscounted): {fmtZar(irrDiag.sumUndiscountedCashFlows ?? null)} · Horizon:{" "}
-                        {irrDiag.holdingHorizonYears ?? "—"} yrs
-                      </div>
-                      <div style={{ marginBottom: 6, fontWeight: 600 }}>Yearly portfolio totals (after growth; exit included in final year)</div>
-                      <ul style={{ margin: "0 0 10px", paddingLeft: 18, maxHeight: 160, overflow: "auto" }}>
-                        {(irrDiag.yearlyCashFlows ?? []).map((cf, i) => (
-                          <li key={i}>
-                            Year {i + 1}: {fmtZar(cf)}
-                          </li>
-                        ))}
-                      </ul>
-                      {irrDiag.propertyInputs && irrDiag.propertyInputs.length > 0 ? (
-                        <>
-                          <div style={{ marginBottom: 4, fontWeight: 600 }}>Per-property inputs (baseline & exit bond)</div>
-                          <ul style={{ margin: 0, paddingLeft: 18, maxHeight: 200, overflow: "auto" }}>
-                            {irrDiag.propertyInputs.map((row) => (
-                              <li key={row.propertyId}>
-                                {row.propertyName ?? row.propertyId}: invest {fmtZar(row.invested)}, hold {row.holdingYears ?? "—"} yr, baseline{" "}
-                                {irrBaselineLabel(row.operatingBaseline)}, income/mo {fmtZar(row.baseMonthlyIncome)}, expense/mo {fmtZar(row.baseMonthlyExpenseTotal)}, bond @ exit{" "}
-                                {fmtZar(row.bondBalanceAtExit)} ({row.bondExitBasis ?? "—"})
-                              </li>
-                            ))}
-                          </ul>
-                        </>
-                      ) : null}
-                    </div>
-                  </details>
-                ) : null}
-              </div>
-              <div className="pg-stat-card" style={{ padding: 14, border: "1px solid rgba(255,255,255,0.06)" }}>
-                <div className="pg-stat-title">Total Cash Invested</div>
-                <div className="pg-stat-value">R {Number(k?.trueCashOnCashROI?.totalCashInvested ?? 0).toLocaleString()}</div>
-                <div className="pg-stat-hint">Sum of cash invested across properties in this filter.</div>
-              </div>
-
-              {(() => {
-                const incomeMo = Number(k?.monthlyNOI?.operatingIncomeProjectedFromLeases ?? 0);
-                const opExMo = Number(k?.monthlyExpenses?.operatingExpenses ?? 0);
-                const debtMo = Number(k?.monthlyExpenses?.debtService ?? 0);
-                const netMo = incomeMo - opExMo - debtMo;
-                const currentVal = Number(data?.totalCurrentEstimatedValue ?? 0);
-                const appPctRaw =
-                  analysisOverTime?.appreciationDefaultPercent ?? (analysisOverTime?.projectionGrowth as any)?.appreciationDefaultPercent ?? null;
-                const appPct = appPctRaw != null && Number.isFinite(Number(appPctRaw)) ? Number(appPctRaw) : null;
-
-                const isExcellent = netMo >= 0;
-                const annualShortfall = netMo < 0 ? Math.abs(netMo) * 12 : 0;
-                const annualCapitalGrowth = appPct != null ? currentVal * (appPct / 100) : 0;
-                const isGood = !isExcellent && annualCapitalGrowth >= annualShortfall && annualShortfall > 0;
-                const label = isExcellent ? "Excellent" : isGood ? "Good" : "Poor";
-                const color = isExcellent ? "var(--success)" : isGood ? "var(--warning)" : "var(--danger)";
-                const hint = isExcellent
-                  ? "Cash flow positive."
-                  : isGood
-                    ? "Cash flow negative, but capital growth covers the annual shortfall."
-                    : "Cash flow negative and not covered by capital growth.";
-
-                return (
-                  <div className="pg-stat-card" style={{ padding: 14, border: "1px solid rgba(255,255,255,0.06)" }}>
-                    <div className="pg-stat-title">Property Investment Index</div>
-                    <div className="pg-stat-value" style={{ color }}>
-                      {label}
-                      {!isExcellent && !isGood ? " - Red" : ""}
-                    </div>
-                    <div className="pg-stat-hint">{hint}</div>
-                  </div>
-                );
-              })()}
-
-              <div className="pg-stat-card" style={{ padding: 14, border: "1px solid rgba(255,255,255,0.06)" }}>
-                <div className="pg-stat-title">Term Left</div>
-                <div className="pg-stat-value">
-                  {analysisOverTime?.bondHorizonCapYears != null ? `${Number(analysisOverTime.bondHorizonCapYears).toLocaleString()} yrs` : "—"}
-                </div>
-                <div className="pg-stat-hint">Longest remaining bond horizon in the current filter.</div>
-              </div>
-            </div>
-
-            <div style={{ height: 12 }} />
-            <Card title="Analysis over time">
-              <p className="pg-muted" style={{ margin: "0 0 12px", fontSize: 13, lineHeight: 1.5 }}>
-                Projected annually from the same operating baselines as portfolio IRR (expected monthly when set; otherwise trailing‑12 averages). Income and expenses grow at{" "}
-                <strong>
-                  +{(analysisOverTime?.projectionGrowth?.rentalIncomeGrowthPercentAnnual ?? irrProj?.rentalIncomeGrowthPercentAnnual ?? "—")}%
-                </strong>{" "}
-                and{" "}
-                <strong>
-                  +{(analysisOverTime?.projectionGrowth?.totalExpensesGrowthPercentAnnual ?? irrProj?.totalExpensesGrowthPercentAnnual ?? "—")}%
-                </strong>{" "}
-                per year (admin defaults). Values appreciate per property (blank →{" "}
-                {analysisOverTime?.appreciationDefaultPercent ?? "—"}% p.a.). Loans amortise when rate and payment resolve. Cash‑on‑cash uses total cash invested on the dashboard.                 Column headings use ownership years from the earliest{" "}
-                <strong>purchase date</strong> in your filter when those dates are saved on the property; if none are set, headings stay projection years 1–30 instead.{" "}
-                {analysisOverTime?.analysisLimitedByBondSchedule ? (
-                  <>
-                    Horizons stop at <strong>{analysisOverTime.bondHorizonCapYears ?? "—"} years</strong> forward — the longest bond payoff schedule in this filter (original term + start date, or manual months remaining).
-                  </>
-                ) : (
-                  <>With no resolved bond schedules in the filter, milestones run through 30 years.</>
-                )}{" "}
-                <strong>Portfolio IRR</strong> in the table is solved for the same IRR-eligible properties as the headline card, assuming sale at the <em>end</em> of that column’s horizon (operating flows through that year plus net sale proceeds).
-              </p>
-              {analysisOverTime?.columns?.length ? (
-                <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
-                  <table
-                    style={{
-                      width: "100%",
-                      minWidth: 720,
-                      borderCollapse: "collapse",
-                      fontSize: 13
-                    }}
-                  >
-                    <thead>
-                      <tr>
-                        <th
-                          scope="col"
-                          style={{
-                            textAlign: "left",
-                            padding: "10px 8px",
-                            borderBottom: "1px solid rgba(255,255,255,0.12)",
-                            whiteSpace: "nowrap"
-                          }}
-                        >
-                          Metric
-                        </th>
-                        {analysisOverTime.columns.map((col) => (
-                          <th
-                            key={col.year}
-                            scope="col"
-                            style={{
-                              textAlign: "right",
-                              padding: "10px 8px",
-                              borderBottom: "1px solid rgba(255,255,255,0.12)",
-                              whiteSpace: "nowrap",
-                              fontWeight: 600
-                            }}
-                          >
-                            {col.headerLabel}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {(
-                        [
-                          {
-                            label: "Total expected income",
-                            pick: (c: (typeof analysisOverTime.columns)[0]) => fmtZar(c.totalExpectedIncomeAnnual)
-                          },
-                          {
-                            label: "Total expenses",
-                            pick: (c: (typeof analysisOverTime.columns)[0]) => fmtZar(c.totalExpensesAnnual)
-                          },
-                          {
-                            label: "Total annual cash flow",
-                            pick: (c: (typeof analysisOverTime.columns)[0]) => fmtZar(c.totalAnnualCashFlow)
-                          },
-                          {
-                            label: "Cash-on-cash ROI",
-                            pick: (c: (typeof analysisOverTime.columns)[0]) =>
-                              c.cashOnCashRoiPercent == null || !Number.isFinite(c.cashOnCashRoiPercent)
-                                ? "—"
-                                : `${c.cashOnCashRoiPercent.toFixed(1)}%`
-                          },
-                          {
-                            label: "Property value",
-                            pick: (c: (typeof analysisOverTime.columns)[0]) => fmtZar(c.totalPropertyValue)
-                          },
-                          {
-                            label: "Equity",
-                            pick: (c: (typeof analysisOverTime.columns)[0]) => fmtZar(c.totalEquity)
-                          },
-                          {
-                            label: "Loan balance",
-                            pick: (c: (typeof analysisOverTime.columns)[0]) => fmtZar(c.totalLoanBalance)
-                          },
-                          {
-                            label: "Portfolio IRR",
-                            pick: (c: (typeof analysisOverTime.columns)[0]) =>
-                              c.irrPercent == null || !Number.isFinite(c.irrPercent) ? "—" : `${c.irrPercent.toFixed(2)}%`
-                          }
-                        ] as const
-                      ).map((row) => (
-                        <tr key={row.label}>
-                          <th
-                            scope="row"
-                            style={{
-                              textAlign: "left",
-                              padding: "8px",
-                              borderBottom: "1px solid rgba(255,255,255,0.06)",
-                              fontWeight: 500,
-                              whiteSpace: "nowrap"
-                            }}
-                          >
-                            {row.label}
-                          </th>
-                          {analysisOverTime.columns!.map((col) => (
-                            <td
-                              key={`${row.label}-${col.year}`}
-                              style={{
-                                textAlign: "right",
-                                padding: "8px",
-                                borderBottom: "1px solid rgba(255,255,255,0.06)",
-                                fontVariantNumeric: "tabular-nums"
-                              }}
-                            >
-                              {row.pick(col)}
-                            </td>
-                          ))}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <div className="pg-muted">No projection columns returned.</div>
-              )}
-            </Card>
-
-            <div style={{ height: 12 }} />
-            <Card title="Alerts & next actions">
-              <div style={{ display: "grid", gap: 8 }}>
-                {rentOverdue > 0 ? <Link className="pg-link" to="/invoices">Overdue rent ({rentOverdue}) — review invoices</Link> : null}
-                {rentDueSoon > 0 ? <Link className="pg-link" to="/invoices">Rent due soon ({rentDueSoon}) — follow up early</Link> : null}
-                {leasesExpiringSoon > 0 ? <Link className="pg-link" to="/leases">Leases expiring soon ({leasesExpiringSoon}) — plan renewals</Link> : null}
-                {leasesMonthToMonth > 0 ? <Link className="pg-link" to="/leases">Month-to-month leases ({leasesMonthToMonth}) — confirm terms</Link> : null}
-                {missingDocs > 0 ? <Link className="pg-link" to="/documents">Missing documents ({missingDocs}) — upload agreements</Link> : null}
-                {missingExpenses > 0 ? <Link className="pg-link" to="/financials">No expense data ({missingExpenses}) — capture operating costs</Link> : null}
-                {negativeCashFlowProps > 0 ? <Link className="pg-link" to="/owned-properties/my-properties?sort=LOWEST_CASH">Negative cash flow ({negativeCashFlowProps}) — review costs</Link> : null}
-                {missingValues + missingBonds > 0 ? (
-                  <Link className="pg-link" to="/owned-properties/metrics/equity">
-                    Missing value/bond figures ({missingValues + missingBonds}) — update equity inputs
-                  </Link>
-                ) : null}
-                {!rentOverdue && !rentDueSoon && !leasesExpiringSoon && !leasesMonthToMonth && !missingDocs && !missingExpenses && !negativeCashFlowProps && !(missingValues + missingBonds) ? (
-                  <div className="pg-muted">No urgent alerts based on your current filters.</div>
-                ) : null}
-              </div>
-            </Card>
-
-            <div style={{ height: 12 }} />
-            <div style={{ display: "grid", gridTemplateColumns: "3fr 2fr", gap: 12, alignItems: "stretch" }}>
-              <Card title="Monthly NOI trend">
-                <Line data={noiTrend} />
-              </Card>
-              <Card title="Expense mix (month)">
-                {(data?.charts?.incomeExpenseComposition?.length ?? 0) ? <Doughnut data={expenseMix} /> : <div className="pg-muted">No expense data captured yet.</div>}
-              </Card>
-            </div>
-
-            <div style={{ height: 12 }} />
-            <Card title="Income vs expenses by property (month)">
-              {(data?.charts?.cashFlowByProperty?.length ?? 0) ? <Bar data={incomeVsExpenseByProperty} /> : <div className="pg-muted">No property-level financials available yet.</div>}
-            </Card>
-          </>
-        ) : null}
+          ) : (
+            <>
+              {mobileWelcome}
+              {desktopMetrics}
+              {mobileHero}
+              {mainPanels}
+              {mobileStack}
+            </>
+          )}
+        </div>
       </Container>
     </Section>
   );
 }
-
