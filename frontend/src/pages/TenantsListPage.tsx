@@ -3,25 +3,74 @@ import { Helmet } from "react-helmet-async";
 import { Link } from "react-router-dom";
 import { Container } from "../components/ui/Container";
 import { Section } from "../components/ui/Section";
-import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
-import { getTenants } from "../api/ownedProperties";
+import { getProperties, getTenantsDirectory } from "../api/ownedProperties";
+import { PROPERTY_DATA_INVALIDATION } from "../features/properties/invalidate";
 import { PageBreadcrumb } from "../components/nav/PageBreadcrumb";
 import { workspacePage } from "../nav/workspaceBreadcrumbs";
+import { TenantMetricCards } from "../features/tenants/TenantMetricCards";
+import { TenantControlsBar, type TenantFilters } from "../features/tenants/TenantControlsBar";
+import { TenantDesktopTable } from "../features/tenants/TenantDesktopTable";
+import { TenantMobileList } from "../features/tenants/TenantMobileCard";
+import { TenantPagination } from "../features/tenants/TenantPagination";
+import type { TenantDirectoryMetrics, TenantListItem } from "../features/tenants/tenantDirectoryTypes";
+import { PAGE_SIZE, paginate } from "../features/tenants/tenantDirectoryUtils";
+
+const EMPTY_METRICS: TenantDirectoryMetrics = {
+  totalTenants: 0,
+  activeLeases: 0,
+  pendingPaymentsTotal: 0,
+  pendingPaymentsCount: 0,
+  renewalsDue: 0
+};
+
+function matchesFilters(item: TenantListItem, filters: TenantFilters): boolean {
+  const q = filters.q.trim().toLowerCase();
+  if (q) {
+    const hay = `${item.fullName} ${item.email ?? ""} ${item.phone ?? ""} ${item.propertyName ?? ""} ${item.propertyAddress ?? ""}`.toLowerCase();
+    if (!hay.includes(q)) return false;
+  }
+  if (filters.propertyId !== "ALL" && item.propertyId !== filters.propertyId) return false;
+  if (filters.leaseStatus !== "ALL" && item.leaseStatus !== filters.leaseStatus) return false;
+  if (filters.paymentStatus !== "ALL" && item.paymentStatus !== filters.paymentStatus) return false;
+  return true;
+}
 
 export function TenantsListPage() {
-  const [rows, setRows] = useState<any[]>([]);
+  const [items, setItems] = useState<TenantListItem[]>([]);
+  const [metrics, setMetrics] = useState<TenantDirectoryMetrics>(EMPTY_METRICS);
+  const [properties, setProperties] = useState<Array<{ id: string; name: string }>>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [page, setPage] = useState(1);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [filters, setFilters] = useState<TenantFilters>({
+    q: "",
+    propertyId: "ALL",
+    leaseStatus: "ALL",
+    paymentStatus: "ALL"
+  });
 
   const load = async () => {
     setLoading(true);
     setError("");
     try {
-      setRows(await getTenants());
-    } catch (e: any) {
+      const [directory, props] = await Promise.all([
+        getTenantsDirectory(),
+        getProperties().catch(() => [])
+      ]);
+      setItems(directory.items);
+      setMetrics(directory.metrics);
+      setProperties(
+        (props as Array<Record<string, unknown>>).map((p) => ({
+          id: String(p.id),
+          name: String(p.name ?? "Property")
+        }))
+      );
+    } catch (e: unknown) {
       console.error("[TenantsList] Load failed", e);
-      setError(e?.response?.data?.message ?? "Failed to load tenants.");
+      const err = e as { response?: { data?: { message?: string } }; message?: string };
+      setError(err?.response?.data?.message ?? err?.message ?? "Failed to load tenants.");
     } finally {
       setLoading(false);
     }
@@ -31,45 +80,105 @@ export function TenantsListPage() {
     void load();
   }, []);
 
-  const sorted = useMemo(() => {
-    return [...rows].sort((a, b) => `${a.lastName ?? ""}`.localeCompare(`${b.lastName ?? ""}`));
-  }, [rows]);
+  useEffect(() => {
+    const handler = () => void load();
+    window.addEventListener(PROPERTY_DATA_INVALIDATION, handler);
+    return () => window.removeEventListener(PROPERTY_DATA_INVALIDATION, handler);
+  }, []);
+
+  useEffect(() => {
+    setPage(1);
+  }, [filters.q, filters.propertyId, filters.leaseStatus, filters.paymentStatus]);
+
+  const filtered = useMemo(
+    () => items.filter((t) => matchesFilters(t, filters)).sort((a, b) => a.lastName.localeCompare(b.lastName)),
+    [items, filters]
+  );
+
+  const { slice: pageItems, totalPages } = useMemo(
+    () => paginate(filtered, page, PAGE_SIZE),
+    [filtered, page]
+  );
+
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
+
+  const patchFilters = (next: Partial<TenantFilters>) => {
+    setFilters((prev) => ({ ...prev, ...next }));
+  };
 
   return (
     <Section>
-      <Helmet><title>Tenants | The Property Guy</title></Helmet>
-      <Container>
+      <Helmet>
+        <title>Tenants | The Property Guy</title>
+      </Helmet>
+      <Container className="pg-container--tenants-dashboard">
         <PageBreadcrumb items={workspacePage("Tenants")} />
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-          <h1 className="pg-h2" style={{ margin: 0 }}>Tenants</h1>
-          <div style={{ display: "flex", gap: 10 }}>
-            <Button onClick={load} loading={loading}>Refresh</Button>
-            <Link className="pg-btn pg-btn-primary" to="/tenants/new">Add Tenant</Link>
+        <div className="pg-tenants">
+          <div className="pg-tenants-toolbar">
+            <h1 className="pg-h2 pg-tenants-desktop-only" style={{ margin: 0 }}>
+              Tenants
+            </h1>
+            <div className="pg-tenants-toolbar-actions pg-tenants-desktop-only">
+              <Button onClick={() => load()} loading={loading}>
+                Refresh
+              </Button>
+            </div>
           </div>
-        </div>
-        {error ? <div className="pg-alert pg-alert-error" style={{ marginTop: 12 }}>{error}</div> : null}
-        <div style={{ height: 12 }} />
-        <Card title="Tenant directory">
-          <div style={{ display: "grid", gap: 8 }}>
-            {sorted.map((t) => (
-              <div key={t.id} style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
-                <div>
-                  <Link className="pg-link" to={`/tenants/${t.id}`}>
-                    {t.firstName} {t.lastName}
-                  </Link>
-                  <div className="pg-muted">
-                    {t.property?.name ? `Property: ${t.property.name}` : "Property: -"}{" "}
-                    {t.phone ? `| Phone: ${t.phone}` : ""} {t.email ? `| Email: ${t.email}` : ""}
-                  </div>
-                </div>
-                <div className="pg-muted">Status: {t.status}</div>
+
+          {error ? <div className="pg-alert pg-alert-error">{error}</div> : null}
+
+          <TenantMetricCards metrics={metrics} loading={loading && !items.length} />
+
+          <TenantControlsBar
+            filters={filters}
+            onChange={patchFilters}
+            properties={properties}
+            filtersOpen={filtersOpen}
+            onToggleFilters={() => setFiltersOpen((o) => !o)}
+          />
+
+          <TenantControlsBar
+            filters={filters}
+            onChange={patchFilters}
+            properties={properties}
+            filtersOpen={filtersOpen}
+            onToggleFilters={() => setFiltersOpen((o) => !o)}
+            mobile
+          />
+
+          <section className="pg-tenants-list-panel" aria-busy={loading}>
+            {!loading && filtered.length === 0 ? (
+              <div className="pg-tenants-empty">
+                <h2>No tenants found</h2>
+                <p>
+                  {items.length === 0
+                    ? "Add your first tenant to start tracking leases and rent."
+                    : "Try adjusting your search or filters."}
+                </p>
+                <Link className="pg-btn pg-btn-primary" to="/tenants/new">
+                  Add Tenant
+                </Link>
               </div>
-            ))}
-            {!sorted.length && !loading ? <div className="pg-muted">No tenants yet.</div> : null}
-          </div>
-        </Card>
+            ) : (
+              <>
+                <div className="pg-tenants-desktop-only">
+                  <TenantDesktopTable items={pageItems} loading={loading} />
+                </div>
+                <div className="pg-tenants-mobile-only">
+                  <TenantMobileList items={pageItems} loading={loading} />
+                </div>
+                <TenantPagination
+                  page={page}
+                  totalItems={filtered.length}
+                  onPageChange={setPage}
+                />
+              </>
+            )}
+          </section>
+        </div>
       </Container>
     </Section>
   );
 }
-

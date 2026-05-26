@@ -2,6 +2,8 @@ import type { PostgrestError } from "@supabase/supabase-js";
 import { getSupabase } from "../lib/supabaseClient";
 import { snakeRowToCamel } from "../api/propertyRowMapping";
 import { dbToTenant, tenantToDb } from "../api/tenantRowMapping";
+import { buildTenantDirectory } from "../features/tenants/tenantDirectoryAdapter";
+import type { TenantDirectoryMetrics, TenantListItem } from "../features/tenants/tenantDirectoryTypes";
 
 const ACTIVE_LEASE = ["ACTIVE", "MONTH_TO_MONTH"] as const;
 
@@ -40,6 +42,55 @@ const TENANT_SELECT_WITH_PROPERTY = `
   *,
   properties (*)
 `;
+
+const LEASE_SELECT_WITH_PROPERTY = `
+  *,
+  properties ( id, name, address_line1, address_line2, suburb, city )
+`;
+
+/**
+ * Tenants directory: tenants + leases + open invoices for list UI (RLS-scoped).
+ */
+export async function listTenantsDirectory(): Promise<{
+  items: TenantListItem[];
+  metrics: TenantDirectoryMetrics;
+}> {
+  const uid = await requireUserId();
+  const sb = getSupabase();
+
+  const { data: tenantRows, error: tErr } = await sb
+    .from("tenants")
+    .select(TENANT_SELECT_WITH_PROPERTY)
+    .eq("user_id", uid)
+    .order("created_at", { ascending: false });
+  if (tErr) throw toError(tErr);
+
+  const rows = (tenantRows ?? []) as Record<string, unknown>[];
+  const tenantIds = rows.map((r) => String((r as { id: string }).id)).filter(Boolean);
+
+  if (!tenantIds.length) {
+    return buildTenantDirectory([], [], []);
+  }
+
+  const [leasesRes, invoicesRes] = await Promise.all([
+    sb
+      .from("leases")
+      .select(LEASE_SELECT_WITH_PROPERTY)
+      .eq("user_id", uid)
+      .in("tenant_id", tenantIds)
+      .order("created_at", { ascending: false }),
+    sb
+      .from("invoices")
+      .select("id, tenant_id, due_date, status, total, paid_at, property_id")
+      .eq("user_id", uid)
+      .in("tenant_id", tenantIds)
+  ]);
+
+  if (leasesRes.error) throw toError(leasesRes.error);
+  if (invoicesRes.error) throw toError(invoicesRes.error);
+
+  return buildTenantDirectory(rows, (leasesRes.data ?? []) as Record<string, unknown>[], (invoicesRes.data ?? []) as Record<string, unknown>[]);
+}
 
 /** All tenants for the signed-in user (RLS). */
 export async function listTenants(): Promise<Record<string, unknown>[]> {

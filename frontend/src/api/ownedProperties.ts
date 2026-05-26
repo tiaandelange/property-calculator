@@ -73,6 +73,11 @@ export async function getTenants() {
   return tenantsSupabase.listTenants();
 }
 
+export async function getTenantsDirectory() {
+  assertSupabaseConfigured();
+  return tenantsSupabase.listTenantsDirectory();
+}
+
 export async function createTenant(payload: Record<string, unknown>) {
   assertSupabaseConfigured();
   return tenantsSupabase.createTenant(payload);
