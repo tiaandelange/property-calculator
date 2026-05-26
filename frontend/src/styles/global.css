@@ -3470,12 +3470,17 @@ html[data-theme="light"] .pg-color-scheme-switch[data-on="false"] .pg-color-sche
   justify-content: flex-start;
 }
 
+/* IconContainer supplies the rounded square; slot is layout-only (see hero launcher). */
 .pg-home-qstart-card .pg-home-calculator-icon-slot {
-  width: 48px;
-  height: 48px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--home-qstart-icon-border);
-  background: var(--home-qstart-icon-bg);
+  width: auto;
+  height: auto;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  border-radius: 0;
+  box-shadow: none;
 }
 
 .pg-home-qstart-card .pg-home-calculator-icon-img {
@@ -5099,20 +5104,21 @@ html[data-theme="light"] .pg-color-scheme-switch[data-on="false"] .pg-color-sche
 
 .pg-home-calculator-icon-slot,
 .pg-home-feature-icon-slot {
-  width: 48px;
-  height: 48px;
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: var(--radius-md);
-  border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
-  background: color-mix(in srgb, var(--text-primary) 4%, transparent);
-  color: var(--text2);
+  line-height: 0;
 }
 
-.pg-home-feature-icon-slot {
-  border-color: color-mix(in srgb, var(--primary) 28%, transparent);
+.pg-home-quick-card--with-icon .pg-home-calculator-icon-slot {
+  width: auto;
+  height: auto;
+  padding: 0;
+  border: none;
+  background: transparent;
+  border-radius: 0;
+  box-shadow: none;
 }
 
 .pg-home-calculator-icon-img,
