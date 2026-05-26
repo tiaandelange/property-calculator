@@ -30,7 +30,8 @@ import { OwnedPropertiesPortfolioDashboardPage } from "../pages/OwnedPropertiesP
 import { OwnedPropertiesReportsPage } from "../pages/OwnedPropertiesReportsPage";
 import { TenantsListPage } from "../pages/TenantsListPage";
 import { TenantFormPage } from "../pages/TenantFormPage";
-import { TenantDetailPage } from "../pages/TenantDetailPage";
+import { TenantWorkspacePage } from "../pages/TenantWorkspacePage";
+import { TenantInvoiceEditorPage } from "../pages/TenantInvoiceEditorPage";
 import { OwnedValuationsMetricsPage } from "../pages/OwnedValuationsMetricsPage";
 import { OwnedBondsMetricsPage } from "../pages/OwnedBondsMetricsPage";
 import { OwnedReturnsMetricsPage } from "../pages/OwnedReturnsMetricsPage";
@@ -196,7 +197,9 @@ export function App() {
         <Route path="/documents" element={<RequireAuth><OwnedDocumentsPage /></RequireAuth>} />
         <Route path="/tenants" element={<RequireAuth><TenantsListPage /></RequireAuth>} />
         <Route path="/tenants/new" element={<RequireAuth><TenantFormPage /></RequireAuth>} />
-        <Route path="/tenants/:id" element={<RequireAuth><TenantDetailPage /></RequireAuth>} />
+        <Route path="/tenants/:id/invoices/new" element={<RequireAuth><TenantInvoiceEditorPage /></RequireAuth>} />
+        <Route path="/tenants/:id/invoices/:invoiceId" element={<RequireAuth><TenantInvoiceEditorPage /></RequireAuth>} />
+        <Route path="/tenants/:id" element={<RequireAuth><TenantWorkspacePage /></RequireAuth>} />
         <Route path="/tenants/:id/edit" element={<RequireAuth><TenantFormPage /></RequireAuth>} />
         <Route path="/account" element={<RequireAuth><AccountPage /></RequireAuth>} />
         <Route path="/subscription" element={<SubscriptionPage />} />
