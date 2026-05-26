@@ -6,8 +6,11 @@ import {
 } from "./portfolioProjectionUtils";
 import { fmtZar } from "./portfolioDashboardUtils";
 
-const COLUMNS: { key: keyof PortfolioProjectionYearRow; label: string; format: "year" | "zar" | "pct" }[] = [
-  { key: "year", label: "Year", format: "year" },
+const METRIC_ROWS: {
+  key: Exclude<keyof PortfolioProjectionYearRow, "year">;
+  label: string;
+  format: "zar" | "pct";
+}[] = [
   { key: "equity", label: "Equity", format: "zar" },
   { key: "cashFlow", label: "Cash flow", format: "zar" },
   { key: "income", label: "Income", format: "zar" },
@@ -17,13 +20,15 @@ const COLUMNS: { key: keyof PortfolioProjectionYearRow; label: string; format: "
   { key: "irr", label: "IRR", format: "pct" }
 ];
 
-function formatCellForColumn(row: PortfolioProjectionYearRow, col: (typeof COLUMNS)[number]): string {
-  if (col.format === "year") return String(row.year);
-  if (col.format === "pct") {
-    const v = row[col.key];
+function formatMetricValue(
+  row: PortfolioProjectionYearRow,
+  metric: (typeof METRIC_ROWS)[number]
+): string {
+  if (metric.format === "pct") {
+    const v = row[metric.key];
     return fmtPct(typeof v === "number" ? v : null);
   }
-  const v = row[col.key];
+  const v = row[metric.key];
   return typeof v === "number" ? fmtZar(v) : "—";
 }
 
@@ -38,7 +43,7 @@ export function PortfolioDetailedOverviewTable({
   propertyTypes?: string[];
   propertyId?: string | number | null;
 }) {
-  const rows = useMemo(
+  const yearColumns = useMemo(
     () =>
       buildPortfolioProjectionYears(data, properties, {
         propertyTypes: propertyTypes ?? [],
@@ -52,29 +57,31 @@ export function PortfolioDetailedOverviewTable({
       <div className="pg-pdash-panel-head">
         <h2 className="pg-pdash-panel-title">Detailed Overview</h2>
       </div>
-      {rows.length === 0 ? (
+      {yearColumns.length === 0 ? (
         <p className="pg-pdash-empty-inline">
           Add property values, income, and cash invested to generate a 30-year projection.
         </p>
       ) : (
         <div className="pg-pdash-projection-table-wrap">
-          <table className="pg-pdash-projection-table">
+          <table className="pg-pdash-projection-table pg-pdash-projection-table--transposed">
             <thead>
               <tr>
-                {COLUMNS.map((col) => (
-                  <th key={col.key} scope="col">
-                    {col.label}
+                <th scope="col" className="pg-pdash-projection-table-corner">
+                  {/* Row labels below */}
+                </th>
+                {yearColumns.map((col) => (
+                  <th key={col.year} scope="col">
+                    Year {col.year}
                   </th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {rows.map((row) => (
-                <tr key={row.year}>
-                  {COLUMNS.map((col) => (
-                    <td key={col.key} data-label={col.label}>
-                      {formatCellForColumn(row, col)}
-                    </td>
+              {METRIC_ROWS.map((metric) => (
+                <tr key={metric.key}>
+                  <th scope="row">{metric.label}</th>
+                  {yearColumns.map((col) => (
+                    <td key={col.year}>{formatMetricValue(col, metric)}</td>
                   ))}
                 </tr>
               ))}
@@ -82,7 +89,7 @@ export function PortfolioDetailedOverviewTable({
           </table>
         </div>
       )}
-      {rows.length > 0 ? (
+      {yearColumns.length > 0 ? (
         <p className="pg-pdash-chart-note">
           Projections use admin growth defaults and property assumptions — illustrative, not stored.
         </p>
