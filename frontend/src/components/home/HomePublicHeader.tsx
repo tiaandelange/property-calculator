@@ -5,6 +5,7 @@ import {
   type CalculatorMegaMenuGroup,
   type CalculatorMegaMenuItem
 } from "../../data/calculatorMegaMenu";
+import { CalculatorIconDisplay } from "../icons/CalculatorIconDisplay";
 import { HomeBrandWordmark } from "./HomeBrandWordmark";
 
 const CALCULATOR_MEGA_MENU_GROUPS = getCalculatorMegaMenuGroups();
@@ -261,14 +262,10 @@ export function HomePublicHeader() {
                                       className="pg-home-site-header-mega-item"
                                       tabIndex={calculatorsMegaOpen ? 0 : -1}
                                     >
-                                      <img
+                                      <CalculatorIconDisplay
+                                        slug={cal.slug}
+                                        size="md"
                                         className="pg-home-site-header-mega-item-icon"
-                                        src={cal.iconSrc}
-                                        alt=""
-                                        width={40}
-                                        height={40}
-                                        loading="lazy"
-                                        decoding="async"
                                       />
                                       <span className="pg-home-site-header-mega-item-text">
                                         <span className="pg-home-site-header-mega-item-title">{cal.name}</span>
@@ -363,14 +360,10 @@ export function HomePublicHeader() {
                               className="pg-home-site-drawer-mega-item"
                               onClick={closeDrawer}
                             >
-                              <img
+                              <CalculatorIconDisplay
+                                slug={cal.slug}
+                                size="sm"
                                 className="pg-home-site-drawer-mega-item-icon"
-                                src={cal.iconSrc}
-                                alt=""
-                                width={36}
-                                height={36}
-                                loading="lazy"
-                                decoding="async"
                               />
                               <span className="pg-home-site-drawer-mega-item-text">
                                 <span className="pg-home-site-drawer-mega-item-title">{cal.name}</span>

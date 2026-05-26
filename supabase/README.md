@@ -42,6 +42,15 @@ Run `migrations/20260521120000_rls_core_crud_split_policies.sql` **after** Phase
 
 After apply, use `TEST_RLS_MANUAL.sql` (JWT / PostgREST isolation scenarios) alongside `VERIFY_RLS.sql` (metadata). Application tasks deferred during SQL-only work live in `docs/FOLLOW_UP_RLS_AND_APP_CUTOVER.md`.
 
+## Bootstrap admin (owner, no Stripe)
+
+Run `migrations/20260530120000_bootstrap_admin_delangetiaan.sql` after auth profile provisioning. It:
+
+- Promotes `delangetiaan13@gmail.com` to `profiles.role = ADMIN` and `subscription_status = SUBSCRIBED` (unlimited calculators + admin panel + projection defaults).
+- Updates `handle_new_user()` so the same email gets those defaults on signup.
+
+To add another bootstrap admin later, append their email to the array inside `public.is_bootstrap_admin_email()` and re-run the migration’s `UPDATE` block (or run an equivalent `UPDATE` in the SQL editor).
+
 ## Validation
 
 There is no `supabase/config.toml` in this repo yet. Validate by:

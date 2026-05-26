@@ -1,6 +1,6 @@
-import type { HomepageFeatureIconKey } from "./homepageAssets";
+import type { HomepageFeatureIconKey } from "../icons/featureIcons";
 
-/** Homepage “Why us” feature tiles — copy and icon keys only (paths live in `homepageAssets`). */
+/** Homepage “Why us” feature tiles — copy and icon keys only. */
 export type HomepageFeatureBenefit = {
   id: string;
   title: string;

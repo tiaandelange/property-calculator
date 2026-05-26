@@ -32,7 +32,7 @@ export function HomeHeroFloatingLauncher() {
           {items.map((c) => (
             <li key={c.id}>
               <Link to={c.route} className="pg-home-hero-launcher-link">
-                <HomeCalculatorIcon slug={c.templateKey} label={c.title} iconSrc={c.icon} />
+                <HomeCalculatorIcon slug={c.templateKey} label={c.title} />
                 <span className="pg-home-hero-launcher-link-text">
                   {homepageCalculatorLauncherShortTitle(c.title)}
                 </span>

@@ -92,7 +92,7 @@ export function HomePage() {
                 to={c.route}
                 className="pg-home-quick-card pg-home-light-card pg-home-quick-card--with-icon"
               >
-                <HomeCalculatorIcon slug={c.templateKey} label={c.title} iconSrc={c.icon} />
+                <HomeCalculatorIcon slug={c.templateKey} label={c.title} />
                 <div>
                   <div className="pg-home-quick-title">{c.title}</div>
                   <div className="pg-home-quick-desc">{c.shortDescription}</div>

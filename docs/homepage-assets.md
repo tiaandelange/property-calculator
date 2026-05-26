@@ -23,29 +23,9 @@ If a file is missing or fails to load, the UI shows a **CSS gradient / SVG outli
 
 ---
 
-## Calculator icons
+## UI icons (Lucide)
 
-Used in the hero launcher, search results, and “Popular calculators”. Filenames are fixed; calculator **slug → icon** mapping is in `homepageAssets.ts`.
-
-| Filename | Folder | Purpose | Recommended size | Decorative / informative | Alt text |
-| --- | --- | --- | --- | --- | --- |
-| `icon-calculator-mortgage.webp` | `public/assets/homepage/icons/calculators/` | Loan / mortgage metaphor | **96×96** (display ~28–48px) | **Decorative** (label is in the card link) | **Empty** — card text carries meaning |
-| `icon-calculator-affordability.webp` | `public/assets/homepage/icons/calculators/` | Affordability / cash-flow metaphor | **96×96** | **Decorative** | **Empty** |
-| `icon-calculator-rental-yield.webp` | `public/assets/homepage/icons/calculators/` | Yield / NOI metaphor | **96×96** | **Decorative** | **Empty** |
-| `icon-calculator-transfer-cost.webp` | `public/assets/homepage/icons/calculators/` | Transfer & bond costs metaphor | **96×96** | **Decorative** | **Empty** |
-| `icon-calculator-bond-repayment.webp` | `public/assets/homepage/icons/calculators/` | Repayment / amortisation metaphor | **96×96** | **Decorative** | **Empty** |
-| `icon-calculator-investment-return.webp` | `public/assets/homepage/icons/calculators/` | Returns / IRR metaphor | **96×96** | **Decorative** | **Empty** |
-
----
-
-## Feature icons
-
-| Filename | Folder | Purpose | Recommended size | Decorative / informative | Alt text |
-| --- | --- | --- | --- | --- | --- |
-| `icon-feature-accurate.webp` | `public/assets/homepage/icons/features/` | “Accurate” benefit | **96×96** | **Decorative** | **Empty** |
-| `icon-feature-fast.webp` | `public/assets/homepage/icons/features/` | “Fast / easy” benefit | **96×96** | **Decorative** | **Empty** |
-| `icon-feature-scenarios.webp` | `public/assets/homepage/icons/features/` | “Scenarios / save” benefit | **96×96** | **Decorative** | **Empty** |
-| `icon-feature-secure.webp` | `public/assets/homepage/icons/features/` | “Secure / expert” benefit | **96×96** | **Decorative** | **Empty** |
+Calculator, feature, and trust-strip icons are **code-based** (`lucide-react` inside `IconContainer`). Slug → icon mapping lives in `frontend/src/icons/calculatorIcons.ts`, `featureIcons.ts`, and `trustIcons.ts`. No raster icon files under `public/assets/homepage/icons/`.
 
 ---
 
@@ -67,6 +47,6 @@ If the image fails, a **gradient circle with initials** is shown with an accessi
 | --- | --- |
 | `HomeHeroImage` | Tries WebP; on error → premium gradient placeholder (property vs calculator art). |
 | `HomeBrandWordmark` | Tries WebP; on error → two-line shimmer block. |
-| `HomeCalculatorIcon` | Tries WebP; on error → rounded outline calculator SVG. |
-| `HomeFeatureIcon` | Tries WebP; on error → rounded outline clock SVG. |
+| `HomeCalculatorIcon` | Lucide icon in `IconContainer` via `CalculatorIconDisplay` (slug from `calculatorIcons.ts`). |
+| `HomeFeatureIcon` | Lucide icon in `IconContainer` via `featureIcons.ts`. |
 | `HomeTestimonialAvatar` | Tries WebP; on error → initials badge. |

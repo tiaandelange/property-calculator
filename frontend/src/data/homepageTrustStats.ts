@@ -6,7 +6,9 @@
  * accurate — e.g. wire to analytics, billing, or app-store ratings as appropriate.
  */
 
-export type HomepageTrustStatIcon = "activity" | "tools" | "star" | "percent" | "shield";
+import type { HomepageTrustStatIcon } from "../icons/trustIcons";
+
+export type { HomepageTrustStatIcon };
 
 export type HomepageTrustStat = {
   id: string;

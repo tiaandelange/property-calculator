@@ -45,7 +45,7 @@ export function HomeQuickCalculationStartSection() {
               >
                 <div className="pg-home-qstart-card-body">
                   <div className="pg-home-qstart-card-iconrow">
-                    <HomeCalculatorIcon slug={c.templateKey} label={c.title} iconSrc={c.icon} />
+                    <HomeCalculatorIcon slug={c.templateKey} label={c.title} />
                   </div>
                   <h3 className="pg-home-qstart-card-title">{c.title}</h3>
                   <p className="pg-home-qstart-card-desc">{c.shortDescription}</p>

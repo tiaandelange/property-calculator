@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import { Calculator, CircleHelp, LayoutDashboard, Settings, type LucideIcon } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { calculators } from "../../data/calculators";
 import { groupCalculators } from "../../data/calculatorHubGroups";
@@ -13,60 +14,8 @@ type RailSection = "home" | "calc" | "settings" | "help";
 const HOVER_OPEN_MS = 220;
 const HOVER_CLOSE_MS = 180;
 
-function IconHome({ active }: { active: boolean }) {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path
-        d="M4 10.5L12 4l8 6.5V20a1 1 0 01-1 1h-5v-6H10v6H5a1 1 0 01-1-1v-9.5z"
-        stroke="currentColor"
-        strokeWidth="1.7"
-        strokeLinejoin="round"
-        fill={active ? "rgba(255,255,255,0.08)" : "none"}
-      />
-    </svg>
-  );
-}
-
-function IconCalc({ active }: { active: boolean }) {
-  return (
-    <span className={`pg-rail-pct ${active ? "pg-rail-pct-active" : ""}`} aria-hidden="true">
-      %
-    </span>
-  );
-}
-
-function IconSettings({ active }: { active: boolean }) {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path
-        d="M12 15.2a3.2 3.2 0 100-6.4 3.2 3.2 0 000 6.4z"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        fill={active ? "rgba(255,255,255,0.08)" : "none"}
-      />
-      <path
-        d="M19.4 15a1.7 1.7 0 00.3 1.7l.1.1a1.4 1.4 0 01-1.9 1.9l-.2-.2a1.7 1.7 0 00-2.9 1.2v.4a1.4 1.4 0 01-1.3 1.3h-1.4A1.4 1.4 0 0110 20v-.5a1.7 1.7 0 00-2.9-1.1l-.2.2a1.4 1.4 0 01-1.9-1.9l.1-.1a1.7 1.7 0 00-1.2-2.9H3.3A1.4 1.4 0 012 12.7v-1.4A1.4 1.4 0 013.3 10h.3a1.7 1.7 0 001.2-2.9l-.1-.1a1.4 1.4 0 011.9-1.9l.2.2a1.7 1.7 0 002.9-1.2V4a1.4 1.4 0 011.3-1.3h1.4A1.4 1.4 0 0114 4v.5a1.7 1.7 0 002.9 1.1l.2-.2a1.4 1.4 0 011.9 1.9l-.1.1a1.7 1.7 0 001.2 2.9h.4A1.4 1.4 0 0122 11.3v1.4a1.4 1.4 0 01-1.3 1.3h-.4z"
-        stroke="currentColor"
-        strokeWidth="1.2"
-        opacity="0.9"
-      />
-    </svg>
-  );
-}
-
-function IconHelp({ active }: { active: boolean }) {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path
-        d="M12 18v-.02M10.5 10a3 3 0 114 2.4 2.8 2.8 0 00-1 2.1c0 .9-.6 1.5-1.5 1.5"
-        stroke="currentColor"
-        strokeWidth="1.7"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        fill={active ? "rgba(255,255,255,0.06)" : "none"}
-      />
-    </svg>
-  );
+function RailLucideIcon({ icon: Icon, active }: { icon: LucideIcon; active: boolean }) {
+  return <Icon size={22} strokeWidth={active ? 2.25 : 2} aria-hidden />;
 }
 
 export function WorkspaceRail({ userRole }: WorkspaceRailProps) {
@@ -253,7 +202,7 @@ export function WorkspaceRail({ userRole }: WorkspaceRailProps) {
               }
             }}
           >
-            <IconHome active={homeActive} />
+            <RailLucideIcon icon={LayoutDashboard} active={homeActive} />
           </button>
           <span className="pg-workspace-rail-tooltip" role="tooltip">
             Home & portfolio
@@ -279,7 +228,7 @@ export function WorkspaceRail({ userRole }: WorkspaceRailProps) {
               }
             }}
           >
-            <IconCalc active={calcActive} />
+            <RailLucideIcon icon={Calculator} active={calcActive} />
           </button>
           <span className="pg-workspace-rail-tooltip" role="tooltip">
             Calculators
@@ -305,7 +254,7 @@ export function WorkspaceRail({ userRole }: WorkspaceRailProps) {
               }
             }}
           >
-            <IconSettings active={settingsActive} />
+            <RailLucideIcon icon={Settings} active={settingsActive} />
           </button>
           <span className="pg-workspace-rail-tooltip" role="tooltip">
             Settings
@@ -331,7 +280,7 @@ export function WorkspaceRail({ userRole }: WorkspaceRailProps) {
               }
             }}
           >
-            <IconHelp active={helpActive} />
+            <RailLucideIcon icon={CircleHelp} active={helpActive} />
           </button>
           <span className="pg-workspace-rail-tooltip" role="tooltip">
             Help

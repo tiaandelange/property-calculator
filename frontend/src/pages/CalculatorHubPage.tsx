@@ -7,6 +7,7 @@ import { Container } from "../components/ui/Container";
 import { Section } from "../components/ui/Section";
 import { Card } from "../components/ui/Card";
 import { CalculatorHubMortgageSection } from "../components/calculators/CalculatorHubMortgageSection";
+import { CalculatorIconDisplay } from "../components/icons/CalculatorIconDisplay";
 
 const UNDERSTANDING = [
   {
@@ -55,7 +56,7 @@ export function CalculatorHubPage() {
           <div className="pg-calc-hub-popular-grid" aria-label="Popular calculator links">
             {popular.map((c) => (
               <Link key={c.id} to={c.route} className="pg-calc-hub-popular-card">
-                <img src={c.icon} alt="" className="pg-calc-hub-popular-icon" width={48} height={48} loading="lazy" />
+                <CalculatorIconDisplay slug={c.templateKey} size="lg" className="pg-calc-hub-popular-icon" />
                 <div className="pg-calc-hub-popular-body">
                   <div className="pg-calc-hub-popular-title">{c.title}</div>
                   <p className="pg-calc-hub-popular-desc">{c.shortDescription}</p>

@@ -24,3 +24,4 @@ export function Input(props: React.InputHTMLAttributes<HTMLInputElement>) {
   return <input className="pg-input" {...props} />;
 }
 
+export { Select } from "./Select";
