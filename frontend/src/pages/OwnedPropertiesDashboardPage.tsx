@@ -10,6 +10,7 @@ import { Button } from "../components/ui/Button";
 import { getProperties, getProperty } from "../api/ownedProperties";
 import { PROPERTY_DATA_INVALIDATION } from "../features/properties/invalidate";
 import { AlertBanner, DashboardCard, EmptyState, MetricCard, StatCard, StatusPill } from "../components/ui/DashboardKit";
+import { getChartCategoryPalette, getChartSemanticColors } from "../theme/cssTokens";
 
 ChartJS.register(ArcElement, BarElement, CategoryScale, LinearScale, Legend, Tooltip, PointElement, LineElement);
 
@@ -20,6 +21,8 @@ export function OwnedPropertiesDashboardPage() {
   const [details, setDetails] = useState<any[]>([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const chartColors = useMemo(() => getChartSemanticColors(), []);
+  const chartPalette = useMemo(() => getChartCategoryPalette(), []);
 
   const load = async () => {
     setLoading(true);
@@ -253,17 +256,17 @@ export function OwnedPropertiesDashboardPage() {
             <div style={{ height: 12 }} />
             <Grid cols={2}>
               <DashboardCard title="Portfolio Value vs Bonds">
-                <Bar data={{ labels: ["Value", "Bonds", "Equity"], datasets: [{ label: "Portfolio (R)", data: [stats.totalPropertyValue, stats.totalOutstandingBonds, stats.portfolioEquity], backgroundColor: ["#007ACC", "#FFB020", "#20C997"] }] }} />
+                <Bar data={{ labels: ["Value", "Bonds", "Equity"], datasets: [{ label: "Portfolio (R)", data: [stats.totalPropertyValue, stats.totalOutstandingBonds, stats.portfolioEquity], backgroundColor: [chartColors.info, chartColors.warning, chartColors.success] }] }} />
               </DashboardCard>
               <DashboardCard title="Occupancy">
-                <Doughnut data={{ labels: ["Occupied", "Vacant"], datasets: [{ data: [stats.occupied, stats.vacant], backgroundColor: ["#20C997", "#707070"] }] }} />
+                <Doughnut data={{ labels: ["Occupied", "Vacant"], datasets: [{ data: [stats.occupied, stats.vacant], backgroundColor: [chartColors.success, chartColors.muted] }] }} />
               </DashboardCard>
               <DashboardCard title="Monthly Income vs Expenses">
-                <Line data={{ labels: ["Current"], datasets: [{ label: "Income", data: [stats.monthlyIncome], borderColor: "#20C997", backgroundColor: "rgba(32,201,151,0.2)" }, { label: "Expenses", data: [stats.monthlyExpenses], borderColor: "#FF4D4F", backgroundColor: "rgba(255,77,79,0.2)" }] }} />
+                <Line data={{ labels: ["Current"], datasets: [{ label: "Income", data: [stats.monthlyIncome], borderColor: chartColors.success, backgroundColor: chartColors.successSoft }, { label: "Expenses", data: [stats.monthlyExpenses], borderColor: chartColors.danger, backgroundColor: chartColors.dangerSoft }] }} />
               </DashboardCard>
               <DashboardCard title="Expense Breakdown">
                 {expenseBreakdown.length ? (
-                  <Doughnut data={{ labels: expenseBreakdown.map(([k]) => k), datasets: [{ data: expenseBreakdown.map(([, v]) => v), backgroundColor: ["#007ACC", "#FFB020", "#20C997", "#FF4D4F", "#A7A7A7", "#0094F5", "#7a7a7a", "#4d4d4d"] }] }} />
+                  <Doughnut data={{ labels: expenseBreakdown.map(([k]) => k), datasets: [{ data: expenseBreakdown.map(([, v]) => v), backgroundColor: chartPalette }] }} />
                 ) : (
                   <div className="pg-muted">No expense data yet.</div>
                 )}
@@ -294,7 +297,7 @@ export function OwnedPropertiesDashboardPage() {
                       <div>Equity: {p.currentEstimatedValue == null || p.outstandingBondBalance == null ? <span className="pg-muted">Missing data</span> : `R ${(Number(p.currentEstimatedValue) - Number(p.outstandingBondBalance)).toLocaleString()}`}</div>
                       <div>Monthly rent: {p.currentLease ? `R ${Number(p.currentLease.monthlyRent ?? 0).toLocaleString()}` : <span className="pg-muted">Missing data</span>}</div>
                       <div>Monthly expenses: R {monthlyExpenses.toLocaleString()}</div>
-                      <div>Monthly net cash flow: <span style={{ color: cash >= 0 ? "#20C997" : "#FF4D4F" }}>R {cash.toLocaleString()}</span></div>
+                      <div>Monthly net cash flow: <span style={{ color: cash >= 0 ? "var(--success)" : "var(--danger)" }}>R {cash.toLocaleString()}</span></div>
                       <div>
                         Active tenant: {p.currentTenant?.firstName ? (
                           <Link to={`/tenants/${p.currentTenant.id}`} className="pg-link">

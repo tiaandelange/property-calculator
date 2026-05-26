@@ -180,8 +180,20 @@ function toPayload(slug: string, values: Record<string, any>) {
   return payload;
 }
 
-function mergeNavyChartOptions(base: Record<string, unknown> | null | undefined): Record<string, unknown> {
+function mergeThemedChartOptions(base: Record<string, unknown> | null | undefined): Record<string, unknown> {
   const b = base && typeof base === "object" ? base : {};
+  const legendColor =
+    typeof document !== "undefined"
+      ? getComputedStyle(document.documentElement).getPropertyValue("--text-secondary").trim() || "#cbd5e1"
+      : "#cbd5e1";
+  const tickColor =
+    typeof document !== "undefined"
+      ? getComputedStyle(document.documentElement).getPropertyValue("--text-muted").trim() || "#64748b"
+      : "#64748b";
+  const gridColor =
+    typeof document !== "undefined"
+      ? getComputedStyle(document.documentElement).getPropertyValue("--border-soft").trim() || "#1b2233"
+      : "#1b2233";
   const plugins = (b.plugins as Record<string, unknown> | undefined) ?? {};
   const legend = (plugins.legend as Record<string, unknown> | undefined) ?? {};
   const legendLabels = (legend.labels as Record<string, unknown> | undefined) ?? {};
@@ -189,7 +201,7 @@ function mergeNavyChartOptions(base: Record<string, unknown> | null | undefined)
     ...plugins,
     legend: {
       ...legend,
-      labels: { color: "#c9d4e8", ...legendLabels }
+      labels: { color: legendColor, ...legendLabels }
     }
   };
   const scales = b.scales as Record<string, unknown> | undefined;
@@ -202,8 +214,8 @@ function mergeNavyChartOptions(base: Record<string, unknown> | null | undefined)
     const grid = (a.grid as Record<string, unknown> | undefined) ?? {};
     return {
       ...a,
-      ticks: { color: "#9aa8bd", ...ticks },
-      grid: { color: "rgba(255, 255, 255, 0.08)", ...grid }
+      ticks: { color: tickColor, ...ticks },
+      grid: { color: gridColor, ...grid }
     };
   };
   return {
@@ -220,6 +232,15 @@ function mergeNavyChartOptions(base: Record<string, unknown> | null | undefined)
 function buildIllustrativeFiveYearLineChart(metric: { label: string; value: number }) {
   const growth = 0.03;
   const series = [0, 1, 2, 3, 4].map((y) => Math.round(metric.value * (1 + growth) ** y));
+  const line =
+    typeof document !== "undefined"
+      ? getComputedStyle(document.documentElement).getPropertyValue("--chart-line").trim() || "#8b5cf6"
+      : "#8b5cf6";
+  const fill =
+    typeof document !== "undefined"
+      ? getComputedStyle(document.documentElement).getPropertyValue("--chart-fill").trim() ||
+        "rgba(139, 92, 246, 0.22)"
+      : "rgba(139, 92, 246, 0.22)";
   return {
     chartType: "line" as const,
     title: "Five-year illustrative trend (3% p.a. — not a forecast)",
@@ -229,8 +250,8 @@ function buildIllustrativeFiveYearLineChart(metric: { label: string; value: numb
         {
           label: metric.label,
           data: series,
-          borderColor: "#c99a5b",
-          backgroundColor: "rgba(201, 154, 91, 0.15)",
+          borderColor: line,
+          backgroundColor: fill,
           fill: true,
           tension: 0.25
         }
@@ -923,7 +944,7 @@ export function CalculatorPage() {
                 {chartsToRender.map((ch, idx) => {
                   const opts = isMortgageStandalone
                     ? (ch.options as any)
-                    : (mergeNavyChartOptions(ch.options as Record<string, unknown>) as any);
+                    : (mergeThemedChartOptions(ch.options as Record<string, unknown>) as any);
                   return (
                     <Card key={`${ch.title ?? "chart"}-${idx}`} title={ch.title ?? "Chart"}>
                       <div className="pg-calculator-chart-host">

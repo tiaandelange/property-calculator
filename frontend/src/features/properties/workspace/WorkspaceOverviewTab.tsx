@@ -1,23 +1,7 @@
 import { useMemo } from "react";
 import { Line, Doughnut } from "react-chartjs-2";
 import { Card } from "../../../components/ui/Card";
-
-/** Greens / teals — income */
-const INCOME_SLICE_COLORS = ["#20C997", "#00C9A7", "#4D96FF", "#26C6DA"];
-
-/** Reds → oranges by rank after sorting expenses descending (index 0 = largest). */
-const EXPENSE_RANK_COLORS = [
-  "#C62828",
-  "#E53935",
-  "#FF5722",
-  "#FF6D00",
-  "#FB8C00",
-  "#FFA726",
-  "#FFCA28",
-  "#FFB74D",
-  "#FFAB91",
-  "#BCAAA4"
-];
+import { getChartCategoryPalette, getChartSemanticColors } from "../../../theme/cssTokens";
 
 type CompositionSlice = { label: string; amount: number; kind: "income" | "expense" };
 
@@ -57,15 +41,18 @@ function slicesFromFinancialSummaryMonthly(fs: Record<string, unknown> | undefin
 function doughnutFromSlices(slices: CompositionSlice[]) {
   const labels = slices.map((s) => s.label);
   const data = slices.map((s) => s.amount);
+  const semantic = getChartSemanticColors();
+  const incomeColors = [semantic.success, semantic.info, semantic.primary, semantic.line];
+  const expenseColors = getChartCategoryPalette();
   let incomeIdx = 0;
   let expenseIdx = 0;
   const backgroundColor = slices.map((s) => {
     if (s.kind === "income") {
-      const c = INCOME_SLICE_COLORS[incomeIdx % INCOME_SLICE_COLORS.length];
+      const c = incomeColors[incomeIdx % incomeColors.length];
       incomeIdx += 1;
       return c;
     }
-    const c = EXPENSE_RANK_COLORS[Math.min(expenseIdx, EXPENSE_RANK_COLORS.length - 1)];
+    const c = expenseColors[Math.min(expenseIdx, expenseColors.length - 1)];
     expenseIdx += 1;
     return c;
   });
@@ -281,7 +268,7 @@ export function WorkspaceOverviewTab({ data, statement, perf, propertyId, naviga
                   {
                     label: "NOI",
                     data: perf.charts.monthlyNOITrend.map((r: any) => r.noi),
-                    borderColor: "#4D96FF",
+                    borderColor: getChartSemanticColors().info,
                     backgroundColor: "rgba(77,150,255,0.15)"
                   }
                 ]

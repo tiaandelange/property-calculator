@@ -87,7 +87,7 @@ export function OwnedCashFlowMetricsPage() {
                     <td align="right">R {r.income.toLocaleString()}</td>
                     <td align="right">R {r.expenses.toLocaleString()}</td>
                     <td align="right">R {r.bondPayment.toLocaleString()}</td>
-                    <td align="right" style={{ color: r.net >= 0 ? "#20C997" : "#FF4D4F" }}>R {r.net.toLocaleString()}</td>
+                    <td align="right" style={{ color: r.net >= 0 ? "var(--success)" : "var(--danger)" }}>R {r.net.toLocaleString()}</td>
                   </tr>
                 ))}
               </tbody>

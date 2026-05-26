@@ -12,6 +12,7 @@ import { getPortfolioDashboardSummary, getProperties } from "../api/ownedPropert
 import { PROPERTY_DATA_INVALIDATION } from "../features/properties/invalidate";
 import { PageBreadcrumb } from "../components/nav/PageBreadcrumb";
 import { PG_WORKSPACE_DASH } from "../nav/workspaceBreadcrumbs";
+import { getChartCategoryPalette, getChartSemanticColors } from "../theme/cssTokens";
 
 ChartJS.register(ArcElement, BarElement, CategoryScale, LinearScale, Legend, Tooltip, PointElement, LineElement);
 
@@ -174,35 +175,52 @@ export function OwnedPropertiesPortfolioDashboardPage() {
   }, [filtersOpen]);
 
   const hasProperties = (data?.kpis?.totalProperties?.value ?? data?.totalProperties ?? 0) > 0;
+  const chartColors = useMemo(() => getChartSemanticColors(), []);
+  const chartPalette = useMemo(() => getChartCategoryPalette(), []);
 
   const noiTrend = useMemo(() => {
     const rows = data?.charts?.monthlyNOITrend ?? [];
     return {
       labels: rows.map((r: any) => r.label),
       datasets: [
-        { label: "Monthly NOI", data: rows.map((r: any) => r.noi), borderColor: "#20C997", backgroundColor: "rgba(32,201,151,0.2)" }
+        {
+          label: "Monthly NOI",
+          data: rows.map((r: any) => r.noi),
+          borderColor: chartColors.success,
+          backgroundColor: chartColors.successSoft
+        }
       ]
     };
-  }, [data]);
+  }, [data, chartColors]);
 
   const expenseMix = useMemo(() => {
     const rows = (data?.charts?.incomeExpenseComposition ?? []).filter((r: any) => r.type === "expense");
     const labels = rows.map((r: any) => r.category);
     const values = rows.map((r: any) => r.amount);
-    const colors = labels.map((_l: any, idx: number) => ["#FFB020", "#20C997", "#4D96FF", "#FF4D4F", "#9B59B6", "#00C2A8"][idx % 6]);
+    const colors = labels.map((_l: any, idx: number) => chartPalette[idx % chartPalette.length]);
     return { labels, datasets: [{ data: values, backgroundColor: colors }] };
-  }, [data]);
+  }, [data, chartPalette]);
 
   const incomeVsExpenseByProperty = useMemo(() => {
     const rows = data?.charts?.cashFlowByProperty ?? [];
     return {
       labels: rows.map((r: any) => r.name),
       datasets: [
-        { label: "Income", data: rows.map((r: any) => r.monthlyIncome ?? 0), backgroundColor: "rgba(32,201,151,0.35)", borderColor: "#20C997" },
-        { label: "Expenses", data: rows.map((r: any) => r.monthlyExpenses ?? 0), backgroundColor: "rgba(255,176,32,0.35)", borderColor: "#FFB020" }
+        {
+          label: "Income",
+          data: rows.map((r: any) => r.monthlyIncome ?? 0),
+          backgroundColor: chartColors.successSoft,
+          borderColor: chartColors.success
+        },
+        {
+          label: "Expenses",
+          data: rows.map((r: any) => r.monthlyExpenses ?? 0),
+          backgroundColor: chartColors.warningSoft,
+          borderColor: chartColors.warning
+        }
       ]
     };
-  }, [data]);
+  }, [data, chartColors]);
 
   const setTypesFromMultiSelect = (next: string[]) => {
     const params = new URLSearchParams(search);
@@ -512,7 +530,7 @@ export function OwnedPropertiesPortfolioDashboardPage() {
             <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 10 }}>
               <div className="pg-stat-card" style={{ padding: 14, border: "1px solid rgba(255,255,255,0.06)" }}>
                 <div className="pg-stat-title">Monthly income</div>
-                <div className="pg-stat-value" style={{ color: "#20C997" }}>R {monthlyIncomeFromLeases.toLocaleString()}</div>
+                <div className="pg-stat-value" style={{ color: "var(--success)" }}>R {monthlyIncomeFromLeases.toLocaleString()}</div>
                 <div className="pg-stat-hint">Total contractual rent from active leases.</div>
               </div>
               <div className="pg-stat-card" style={{ padding: 14, border: "1px solid rgba(255,255,255,0.06)" }}>
@@ -522,7 +540,7 @@ export function OwnedPropertiesPortfolioDashboardPage() {
               </div>
               <div className="pg-stat-card" style={{ padding: 14, border: "1px solid rgba(255,255,255,0.06)" }}>
                 <div className="pg-stat-title">Monthly cash flow</div>
-                <div className="pg-stat-value" style={{ color: monthlyLeaseBasisCashFlow >= 0 ? "#20C997" : "#FF4D4F" }}>
+                <div className="pg-stat-value" style={{ color: monthlyLeaseBasisCashFlow >= 0 ? "var(--success)" : "var(--danger)" }}>
                   R {monthlyLeaseBasisCashFlow.toLocaleString()}
                 </div>
                 <div className="pg-stat-hint">Lease income minus total expenses.</div>
@@ -536,8 +554,8 @@ export function OwnedPropertiesPortfolioDashboardPage() {
                       cashOnCashAnnualPercent == null
                         ? undefined
                         : cashOnCashAnnualPercent >= 0
-                          ? "#20C997"
-                          : "#FF4D4F"
+                          ? "var(--success)"
+                          : "var(--danger)"
                   }}
                 >
                   {cashOnCashAnnualPercent == null ? "—" : `${cashOnCashAnnualPercent.toFixed(1)}%`}
@@ -554,7 +572,7 @@ export function OwnedPropertiesPortfolioDashboardPage() {
                   className="pg-stat-value"
                   style={{
                     color:
-                      portfolioIrrPct == null ? undefined : portfolioIrrPct >= 0 ? "#20C997" : "#FF4D4F"
+                      portfolioIrrPct == null ? undefined : portfolioIrrPct >= 0 ? "var(--success)" : "var(--danger)"
                   }}
                 >
                   {portfolioIrrPct == null ? "Insufficient data" : `${portfolioIrrPct.toFixed(2)}%`}
@@ -639,7 +657,7 @@ export function OwnedPropertiesPortfolioDashboardPage() {
                 const annualCapitalGrowth = appPct != null ? currentVal * (appPct / 100) : 0;
                 const isGood = !isExcellent && annualCapitalGrowth >= annualShortfall && annualShortfall > 0;
                 const label = isExcellent ? "Excellent" : isGood ? "Good" : "Poor";
-                const color = isExcellent ? "#20C997" : isGood ? "#FFB020" : "#FF4D4F";
+                const color = isExcellent ? "var(--success)" : isGood ? "var(--warning)" : "var(--danger)";
                 const hint = isExcellent
                   ? "Cash flow positive."
                   : isGood

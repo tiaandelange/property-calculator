@@ -198,8 +198,8 @@ export function OwnedPropertiesMyPropertiesPage() {
                         <div style={{ display: "grid", gap: 4, minWidth: 280 }}>
                           <div>Monthly income: R {Number(p.monthlyIncome ?? 0).toLocaleString()}</div>
                           <div>Operating expenses: R {Number(p.monthlyOperatingExpenses ?? 0).toLocaleString()}</div>
-                          <div>Monthly NOI: <strong style={{ color: noi >= 0 ? "#20C997" : "#FF4D4F" }}>R {noi.toLocaleString()}</strong></div>
-                          <div>Monthly cash flow: <strong style={{ color: cash >= 0 ? "#20C997" : "#FF4D4F" }}>R {cash.toLocaleString()}</strong></div>
+                          <div>Monthly NOI: <strong style={{ color: noi >= 0 ? "var(--success)" : "var(--danger)" }}>R {noi.toLocaleString()}</strong></div>
+                          <div>Monthly cash flow: <strong style={{ color: cash >= 0 ? "var(--success)" : "var(--danger)" }}>R {cash.toLocaleString()}</strong></div>
                         </div>
                         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                           <Link className="pg-btn pg-btn-ghost" to={`/owned-properties/${p.id}`}>View</Link>
@@ -255,8 +255,8 @@ export function OwnedPropertiesMyPropertiesPage() {
                     <div>Market value: {v == null ? <span className="pg-muted">Missing</span> : `R ${Number(v).toLocaleString()}`}</div>
                     <div>Bond: {b == null ? <span className="pg-muted">Missing</span> : `R ${Number(b).toLocaleString()}`}</div>
                     <div>Equity: {equity == null ? <span className="pg-muted">Missing</span> : `R ${equity.toLocaleString()}`}</div>
-                    <div>Monthly NOI: <strong style={{ color: noi >= 0 ? "#20C997" : "#FF4D4F" }}>R {noi.toLocaleString()}</strong></div>
-                    <div>Monthly cash flow: <strong style={{ color: cash >= 0 ? "#20C997" : "#FF4D4F" }}>R {cash.toLocaleString()}</strong></div>
+                    <div>Monthly NOI: <strong style={{ color: noi >= 0 ? "var(--success)" : "var(--danger)" }}>R {noi.toLocaleString()}</strong></div>
+                    <div>Monthly cash flow: <strong style={{ color: cash >= 0 ? "var(--success)" : "var(--danger)" }}>R {cash.toLocaleString()}</strong></div>
                     <div>Tenant: {p.currentTenant?.firstName ? `${p.currentTenant.firstName} ${p.currentTenant.lastName}` : isLand || isStr ? <span className="pg-muted">Not required</span> : <span className="pg-muted">No tenant</span>}</div>
                     <div>Lease: {p.currentLease?.displayStatus ? p.currentLease.displayStatus : isLand || isStr ? <span className="pg-muted">Not required</span> : <span className="pg-muted">No lease</span>}</div>
                   </div>

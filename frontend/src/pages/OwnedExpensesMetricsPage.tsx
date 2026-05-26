@@ -8,6 +8,7 @@ import { Button } from "../components/ui/Button";
 import { getPortfolioDashboardSummary } from "../api/ownedProperties";
 import { PageBreadcrumb } from "../components/nav/PageBreadcrumb";
 import { workspacePage } from "../nav/workspaceBreadcrumbs";
+import { getChartCategoryPalette } from "../theme/cssTokens";
 
 export function OwnedExpensesMetricsPage() {
   const [data, setData] = useState<any>(null);
@@ -35,7 +36,7 @@ export function OwnedExpensesMetricsPage() {
     const rows = data?.charts?.expenseBreakdown ?? [];
     return {
       labels: rows.map((r: any) => r.category),
-      datasets: [{ data: rows.map((r: any) => r.amount), backgroundColor: ["#007ACC", "#FFB020", "#20C997", "#FF4D4F", "#A7A7A7", "#0094F5", "#7a7a7a", "#4d4d4d"] }]
+      datasets: [{ data: rows.map((r: any) => r.amount), backgroundColor: getChartCategoryPalette() }]
     };
   }, [data]);
 

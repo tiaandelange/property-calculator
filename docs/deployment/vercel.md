@@ -9,10 +9,27 @@ The high-level steps live in [`../DEPLOYMENT.md` § Step 3](../DEPLOYMENT.md#ste
 | `framework`        | Tells Vercel "this is a Vite project" so its defaults match.                                              |
 | `buildCommand`     | Runs `npm run build` → emits `dist/`.                                                                     |
 | `installCommand`   | `npm ci --ignore-scripts` — lockfile-only install, blocks any postinstall hooks.                          |
-| `rewrites`         | SPA history-mode fallback: every URL that isn't `/api/...` re-serves `/index.html`.                       |
+| `rewrites`         | SPA fallback: non-file routes re-serve `/index.html` (`/api/*` stays on serverless).                      |
 | `headers (/(.*))` | Security headers on every response: HSTS, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, etc. |
 | `headers (/assets/(.*))` | Long-cache (`immutable, 1 year`) for the hashed Vite bundle assets.                                  |
 | `headers (/index.html)`  | `Cache-Control: no-store` — the bootstrap HTML is never cached.                                      |
+
+## Refresh shows `404: NOT_FOUND` (SPA routing)
+
+That Vercel error on **hard refresh** or **direct URL** (e.g. `/dashboard`) means the
+deployment is not serving `index.html` for client-side routes.
+
+**Fix:**
+
+1. Vercel project → **Settings** → **General** → **Root Directory** must be **`frontend`**
+   (not the repo root). Redeploy after changing.
+2. Confirm `frontend/vercel.json` includes the SPA rewrite to `/index.html` (see below).
+3. **Redeploy** without build cache: Deployments → … → Redeploy → uncheck **Use existing
+   Build Cache**.
+
+If Root Directory is accidentally the monorepo root, a root-level `vercel.json` can still
+serve the SPA, but **`/api/*` serverless routes require Root Directory = `frontend`** (they
+live in `frontend/api/`).
 
 ## The Root-Directory step is important
 

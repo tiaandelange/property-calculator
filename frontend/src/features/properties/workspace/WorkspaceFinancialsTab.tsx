@@ -1004,7 +1004,7 @@ export function WorkspaceFinancialsTab({
         </div>
         <div className="pg-fin-ytd-card">
           <div className="pg-fin-ytd-card-title">Cash flow ({ytdCalendar.year})</div>
-          <div className="pg-fin-ytd-card-value" style={{ color: ytdCalendar.cashFlow >= 0 ? "#20c997" : "#ff6b6b" }}>
+          <div className="pg-fin-ytd-card-value" style={{ color: ytdCalendar.cashFlow >= 0 ? "var(--success)" : "var(--danger)" }}>
             {fmt(ytdCalendar.cashFlow)}
           </div>
           <div className="pg-muted" style={{ fontSize: 12, marginTop: 8 }}>
