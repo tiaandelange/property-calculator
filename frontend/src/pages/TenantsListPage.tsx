@@ -43,7 +43,6 @@ export function TenantsListPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [page, setPage] = useState(1);
-  const [filtersOpen, setFiltersOpen] = useState(false);
   const [filters, setFilters] = useState<TenantFilters>({
     q: "",
     propertyId: "ALL",
@@ -131,22 +130,7 @@ export function TenantsListPage() {
 
           <TenantMetricCards metrics={metrics} loading={loading && !items.length} />
 
-          <TenantControlsBar
-            filters={filters}
-            onChange={patchFilters}
-            properties={properties}
-            filtersOpen={filtersOpen}
-            onToggleFilters={() => setFiltersOpen((o) => !o)}
-          />
-
-          <TenantControlsBar
-            filters={filters}
-            onChange={patchFilters}
-            properties={properties}
-            filtersOpen={filtersOpen}
-            onToggleFilters={() => setFiltersOpen((o) => !o)}
-            mobile
-          />
+          <TenantControlsBar filters={filters} onChange={patchFilters} properties={properties} />
 
           <section className="pg-tenants-list-panel" aria-busy={loading}>
             {!loading && filtered.length === 0 ? (

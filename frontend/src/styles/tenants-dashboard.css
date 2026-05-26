@@ -49,12 +49,10 @@
 
 /* Controls */
 .pg-tenants-controls {
-  display: grid;
-  gap: 12px;
   margin-bottom: var(--tenants-gap);
 }
 
-.pg-tenants-controls-search-row {
+.pg-tenants-controls-row {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -62,7 +60,7 @@
 }
 
 .pg-tenants-search {
-  flex: 1 1 280px;
+  flex: 1 1 220px;
   min-width: 0;
   display: flex;
   align-items: center;
@@ -72,6 +70,14 @@
   border-radius: 14px;
   border: 1px solid var(--border-soft);
   background: var(--surface);
+}
+
+.pg-tenants-controls-filters {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  flex: 0 1 auto;
 }
 
 .pg-tenants-search-icon {
@@ -93,38 +99,6 @@
   color: var(--text-muted);
 }
 
-.pg-tenants-filter-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  height: 44px;
-  padding: 0 14px;
-  border-radius: 14px;
-  border: 1px solid var(--border-soft);
-  background: var(--surface);
-  color: var(--text-secondary);
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.pg-tenants-filter-btn--active {
-  border-color: var(--primary-border);
-  background: var(--primary-soft);
-  color: var(--primary);
-}
-
-.pg-tenants-controls-desktop-filters {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.pg-tenants-controls--mobile .pg-tenants-controls-desktop-filters {
-  display: none;
-}
-
 .pg-tenants-select {
   height: 40px;
   padding: 0 12px;
@@ -143,33 +117,13 @@
   padding: 0 16px;
 }
 
-.pg-tenants-filters-panel {
-  display: grid;
-  gap: 12px;
-  padding: 14px;
-  border-radius: 16px;
-  border: 1px solid var(--border-soft);
-  background: var(--surface-muted);
-}
-
-.pg-tenants-filter-field {
-  display: grid;
-  gap: 6px;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-secondary);
-}
-
 .pg-tenants-add-btn {
   display: inline-flex;
   align-items: center;
   gap: 8px;
   white-space: nowrap;
-}
-
-.pg-tenants-add-btn--mobile {
-  width: 100%;
-  justify-content: center;
+  flex-shrink: 0;
+  margin-left: auto;
 }
 
 /* Table */
@@ -515,6 +469,25 @@
 
   .pg-tenants-toolbar h1 {
     display: none;
+  }
+
+  .pg-tenants-search {
+    flex: 1 1 100%;
+  }
+
+  .pg-tenants-controls-filters {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .pg-tenants-controls-filters .pg-tenants-select--pill {
+    flex: 1 1 0;
+    min-width: 0;
+    max-width: none;
+  }
+
+  .pg-tenants-add-btn {
+    margin-left: auto;
   }
 
   .pg-tenants-pagination {
