@@ -1,5 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
+import { Link } from "react-router-dom";
 import { IconContainer, type IconContainerAccent } from "../../components/ui/IconContainer";
 
 export function PortfolioMetricCard({
@@ -10,7 +11,9 @@ export function PortfolioMetricCard({
   icon: Icon,
   iconAccent = "primary",
   highlighted,
-  compact
+  compact,
+  to,
+  ariaLabel
 }: {
   label: string;
   value: ReactNode;
@@ -20,17 +23,20 @@ export function PortfolioMetricCard({
   iconAccent?: IconContainerAccent;
   highlighted?: boolean;
   compact?: boolean;
+  to?: string;
+  ariaLabel?: string;
 }) {
-  return (
-    <div
-      className={[
-        "pg-pdash-metric",
-        highlighted ? "pg-pdash-metric--highlight" : "",
-        compact ? "pg-pdash-metric--compact" : ""
-      ]
-        .filter(Boolean)
-        .join(" ")}
-    >
+  const className = [
+    "pg-pdash-metric",
+    highlighted ? "pg-pdash-metric--highlight" : "",
+    compact ? "pg-pdash-metric--compact" : "",
+    to ? "pg-pdash-metric--link" : ""
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  const inner = (
+    <>
       <div className="pg-pdash-metric-top">
         <div className="pg-pdash-metric-copy">
           <div className="pg-pdash-metric-label">{label}</div>
@@ -41,6 +47,16 @@ export function PortfolioMetricCard({
         </div>
         <IconContainer icon={Icon} accent={iconAccent} size="md" className="pg-pdash-metric-icon-wrap" />
       </div>
-    </div>
+    </>
   );
+
+  if (to) {
+    return (
+      <Link to={to} className={className} aria-label={ariaLabel ?? label}>
+        {inner}
+      </Link>
+    );
+  }
+
+  return <div className={className}>{inner}</div>;
 }

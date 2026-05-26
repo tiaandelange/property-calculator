@@ -1,12 +1,23 @@
 /* Portfolio dashboard content (signed-in workspace) */
 
+/* Let the dashboard control its own max-width (parent .pg-container is 1200px). */
+.pg-container--portfolio-dashboard {
+  max-width: none;
+  padding-left: 0;
+  padding-right: 0;
+}
+
 .pg-pdash {
-  --pdash-gap: 20px;
-  --pdash-card-pad: 22px;
-  max-width: 1440px;
+  --pdash-gap: clamp(14px, 1.4vw, 24px);
+  --pdash-card-pad: clamp(18px, 1.5vw, 24px);
+  --pdash-chart-h: 300px;
+  --pdash-content-max: min(100%, 1280px);
+  width: 100%;
+  max-width: var(--pdash-content-max);
   margin: 0 auto;
-  padding: 24px 28px 8px;
+  padding: clamp(20px, 2vw, 32px) clamp(16px, 2.5vw, 40px) 8px;
   color: var(--dash-text-primary, var(--text-primary));
+  box-sizing: border-box;
 }
 
 .pg-pdash-toolbar {
@@ -55,9 +66,22 @@
 /* Metric cards */
 .pg-pdash-metrics-row {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--pdash-gap);
   margin-bottom: var(--pdash-gap);
+}
+
+.pg-pdash-metrics-row--primary {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.pg-pdash-metrics-row--secondary {
+  display: none;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.pg-pdash--wide .pg-pdash-metrics-row--secondary,
+.pg-pdash--ultra .pg-pdash-metrics-row--secondary {
+  display: grid;
 }
 
 .pg-pdash-metric {
@@ -69,9 +93,17 @@
   transition: border-color 0.2s ease, background 0.2s ease;
 }
 
-.pg-pdash-metric:hover {
+.pg-pdash-metric:hover,
+.pg-pdash-metric--link:hover {
   border-color: color-mix(in srgb, var(--primary) 28%, var(--dash-border, var(--border-soft)));
   background: var(--dash-surface-secondary, var(--surface-muted));
+}
+
+.pg-pdash-metric--link {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
 }
 
 .pg-pdash-metric--highlight {
@@ -148,10 +180,18 @@
 /* Middle grid */
 .pg-pdash-middle {
   display: grid;
-  grid-template-columns: minmax(0, 1.85fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1.75fr) minmax(280px, 1fr);
   gap: var(--pdash-gap);
   margin-bottom: var(--pdash-gap);
   align-items: stretch;
+}
+
+.pg-pdash--wide .pg-pdash-middle {
+  grid-template-columns: minmax(0, 2.1fr) minmax(300px, 1fr);
+}
+
+.pg-pdash--ultra .pg-pdash-middle {
+  grid-template-columns: minmax(0, 2.35fr) minmax(320px, 1fr);
 }
 
 /* Panels */
@@ -199,9 +239,17 @@
 
 .pg-pdash-chart-wrap {
   position: relative;
-  height: 300px;
+  height: var(--pdash-chart-h);
   width: 100%;
   min-width: 0;
+}
+
+.pg-pdash--wide {
+  --pdash-chart-h: 320px;
+}
+
+.pg-pdash--ultra {
+  --pdash-chart-h: 360px;
 }
 
 .pg-pdash-chart-note {
@@ -326,8 +374,8 @@
 
 .pg-pdash-properties-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr));
+  gap: clamp(12px, 1.2vw, 20px);
 }
 
 .pg-pdash-property-card {
@@ -511,13 +559,18 @@
   }
 }
 
-@media (min-width: 768px) and (max-width: 1100px) {
-  .pg-pdash-metrics-row {
+/* Tablet / small desktop */
+@media (min-width: 768px) and (max-width: 1099px) {
+  .pg-pdash {
+    --pdash-content-max: min(100%, 100%);
+  }
+
+  .pg-pdash-metrics-row--primary {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .pg-pdash-properties-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr));
   }
 
   .pg-pdash-middle {
@@ -525,8 +578,57 @@
   }
 }
 
-@media (min-width: 1101px) and (max-width: 1279px) {
+/* Standard desktop */
+@media (min-width: 1100px) and (max-width: 1279px) {
+  .pg-pdash {
+    --pdash-content-max: min(100%, 1200px);
+  }
+
+  .pg-pdash-metrics-row--primary {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
   .pg-pdash-properties-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  }
+}
+
+@media (min-width: 1280px) and (max-width: 1399px) {
+  .pg-pdash {
+    --pdash-content-max: min(100%, 1320px);
+  }
+}
+
+/* Wide monitor */
+@media (min-width: 1400px) and (max-width: 1599px) {
+  .pg-pdash {
+    --pdash-content-max: min(100%, 1480px);
+  }
+
+  .pg-pdash-properties-grid {
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  }
+}
+
+@media (min-width: 1600px) and (max-width: 1919px) {
+  .pg-pdash {
+    --pdash-content-max: min(100%, 1680px);
+  }
+
+  .pg-pdash-properties-grid {
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  }
+}
+
+/* Ultra-wide */
+@media (min-width: 1920px) {
+  .pg-pdash {
+    --pdash-content-max: min(100%, 1920px);
+    padding-left: clamp(32px, 4vw, 56px);
+    padding-right: clamp(32px, 4vw, 56px);
+  }
+
+  .pg-pdash-properties-grid {
+    grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
   }
 }

@@ -42,12 +42,16 @@ function PropertyCard({ property }: { property: RecentPropertyCard }) {
 
 export function RecentPropertiesSection({
   properties,
-  loading
+  loading,
+  limit = 4
 }: {
   properties: RecentPropertyCard[];
   loading?: boolean;
+  /** Desktop: scales with viewport (4–8). Mobile always shows up to 4. */
+  limit?: number;
 }) {
-  const visible = useMemo(() => properties.slice(0, 4), [properties]);
+  const visible = useMemo(() => properties.slice(0, Math.max(1, limit)), [properties, limit]);
+  const skeletonCount = Math.min(Math.max(limit, 4), 8);
 
   return (
     <section className="pg-pdash-properties-section">
@@ -59,7 +63,7 @@ export function RecentPropertiesSection({
       </div>
       {loading ? (
         <div className="pg-pdash-properties-grid pg-pdash-properties-grid--loading">
-          {[0, 1, 2, 3].map((i) => (
+          {Array.from({ length: skeletonCount }, (_, i) => (
             <div key={i} className="pg-pdash-property-card pg-pdash-property-card--skeleton" aria-hidden />
           ))}
         </div>

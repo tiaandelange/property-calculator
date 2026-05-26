@@ -45,8 +45,16 @@ function ActivityRow({ item }: { item: ActivityItem }) {
   return body;
 }
 
-export function RecentActivityPanel({ data }: { data: Record<string, unknown> | null | undefined }) {
-  const items = buildActivityItems(data);
+export function RecentActivityPanel({
+  data,
+  limit
+}: {
+  data: Record<string, unknown> | null | undefined;
+  /** When set, caps rows shown (desktop wide layouts). */
+  limit?: number;
+}) {
+  const allItems = buildActivityItems(data);
+  const items = limit != null ? allItems.slice(0, limit) : allItems;
 
   return (
     <div className="pg-pdash-panel pg-pdash-activity-panel">
