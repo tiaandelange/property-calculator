@@ -69,8 +69,8 @@ describe("AppChrome", () => {
       </MemoryRouter>
     );
 
-    expect(await screen.findByRole("navigation", { name: /workspace/i })).toBeInTheDocument();
-    expect(screen.queryByLabelText(/open menu/i)).not.toBeInTheDocument();
+    expect(await screen.findByRole("complementary", { name: /dashboard sidebar/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /open menu/i })).toBeInTheDocument();
   });
 
   it("renders marketing site header on home (no legacy TopNav)", async () => {

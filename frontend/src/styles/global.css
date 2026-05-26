@@ -1,5 +1,6 @@
 @import "./themes/proplytic.tokens.css";
 @import "./ui-components.css";
+@import "./dashboard-shell.css";
 
 /* Structural tokens (spacing + typography). Palette: proplytic.tokens.css */
 :root {

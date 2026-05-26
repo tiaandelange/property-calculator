@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { Doughnut, Line, Bar } from "react-chartjs-2";
 import { Chart as ChartJS, ArcElement, BarElement, CategoryScale, Legend, LinearScale, LineElement, PointElement, Tooltip } from "chart.js";
@@ -8,26 +8,13 @@ import { Section } from "../components/ui/Section";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { EmptyState } from "../components/ui/DashboardKit";
-import { getPortfolioDashboardSummary, getProperties } from "../api/ownedProperties";
+import { getPortfolioDashboardSummary } from "../api/ownedProperties";
 import { PROPERTY_DATA_INVALIDATION } from "../features/properties/invalidate";
 import { PageBreadcrumb } from "../components/nav/PageBreadcrumb";
 import { PG_WORKSPACE_DASH } from "../nav/workspaceBreadcrumbs";
 import { getChartCategoryPalette, getChartSemanticColors } from "../theme/cssTokens";
 
 ChartJS.register(ArcElement, BarElement, CategoryScale, LinearScale, Legend, Tooltip, PointElement, LineElement);
-
-const TYPE_OPTIONS: Array<{ id: string; label: string }> = [
-  { id: "LONG_TERM_RENTAL", label: "Long-Term Rental" },
-  { id: "SHORT_TERM_RENTAL", label: "Short-Term Rental / Airbnb" },
-  { id: "PRIMARY_RESIDENCE", label: "Primary Residence" },
-  { id: "HOUSE_HACK", label: "House Hack" },
-  { id: "BRRRR", label: "BRRRR" },
-  { id: "FLIP", label: "Flip / Renovation Project" },
-  { id: "VACANT_LAND", label: "Vacant Land" },
-  { id: "COMMERCIAL", label: "Commercial" },
-  { id: "MIXED_USE", label: "Mixed Use" },
-  { id: "OTHER", label: "Other" }
-];
 
 function parseTypesParam(search: string) {
   const raw = new URLSearchParams(search).get("types");
@@ -50,30 +37,6 @@ function parsePropertyParam(search: string): string | number | null {
   return Number.isNaN(n) ? null : n;
 }
 
-function monthDropdownValues() {
-  const out: string[] = [];
-  const d = new Date();
-  for (let i = -36; i <= 24; i++) {
-    const x = new Date(d.getFullYear(), d.getMonth() + i, 1);
-    out.push(x.toISOString().slice(0, 7));
-  }
-  return [...new Set(out)].sort((a, b) => b.localeCompare(a));
-}
-
-function formatMonthLabel(ym: string) {
-  const [y, m] = ym.split("-").map(Number);
-  if (!y || !m) return ym;
-  return new Date(y, m - 1, 1).toLocaleDateString(undefined, { month: "long", year: "numeric" });
-}
-
-function FilterIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-      <path d="M10 18h4v-2h-4v2zM3 6v2h18V6H3zm3 7h12v-2H6v2z" />
-    </svg>
-  );
-}
-
 function fmtZar(n: unknown): string {
   const x = Number(n);
   if (!Number.isFinite(x)) return "—";
@@ -88,16 +51,7 @@ export function OwnedPropertiesPortfolioDashboardPage() {
   const [error, setError] = useState("");
   const [selectedTypes, setSelectedTypes] = useState<string[]>(() => parseTypesParam(search));
   const [month, setMonth] = useState<string | null>(() => parseMonthParam(search) ?? new Date().toISOString().slice(0, 7));
-  const [properties, setProperties] = useState<any[]>([]);
   const [propertyId, setPropertyId] = useState<string | number | null>(() => parsePropertyParam(search));
-  const [filtersOpen, setFiltersOpen] = useState(false);
-  const filtersWrapRef = useRef<HTMLDivElement | null>(null);
-
-  const monthChoices = useMemo(() => monthDropdownValues(), []);
-  const monthSelectOptions = useMemo(() => {
-    if (!month || monthChoices.includes(month)) return monthChoices;
-    return [month, ...monthChoices].sort((a, b) => b.localeCompare(a));
-  }, [monthChoices, month]);
 
   const load = async (types = selectedTypes, nextMonth = month, nextPropertyId = propertyId) => {
     setLoading(true);
@@ -128,51 +82,12 @@ export function OwnedPropertiesPortfolioDashboardPage() {
   }, [search]);
 
   useEffect(() => {
-    let cancelled = false;
-    async function loadProps() {
-      try {
-        const rows = await getProperties();
-        if (!cancelled) setProperties(rows);
-      } catch {
-        if (!cancelled) setProperties([]);
-      }
-    }
-    void loadProps();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
     const handler = () => {
       void load(selectedTypes, month, propertyId);
-      void (async () => {
-        try {
-          setProperties(await getProperties());
-        } catch {
-          /* noop */
-        }
-      })();
     };
     window.addEventListener(PROPERTY_DATA_INVALIDATION, handler);
     return () => window.removeEventListener(PROPERTY_DATA_INVALIDATION, handler);
   }, [selectedTypes, month, propertyId]);
-
-  useEffect(() => {
-    if (!filtersOpen) return;
-    function onDocMouseDown(e: MouseEvent) {
-      if (!filtersWrapRef.current?.contains(e.target as Node)) setFiltersOpen(false);
-    }
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") setFiltersOpen(false);
-    }
-    document.addEventListener("mousedown", onDocMouseDown);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("mousedown", onDocMouseDown);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [filtersOpen]);
 
   const hasProperties = (data?.kpis?.totalProperties?.value ?? data?.totalProperties ?? 0) > 0;
   const chartColors = useMemo(() => getChartSemanticColors(), []);
@@ -221,24 +136,6 @@ export function OwnedPropertiesPortfolioDashboardPage() {
       ]
     };
   }, [data, chartColors]);
-
-  const setTypesFromMultiSelect = (next: string[]) => {
-    const params = new URLSearchParams(search);
-    if (next.length) params.set("types", next.join(","));
-    else params.delete("types");
-    if (month) params.set("month", month);
-    if (propertyId != null) params.set("propertyId", String(propertyId));
-    navigate(`/owned-properties/dashboard?${params.toString()}`);
-  };
-
-  const filterActive = propertyId != null || selectedTypes.length > 0;
-
-  const resetFilters = () => {
-    const params = new URLSearchParams();
-    params.set("month", new Date().toISOString().slice(0, 7));
-    navigate(`/owned-properties/dashboard?${params.toString()}`);
-    setFiltersOpen(false);
-  };
 
   const k = data?.kpis ?? {};
   const monthlyIncomeFromLeases = Number(
@@ -337,15 +234,6 @@ export function OwnedPropertiesPortfolioDashboardPage() {
   const missingBonds = Number(data?.missingData?.missingOutstandingBondBalance ?? 0);
   const negativeCashFlowProps = (data?.charts?.cashFlowByProperty ?? []).filter((r: any) => Number(r.netCashFlow ?? 0) < 0).length;
 
-  const setParam = (patch: Record<string, string | null>) => {
-    const params = new URLSearchParams(search);
-    Object.entries(patch).forEach(([k, v]) => {
-      if (v == null || v === "") params.delete(k);
-      else params.set(k, v);
-    });
-    navigate(`/owned-properties/dashboard?${params.toString()}`);
-  };
-
   return (
     <Section>
       <Helmet><title>Portfolio Dashboard | The Property Guy</title></Helmet>
@@ -359,14 +247,12 @@ export function OwnedPropertiesPortfolioDashboardPage() {
             </div>
           </div>
           <div
-            ref={filtersWrapRef}
             style={{
               display: "flex",
               alignItems: "center",
               justifyContent: "flex-end",
               gap: 10,
               flexWrap: "wrap",
-              position: "relative",
               flex: "1 1 auto",
               minWidth: 0,
               marginLeft: "auto"
@@ -376,91 +262,6 @@ export function OwnedPropertiesPortfolioDashboardPage() {
             <Link className="pg-btn pg-btn-secondary" to="/owned-properties/new">Add Property</Link>
             <Link className="pg-btn pg-btn-ghost" to="/financials">Add income/expense</Link>
             <Link className="pg-btn pg-btn-ghost" to="/dashboard">My reports</Link>
-            <button
-              type="button"
-              className={`pg-btn pg-btn-ghost pg-dashboard-filter-trigger${filterActive ? " pg-dashboard-filter-trigger-active" : ""}`}
-              aria-expanded={filtersOpen}
-              aria-haspopup="dialog"
-              aria-controls="portfolio-dashboard-filters"
-              aria-label={filterActive ? "Open filters (filters active)" : "Open filters"}
-              onClick={() => setFiltersOpen((v) => !v)}
-            >
-              <FilterIcon />
-            </button>
-            {filtersOpen ? (
-              <div
-                id="portfolio-dashboard-filters"
-                role="dialog"
-                aria-label="Dashboard filters"
-                className="pg-card pg-dashboard-filters-popover"
-              >
-                <div className="pg-card-pad">
-                  <div className="pg-card-title">Filters</div>
-                  <p className="pg-muted" style={{ margin: "0 0 12px", fontSize: 13 }}>
-                    Figures reflect the selected month. Hold Ctrl or ⌘ while clicking to choose multiple property types.
-                  </p>
-                  <div style={{ display: "grid", gap: 14 }}>
-                    <div>
-                      <div className="pg-muted" style={{ marginBottom: 6, fontSize: 13 }}>Property</div>
-                      <select
-                        className="pg-input"
-                        value={propertyId ?? ""}
-                        onChange={(e) => setParam({ propertyId: e.target.value || null })}
-                      >
-                        <option value="">All properties</option>
-                        {properties.map((p: any) => (
-                          <option key={p.id} value={p.id}>
-                            {p.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <div className="pg-muted" style={{ marginBottom: 6, fontSize: 13 }}>Property type</div>
-                      <select
-                        multiple
-                        className="pg-input"
-                        style={{ minHeight: 120, paddingTop: 8, paddingBottom: 8 }}
-                        value={selectedTypes}
-                        onChange={(e) => setTypesFromMultiSelect(Array.from(e.target.selectedOptions, (o) => o.value))}
-                      >
-                        {TYPE_OPTIONS.map((o) => (
-                          <option key={o.id} value={o.id}>
-                            {o.label}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <div className="pg-muted" style={{ marginBottom: 6, fontSize: 13 }}>Month</div>
-                      <select
-                        className="pg-input"
-                        value={month ?? ""}
-                        onChange={(e) => setParam({ month: e.target.value || null })}
-                      >
-                        {monthSelectOptions.map((ym) => (
-                          <option key={ym} value={ym}>
-                            {formatMonthLabel(ym)}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <div className="pg-muted" style={{ marginBottom: 6, fontSize: 13 }}>Status</div>
-                      <select className="pg-input" value="ALL" onChange={() => {}} disabled>
-                        <option value="ALL">All</option>
-                      </select>
-                      <div className="pg-muted" style={{ marginTop: 6, fontSize: 12 }}>More status filters coming soon.</div>
-                    </div>
-                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", paddingTop: 4 }}>
-                      <Button type="button" variant="secondary" onClick={resetFilters}>
-                        Reset filters
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ) : null}
           </div>
         </div>
 

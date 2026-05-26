@@ -249,6 +249,17 @@
   --shell-sticky-header-text: var(--text-primary);
   --shell-sticky-header-text-muted: var(--text-muted);
 
+  /* Dashboard shell (PropertyBase-style) */
+  --dash-page-bg: #080b12;
+  --dash-sidebar-bg: #0d111a;
+  --dash-card-bg: #121722;
+  --dash-surface-secondary: #161b26;
+  --dash-border: #252b38;
+  --dash-text-primary: #f8fafc;
+  --dash-text-secondary: #a1a8b3;
+  --dash-accent: #7c5cff;
+  --dash-accent-soft: rgba(124, 92, 255, 0.16);
+
   /* Legacy / compatibility aliases */
   --bg: var(--background);
   --text: var(--text-primary);
@@ -514,6 +525,16 @@ html[data-theme="light"] {
   --shell-sticky-header-border: var(--border-soft);
   --shell-sticky-header-text: var(--text-primary);
   --shell-sticky-header-text-muted: var(--text-muted);
+
+  --dash-page-bg: #f8fafc;
+  --dash-sidebar-bg: #ffffff;
+  --dash-card-bg: #ffffff;
+  --dash-surface-secondary: #f3f4f6;
+  --dash-border: #e5e7eb;
+  --dash-text-primary: #111827;
+  --dash-text-secondary: #6b7280;
+  --dash-accent: #7c5cff;
+  --dash-accent-soft: #f0ecff;
 
   --bg: var(--background);
   --text: var(--text-primary);
