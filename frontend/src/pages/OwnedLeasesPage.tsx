@@ -5,7 +5,7 @@ import {
   createLease,
   getProperties,
   getPropertyLeases,
-  getPropertyTenants,
+  getTenantsEligibleForProperty,
   propertyApiErrorMessage
 } from "../api/ownedProperties";
 import { invalidatePropertyWorkspace } from "../features/properties/invalidate";
@@ -39,8 +39,12 @@ export function OwnedLeasesPage() {
     if (!propertyId && rows[0]) setPropertyId(rows[0].id as string | number);
   }
   async function loadData(pid: string | number) {
-    const [tRows, bundle] = await Promise.all([getPropertyTenants(pid), getPropertyLeases(pid)]);
-    setTenants(Array.isArray(tRows) ? tRows : []);
+    const [tRows, bundle] = await Promise.all([getTenantsEligibleForProperty(pid), getPropertyLeases(pid)]);
+    const tenantList = Array.isArray(tRows) ? tRows : [];
+    setTenants(tenantList);
+    setForm((prev: typeof form) =>
+      prev.tenantId && !tenantList.some((t) => String(t.id) === String(prev.tenantId)) ? { ...prev, tenantId: "" } : prev
+    );
     setLeases(bundle.leases ?? []);
   }
   useEffect(() => { void loadProperties(); }, []);

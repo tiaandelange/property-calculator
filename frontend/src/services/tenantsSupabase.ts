@@ -173,6 +173,54 @@ export async function listTenantsForProperty(propertyId: string | number): Promi
   });
 }
 
+/**
+ * Tenants that can be selected when creating a lease or invoice for a property:
+ * unassigned (`property_id` null) or already linked to this property, and not blocked
+ * by an active lease on another property (matches `create_property_lease` RPC rules).
+ */
+export async function listTenantsEligibleForProperty(
+  propertyId: string | number
+): Promise<Record<string, unknown>[]> {
+  const uid = await requireUserId();
+  const pid = String(propertyId);
+  const sb = getSupabase();
+
+  const { data: allRows, error } = await sb
+    .from("tenants")
+    .select(TENANT_SELECT_WITH_PROPERTY)
+    .eq("user_id", uid)
+    .order("created_at", { ascending: false });
+  if (error) throw toError(error);
+
+  const { data: activeLeases, error: lErr } = await sb
+    .from("leases")
+    .select("tenant_id, property_id, status")
+    .eq("user_id", uid)
+    .in("status", [...ACTIVE_LEASE]);
+  if (lErr) throw toError(lErr);
+
+  const activeLeasePropertyByTenant = new Map<string, string>();
+  for (const lr of activeLeases ?? []) {
+    const row = lr as { tenant_id: string; property_id: string };
+    activeLeasePropertyByTenant.set(String(row.tenant_id), String(row.property_id));
+  }
+
+  return (allRows ?? [])
+    .filter((row) => {
+      const r = row as { id: string; property_id: string | null };
+      const tid = String(r.id);
+      const linkedProperty = r.property_id != null ? String(r.property_id) : null;
+
+      if (linkedProperty != null && linkedProperty !== pid) return false;
+
+      const activeOn = activeLeasePropertyByTenant.get(tid);
+      if (activeOn && activeOn !== pid) return false;
+
+      return true;
+    })
+    .map((row) => dbToTenant(row as Record<string, unknown>));
+}
+
 /** `GET /tenants/:id` shape: `{ tenant, currentLease }`. */
 export async function getTenant(
   id: string | number

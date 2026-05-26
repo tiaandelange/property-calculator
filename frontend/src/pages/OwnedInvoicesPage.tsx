@@ -4,7 +4,7 @@ import { fetchPdfBlob, triggerPdfFileDownload } from "../api/pdfBlob";
 import {
   generateInvoicePdf,
   getProperties,
-  getPropertyTenants,
+  getTenantsEligibleForProperty,
   listPropertyInvoices,
   createPropertyInvoice,
   markInvoicePaid,
@@ -39,7 +39,7 @@ export function OwnedInvoicesPage() {
   }
   async function loadData(pid: string | number) {
     const [t, i] = await Promise.all([
-      getPropertyTenants(pid),
+      getTenantsEligibleForProperty(pid),
       listPropertyInvoices(pid)
     ]);
     setTenants(Array.isArray(t) ? t : []);

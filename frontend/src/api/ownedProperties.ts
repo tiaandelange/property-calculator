@@ -103,6 +103,11 @@ export async function getPropertyTenants(propertyId: string | number) {
   return tenantsSupabase.listTenantsForProperty(propertyId);
 }
 
+export async function getTenantsEligibleForProperty(propertyId: string | number) {
+  assertSupabaseConfigured();
+  return tenantsSupabase.listTenantsEligibleForProperty(propertyId);
+}
+
 export async function createPropertyTenant(propertyId: string | number, payload: Record<string, unknown>) {
   assertSupabaseConfigured();
   return tenantsSupabase.createTenantForProperty(propertyId, payload);

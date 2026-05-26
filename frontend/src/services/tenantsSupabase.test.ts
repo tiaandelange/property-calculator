@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import {
   listTenants,
   listTenantsForProperty,
+  listTenantsEligibleForProperty,
   getTenant,
   createTenant,
   createTenantForProperty,
@@ -75,6 +76,39 @@ describe("tenantsSupabase", () => {
     expect(rows).toHaveLength(1);
     expect(rows[0].id).toBe(tenantId);
     expect(rows[0].firstName).toBe("Jane");
+  });
+
+  it("listTenantsEligibleForProperty includes unassigned tenants for the property", async () => {
+    getUser.mockResolvedValue({ data: { user: { id: userId } }, error: null });
+    const unassigned = { ...tenantRowSnake, id: "t-unassigned", property_id: null };
+    const otherProperty = { ...tenantRowSnake, id: "t-other", property_id: "other-prop" };
+    from.mockImplementation((table: string) => {
+      if (table === "tenants") {
+        return {
+          select: vi.fn(() => ({
+            eq: vi.fn(() => ({
+              order: vi.fn(() =>
+                Promise.resolve({ data: [unassigned, otherProperty, { ...tenantRowSnake, property_id: propertyId }], error: null })
+              )
+            }))
+          }))
+        };
+      }
+      if (table === "leases") {
+        return {
+          select: vi.fn(() => ({
+            eq: vi.fn(() => ({
+              in: vi.fn(() => Promise.resolve({ data: [], error: null }))
+            }))
+          }))
+        };
+      }
+      return { select: vi.fn() };
+    });
+
+    const rows = await listTenantsEligibleForProperty(propertyId);
+    expect(rows.map((r) => r.id)).toEqual(expect.arrayContaining(["t-unassigned", tenantId]));
+    expect(rows.map((r) => r.id)).not.toContain("t-other");
   });
 
   it("listTenantsForProperty runs direct tenants + lease lookups", async () => {

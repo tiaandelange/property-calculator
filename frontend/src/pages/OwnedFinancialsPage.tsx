@@ -10,7 +10,7 @@ import {
   deletePropertyIncome,
   getProperties,
   getPropertyFinancials,
-  getPropertyTenants,
+  getTenantsEligibleForProperty,
   hardDeletePropertyExpense,
   markPropertyIncomeReceived,
   updatePropertyIncome
@@ -102,7 +102,7 @@ export function OwnedFinancialsPage() {
     setIncomeEntries(bundle.income ?? []);
     setRecurringIncomeRules(bundle.recurringIncomeRules ?? []);
     try {
-      setTenants(await getPropertyTenants(pid));
+      setTenants(await getTenantsEligibleForProperty(pid));
     } catch {
       setTenants([]);
     }

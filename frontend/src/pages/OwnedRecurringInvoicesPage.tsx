@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useState } from "react";
 import { Helmet } from "react-helmet-async";
-import { getProperties, getPropertyTenants } from "../api/ownedProperties";
+import { getProperties, getTenantsEligibleForProperty } from "../api/ownedProperties";
 import {
   createRecurringInvoiceRule,
   listRecurringInvoiceRules
@@ -35,7 +35,7 @@ export function OwnedRecurringInvoicesPage() {
     if (!propertyId && rows[0]) setPropertyId(rows[0].id as string | number);
   }
   async function loadData(pid: string | number) {
-    const t = await getPropertyTenants(pid);
+    const t = await getTenantsEligibleForProperty(pid);
     setTenants(Array.isArray(t) ? t : []);
     setRules(await listRecurringInvoiceRules(pid));
   }
