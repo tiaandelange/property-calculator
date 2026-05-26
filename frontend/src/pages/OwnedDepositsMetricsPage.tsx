@@ -50,7 +50,6 @@ export function OwnedDepositsMetricsPage() {
         </div>
 
         {error ? <div className="pg-alert pg-alert-error" style={{ marginTop: 12 }}>{error}</div> : null}
-        <div style={{ height: 12 }} />
         <Card title={`Total deposits held: R ${rows.total.toLocaleString()}`}>
           <div style={{ overflowX: "auto" }}>
             <table className="pg-table" style={{ width: "100%", borderCollapse: "collapse" }}>

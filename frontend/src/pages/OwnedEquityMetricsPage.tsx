@@ -114,16 +114,12 @@ export function OwnedEquityMetricsPage() {
 
         {error ? <div className="pg-alert pg-alert-error" style={{ marginTop: 12 }}>{error}</div> : null}
         {message ? <div className="pg-alert" style={{ marginTop: 12 }}>{message}</div> : null}
-
-        <div style={{ height: 12 }} />
-        <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(4, minmax(0, 1fr))" }}>
+        <div className="pg-workspace-metrics-row">
           <Card title="Total Property Value">R {summary.totalValue.toLocaleString()}</Card>
           <Card title="Total Outstanding Bonds">R {summary.totalBonds.toLocaleString()}</Card>
           <Card title="Portfolio Equity">R {summary.portfolioEquity.toLocaleString()}</Card>
           <Card title="Properties Missing Values">{summary.missingValues}</Card>
         </div>
-
-        <div style={{ height: 12 }} />
         <Card title="Equity by property">
           <div style={{ overflowX: "auto" }}>
             <table className="pg-table" style={{ width: "100%", borderCollapse: "collapse" }}>

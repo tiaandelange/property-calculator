@@ -57,11 +57,10 @@ export function OwnedTenantsPage() {
             <Button type="submit">Add Tenant</Button>
           </form>
         </Card>
-        <div style={{ height: 12 }} />
         <Card title="Tenant records">
-          <div style={{ display: "grid", gap: 8 }}>
+          <div className="pg-workspace-inset-list">
             {tenants.map((t) => (
-              <div key={t.id}>
+              <div key={t.id} className="pg-workspace-inset">
                 {t.firstName} {t.lastName} {t.currentLease?.displayStatus ? `| ${t.currentLease.displayStatus}` : ""} {t.email ? `| ${t.email}` : ""} {t.status ? `| ${t.status}` : ""}
               </div>
             ))}

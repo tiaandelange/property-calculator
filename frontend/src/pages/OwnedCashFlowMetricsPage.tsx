@@ -60,8 +60,6 @@ export function OwnedCashFlowMetricsPage() {
         </div>
 
         {error ? <div className="pg-alert pg-alert-error" style={{ marginTop: 12 }}>{error}</div> : null}
-        <div style={{ height: 12 }} />
-
         <Card title={`Portfolio monthly net cash flow: R ${totals.net.toLocaleString()}`}>
           <div className="pg-muted" style={{ marginBottom: 10 }}>
             Income R {totals.income.toLocaleString()} · Expenses R {totals.expenses.toLocaleString()} · Bond payments R {totals.bond.toLocaleString()}

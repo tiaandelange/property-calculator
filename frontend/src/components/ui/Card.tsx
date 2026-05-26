@@ -13,7 +13,9 @@ export function Card({
   elevated?: boolean;
   className?: string;
 }) {
-  const cardClass = ["pg-card", elevated ? "pg-card--elevated" : "", className].filter(Boolean).join(" ");
+  const cardClass = ["pg-card", "pg-workspace-card", elevated ? "pg-card--elevated" : "", className]
+    .filter(Boolean)
+    .join(" ");
   return (
     <div className={cardClass}>
       <div className={pad ? "pg-card-pad" : ""}>

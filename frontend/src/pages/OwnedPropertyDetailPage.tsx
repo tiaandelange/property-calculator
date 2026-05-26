@@ -363,7 +363,7 @@ export function OwnedPropertyDetailPage() {
               ) : null}
 
               {tab === "tenants" ? (
-                <div style={{ display: "grid", gap: 10 }}>
+                <div className="pg-workspace-inset-list">
                   <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                     <Link className="pg-btn pg-btn-ghost" to="/tenants">
                       Open Tenant Directory
@@ -371,7 +371,7 @@ export function OwnedPropertyDetailPage() {
                   </div>
 
                   <Card title="Add tenant to this property">
-                    <div style={{ display: "grid", gap: 10 }}>
+                    <div className="pg-workspace-inset-list">
                       <div>
                         <div className="pg-muted" style={{ marginBottom: 6 }}>
                           Link existing tenant
@@ -412,7 +412,7 @@ export function OwnedPropertyDetailPage() {
                   </Card>
 
                   {(data.tenants?.length ?? 0) ? (
-                    <div style={{ display: "grid", gap: 10 }}>
+                    <div className="pg-workspace-inset-list">
                       {data.tenants.map((t: any) => (
                         <div key={t.id} className="pg-workspace-inset">
                           <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
@@ -464,7 +464,7 @@ export function OwnedPropertyDetailPage() {
               ) : null}
 
               {tab === "leases" ? (
-                <div style={{ display: "grid", gap: 10 }}>
+                <div className="pg-workspace-inset-list">
                   <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
                     <Link className="pg-btn pg-btn-primary" to="/leases">
                       {currentLeases.length === 0 ? "Create lease" : "Add another lease"}
@@ -476,7 +476,7 @@ export function OwnedPropertyDetailPage() {
                     ) : null}
                   </div>
                   {currentLeases.length > 0 ? (
-                    <div style={{ display: "grid", gap: 10 }}>
+                    <div className="pg-workspace-inset-list">
                       {currentLeases.map((lease: any) => {
                         const tn = lease.tenant ?? data.tenants?.find((t: any) => t.id === lease.tenantId);
                         return (
@@ -528,7 +528,7 @@ export function OwnedPropertyDetailPage() {
                     </summary>
                     <div style={{ height: 10 }} />
                     {(data.leases?.filter?.((l: any) => !currentLeaseIdSet.has(String(l.id)))?.length ?? 0) ? (
-                      <div style={{ display: "grid", gap: 10 }}>
+                      <div className="pg-workspace-inset-list">
                         {data.leases
                           .filter((l: any) => !currentLeaseIdSet.has(String(l.id)))
                           .map((l: any) => (
@@ -576,7 +576,7 @@ export function OwnedPropertyDetailPage() {
               ) : null}
 
               {tab === "documents" ? (
-                <div style={{ display: "grid", gap: 10 }}>
+                <div className="pg-workspace-inset-list">
                   <div className="pg-muted">{data.documents?.length ?? 0} documents.</div>
                   <Link className="pg-btn pg-btn-ghost" to={`/documents`}>
                     Open documents

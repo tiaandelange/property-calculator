@@ -147,7 +147,7 @@ export function DashboardPage() {
               const metric = getKeyMetric(r.result);
               return (
                 <Card key={r.id}>
-                  <div style={{ display: "grid", gap: 10 }}>
+                  <div className="pg-workspace-inset-list">
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
                       <div style={{ fontWeight: 900 }}>{r.type}</div>
                       <div className="pg-muted" style={{ fontSize: 12 }}>

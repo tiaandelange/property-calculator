@@ -156,11 +156,10 @@ export function OwnedRecurringInvoicesPage() {
             </Button>
           </form>
         </Card>
-        <div style={{ height: 12 }} />
         <Card title="Rules">
-          <div style={{ display: "grid", gap: 8 }}>
+          <div className="pg-workspace-inset-list">
             {rules.map((r) => (
-              <div key={r.id}>
+              <div key={r.id} className="pg-workspace-inset">
                 Rule #{r.id}: day {r.dayOfMonth}, amount {r.rentAmount}, enabled {String(r.enabled)}
               </div>
             ))}

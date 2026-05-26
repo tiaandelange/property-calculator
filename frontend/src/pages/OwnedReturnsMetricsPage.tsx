@@ -42,9 +42,8 @@ export function OwnedReturnsMetricsPage() {
           <Button onClick={load} loading={loading}>Refresh</Button>
         </div>
         {error ? <div className="pg-alert pg-alert-error" style={{ marginTop: 12 }}>{error}</div> : null}
-        <div style={{ height: 12 }} />
         <Card title="Portfolio returns">
-          <div style={{ display: "grid", gap: 8 }}>
+          <div className="pg-workspace-inset-list">
             <div>Annual NOI: <strong>R {Number(data?.annualNOI ?? 0).toLocaleString()}</strong></div>
             <div>Average cap rate: <strong>{(Number(data?.averageCapRate ?? 0) * 100).toFixed(2)}%</strong></div>
             <div className="pg-muted">

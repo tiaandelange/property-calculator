@@ -253,7 +253,6 @@ export function OwnedPropertiesDashboardPage() {
                 ariaLabel="View lease renewals details"
               />
             </Grid>
-            <div style={{ height: 12 }} />
             <Grid cols={3}>
               <MetricCard
                 title="Deposits Held"
@@ -276,9 +275,8 @@ export function OwnedPropertiesDashboardPage() {
                 iconPreset="yield"
               />
             </Grid>
-            <div style={{ height: 12 }} />
             <DashboardCard title="Alerts & Actions">
-              <div style={{ display: "grid", gap: 10 }}>
+              <div className="pg-workspace-inset-list">
                 {stats.monthToMonth > 0 ? <AlertBanner tone="warning" title="Month-to-month leases" message={`${stats.monthToMonth} leases are month-to-month.`} action={<Link className="pg-btn pg-btn-ghost" to="/leases">Review</Link>} /> : null}
                 {stats.expiringSoon > 0 ? <AlertBanner tone="warning" title="Lease expiring within 90 days" message={`${stats.expiringSoon} leases need renewal soon.`} action={<Link className="pg-btn pg-btn-ghost" to="/leases">Renew</Link>} /> : null}
                 {stats.overdueRentCount > 0 ? <AlertBanner tone="danger" title="Rent overdue" message={`${stats.overdueRentCount} tenants are overdue.`} action={<Link className="pg-btn pg-btn-ghost" to="/invoices">Collect</Link>} /> : null}
@@ -288,7 +286,6 @@ export function OwnedPropertiesDashboardPage() {
                 {stats.noLeaseDocument > 0 ? <AlertBanner tone="accent" title="No lease uploaded" message={`${stats.noLeaseDocument} active properties have no lease document.`} action={<Link className="pg-btn pg-btn-ghost" to="/documents">Upload</Link>} /> : null}
               </div>
             </DashboardCard>
-            <div style={{ height: 12 }} />
             <Grid cols={2}>
               <DashboardCard title="Portfolio Value vs Bonds">
                 <Bar data={{ labels: ["Value", "Bonds", "Equity"], datasets: [{ label: "Portfolio (R)", data: [stats.totalPropertyValue, stats.totalOutstandingBonds, stats.portfolioEquity], backgroundColor: [chartColors.info, chartColors.warning, chartColors.success] }] }} />
@@ -307,7 +304,6 @@ export function OwnedPropertiesDashboardPage() {
                 )}
               </DashboardCard>
             </Grid>
-            <div style={{ height: 12 }} />
             <Grid cols={3}>
               {details.map((p) => {
                 const activeLease = (p.leases ?? []).find((l: any) => ["ACTIVE", "MONTH_TO_MONTH"].includes(l.status));

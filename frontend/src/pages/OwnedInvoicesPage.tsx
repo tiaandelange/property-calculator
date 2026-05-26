@@ -118,9 +118,8 @@ export function OwnedInvoicesPage() {
             <Button type="submit">Create Invoice</Button>
           </form>
         </Card>
-        <div style={{ height: 12 }} />
         <Card title="Invoice list">
-          <div style={{ display: "grid", gap: 10 }}>
+          <div className="pg-workspace-inset-list">
             {invoices.map((inv) => (
               <div key={inv.id} className="pg-workspace-inset">
                 <div>{inv.invoiceNumber} - {inv.status} - Total: {inv.total}</div>

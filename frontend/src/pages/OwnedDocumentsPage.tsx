@@ -134,11 +134,10 @@ export function OwnedDocumentsPage() {
             <Button type="submit">Upload</Button>
           </form>
         </Card>
-        <div style={{ height: 12 }} />
         <Card title="Uploaded files">
-          <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "grid", gap: 8 }}>
+          <ul className="pg-workspace-inset-list" style={{ margin: 0, padding: 0, listStyle: "none" }}>
             {documents.map((d) => (
-              <li key={d.id} style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+              <li key={d.id} className="pg-workspace-inset" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
                 <span>
                   {d.originalFilename ?? d.fileName ?? d.id} ({d.documentType ?? "—"})
                 </span>

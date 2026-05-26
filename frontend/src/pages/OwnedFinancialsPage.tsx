@@ -274,7 +274,6 @@ export function OwnedFinancialsPage() {
             </div>
           ) : null}
         </Card>
-        <div style={{ height: 12 }} />
         <Card title="Expected rent income (from leases)">
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
             <Button variant="ghost" onClick={runExpectedIncome}>Run expected income (due)</Button>
@@ -282,7 +281,7 @@ export function OwnedFinancialsPage() {
           </div>
           <div style={{ height: 10 }} />
           {(recurringIncomeRules?.length ?? 0) ? (
-            <div style={{ display: "grid", gap: 8 }}>
+            <div className="pg-workspace-inset-list">
               {recurringIncomeRules.map((r: any) => (
                 <div key={r.id} className="pg-workspace-inset pg-workspace-inset-row">
                   <div>
@@ -297,11 +296,9 @@ export function OwnedFinancialsPage() {
             <div className="pg-muted">No expected rent rules yet. Create a lease to generate one.</div>
           )}
         </Card>
-
-        <div style={{ height: 12 }} />
         <Card title="Income entries">
           {(incomeEntries?.length ?? 0) ? (
-            <div style={{ display: "grid", gap: 8 }}>
+            <div className="pg-workspace-inset-list">
               {incomeEntries.map((inc: any) => (
                 <div key={inc.id} className="pg-workspace-inset pg-workspace-inset-row">
                   <div>
@@ -321,11 +318,9 @@ export function OwnedFinancialsPage() {
             <div className="pg-muted">No income entries yet.</div>
           )}
         </Card>
-
-        <div style={{ height: 12 }} />
         <Card title="Expense entries">
           {(expenses?.length ?? 0) ? (
-            <div style={{ display: "grid", gap: 8 }}>
+            <div className="pg-workspace-inset-list">
               {expenses.map((ex: any) => (
                 <div key={ex.id} className="pg-workspace-inset pg-workspace-inset-row">
                   <div>
@@ -343,7 +338,6 @@ export function OwnedFinancialsPage() {
             <div className="pg-muted">No expense entries yet.</div>
           )}
         </Card>
-        <div style={{ height: 12 }} />
         <Card title="Add income">
           <form onSubmit={addIncome}>
             <Field label="Tenant (optional)">
@@ -371,7 +365,6 @@ export function OwnedFinancialsPage() {
             <Button type="submit">Add Income</Button>
           </form>
         </Card>
-        <div style={{ height: 12 }} />
         <Card title="Add expense">
           <p className="pg-muted" style={{ marginTop: 0, marginBottom: 16 }}>
             Record a single dated expense here. Monthly repeating charges belong under{" "}
@@ -394,7 +387,6 @@ export function OwnedFinancialsPage() {
             <Button type="submit">Add expense</Button>
           </form>
         </Card>
-        <div style={{ height: 12 }} />
         <Card title="Monthly expense schedules">
           <p className="pg-muted" style={{ marginTop: 0, marginBottom: 16 }}>
             Create templates that repeat each month (rates, levies, bond debit orders). One-off repairs and bills stay under{" "}

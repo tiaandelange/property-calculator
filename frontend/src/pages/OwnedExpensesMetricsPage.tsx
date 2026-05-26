@@ -52,7 +52,6 @@ export function OwnedExpensesMetricsPage() {
           <Button onClick={load} loading={loading}>Refresh</Button>
         </div>
         {error ? <div className="pg-alert pg-alert-error" style={{ marginTop: 12 }}>{error}</div> : null}
-        <div style={{ height: 12 }} />
         <Card title={`Operating Expense Ratio: ${(Number(data?.operatingExpenseRatio ?? 0) * 100).toFixed(2)}%`}>
           {(data?.charts?.expenseBreakdown?.length ?? 0) ? <Doughnut data={chart} /> : <div className="pg-muted">No expense data yet.</div>}
         </Card>

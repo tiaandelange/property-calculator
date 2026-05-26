@@ -68,7 +68,6 @@ export function TenantDetailPage() {
 
         {tenant ? (
           <>
-            <div style={{ height: 12 }} />
             <Card title="Details">
               <div style={{ display: "grid", gap: 6 }}>
                 <div>Status: {tenant.status}</div>
@@ -76,8 +75,6 @@ export function TenantDetailPage() {
                 <div className="pg-muted">{tenant.idNumber ? `ID: ${tenant.idNumber}` : ""}</div>
               </div>
             </Card>
-
-            <div style={{ height: 12 }} />
             <Card title="Linked property">
               {tenant.property ? (
                 <div style={{ display: "grid", gap: 6 }}>
@@ -90,8 +87,6 @@ export function TenantDetailPage() {
                 <div className="pg-muted">No property linked.</div>
               )}
             </Card>
-
-            <div style={{ height: 12 }} />
             <Card title="Current lease">
               {currentLease ? (
                 <div style={{ display: "grid", gap: 6 }}>
@@ -113,10 +108,8 @@ export function TenantDetailPage() {
                 <div className="pg-muted">No current lease.</div>
               )}
             </Card>
-
-            <div style={{ height: 12 }} />
             <Card title="Lease history">
-              <div style={{ display: "grid", gap: 8 }}>
+              <div className="pg-workspace-inset-list">
                 {(tenant.leases ?? []).map((l: any) => (
                   <div key={l.id} className="pg-muted">
                     {l.property?.name ? `${l.property.name} | ` : ""}{l.status} | start {new Date(l.startDate).toLocaleDateString()}
@@ -125,8 +118,6 @@ export function TenantDetailPage() {
                 {!(tenant.leases ?? []).length ? <div className="pg-muted">No lease history.</div> : null}
               </div>
             </Card>
-
-            <div style={{ height: 12 }} />
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
               <button className="pg-btn pg-btn-ghost" type="button" onClick={() => void onDelete()}>Delete / Mark Past</button>
             </div>

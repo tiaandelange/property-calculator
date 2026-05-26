@@ -70,7 +70,6 @@ export function OwnedRentDueMetricsPage() {
         </div>
 
         {error ? <div className="pg-alert pg-alert-error" style={{ marginTop: 12 }}>{error}</div> : null}
-        <div style={{ height: 12 }} />
         <Card title={`Attention: overdue ${overdue}, due soon ${dueSoon}`}>
           <div style={{ overflowX: "auto" }}>
             <table className="pg-table" style={{ width: "100%", borderCollapse: "collapse" }}>

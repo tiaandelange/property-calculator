@@ -21,8 +21,16 @@
 
 .pg-workspace-page > *,
 .pg-dashboard-shell .pg-pdash > *,
-.pg-dashboard-shell .pg-tenants > * {
+.pg-dashboard-shell .pg-tenants > *,
+.pg-dashboard-shell .pg-main-workspace .pg-container > * {
   margin-bottom: 0;
+}
+
+/* Default vertical rhythm for all signed-in workspace pages */
+.pg-dashboard-shell .pg-main-workspace .pg-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--workspace-section-gap);
 }
 
 /* Shared card surface */
@@ -64,13 +72,28 @@
 }
 
 .pg-dashboard-shell .pg-card-pad,
-.pg-dashboard-shell .pg-dashboard-card {
+.pg-dashboard-shell .pg-dashboard-card,
+.pg-dashboard-shell .pg-dashboard-card-body {
   padding: var(--workspace-card-pad);
 }
 
+.pg-dashboard-shell .pg-dashboard-card-header {
+  padding: var(--workspace-card-pad) var(--workspace-card-pad) 0;
+}
+
+.pg-dashboard-shell .pg-dashboard-card-header + .pg-dashboard-card-body {
+  padding-top: 12px;
+}
+
 .pg-dashboard-shell .pg-stat-card,
-.pg-dashboard-shell .pg-metric-card {
+.pg-dashboard-shell .pg-metric-card,
+.pg-dashboard-shell .pg-property-card,
+.pg-dashboard-shell .pg-workspace-card:not(.pg-dashboard-card):not(.pg-card) {
   padding: var(--workspace-card-pad);
+}
+
+.pg-dashboard-shell .pg-card.pg-workspace-card {
+  padding: 0;
 }
 
 .pg-dashboard-shell .pg-pdash-metric,
@@ -84,7 +107,46 @@
   background: var(--dash-surface-secondary, var(--surface-muted));
 }
 
+/* Filter toolbars inside cards */
+.pg-workspace-filters-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+@media (max-width: 1100px) {
+  .pg-workspace-filters-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .pg-workspace-filters-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Metric / summary rows */
+.pg-workspace-metrics-row {
+  display: grid;
+  gap: var(--workspace-section-gap);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+@media (max-width: 1020px) {
+  .pg-workspace-metrics-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .pg-workspace-metrics-row {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* Card grids */
+.pg-dashboard-shell .pg-workspace-grid,
 .pg-dashboard-shell .pg-grid,
 .pg-dashboard-shell .pg-pdash-metrics-row,
 .pg-dashboard-shell .pg-pdash-metrics-row--primary,

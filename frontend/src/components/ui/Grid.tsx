@@ -9,7 +9,8 @@ export function Grid({
   cols: 2 | 3 | 4;
   className?: string;
 }) {
-  const cls = cols === 2 ? "pg-grid pg-grid-2" : cols === 3 ? "pg-grid pg-grid-3" : "pg-grid pg-grid-4";
+  const cls =
+    cols === 2 ? "pg-grid pg-grid-2 pg-workspace-grid" : cols === 3 ? "pg-grid pg-grid-3 pg-workspace-grid" : "pg-grid pg-grid-4 pg-workspace-grid";
   return <div className={`${cls} ${className ?? ""}`.trim()}>{children}</div>;
 }
 

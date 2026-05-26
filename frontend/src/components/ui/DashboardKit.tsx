@@ -100,6 +100,7 @@ export function StatCard({
   return (
     <div
       className={[
+        "pg-workspace-card",
         "pg-stat-card",
         `pg-stat-${statTone}`,
         elevated ? "pg-stat-card--elevated" : "",
@@ -181,6 +182,7 @@ export function MetricCard({
   return (
     <div
       className={[
+        "pg-workspace-card",
         "pg-metric-card",
         elevated ? "pg-metric-card--elevated" : "",
         clickable ? "pg-metric-card--clickable" : "",
@@ -237,7 +239,11 @@ export function DashboardCard({
   elevated?: boolean;
 }) {
   return (
-    <div className={["pg-dashboard-card", elevated ? "pg-dashboard-card--elevated" : ""].filter(Boolean).join(" ")}>
+    <div
+      className={["pg-workspace-card", "pg-dashboard-card", elevated ? "pg-dashboard-card--elevated" : ""]
+        .filter(Boolean)
+        .join(" ")}
+    >
       <div className="pg-dashboard-card-header">
         <h3>{title}</h3>
         {actions}

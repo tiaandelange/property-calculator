@@ -111,10 +111,8 @@ export function OwnedPropertiesMyPropertiesPage() {
         </div>
 
         {error ? <div className="pg-alert pg-alert-error" style={{ marginTop: 12 }}>{error}</div> : null}
-
-        <div style={{ height: 12 }} />
         <Card title="Filters">
-          <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(5, minmax(0, 1fr))" }}>
+          <div className="pg-workspace-filters-grid">
             <input className="pg-input" placeholder="Search name/address..." value={q} onChange={(e) => setQ(e.target.value)} />
             <select className="pg-input" value={type} onChange={(e) => setType(e.target.value)}>
               <option value="ALL">All types</option>
@@ -145,8 +143,6 @@ export function OwnedPropertiesMyPropertiesPage() {
             </select>
           </div>
         </Card>
-
-        <div style={{ height: 12 }} />
         {!loading && !error && rows.length === 0 ? (
           <Card title="Properties">
             <p className="pg-muted" style={{ marginTop: 0 }}>
@@ -164,7 +160,7 @@ export function OwnedPropertiesMyPropertiesPage() {
                 {rows.length === 0 ? "No properties to show." : "No properties match your filters."}
               </div>
             ) : (
-              <div style={{ display: "grid", gap: 8 }}>
+              <div className="pg-workspace-inset-list">
                 {filtered.map((p) => {
                   const typeKey = p.investmentType ?? p.propertyType;
                   const isLand = typeKey === "VACANT_LAND";

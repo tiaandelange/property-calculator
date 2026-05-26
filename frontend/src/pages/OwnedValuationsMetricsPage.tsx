@@ -81,8 +81,6 @@ export function OwnedValuationsMetricsPage() {
 
         {error ? <div className="pg-alert pg-alert-error" style={{ marginTop: 12 }}>{error}</div> : null}
         {message ? <div className="pg-alert" style={{ marginTop: 12 }}>{message}</div> : null}
-
-        <div style={{ height: 12 }} />
         <Card title={`Total property value: R ${totals.totalValue.toLocaleString()} · Missing: ${totals.missing}`}>
           <div style={{ overflowX: "auto" }}>
             <table className="pg-table" style={{ width: "100%", borderCollapse: "collapse" }}>
