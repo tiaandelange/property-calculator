@@ -119,7 +119,7 @@ export function WorkspaceRail({ userRole }: WorkspaceRailProps) {
       location.pathname.startsWith("/tenants") ||
       location.pathname.startsWith("/leases") ||
       location.pathname.startsWith("/financials") ||
-      location.pathname.startsWith("/invoices") ||
+      location.pathname.startsWith("/invoices") || // legacy redirect
       location.pathname.startsWith("/documents") ||
       location.pathname.includes("/owned-properties/reports"),
     [location.pathname]

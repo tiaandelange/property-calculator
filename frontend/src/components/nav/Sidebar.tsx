@@ -94,11 +94,13 @@ export function Sidebar({
               <NavLink to="/leases" className="pg-nav-link" data-active={pathname.startsWith("/leases") ? "true" : "false"} onClick={onClose}>
                 Leases <span className="pg-nav-muted">→</span>
               </NavLink>
-              <NavLink to="/financials" className="pg-nav-link" data-active={pathname.startsWith("/financials") ? "true" : "false"} onClick={onClose}>
+              <NavLink
+                to="/financials"
+                className="pg-nav-link"
+                data-active={pathname.startsWith("/financials") || pathname.startsWith("/invoices") ? "true" : "false"}
+                onClick={onClose}
+              >
                 Financials <span className="pg-nav-muted">→</span>
-              </NavLink>
-              <NavLink to="/invoices" className="pg-nav-link" data-active={pathname.startsWith("/invoices") ? "true" : "false"} onClick={onClose}>
-                Invoices <span className="pg-nav-muted">→</span>
               </NavLink>
               <NavLink to="/documents" className="pg-nav-link" data-active={pathname.startsWith("/documents") ? "true" : "false"} onClick={onClose}>
                 Documents <span className="pg-nav-muted">→</span>

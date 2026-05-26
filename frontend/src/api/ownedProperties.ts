@@ -4,6 +4,7 @@ import * as tenantsSupabase from "../services/tenantsSupabase";
 import * as leasesSupabase from "../services/leasesSupabase";
 import { buildLeaseDirectory } from "../features/leases/leaseDirectoryAdapter";
 import * as financialsSupabase from "../services/financialsSupabase";
+import * as financialsDirectorySupabase from "../services/financialsDirectorySupabase";
 import * as invoicesSupabase from "../services/invoicesSupabase";
 import { generateInvoicePdfViaVercel } from "../services/invoicesVercel";
 import * as dashboardSupabase from "../services/dashboardSupabase";
@@ -204,6 +205,11 @@ export async function getPropertyFinancials(
 ) {
   assertSupabaseConfigured();
   return financialsSupabase.getPropertyFinancials(propertyId, opts);
+}
+
+export async function getFinancialsDirectory(opts?: { month?: string; propertyId?: string | null }) {
+  assertSupabaseConfigured();
+  return financialsDirectorySupabase.getFinancialsDirectory(opts);
 }
 
 export async function createPropertyIncome(propertyId: string | number, payload: Record<string, unknown>) {

@@ -41,7 +41,7 @@ export function TenantMetricCards({
           changeTone={metrics.pendingPaymentsCount > 0 ? "down" : "up"}
           icon={CreditCard}
           iconAccent="warning"
-          to="/invoices"
+          to="/financials"
         />
         <PortfolioMetricCard
           label="Renewals Due"

@@ -4,6 +4,7 @@
 @import "./portfolio-dashboard.css";
 @import "./tenants-dashboard.css";
 @import "./leases-dashboard.css";
+@import "./financials-dashboard.css";
 @import "./workspace-cards.css";
 
 /* Structural tokens (spacing + typography). Palette: proplytic.tokens.css */

@@ -9,7 +9,6 @@ import {
   MessageSquare,
   Settings,
   Users,
-  Wrench
 } from "lucide-react";
 
 export type WorkspaceNavItem = {
@@ -27,8 +26,7 @@ export const WORKSPACE_SIDEBAR_NAV: WorkspaceNavItem[] = [
   { id: "properties", label: "Properties", icon: Home, to: "/owned-properties/my-properties", bottomNav: true },
   { id: "tenants", label: "Tenants", icon: Users, to: "/tenants", bottomNav: true },
   { id: "leases", label: "Leases", icon: FileText, to: "/leases", bottomNav: true },
-  { id: "payments", label: "Payments", icon: CreditCard, to: "/invoices" },
-  { id: "maintenance", label: "Maintenance", icon: Wrench, to: "/financials" },
+  { id: "financials", label: "Financials", icon: CreditCard, to: "/financials" },
   { id: "reports", label: "Reports", icon: BarChart3, to: "/owned-properties/reports" },
   { id: "messages", label: "Messages", icon: MessageSquare, disabled: true },
   { id: "settings", label: "Settings", icon: Settings, to: "/settings", bottomNav: true },
@@ -49,11 +47,8 @@ export function isWorkspaceNavActive(pathname: string, item: WorkspaceNavItem): 
       !pathname.includes("/reports")
     );
   }
-  if (item.id === "payments") {
-    return pathname.startsWith("/invoices");
-  }
-  if (item.id === "maintenance") {
-    return pathname.startsWith("/financials");
+  if (item.id === "financials") {
+    return pathname.startsWith("/financials") || pathname.startsWith("/invoices");
   }
   if (item.id === "reports") {
     return pathname.includes("/owned-properties/reports");
@@ -67,8 +62,7 @@ export function workspacePageTitle(pathname: string): string {
   if (pathname.startsWith("/owned-properties/") && !pathname.includes("/reports")) return "Properties";
   if (pathname.startsWith("/tenants")) return "Tenants";
   if (pathname.startsWith("/leases")) return "Leases";
-  if (pathname.startsWith("/invoices")) return "Payments";
-  if (pathname.startsWith("/financials")) return "Maintenance";
+  if (pathname.startsWith("/financials") || pathname.startsWith("/invoices")) return "Financials";
   if (pathname.includes("/owned-properties/reports")) return "Reports";
   if (pathname.startsWith("/documents")) return "Documents";
   if (pathname.startsWith("/settings")) return "Settings";

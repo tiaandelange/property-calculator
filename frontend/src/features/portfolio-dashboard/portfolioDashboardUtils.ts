@@ -208,7 +208,7 @@ export function buildActivityItems(data: Record<string, unknown> | null | undefi
       title: "Payment overdue",
       subtitle: `${rentOverdue} rent item${rentOverdue === 1 ? "" : "s"} need attention`,
       dateLabel: formatRelative(today),
-      to: "/invoices"
+      to: "/financials"
     });
   }
   if (rentSoon > 0 && rentOverdue === 0) {
@@ -218,7 +218,7 @@ export function buildActivityItems(data: Record<string, unknown> | null | undefi
       title: "Rent due soon",
       subtitle: `${rentSoon} upcoming payment${rentSoon === 1 ? "" : "s"}`,
       dateLabel: formatRelative(today),
-      to: "/invoices"
+      to: "/financials"
     });
   }
   if (leasesExp > 0) {

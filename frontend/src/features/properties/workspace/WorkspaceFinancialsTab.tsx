@@ -1361,7 +1361,7 @@ export function WorkspaceFinancialsTab({
             </div>
           )}
           <div style={{ marginTop: 14, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-            <Link className="pg-btn pg-btn-ghost" to={`/invoices`}>
+            <Link className="pg-btn pg-btn-ghost" to="/financials">
               Create custom invoice
             </Link>
             <button className="pg-btn pg-btn-ghost" type="button" onClick={() => setSub("expenses")}>

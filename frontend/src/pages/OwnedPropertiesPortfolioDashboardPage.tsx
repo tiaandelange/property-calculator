@@ -306,7 +306,7 @@ export function OwnedPropertiesPortfolioDashboardPage() {
             changeTone={rentOverdue > 0 ? "down" : rentDueSoon > 0 ? "neutral" : "up"}
             icon={DollarSign}
             iconAccent={rentOverdue > 0 ? "danger" : "warning"}
-            to="/invoices"
+            to="/financials"
           />
         </div>
       ) : null}
