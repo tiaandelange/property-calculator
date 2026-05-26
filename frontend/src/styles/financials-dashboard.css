@@ -30,35 +30,6 @@
   flex-wrap: wrap;
 }
 
-.pg-fins-metrics--desktop {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: var(--fins-gap);
-  width: 100%;
-}
-
-.pg-fins-metrics--desktop > *,
-.pg-fins-metrics-row > * {
-  min-width: 0;
-}
-
-.pg-fins-metrics--mobile {
-  display: none;
-  flex-direction: column;
-  gap: var(--fins-gap);
-}
-
-.pg-fins-metrics-row {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--fins-gap);
-  width: 100%;
-}
-
-.pg-fins-metrics-row--income-expenses {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
 /* YTD summary: revenue, expenses, cash flow in one row */
 .pg-fins-statement-panel .pg-fin-ytd-grid {
   display: grid;
@@ -258,14 +229,6 @@
 }
 
 @media (max-width: 900px) {
-  .pg-fins-metrics--desktop {
-    display: none;
-  }
-
-  .pg-fins-metrics--mobile {
-    display: flex;
-  }
-
   .pg-fins-statement-panel .pg-fin-ytd-grid {
     grid-template-columns: 1fr;
   }

@@ -4,11 +4,10 @@ import { Link, useLocation, useSearchParams } from "react-router-dom";
 import { getFinancialsDirectory, propertyApiErrorMessage } from "../api/ownedProperties";
 import { PROPERTY_DATA_INVALIDATION } from "../features/properties/invalidate";
 import { FinancialControlsBar } from "../features/financials/FinancialControlsBar";
-import { FinancialMetricCards } from "../features/financials/FinancialMetricCards";
 import { FinancialPagination } from "../features/financials/FinancialPagination";
 import { FinancialStatementTable } from "../features/financials/FinancialStatementTable";
 import { FinancialYtdSummary } from "../features/financials/FinancialYtdSummary";
-import type { FinancialDirectoryMetrics, FinancialFilters, FinancialStatementRow } from "../features/financials/financialDirectoryTypes";
+import type { FinancialFilters, FinancialStatementRow } from "../features/financials/financialDirectoryTypes";
 import {
   computeYtdTotals,
   localCalendarMonth,
@@ -19,15 +18,6 @@ import { Container } from "../components/ui/Container";
 import { Section } from "../components/ui/Section";
 import { Button } from "../components/ui/Button";
 
-const EMPTY_METRICS: FinancialDirectoryMetrics = {
-  receivedThisMonth: 0,
-  expectedThisMonth: 0,
-  expensesThisMonth: 0,
-  bondThisMonth: 0,
-  netCashFlow: 0,
-  propertyCount: 0
-};
-
 function parsePropertyIdFromSearch(search: string): string {
   const raw = new URLSearchParams(search).get("propertyId");
   return raw?.trim() ? raw.trim() : "ALL";
@@ -37,7 +27,6 @@ export function FinancialsListPage() {
   const { search } = useLocation();
   const [, setSearchParams] = useSearchParams();
   const [items, setItems] = useState<FinancialStatementRow[]>([]);
-  const [metrics, setMetrics] = useState<FinancialDirectoryMetrics>(EMPTY_METRICS);
   const [properties, setProperties] = useState<Array<{ id: string; name: string }>>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -58,13 +47,11 @@ export function FinancialsListPage() {
         propertyId: nextFilters.propertyId === "ALL" ? null : nextFilters.propertyId
       });
       setItems(res.items);
-      setMetrics(res.metrics);
       setProperties(res.properties);
     } catch (e: unknown) {
       console.error("[FinancialsList] load failed", e);
       setError(propertyApiErrorMessage(e));
       setItems([]);
-      setMetrics(EMPTY_METRICS);
     } finally {
       setLoading(false);
     }
@@ -147,8 +134,6 @@ export function FinancialsListPage() {
           </div>
 
           {error ? <div className="pg-alert pg-alert-error">{error}</div> : null}
-
-          <FinancialMetricCards metrics={metrics} loading={loading && !items.length} propertyId={filters.propertyId} />
 
           <FinancialControlsBar filters={filters} onChange={patchFilters} properties={properties} />
 
