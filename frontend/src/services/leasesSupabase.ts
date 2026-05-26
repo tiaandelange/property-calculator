@@ -32,6 +32,12 @@ function isValidDayOfMonth(d: number): boolean {
 
 const LEASE_SELECT = `*, tenants (*)`;
 
+const LEASE_DIRECTORY_SELECT = `
+  *,
+  tenants ( id, first_name, last_name, email, phone ),
+  properties ( id, name, address_line1, address_line2, suburb, city )
+`;
+
 export type PropertyLeasesBundle = {
   currentLeases: Record<string, unknown>[];
   currentLease: Record<string, unknown> | null;
@@ -57,6 +63,19 @@ function buildLeaseBundle(leases: Record<string, unknown>[]): PropertyLeasesBund
     };
   });
   return { currentLeases, currentLease, historicalLeases, leases, historicalLeaseSummaries };
+}
+
+/** All leases for the signed-in user (directory / leases page). */
+export async function listLeasesDirectoryRows(): Promise<Record<string, unknown>[]> {
+  const uid = await requireUserId();
+  const sb = getSupabase();
+  const { data, error } = await sb
+    .from("leases")
+    .select(LEASE_DIRECTORY_SELECT)
+    .eq("user_id", uid)
+    .order("created_at", { ascending: false });
+  if (error) throw toError(error);
+  return (data ?? []).map((row) => dbToLease(row as Record<string, unknown>));
 }
 
 /** Same envelope as `GET /api/properties/:propertyId/leases`. RLS enforces ownership. */

@@ -2,6 +2,7 @@ import { assertSupabaseConfigured } from "../lib/supabaseClient";
 import * as propertiesSupabase from "../services/propertiesSupabase";
 import * as tenantsSupabase from "../services/tenantsSupabase";
 import * as leasesSupabase from "../services/leasesSupabase";
+import { buildLeaseDirectory } from "../features/leases/leaseDirectoryAdapter";
 import * as financialsSupabase from "../services/financialsSupabase";
 import * as invoicesSupabase from "../services/invoicesSupabase";
 import { generateInvoicePdfViaVercel } from "../services/invoicesVercel";
@@ -76,6 +77,12 @@ export async function getTenants() {
 export async function getTenantsDirectory() {
   assertSupabaseConfigured();
   return tenantsSupabase.listTenantsDirectory();
+}
+
+export async function getLeasesDirectory() {
+  assertSupabaseConfigured();
+  const rows = await leasesSupabase.listLeasesDirectoryRows();
+  return buildLeaseDirectory(rows);
 }
 
 export async function createTenant(payload: Record<string, unknown>) {

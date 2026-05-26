@@ -5,6 +5,20 @@
 import { snakeRowToCamel } from "./propertyRowMapping";
 import { leaseDisplayStatus } from "../utils/leaseDisplay";
 
+function normalizePropertyEmbed(c: Record<string, unknown>): void {
+  const raw = c.properties ?? c.property;
+  if (Array.isArray(raw)) {
+    const first = raw[0];
+    c.property =
+      first && typeof first === "object" ? (snakeRowToCamel(first as Record<string, unknown>) as Record<string, unknown>) : null;
+  } else if (raw && typeof raw === "object") {
+    c.property = snakeRowToCamel(raw as Record<string, unknown>) as Record<string, unknown>;
+  } else {
+    c.property = null;
+  }
+  delete c.properties;
+}
+
 function normalizeTenantEmbed(c: Record<string, unknown>): void {
   const raw = c.tenants ?? c.tenant;
   if (Array.isArray(raw)) {
@@ -22,6 +36,7 @@ function normalizeTenantEmbed(c: Record<string, unknown>): void {
 export function dbToLease(row: Record<string, unknown>): Record<string, unknown> {
   const c = { ...snakeRowToCamel(row) } as Record<string, unknown>;
   normalizeTenantEmbed(c);
+  normalizePropertyEmbed(c);
   const disp = leaseDisplayStatus({
     status: String(c.status ?? ""),
     fixedTermEndDate: (c.fixedTermEndDate as string | Date | null | undefined) ?? null

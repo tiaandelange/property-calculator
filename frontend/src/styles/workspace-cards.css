@@ -13,7 +13,8 @@
 /* Vertical rhythm between page sections (metrics, filters, tables). */
 .pg-workspace-page,
 .pg-dashboard-shell .pg-pdash,
-.pg-dashboard-shell .pg-tenants {
+.pg-dashboard-shell .pg-tenants,
+.pg-dashboard-shell .pg-leases {
   display: flex;
   flex-direction: column;
   gap: var(--workspace-section-gap);
@@ -22,6 +23,7 @@
 .pg-workspace-page > *,
 .pg-dashboard-shell .pg-pdash > *,
 .pg-dashboard-shell .pg-tenants > *,
+.pg-dashboard-shell .pg-leases > *,
 .pg-dashboard-shell .pg-main-workspace .pg-container > * {
   margin-bottom: 0;
 }
@@ -45,6 +47,8 @@
 .pg-dashboard-shell .pg-pdash-property-card,
 .pg-dashboard-shell .pg-tenants-list-panel,
 .pg-dashboard-shell .pg-tenants-mobile-card,
+.pg-dashboard-shell .pg-leases-list-panel,
+.pg-dashboard-shell .pg-leases-mobile-card,
 .pg-dashboard-shell .pg-empty-state {
   background: var(--dash-card-bg, var(--surface));
   border: 1px solid var(--dash-border, var(--border-soft));
@@ -67,7 +71,8 @@
 .pg-dashboard-shell .pg-card:hover,
 .pg-dashboard-shell .pg-property-card:hover,
 .pg-dashboard-shell .pg-pdash-property-card:hover,
-.pg-dashboard-shell .pg-tenants-mobile-card:hover {
+.pg-dashboard-shell .pg-tenants-mobile-card:hover,
+.pg-dashboard-shell .pg-leases-mobile-card:hover {
   border-color: color-mix(in srgb, var(--primary) 28%, var(--dash-border, var(--border-soft)));
 }
 
@@ -152,7 +157,9 @@
 .pg-dashboard-shell .pg-pdash-metrics-row--primary,
 .pg-dashboard-shell .pg-pdash-metrics-row--secondary,
 .pg-dashboard-shell .pg-tenants-metrics--desktop,
-.pg-dashboard-shell .pg-tenants-metrics--mobile {
+.pg-dashboard-shell .pg-tenants-metrics--mobile,
+.pg-dashboard-shell .pg-leases-metrics--desktop,
+.pg-dashboard-shell .pg-leases-metrics--mobile {
   gap: var(--workspace-section-gap);
 }
 
