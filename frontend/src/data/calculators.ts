@@ -141,6 +141,77 @@ export const calculators: CalculatorDef[] = [
     ]
   },
   {
+    slug: "buy-vs-rent",
+    name: "Buy vs Rent Calculator",
+    description:
+      "Compare buying versus renting a similar home over your chosen period — few inputs, clear charts and a plain-English conclusion.",
+    groups: [
+      {
+        title: "Your situation",
+        fields: [
+          {
+            key: "purchasePrice",
+            label: "Property price (R)",
+            type: "money",
+            required: true,
+            help: "Price of a similar home you could buy."
+          },
+          {
+            key: "monthlyRent",
+            label: "Monthly rent (R)",
+            type: "money",
+            required: true,
+            help: "What you would pay to rent a comparable home today."
+          },
+          {
+            key: "depositAmount",
+            label: "Deposit available (R)",
+            type: "money",
+            required: true,
+            help: "Cash you can put toward a deposit if you buy."
+          },
+          {
+            key: "interestRate",
+            label: "Interest rate (%)",
+            type: "percent",
+            required: true
+          },
+          {
+            key: "analysisYears",
+            label: "How long will you stay?",
+            type: "select",
+            required: true,
+            options: [
+              { label: "5 years", value: 5 },
+              { label: "10 years", value: 10 },
+              { label: "15 years", value: 15 },
+              { label: "20 years", value: 20 },
+              { label: "25 years", value: 25 },
+              { label: "30 years", value: 30 }
+            ]
+          }
+        ]
+      },
+      {
+        title: "Growth assumptions",
+        fields: [
+          {
+            key: "propertyAppreciation",
+            label: "Expected property growth (% p.a.)",
+            type: "percent",
+            help: "Annual growth rate applied to the home value."
+          },
+          {
+            key: "rentEscalation",
+            label: "Expected rent increase (% p.a.)",
+            type: "percent",
+            help: "Annual increase applied to rent."
+          }
+        ]
+      }
+    ]
+  },
+  {
     slug: "monthly-payment",
     name: "Monthly Bond Payment",
     description: "Calculate monthly repayment, total interest, and full amortisation schedule (with extra payments).",

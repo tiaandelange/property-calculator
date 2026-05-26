@@ -941,6 +941,22 @@ export function CalculatorPage() {
                   </Card>
                 ) : null}
 
+                {calc.slug === "buy-vs-rent" && Array.isArray(result?.assumptionsUsed?.assumptions) ? (
+                  <details className="pg-calculator-assumptions-used">
+                    <summary>Assumptions used</summary>
+                    <ul style={{ margin: "8px 0 0", paddingLeft: 18, fontSize: 13, lineHeight: 1.5 }}>
+                      {(result.assumptionsUsed.assumptions as string[]).map((a: string) => (
+                        <li key={a}>{a}</li>
+                      ))}
+                    </ul>
+                    {result?.assumptionsUsed?.disclaimer ? (
+                      <p className="pg-muted" style={{ margin: "8px 0 0", fontSize: 12 }}>
+                        {String(result.assumptionsUsed.disclaimer)}
+                      </p>
+                    ) : null}
+                  </details>
+                ) : null}
+
                 {chartsToRender.map((ch, idx) => {
                   const opts = isMortgageStandalone
                     ? (ch.options as any)

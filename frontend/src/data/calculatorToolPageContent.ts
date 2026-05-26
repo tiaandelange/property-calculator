@@ -17,6 +17,13 @@ export type CalculatorToolPageDef = {
 };
 
 export const CALCULATOR_TOOL_PAGE: Record<string, CalculatorToolPageDef> = {
+  "buy-vs-rent": {
+    titleBefore: "Should you ",
+    accent: "buy or rent",
+    titleAfter: "?",
+    lead: "Enter price, rent, deposit and how long you plan to stay — we compare owning versus renting over time, with charts and a plain-English verdict.",
+    relatedSlugs: ["monthly-payment", "transfer-bond-costs", "cash-flow", "ltv"]
+  },
   "transfer-bond-costs": {
     titleBefore: "Estimate your ",
     accent: "transfer & bond costs",

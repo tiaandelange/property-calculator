@@ -914,6 +914,17 @@ textarea {
   color: var(--home-band-text);
 }
 
+.pg-calculator-assumptions-used {
+  margin-top: 12px;
+  font-size: 13px;
+}
+
+.pg-calculator-assumptions-used summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--pg-text);
+}
+
 .pg-calculator-tool-explainer details.pg-calculator-transfer-seo summary {
   color: var(--home-band-text);
 }

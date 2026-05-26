@@ -5,7 +5,7 @@ export const calculatorHubGroups: { title: string; match: (c: CalculatorDef) => 
   {
     title: "Purchase & financing",
     match: (c) =>
-      ["transfer-bond-costs", "monthly-payment", "ltv", "square-footage"].includes(c.slug)
+      ["buy-vs-rent", "transfer-bond-costs", "monthly-payment", "ltv", "square-footage"].includes(c.slug)
   },
   {
     title: "Income & operations",

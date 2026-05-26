@@ -2,6 +2,7 @@ import { calculators } from "./calculators";
 import { groupCalculators } from "./calculatorHubGroups";
 
 export const calculatorMegaMenuTaglineBySlug: Record<string, string> = {
+  "buy-vs-rent": "Simple buy or rent comparison",
   "transfer-bond-costs": "Duty, fees and cash to register",
   "monthly-payment": "Instalment, interest and amortisation",
   ltv: "Loan size versus property value",

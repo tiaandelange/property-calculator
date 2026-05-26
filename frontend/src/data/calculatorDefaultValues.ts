@@ -29,6 +29,15 @@ const REHAB_ITEMS_JSON = `[{"category":"kitchen","description":"Counters & cupbo
 /** Defaults keyed by calculator slug (see `calculators.ts`). */
 export const CALCULATOR_DEFAULT_VALUES: Record<string, Record<string, unknown>> = {
   "transfer-bond-costs": { ...TRANSFER_BOND_DEFAULTS },
+  "buy-vs-rent": {
+    purchasePrice: 1_500_000,
+    monthlyRent: 12_000,
+    depositAmount: 150_000,
+    interestRate: 11.75,
+    analysisYears: 10,
+    propertyAppreciation: 5,
+    rentEscalation: 6
+  },
   "monthly-payment": {
     purchasePrice: 2_300_000,
     depositAmount: 230_000,

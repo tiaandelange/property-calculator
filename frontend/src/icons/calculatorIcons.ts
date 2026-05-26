@@ -8,6 +8,7 @@ import {
   Coins,
   Home,
   Hotel,
+  KeyRound,
   LineChart,
   Percent,
   PieChart,
@@ -31,6 +32,7 @@ const DEFAULT_CONFIG: CalculatorIconConfig = { icon: Calculator, accent: "primar
 
 /** Lucide icon + accent per calculator slug (replaces WebP assets). */
 export const calculatorIconBySlug: Record<string, CalculatorIconConfig> = {
+  "buy-vs-rent": { icon: KeyRound, accent: "primary" },
   "transfer-bond-costs": { icon: ArrowLeftRight, accent: "info" },
   "monthly-payment": { icon: Calculator, accent: "primary" },
   ltv: { icon: Home, accent: "info" },

@@ -92,7 +92,7 @@ export const homepageCalculators: readonly HomepageCalculatorEntry[] = [
   })
 ];
 
-const HOMEPAGE_POPULAR_EXTRA_SLUGS = ["cash-flow", "cash-on-cash-return"] as const;
+const HOMEPAGE_POPULAR_EXTRA_SLUGS = ["buy-vs-rent", "cash-flow", "cash-on-cash-return"] as const;
 
 function entryFromCalculatorSlug(
   slug: string,

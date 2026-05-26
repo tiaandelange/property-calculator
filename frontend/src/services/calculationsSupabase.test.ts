@@ -40,6 +40,23 @@ describe("calculationsSupabase", () => {
     expect(Array.isArray(r.summary)).toBe(true);
   });
 
+  it("runCalculatorLocally runs buy-vs-rent with charts and interpretation", () => {
+    const r = runCalculatorLocally("buy-vs-rent", {
+      purchasePrice: 1_500_000,
+      monthlyRent: 12_000,
+      depositAmount: 150_000,
+      interestRate: 11.75,
+      analysisYears: 10,
+      propertyAppreciation: 5,
+      rentEscalation: 6
+    });
+    expect(r.calculator).toBe("buy-vs-rent");
+    expect(r.summary?.length).toBeGreaterThan(0);
+    expect(r.chartData?.length).toBe(2);
+    expect(r.interpretation?.text).toMatch(/buy|rent/i);
+    expect(r.breakdown?.verdict).toMatch(/buy|rent|tie/);
+  });
+
   it("saveCalculationResult calls save_calculation_and_decrement_free_use RPC", async () => {
     const result = runCalculatorLocally("monthly-payment", {
       bondAmount: 1_000_000,

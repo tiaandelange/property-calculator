@@ -29,6 +29,20 @@ export const CALCULATOR_TOOL_EXPLAINER: Partial<Record<string, CalculatorToolExp
       "VAT vs transfer-duty treatment must be confirmed on the specific transaction."
     ]
   },
+  "buy-vs-rent": {
+    usageExplained:
+      "Enter property price, rent, deposit, bond rate, how long you will stay, and expected property and rent growth. Bond repayment, ownership costs, upfront buying costs, selling costs at exit, and rent-plus-invest paths are modelled in the background — expand Assumptions used below the results to see defaults.",
+    advantages: [
+      "Only a handful of inputs — designed for a quick first-pass decision, not a full underwriting model.",
+      "Plain-English conclusion plus charts for monthly cost and wealth position over time.",
+      "Useful when weighing a primary home or a long-term rental before speaking to a bank or agent."
+    ],
+    disadvantages: [
+      "Background assumptions (investment return, maintenance, selling costs, etc.) are fixed — your market may differ.",
+      "Does not model income tax, levy shocks, or moving mid-period.",
+      "Not a substitute for personalised financial, legal or lending advice."
+    ]
+  },
   "monthly-payment": {
     usageExplained:
       "Use this bond repayment view to see monthly instalments, total interest and how extra payments shorten the term before you fix an offer or refinance.",
