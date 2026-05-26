@@ -26,6 +26,11 @@ const DEFAULT_FORM: PropertyFormValues = {
   purchasePrice: ""
 };
 
+function draftKeyForProperty(id: string | undefined, isEdit: boolean) {
+  // Only persist drafts for edit to avoid confusing “Create” flows.
+  return isEdit && id ? `pg:property-form-draft:${id}` : null;
+}
+
 export function OwnedPropertyFormPage() {
   const { id } = useParams();
   const isEdit = Boolean(id);
@@ -35,22 +40,72 @@ export function OwnedPropertyFormPage() {
   const [deleting, setDeleting] = useState(false);
   const [form, setForm] = useState<PropertyFormValues>({ ...DEFAULT_FORM });
   const [pendingPhotos, setPendingPhotos] = useState<PendingPhoto[]>([]);
+  const [draftBanner, setDraftBanner] = useState<null | { restoredAt: number }>(null);
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     async function load() {
       if (!isEdit || !id) return;
-      const data = await getProperty(id);
-      setForm({
-        ...data,
-        propertyType: data.propertyType ?? "OTHER",
-        investmentType: data.investmentType ?? "LONG_TERM_RENTAL",
-        purchasePrice: data.purchasePrice ?? "",
-        currentEstimatedValue: data.currentEstimatedValue ?? "",
-        outstandingBondBalance: data.outstandingBondBalance ?? ""
-      });
+      setLoaded(false);
+      setError("");
+      try {
+        const data = await getProperty(id);
+        const next: PropertyFormValues = {
+          ...data,
+          propertyType: data.propertyType ?? "OTHER",
+          investmentType: data.investmentType ?? "LONG_TERM_RENTAL",
+          purchasePrice: data.purchasePrice ?? "",
+          currentEstimatedValue: data.currentEstimatedValue ?? "",
+          outstandingBondBalance: data.outstandingBondBalance ?? ""
+        };
+
+        // Restore unsaved draft if present (e.g. after a deploy / refresh).
+        const k = draftKeyForProperty(id, isEdit);
+        if (k) {
+          try {
+            const raw = localStorage.getItem(k);
+            if (raw) {
+              const parsed = JSON.parse(raw) as { savedAt?: number; form?: PropertyFormValues };
+              if (parsed?.form) {
+                setForm({
+                  ...next,
+                  ...parsed.form,
+                  propertyType: parsed.form.propertyType ?? next.propertyType ?? "OTHER",
+                  investmentType: parsed.form.investmentType ?? next.investmentType ?? "LONG_TERM_RENTAL"
+                });
+                setDraftBanner({ restoredAt: Date.now() });
+                setLoaded(true);
+                return;
+              }
+            }
+          } catch {
+            // Ignore malformed drafts
+          }
+        }
+
+        setForm(next);
+        setLoaded(true);
+      } catch (e: unknown) {
+        // If auth/session expired or RLS blocks, don't blow away the form with defaults.
+        setError(propertyApiErrorMessage(e) || "Failed to load property. Please refresh or sign in again.");
+        setLoaded(false);
+      }
     }
     void load();
   }, [id, isEdit]);
+
+  useEffect(() => {
+    const k = draftKeyForProperty(id, isEdit);
+    if (!k || !loaded) return;
+    const t = window.setTimeout(() => {
+      try {
+        localStorage.setItem(k, JSON.stringify({ savedAt: Date.now(), form }));
+      } catch {
+        // Ignore quota / private mode failures
+      }
+    }, 250);
+    return () => window.clearTimeout(t);
+  }, [form, id, isEdit]);
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
@@ -74,6 +129,14 @@ export function OwnedPropertyFormPage() {
       };
       const saved = isEdit && id ? await updateProperty(id, propertyPayload) : await createProperty(propertyPayload);
       const propertyId = isEdit && id ? id : (saved?.id as string | number | undefined);
+      const k = draftKeyForProperty(id, isEdit);
+      if (k) {
+        try {
+          localStorage.removeItem(k);
+        } catch {
+          // ignore
+        }
+      }
       if (propertyId != null && propertyId !== "") {
         invalidatePropertyWorkspace(propertyId);
         if (pendingPhotos.length > 0) {
@@ -126,7 +189,11 @@ export function OwnedPropertyFormPage() {
       <header className="pg-prop-form-page__head">
         <h1 className="pg-prop-form-page__title">{pageTitle}</h1>
         <div className="pg-prop-form-page__actions">
-          <Button type="button" variant="secondary" onClick={() => navigate(isEdit && id ? `/owned-properties/${id}` : "/owned-properties")}>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => navigate(isEdit && id ? `/owned-properties/${id}` : "/owned-properties")}
+          >
             Cancel
           </Button>
           <Button type="submit" form="property-form-main" loading={saving}>
@@ -134,6 +201,50 @@ export function OwnedPropertyFormPage() {
           </Button>
         </div>
       </header>
+
+      {draftBanner ? (
+        <div className="pg-alert" style={{ marginBottom: 12, display: "flex", gap: 10, justifyContent: "space-between", alignItems: "center" }}>
+          <div>
+            <strong>Unsaved edits restored.</strong>{" "}
+            <span className="pg-muted">This can happen after a refresh or when new code is deployed.</span>
+          </div>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => {
+              const k = draftKeyForProperty(id, isEdit);
+              if (k) {
+                try {
+                  localStorage.removeItem(k);
+                } catch {
+                  // ignore
+                }
+              }
+              setDraftBanner(null);
+              // Re-load the last saved data
+              if (isEdit && id) {
+                void (async () => {
+                  try {
+                    const data = await getProperty(id);
+                    setForm({
+                      ...data,
+                      propertyType: data.propertyType ?? "OTHER",
+                      investmentType: data.investmentType ?? "LONG_TERM_RENTAL",
+                      purchasePrice: data.purchasePrice ?? "",
+                      currentEstimatedValue: data.currentEstimatedValue ?? "",
+                      outstandingBondBalance: data.outstandingBondBalance ?? ""
+                    });
+                  } catch {
+                    // ignore
+                  }
+                })();
+              }
+            }}
+          >
+            Discard draft
+          </Button>
+        </div>
+      ) : null}
 
       <PropertyForm
         form={form}
