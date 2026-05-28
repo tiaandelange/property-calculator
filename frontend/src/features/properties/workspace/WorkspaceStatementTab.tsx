@@ -5,6 +5,7 @@ import { Card } from "../../../components/ui/Card";
 import { Input } from "../../../components/ui/Input";
 import { ModalOverlay, ModalPanel } from "../../../components/ui/Modal";
 import { createPropertyExpense, deletePropertyExpense, updatePropertyExpense } from "../../../api/ownedProperties";
+import { MetricCard } from "../../../components/ui/DashboardKit";
 
 type PeriodPreset = "LAST_MONTH" | "SIX_MONTHS" | "YTD" | "TWELVE_MONTHS" | "PER_YEAR" | "FOREVER";
 
@@ -107,11 +108,26 @@ export function WorkspaceStatementTab({
         );
 
         if (cancelled) return;
-        const merged = stmts
+        const mergedRaw = stmts
           .flatMap((s) => (s ? ((s as any).statementRows ?? []) : []))
           .filter(Boolean);
 
-        merged.sort((a: any, b: any) => String(a.date ?? "").localeCompare(String(b.date ?? "")) || String(a.id ?? "").localeCompare(String(b.id ?? "")));
+        // Dedupe across months: some RPC views can repeat open invoices/rows when you query multiple months.
+        const byKey = new Map<string, any>();
+        for (const r of mergedRaw) {
+          const key =
+            r?.id != null && String(r.id).trim() !== ""
+              ? `id:${String(r.id)}`
+              : `row:${String(r.source ?? "")}|${String(r.type ?? "")}|${String(r.date ?? "")}|${String(r.description ?? "")}|${String(
+                  r.debit ?? ""
+                )}|${String(r.credit ?? "")}`;
+          if (!byKey.has(key)) byKey.set(key, r);
+        }
+        const merged = Array.from(byKey.values());
+        merged.sort(
+          (a: any, b: any) =>
+            String(a.date ?? "").localeCompare(String(b.date ?? "")) || String(a.id ?? "").localeCompare(String(b.id ?? ""))
+        );
         setRows(merged);
       } catch (e: any) {
         if (cancelled) return;
@@ -227,55 +243,48 @@ export function WorkspaceStatementTab({
         </div>
       ) : null}
 
-      <div className="pg-workspace-inset" style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", justifyContent: "space-between" }}>
-        <div style={{ fontWeight: 800 }}>Statement</div>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-          <select className="pg-input" value={preset} onChange={(e) => setPreset(e.target.value as PeriodPreset)} aria-label="Statement period">
-            <option value="LAST_MONTH">Last month</option>
-            <option value="SIX_MONTHS">6 months (default)</option>
-            <option value="YTD">Year to date</option>
-            <option value="TWELVE_MONTHS">12 months</option>
-            <option value="PER_YEAR">Per year</option>
-            <option value="FOREVER">Forever</option>
-          </select>
-          {preset === "PER_YEAR" ? (
-            <select className="pg-input" value={String(year)} onChange={(e) => setYear(Number(e.target.value))}>
-              {Array.from({ length: 6 }).map((_, i) => {
-                const y = new Date().getUTCFullYear() - i;
-                return (
-                  <option key={y} value={String(y)}>
-                    {y}
-                  </option>
-                );
-              })}
-            </select>
-          ) : null}
-          <button type="button" className="pg-btn pg-btn-secondary" disabled title="Coming next: Statement PDF export">
-            <ExternalLink size={16} style={{ marginRight: 6 }} aria-hidden />
-            Export PDF
-          </button>
-          <button type="button" className="pg-btn pg-btn-primary" onClick={() => setShowAddOnceOff(true)}>
-            <Plus size={16} style={{ marginRight: 6 }} aria-hidden />
-            Add Once-Off Expense
-          </button>
-        </div>
-      </div>
-
       <div className="pg-metric-grid">
-        <Card title="Credits (paid)">
-          <div className="pg-metric-value">{fmtZar(totals.credit)}</div>
-        </Card>
-        <Card title="Debits">
-          <div className="pg-metric-value">{fmtZar(totals.debit)}</div>
-        </Card>
-        <Card title="Net position (paid only)">
-          <div className="pg-metric-value">{fmtZar(totals.net)}</div>
-        </Card>
+        <MetricCard title="Income received" value={fmtZar(totals.credit)} subtitle="Paid credits only" iconPreset="monthly-income" />
+        <MetricCard title="Expenses" value={fmtZar(totals.debit)} subtitle="Debits" iconPreset="expenses" />
+        <MetricCard title="Net position" value={fmtZar(totals.net)} subtitle="Paid credits − debits" iconPreset="cash-flow" />
       </div>
 
       {(rows?.length ?? 0) === 0 && !loading ? <div className="pg-muted">No statement lines found.</div> : null}
       {(rows?.length ?? 0) > 0 ? (
         <div className="pg-statement-wrap">
+          <div className="pg-statement-topbar">
+            <div className="pg-statement-topbar__title">Statement</div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+              <select className="pg-input" value={preset} onChange={(e) => setPreset(e.target.value as PeriodPreset)} aria-label="Statement period">
+                <option value="LAST_MONTH">Last month</option>
+                <option value="SIX_MONTHS">6 months (default)</option>
+                <option value="YTD">Year to date</option>
+                <option value="TWELVE_MONTHS">12 months</option>
+                <option value="PER_YEAR">Per year</option>
+                <option value="FOREVER">Forever</option>
+              </select>
+              {preset === "PER_YEAR" ? (
+                <select className="pg-input" value={String(year)} onChange={(e) => setYear(Number(e.target.value))}>
+                  {Array.from({ length: 6 }).map((_, i) => {
+                    const y = new Date().getUTCFullYear() - i;
+                    return (
+                      <option key={y} value={String(y)}>
+                        {y}
+                      </option>
+                    );
+                  })}
+                </select>
+              ) : null}
+              <button type="button" className="pg-btn pg-btn-secondary" disabled title="Coming next: Statement PDF export">
+                <ExternalLink size={16} style={{ marginRight: 6 }} aria-hidden />
+                Export PDF
+              </button>
+              <button type="button" className="pg-btn pg-btn-primary" onClick={() => setShowAddOnceOff(true)}>
+                <Plus size={16} style={{ marginRight: 6 }} aria-hidden />
+                Add Once-Off Expense
+              </button>
+            </div>
+          </div>
           <table className="pg-statement-table">
             <thead>
               <tr>
