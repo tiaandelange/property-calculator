@@ -393,8 +393,7 @@
 
 /* Summary panel */
 .pg-pfin-summary {
-  position: sticky;
-  top: 16px;
+  position: static;
 }
 
 .pg-pfin-summary__card {
