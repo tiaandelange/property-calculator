@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
-import { Plus, Trash2 } from "lucide-react";
+import { ExternalLink, Plus, Trash2 } from "lucide-react";
 import { Container } from "../components/ui/Container";
 import { Section } from "../components/ui/Section";
 import { Card } from "../components/ui/Card";
@@ -314,7 +314,17 @@ export function OwnedPropertyDetailPage() {
                   { key: "tenants", label: "Link Tenants" },
                   { key: "leases", label: "Leases" },
                   { key: "documents", label: "Documents" },
-                  { key: "reports", label: "Reports" }
+                  {
+                    key: "reports",
+                    label: (
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                        Generate report <ExternalLink size={16} aria-hidden />
+                      </span>
+                    ),
+                    to: `/owned-properties/${id}/report`,
+                    newTab: true,
+                    variant: "secondary"
+                  }
                 ]}
                 extraQueryForTab={{ financials: `fin=${encodeURIComponent(finSub)}` }}
                 style={{ marginBottom: 0 }}

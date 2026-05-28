@@ -18,6 +18,7 @@ const DOC_TYPES = new Set([
   "MUNICIPAL_ACCOUNT",
   "INSURANCE",
   "INSPECTION",
+  "REPORT",
   "OTHER"
 ]);
 

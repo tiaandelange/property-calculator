@@ -20,6 +20,7 @@ import { FinancialsListPage } from "../pages/FinancialsListPage";
 import { OwnedInvoicesPage } from "../pages/OwnedInvoicesPage";
 import { OwnedRecurringInvoicesPage } from "../pages/OwnedRecurringInvoicesPage";
 import { OwnedDocumentsPage } from "../pages/OwnedDocumentsPage";
+import { PropertyReportPage } from "../pages/PropertyReportPage";
 import { OwnedEquityMetricsPage } from "../pages/OwnedEquityMetricsPage";
 import { OwnedLeaseMetricsPage } from "../pages/OwnedLeaseMetricsPage";
 import { OwnedRentDueMetricsPage } from "../pages/OwnedRentDueMetricsPage";
@@ -174,6 +175,7 @@ export function App() {
         <Route path="/owned-properties/new" element={<RequireAuth><OwnedPropertyFormPage /></RequireAuth>} />
         <Route path="/owned-properties/:id/edit" element={<RequireAuth><OwnedPropertyFormPage /></RequireAuth>} />
         <Route path="/owned-properties/:id/financials" element={<RequireAuth><OwnedPropertyFinancialsRedirect /></RequireAuth>} />
+        <Route path="/owned-properties/:id/report" element={<RequireAuth><PropertyReportPage /></RequireAuth>} />
         <Route path="/owned-properties/:id" element={<RequireAuth><OwnedPropertyDetailPage /></RequireAuth>} />
         <Route path="/owned-properties/tenants" element={<RequireAuth><Navigate to="/tenants" replace /></RequireAuth>} />
         <Route path="/owned-properties/leases" element={<RequireAuth><Navigate to="/leases" replace /></RequireAuth>} />

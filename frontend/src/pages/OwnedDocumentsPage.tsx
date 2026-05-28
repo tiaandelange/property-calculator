@@ -125,6 +125,7 @@ export function OwnedDocumentsPage() {
                 <option value="MUNICIPAL_ACCOUNT">Municipal account</option>
                 <option value="INSURANCE">Insurance</option>
                 <option value="INSPECTION">Inspection</option>
+                <option value="REPORT">Report</option>
                 <option value="OTHER">Other</option>
               </select>
             </Field>
