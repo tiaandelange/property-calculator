@@ -1,4 +1,5 @@
 import { getSupabase } from "../lib/supabaseClient";
+import { readVercelError } from "./vercelResponse";
 
 export type GenerateInvoicePdfResponse = {
   message?: string;
@@ -29,12 +30,12 @@ export async function generateInvoicePdfViaVercel(invoiceId: string): Promise<Ge
     }
   });
 
-  const json = (await res.json().catch(() => ({}))) as GenerateInvoicePdfResponse & { error?: string };
   if (!res.ok) {
-    throw new Error(json.error ?? `Invoice PDF generation failed (${res.status}).`);
+    const msg = await readVercelError(res);
+    throw new Error(`${msg} (HTTP ${res.status})`);
   }
-  if (!json.downloadUrl && json.error) {
-    throw new Error(json.error);
-  }
+
+  const json = (await res.json().catch(() => ({}))) as GenerateInvoicePdfResponse & { error?: string };
+  if (!json.downloadUrl && json.error) throw new Error(json.error);
   return json;
 }

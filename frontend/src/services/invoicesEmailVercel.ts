@@ -1,4 +1,5 @@
 import { getSupabase } from "../lib/supabaseClient";
+import { readVercelError } from "./vercelResponse";
 
 export async function sendInvoiceEmailViaVercel(invoiceId: string): Promise<{ message: string }> {
   const sb = getSupabase();
@@ -12,9 +13,11 @@ export async function sendInvoiceEmailViaVercel(invoiceId: string): Promise<{ me
     headers: { Authorization: `Bearer ${token}` }
   });
 
-  const json = (await res.json().catch(() => ({}))) as { message?: string; error?: string };
   if (!res.ok) {
-    throw new Error(json.error ?? json.message ?? `Send email failed (${res.status}).`);
+    const msg = await readVercelError(res);
+    throw new Error(`${msg} (HTTP ${res.status})`);
   }
+
+  const json = (await res.json().catch(() => ({}))) as { message?: string; error?: string };
   return { message: json.message ?? "Sent." };
 }

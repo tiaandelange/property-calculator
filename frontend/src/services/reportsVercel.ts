@@ -1,4 +1,5 @@
 import { getSupabase } from "../lib/supabaseClient";
+import { readVercelError } from "./vercelResponse";
 
 export type VercelReportType = "CALCULATION" | "PROPERTY_SUMMARY";
 
@@ -41,12 +42,12 @@ export async function generateReportViaVercel(opts: {
     body: JSON.stringify(body)
   });
 
-  const json = (await res.json().catch(() => ({}))) as GenerateReportResponse & { error?: string };
   if (!res.ok) {
-    throw new Error(json.error ?? `Report generation failed (${res.status}).`);
+    const msg = await readVercelError(res);
+    throw new Error(`${msg} (HTTP ${res.status})`);
   }
-  if (!json.downloadUrl && json.error) {
-    throw new Error(json.error);
-  }
+
+  const json = (await res.json().catch(() => ({}))) as GenerateReportResponse & { error?: string };
+  if (!json.downloadUrl && json.error) throw new Error(json.error);
   return json;
 }
