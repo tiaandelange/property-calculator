@@ -1,6 +1,11 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { randomUUID } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
+import { renderPdfDefinitionToBuffer } from "../lib/pdfMakeServer";
+import {
+  buildCalculationReportPdfDefinition,
+  buildPropertySummaryPdfDefinition
+} from "../lib/reportPdfBuilders";
 
 const REPORTS_BUCKET = "reports";
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -32,23 +37,6 @@ function parseJsonBody(req: VercelRequest): Record<string, unknown> {
 export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
   if (req.method !== "POST") {
     res.status(405).setHeader("Allow", "POST").json({ error: "Method not allowed" });
-    return;
-  }
-
-  // Lazy-load PDF dependencies so any module interop issues don't surface as
-  // FUNCTION_INVOCATION_FAILED (which prevents JSON errors from being returned).
-  let renderPdfDefinitionToBuffer: (definition: any) => Promise<Buffer>;
-  let buildCalculationReportPdfDefinition: any;
-  let buildPropertySummaryPdfDefinition: any;
-  try {
-    const pdf = await import(new URL("../lib/pdfMakeServer.js", import.meta.url).href);
-    renderPdfDefinitionToBuffer = pdf.renderPdfDefinitionToBuffer as any;
-    const builders = await import(new URL("../lib/reportPdfBuilders.js", import.meta.url).href);
-    buildCalculationReportPdfDefinition = (builders as any).buildCalculationReportPdfDefinition;
-    buildPropertySummaryPdfDefinition = (builders as any).buildPropertySummaryPdfDefinition;
-  } catch (e: any) {
-    console.error("[reports/generate] module load failed", e);
-    res.status(500).json({ error: e?.message ?? "PDF dependencies failed to load." });
     return;
   }
 
