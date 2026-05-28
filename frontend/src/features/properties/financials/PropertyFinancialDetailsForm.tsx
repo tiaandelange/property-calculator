@@ -6,7 +6,6 @@ export type FinancialDetailsFormState = {
   leviesMonthly: string;
   ratesAndTaxesMonthly: string;
   maintenancePercent: string;
-  expectedMonthlyExpenses: string;
   notes: string;
 };
 
@@ -28,7 +27,6 @@ export function buildFinancialDetailsInitial(
     leviesMonthly: str(pf.leviesMonthly),
     ratesAndTaxesMonthly: str(pf.ratesAndTaxesMonthly),
     maintenancePercent: maintPct == null ? "" : String(Math.round(maintPct * 10) / 10),
-    expectedMonthlyExpenses: str(pf.expectedMonthlyExpenses),
     notes: str(pf.notes)
   };
 }
@@ -122,17 +120,6 @@ export function PropertyFinancialDetailsForm({
           <span className="pg-pfin-input-suffix__tag">%</span>
         </div>
       </PropertyFormField>
-      <PropertyFormField label="Expected monthly expenses (IRR)">
-        <div className="pg-pfin-input-suffix">
-          <Input
-            value={form.expectedMonthlyExpenses}
-            onChange={(e) => patch({ expectedMonthlyExpenses: e.target.value })}
-            type="number"
-            min={0}
-          />
-          <span className="pg-pfin-input-suffix__tag">ZAR</span>
-        </div>
-      </PropertyFormField>
       <PropertyFormField label="Financial notes" className="pg-pfin-grid__span-2">
         <textarea
           className="pg-input pg-pfin-textarea"
@@ -192,11 +179,6 @@ export function PropertyFinancialDetailsForm({
       </header>
       <form id={formId} className="pg-pfin-grid" onSubmit={handleSubmit}>
         {fields}
-        <div className="pg-pfin-form-actions">
-          <button type="submit" className="pg-btn pg-btn-primary" disabled={saving}>
-            {saving ? "Saving…" : "Save financial details"}
-          </button>
-        </div>
       </form>
     </section>
   );

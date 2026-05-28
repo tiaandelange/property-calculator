@@ -57,7 +57,14 @@ const PROPERTY_EXPENSE_CATEGORY_OPTIONS: Array<{ value: string; label: string }>
 ];
 
 /** Recurring schedules: bond is managed under Financials → Bond payment. */
-const RECURRING_SCHEDULE_CATEGORY_OPTIONS = PROPERTY_EXPENSE_CATEGORY_OPTIONS.filter((o) => o.value !== "BOND_PAYMENT");
+const RECURRING_SCHEDULE_CATEGORY_OPTIONS = [
+  ...PROPERTY_EXPENSE_CATEGORY_OPTIONS.filter((o) => o.value !== "BOND_PAYMENT"),
+  { value: "WIFI", label: "Wi-Fi" }
+];
+
+function normalizeExpenseCategoryForApi(uiValue: string): string {
+  return uiValue === "WIFI" ? "OTHER" : uiValue;
+}
 
 const BOND_TERM_YEAR_OPTIONS = [5, 10, 15, 20, 25, 30] as const;
 
@@ -96,6 +103,7 @@ function parseDomFromYmd(ymd: string): number {
 }
 
 function expenseCategoryLabel(value: string) {
+  if (value === "WIFI") return "Wi-Fi";
   return PROPERTY_EXPENSE_CATEGORY_OPTIONS.find((o) => o.value === value)?.label ?? value;
 }
 
@@ -492,7 +500,7 @@ export function WorkspaceFinancialsTab({
     setRecurringScheduleSaving(true);
     try {
       await createPropertyExpense(propertyId, {
-        category: recurringScheduleForm.category,
+        category: normalizeExpenseCategoryForApi(recurringScheduleForm.category),
         description: recurringScheduleForm.description.trim(),
         amount: amt,
         recurringSchedule: true,
@@ -590,7 +598,6 @@ export function WorkspaceFinancialsTab({
         leviesMonthly: parseOpt(state.leviesMonthly),
         ratesAndTaxesMonthly: parseOpt(state.ratesAndTaxesMonthly),
         maintenanceMonthly: derivedMaintenanceMonthly,
-        expectedMonthlyExpenses: parseOpt(state.expectedMonthlyExpenses),
         notes: state.notes.trim() || null
       };
       await updateProperty(propertyId, payload);
@@ -846,7 +853,7 @@ export function WorkspaceFinancialsTab({
     setScheduleBusyId(sid);
     try {
       const payload: Record<string, unknown> = {
-        category: scheduleEditor.category,
+        category: normalizeExpenseCategoryForApi(scheduleEditor.category),
         description: scheduleEditor.description.trim(),
         amount: amt,
         recurringStartDate: scheduleEditor.recurringStartDate,
@@ -1868,7 +1875,7 @@ export function WorkspaceFinancialsTab({
                   setRecurringScheduleForm({
                     ...recurringScheduleForm,
                     category: v,
-                    description: expenseCategoryLabel(v)
+                    description: v === "WIFI" ? "Wi-Fi" : expenseCategoryLabel(v)
                   });
                 }}
               >
@@ -1981,7 +1988,14 @@ export function WorkspaceFinancialsTab({
                           <select
                             className="pg-input"
                             value={scheduleEditor.category}
-                            onChange={(e) => setScheduleEditor({ ...scheduleEditor, category: e.target.value })}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              setScheduleEditor({
+                                ...scheduleEditor,
+                                category: v,
+                                description: v === "WIFI" ? "Wi-Fi" : scheduleEditor.description
+                              });
+                            }}
                           >
                             {RECURRING_SCHEDULE_CATEGORY_OPTIONS.map((o) => (
                               <option key={o.value} value={o.value}>
