@@ -159,13 +159,14 @@
 }
 
 .pg-dashboard-shell-header {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(160px, max-content) minmax(280px, 1fr) max-content;
   align-items: center;
-  gap: 16px;
+  column-gap: 16px;
+  row-gap: 12px;
   padding: 16px 24px;
   border-bottom: 1px solid var(--dash-border, var(--border));
   background: var(--dash-page-bg, var(--background));
-  flex-wrap: wrap;
 }
 
 .pg-dashboard-shell-header-title {
@@ -178,12 +179,12 @@
 }
 
 .pg-dashboard-shell-search {
-  flex: 1 1 280px;
   min-width: 0;
   max-width: 520px;
   position: relative;
   display: flex;
   align-items: center;
+  justify-self: center;
 }
 
 .pg-dashboard-shell-search-icon {
@@ -218,7 +219,74 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-left: auto;
+  justify-self: end;
+}
+
+.pg-dashboard-shell-title-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.pg-dashboard-shell-title-dot {
+  color: var(--dash-text-secondary, var(--text2));
+}
+
+.pg-dashboard-shell-prop-switch {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--dash-border, var(--border));
+  background: var(--dash-card-bg, var(--surface));
+  color: var(--dash-text-primary, var(--text));
+  cursor: pointer;
+  max-width: min(420px, 50vw);
+}
+
+.pg-dashboard-shell-prop-switch-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pg-dashboard-shell-prop-menu {
+  position: absolute;
+  left: 0;
+  top: calc(100% + 10px);
+  min-width: 320px;
+  max-width: min(520px, calc(100vw - 32px));
+  max-height: 60vh;
+  overflow: auto;
+  z-index: 95;
+  border-radius: 14px;
+  border: 1px solid var(--dash-border, var(--border));
+  background: var(--dash-card-bg, var(--surface));
+  box-shadow: var(--shadow-md);
+  padding: 8px;
+}
+
+.pg-dashboard-shell-prop-menu-item {
+  display: grid;
+  gap: 2px;
+  padding: 10px 10px;
+  border-radius: 12px;
+  cursor: pointer;
+  color: var(--dash-text-primary, var(--text));
+  text-decoration: none;
+}
+
+.pg-dashboard-shell-prop-menu-item:hover {
+  background: color-mix(in srgb, var(--dash-text-primary, var(--text)) 6%, transparent);
+  text-decoration: none;
+}
+
+.pg-dashboard-shell-prop-menu-sub {
+  font-size: 12px;
+  color: var(--dash-text-secondary, var(--text2));
 }
 
 .pg-dashboard-shell-icon-btn {
