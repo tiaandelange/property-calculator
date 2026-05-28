@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { Line, Doughnut } from "react-chartjs-2";
 import { Card } from "../../../components/ui/Card";
+import { MetricCard } from "../../../components/ui/DashboardKit";
 import { getChartCategoryPalette, getChartSemanticColors } from "../../../theme/cssTokens";
 
 type CompositionSlice = { label: string; amount: number; kind: "income" | "expense" };
@@ -179,71 +180,81 @@ export function WorkspaceOverviewTab({ data, statement, perf, propertyId, naviga
   return (
     <div style={{ display: "grid", gap: 16 }}>
       <div className="pg-metric-grid">
-        <button type="button" className="pg-metric-tile" onClick={() => navigate(`/owned-properties/${propertyId}?tab=leases`)}>
-          <div className="pg-metric-tile-title">Occupancy status</div>
-          <div className="pg-metric-tile-value">{occ}</div>
-          <div className="pg-muted" style={{ fontSize: 12, marginTop: 6 }}>Open leases tab</div>
-        </button>
+        <MetricCard
+          title="Occupancy status"
+          value={occ}
+          subtitle="Open leases tab"
+          iconPreset="vacancy"
+          onClick={() => navigate(`/owned-properties/${propertyId}?tab=leases`)}
+          ariaLabel="Open leases tab"
+        />
 
-        <button type="button" className="pg-metric-tile" onClick={() => navigate(`/owned-properties/${propertyId}?tab=tenants`)}>
-          <div className="pg-metric-tile-title">Current tenants</div>
-          <div className="pg-metric-tile-value">{data.tenants?.length ?? 0}</div>
-          <div className="pg-muted" style={{ fontSize: 12, marginTop: 6 }}>
-            {(data.tenants ?? []).slice(0, 2).map((t: any) => `${t.firstName} ${t.lastName}`).join(", ") || "None linked"}
-          </div>
-        </button>
+        <MetricCard
+          title="Current tenants"
+          value={data.tenants?.length ?? 0}
+          subtitle={(data.tenants ?? []).slice(0, 2).map((t: any) => `${t.firstName} ${t.lastName}`).join(", ") || "None linked"}
+          iconPreset="tenants"
+          onClick={() => navigate(`/owned-properties/${propertyId}?tab=tenants`)}
+          ariaLabel="Open tenants tab"
+        />
 
-        <button type="button" className="pg-metric-tile" onClick={() => navigate(`/owned-properties/${propertyId}?tab=financials&fin=statement`)}>
-          <div className="pg-metric-tile-title">Monthly income</div>
-          <div className="pg-metric-tile-value">R {incomeMonth.toLocaleString()}</div>
-          <div className="pg-muted" style={{ fontSize: 12, marginTop: 6 }}>
-            Received R {receivedMonth.toLocaleString()} · Expected R {expectedMonth.toLocaleString()}
-          </div>
-        </button>
+        <MetricCard
+          title="Monthly income"
+          value={`R ${incomeMonth.toLocaleString()}`}
+          subtitle={`Received R ${receivedMonth.toLocaleString()} · Expected R ${expectedMonth.toLocaleString()}`}
+          iconPreset="monthly-income"
+          onClick={() => navigate(`/owned-properties/${propertyId}?tab=financials&fin=statement`)}
+          ariaLabel="Open statement tab"
+        />
 
-        <button type="button" className="pg-metric-tile" onClick={() => navigate(`/owned-properties/${propertyId}?tab=financials&fin=statement`)}>
-          <div className="pg-metric-tile-title">Monthly expenses</div>
-          <div className="pg-metric-tile-value">R {operatingExpMonth.toLocaleString()}</div>
-          <div className="pg-muted" style={{ fontSize: 12, marginTop: 6 }}>Bond/debt R {bondMonth.toLocaleString()}</div>
-        </button>
+        <MetricCard
+          title="Monthly expenses"
+          value={`R ${operatingExpMonth.toLocaleString()}`}
+          subtitle={`Bond/debt R ${bondMonth.toLocaleString()}`}
+          iconPreset="expenses"
+          onClick={() => navigate(`/owned-properties/${propertyId}?tab=financials&fin=statement`)}
+          ariaLabel="Open statement tab"
+        />
 
-        <div className="pg-metric-tile" style={{ cursor: "default" }}>
-          <div className="pg-metric-tile-title">Monthly NOI (operating)</div>
-          <div className="pg-metric-tile-value">{noiOp == null ? "—" : `R ${Math.round(noiOp).toLocaleString()}`}</div>
-          <div className="pg-muted" style={{ fontSize: 12, marginTop: 6 }}>Excludes bond payment</div>
-        </div>
+        <MetricCard
+          title="Monthly NOI (operating)"
+          value={noiOp == null ? "—" : `R ${Math.round(noiOp).toLocaleString()}`}
+          subtitle="Excludes bond payment"
+          iconPreset="noi"
+        />
 
-        <div className="pg-metric-tile" style={{ cursor: "default" }}>
-          <div className="pg-metric-tile-title">Monthly cash flow</div>
-          <div className="pg-metric-tile-value">{cashAfterDebt == null ? "—" : `R ${Math.round(cashAfterDebt).toLocaleString()}`}</div>
-          <div className="pg-muted" style={{ fontSize: 12, marginTop: 6 }}>NOI − debt service</div>
-        </div>
+        <MetricCard
+          title="Monthly cash flow"
+          value={cashAfterDebt == null ? "—" : `R ${Math.round(cashAfterDebt).toLocaleString()}`}
+          subtitle="NOI − debt service"
+          iconPreset="cash-flow"
+        />
 
-        <div className="pg-metric-tile" style={{ cursor: "default" }}>
-          <div className="pg-metric-tile-title">Equity</div>
-          <div className="pg-metric-tile-value">{equity == null ? "Insufficient data" : `R ${Math.round(equity).toLocaleString()}`}</div>
-        </div>
+        <MetricCard
+          title="Equity"
+          value={equity == null ? "Insufficient data" : `R ${Math.round(equity).toLocaleString()}`}
+          iconPreset="equity"
+        />
 
-        <div className="pg-metric-tile" style={{ cursor: "default" }}>
-          <div className="pg-metric-tile-title">True cash-on-cash ROI</div>
-          <div className="pg-metric-tile-value">
-            {cocPercent == null ? "Insufficient data" : `${cocPercent.toFixed(1)}%`}
-          </div>
-          <div className="pg-muted" style={{ fontSize: 12, marginTop: 6 }}>
-            (Monthly rental income − monthly expenses) × 12 ÷ total cash invested × 100
-          </div>
-        </div>
+        <MetricCard
+          title="True cash-on-cash ROI"
+          value={cocPercent == null ? "Insufficient data" : `${cocPercent.toFixed(1)}%`}
+          subtitle="(Monthly rental income − monthly expenses) × 12 ÷ total cash invested × 100"
+          iconPreset="roi"
+        />
 
-        <div className="pg-metric-tile" style={{ cursor: "default" }}>
-          <div className="pg-metric-tile-title">IRR</div>
-          <div className="pg-metric-tile-value">{irrPct == null ? "Insufficient data" : `${irrPct.toFixed(2)}%`}</div>
-          <div className="pg-muted" style={{ fontSize: 12, marginTop: 6 }}>Portfolio-level estimate when filtered</div>
-        </div>
+        <MetricCard
+          title="IRR"
+          value={irrPct == null ? "Insufficient data" : `${irrPct.toFixed(2)}%`}
+          subtitle="Portfolio-level estimate when filtered"
+          iconPreset="irr"
+        />
 
-        <div className="pg-metric-tile" style={{ cursor: "default" }}>
-          <div className="pg-metric-tile-title">Property type</div>
-          <div className="pg-metric-tile-value" style={{ fontSize: 15 }}>{INV_LABEL[invType ?? "OTHER"] ?? invType ?? "—"}</div>
-        </div>
+        <MetricCard
+          title="Property type"
+          value={<span style={{ fontSize: 15 }}>{INV_LABEL[invType ?? "OTHER"] ?? invType ?? "—"}</span>}
+          iconPreset="home"
+        />
       </div>
 
       <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))" }}>
