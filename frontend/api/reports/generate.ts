@@ -1,11 +1,11 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { randomUUID } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
-import { renderPdfDefinitionToBuffer } from "../lib/pdfMakeServer";
+import { renderPdfDefinitionToBuffer } from "../lib/pdfMakeServer.js";
 import {
   buildCalculationReportPdfDefinition,
   buildPropertySummaryPdfDefinition
-} from "../lib/reportPdfBuilders";
+} from "../lib/reportPdfBuilders.js";
 
 const REPORTS_BUCKET = "reports";
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

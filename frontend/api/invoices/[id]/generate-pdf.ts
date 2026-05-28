@@ -1,12 +1,12 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { renderPdfDefinitionToBuffer } from "../../lib/pdfMakeServer";
+import { renderPdfDefinitionToBuffer } from "../../lib/pdfMakeServer.js";
 import {
   buildInvoicePdfDefinition,
   paymentDetailsLines,
   threeMonthBoundsFromInvoiceDate,
   type InvoicePdfLedgerRow,
   type InvoicePdfLineItem
-} from "../../lib/invoicePdfBuilder";
+} from "../../lib/invoicePdfBuilder.js";
 import { authenticateSupabaseRequest, isUuid } from "../../lib/supabaseServerAuth";
 
 const INVOICES_BUCKET = "invoices";
