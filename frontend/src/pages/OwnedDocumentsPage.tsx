@@ -92,7 +92,6 @@ export function OwnedDocumentsPage() {
         <title>Documents | The Property Guy</title>
       </Helmet>
       <Container>
-        <h1 className="pg-h2">Property documents</h1>
         {error ? (
           <div className="pg-alert pg-alert-error" role="alert">
             {error}

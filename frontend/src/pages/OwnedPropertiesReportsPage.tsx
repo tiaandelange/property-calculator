@@ -38,11 +38,8 @@ export function OwnedPropertiesReportsPage() {
         <div className="pg-workspace-page">
           <Card>
             <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-              <div>
-                <div className="pg-h2" style={{ margin: 0 }}>Reports</div>
-                <div className="pg-muted" style={{ marginTop: 6 }}>
-                  Property reports generated from the Properties workspace.
-                </div>
+              <div className="pg-muted">
+                Property reports generated from the Properties workspace.
               </div>
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                 <Link className="pg-btn pg-btn-ghost" to="/invoices">Generate Portfolio Report</Link>
