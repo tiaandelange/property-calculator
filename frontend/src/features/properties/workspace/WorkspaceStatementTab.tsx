@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ExternalLink, Pencil, Plus, Trash2 } from "lucide-react";
+import { BookOpen, ExternalLink, Pencil, Plus, Trash2 } from "lucide-react";
 import { getPropertyStatement } from "../../../api/ownedProperties";
 import { Card } from "../../../components/ui/Card";
 import { Input } from "../../../components/ui/Input";
@@ -413,7 +413,7 @@ export function WorkspaceStatementTab({
                           <button
                             type="button"
                             className="pg-btn pg-btn-ghost"
-                            style={{ fontSize: 12, padding: "4px 10px" }}
+                            style={{ padding: 6, width: 32, height: 32, display: "grid", placeItems: "center" }}
                             onClick={() =>
                               setEditExpense({
                                 id: sourceId,
@@ -423,18 +423,27 @@ export function WorkspaceStatementTab({
                                 amount: String(r.debit ?? "")
                               })
                             }
+                            aria-label="Edit"
+                            title="Edit"
                           >
-                            <Pencil size={14} style={{ marginRight: 6 }} aria-hidden />
-                            Edit
+                            <Pencil size={16} aria-hidden />
                           </button>
                           <button
                             type="button"
                             className="pg-btn pg-btn-ghost"
-                            style={{ fontSize: 12, padding: "4px 10px" }}
+                            style={{
+                              padding: 6,
+                              width: 32,
+                              height: 32,
+                              display: "grid",
+                              placeItems: "center",
+                              color: "var(--danger)"
+                            }}
                             onClick={() => setConfirmDelete({ kind: "expense", id: sourceId, description: String(r.description ?? "") })}
+                            aria-label="Delete"
+                            title="Delete"
                           >
-                            <Trash2 size={14} style={{ marginRight: 6 }} aria-hidden />
-                            Delete
+                            <Trash2 size={16} aria-hidden />
                           </button>
                         </div>
                       ) : canEditIncome ? (
@@ -443,7 +452,14 @@ export function WorkspaceStatementTab({
                             <button
                               type="button"
                               className="pg-btn pg-btn-secondary"
-                              style={{ fontSize: 12, padding: "4px 10px" }}
+                              style={{
+                                padding: 6,
+                                width: 32,
+                                height: 32,
+                                display: "grid",
+                                placeItems: "center",
+                                color: "var(--primary)"
+                              }}
                               onClick={async () => {
                                 setError("");
                                 try {
@@ -467,14 +483,16 @@ export function WorkspaceStatementTab({
                                   setError(e?.message ?? "Could not generate invoice.");
                                 }
                               }}
+                              aria-label="Create Invoice"
+                              title="Create Invoice"
                             >
-                              Generate invoice <ExternalLink size={14} style={{ marginLeft: 6 }} aria-hidden />
+                              <BookOpen size={16} aria-hidden />
                             </button>
                           ) : null}
                           <button
                             type="button"
                             className="pg-btn pg-btn-ghost"
-                            style={{ fontSize: 12, padding: "4px 10px" }}
+                            style={{ padding: 6, width: 32, height: 32, display: "grid", placeItems: "center" }}
                             onClick={() =>
                               setEditIncome({
                                 id: sourceId,
@@ -485,18 +503,27 @@ export function WorkspaceStatementTab({
                                 amount: String(r.credit ?? r.debit ?? "")
                               })
                             }
+                            aria-label="Edit"
+                            title="Edit"
                           >
-                            <Pencil size={14} style={{ marginRight: 6 }} aria-hidden />
-                            Edit
+                            <Pencil size={16} aria-hidden />
                           </button>
                           <button
                             type="button"
                             className="pg-btn pg-btn-ghost"
-                            style={{ fontSize: 12, padding: "4px 10px" }}
+                            style={{
+                              padding: 6,
+                              width: 32,
+                              height: 32,
+                              display: "grid",
+                              placeItems: "center",
+                              color: "var(--danger)"
+                            }}
                             onClick={() => setConfirmDelete({ kind: "income", id: sourceId, description: String(r.description ?? "") })}
+                            aria-label="Delete"
+                            title="Delete"
                           >
-                            <Trash2 size={14} style={{ marginRight: 6 }} aria-hidden />
-                            Delete
+                            <Trash2 size={16} aria-hidden />
                           </button>
                         </div>
                       ) : canEditInvoice ? (
@@ -505,7 +532,7 @@ export function WorkspaceStatementTab({
                             <button
                               type="button"
                               className="pg-btn pg-btn-ghost"
-                              style={{ fontSize: 12, padding: "4px 10px" }}
+                              style={{ fontSize: 12, padding: "4px 10px", height: 32 }}
                               onClick={async () => {
                                 setError("");
                                 try {
@@ -523,7 +550,7 @@ export function WorkspaceStatementTab({
                           <button
                             type="button"
                             className="pg-btn pg-btn-ghost"
-                            style={{ fontSize: 12, padding: "4px 10px" }}
+                            style={{ padding: 6, width: 32, height: 32, display: "grid", placeItems: "center" }}
                             onClick={() =>
                               setEditInvoice({
                                 id: sourceId,
@@ -531,14 +558,15 @@ export function WorkspaceStatementTab({
                                 notes: r.invoiceNotes != null ? String(r.invoiceNotes) : ""
                               })
                             }
+                            aria-label="Edit"
+                            title="Edit"
                           >
-                            <Pencil size={14} style={{ marginRight: 6 }} aria-hidden />
-                            Edit
+                            <Pencil size={16} aria-hidden />
                           </button>
                           <button
                             type="button"
                             className="pg-btn pg-btn-ghost"
-                            style={{ fontSize: 12, padding: "4px 10px", color: "var(--danger)" }}
+                            style={{ padding: 6, width: 32, height: 32, display: "grid", placeItems: "center", color: "var(--danger)" }}
                             onClick={() =>
                               setConfirmDelete({
                                 kind: "invoice_hard",
@@ -549,8 +577,7 @@ export function WorkspaceStatementTab({
                             aria-label="Permanently delete invoice"
                             title="Permanently delete invoice"
                           >
-                            <Trash2 size={14} style={{ marginRight: 6 }} aria-hidden />
-                            Delete
+                            <Trash2 size={16} aria-hidden />
                           </button>
                         </div>
                       ) : (
