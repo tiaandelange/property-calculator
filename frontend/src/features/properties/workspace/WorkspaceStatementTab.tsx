@@ -1,7 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, Pencil, Plus, Trash2 } from "lucide-react";
 import { getPropertyStatement } from "../../../api/ownedProperties";
 import { Card } from "../../../components/ui/Card";
+import { Input } from "../../../components/ui/Input";
+import { ModalOverlay, ModalPanel } from "../../../components/ui/Modal";
+import { createPropertyExpense, deletePropertyExpense, updatePropertyExpense } from "../../../api/ownedProperties";
 
 type PeriodPreset = "LAST_MONTH" | "SIX_MONTHS" | "YTD" | "TWELVE_MONTHS" | "PER_YEAR" | "FOREVER";
 
@@ -32,16 +35,30 @@ function fmtZar(n: unknown): string {
 
 export function WorkspaceStatementTab({
   propertyId,
-  propertyName
 }: {
   propertyId: string;
-  propertyName?: string;
 }) {
   const [preset, setPreset] = useState<PeriodPreset>("SIX_MONTHS");
   const [year, setYear] = useState<number>(() => new Date().getUTCFullYear());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [rows, setRows] = useState<any[]>([]);
+  const [showAddOnceOff, setShowAddOnceOff] = useState(false);
+  const [onceOffSaving, setOnceOffSaving] = useState(false);
+  const [onceOffForm, setOnceOffForm] = useState<{
+    expenseDate: string;
+    category: string;
+    description: string;
+    amount: string;
+  }>(() => ({
+    expenseDate: new Date().toISOString().slice(0, 10),
+    category: "OTHER",
+    description: "",
+    amount: ""
+  }));
+  const [editExpense, setEditExpense] = useState<any>(null);
+  const [editSaving, setEditSaving] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState<any>(null);
 
   const monthIds = useMemo(() => {
     const now = new Date();
@@ -123,6 +140,85 @@ export function WorkspaceStatementTab({
     return { debit, credit, net: credit - debit };
   }, [rows]);
 
+  const reload = async () => {
+    // triggers the effect by toggling preset to itself
+    setPreset((p) => p);
+  };
+
+  async function addOnceOffExpense() {
+    const amount = Number(String(onceOffForm.amount ?? "").trim());
+    if (!onceOffForm.description.trim()) {
+      setError("Description is required.");
+      return;
+    }
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setError("Enter a valid amount.");
+      return;
+    }
+    setOnceOffSaving(true);
+    setError("");
+    try {
+      await createPropertyExpense(propertyId, {
+        category: onceOffForm.category,
+        description: onceOffForm.description.trim(),
+        amount,
+        expenseDate: onceOffForm.expenseDate
+      });
+      setShowAddOnceOff(false);
+      setOnceOffForm({
+        expenseDate: new Date().toISOString().slice(0, 10),
+        category: "OTHER",
+        description: "",
+        amount: ""
+      });
+      await reload();
+    } catch (e: any) {
+      setError(e?.message ?? "Failed to add expense.");
+    } finally {
+      setOnceOffSaving(false);
+    }
+  }
+
+  async function saveExpenseEdit() {
+    if (!editExpense?.id) return;
+    const amount = Number(String(editExpense.amount ?? "").trim());
+    if (!String(editExpense.description ?? "").trim()) {
+      setError("Description is required.");
+      return;
+    }
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setError("Enter a valid amount.");
+      return;
+    }
+    setEditSaving(true);
+    setError("");
+    try {
+      await updatePropertyExpense(String(editExpense.id), {
+        description: String(editExpense.description).trim(),
+        amount,
+        expenseDate: String(editExpense.date ?? editExpense.expenseDate ?? "").trim() || undefined,
+        category: String(editExpense.category ?? editExpense.expenseCategory ?? "OTHER")
+      });
+      setEditExpense(null);
+      await reload();
+    } catch (e: any) {
+      setError(e?.message ?? "Failed to save expense.");
+    } finally {
+      setEditSaving(false);
+    }
+  }
+
+  async function performDeleteExpense(expenseId: string) {
+    setError("");
+    try {
+      await deletePropertyExpense(expenseId);
+      setConfirmDelete(null);
+      await reload();
+    } catch (e: any) {
+      setError(e?.message ?? "Failed to delete expense.");
+    }
+  }
+
   return (
     <div className="pg-workspace-inset-list">
       {error ? (
@@ -131,16 +227,10 @@ export function WorkspaceStatementTab({
         </div>
       ) : null}
 
-      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", justifyContent: "space-between" }}>
-        <div>
-          <div style={{ fontWeight: 800, fontSize: 18 }}>Property Statement</div>
-          <div className="pg-muted" style={{ marginTop: 4 }}>
-            {propertyName ? <strong>{propertyName}</strong> : null} {loading ? "· Loading…" : null}
-          </div>
-        </div>
-
+      <div className="pg-workspace-inset" style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", justifyContent: "space-between" }}>
+        <div style={{ fontWeight: 800 }}>Statement</div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-          <select className="pg-input" value={preset} onChange={(e) => setPreset(e.target.value as PeriodPreset)}>
+          <select className="pg-input" value={preset} onChange={(e) => setPreset(e.target.value as PeriodPreset)} aria-label="Statement period">
             <option value="LAST_MONTH">Last month</option>
             <option value="SIX_MONTHS">6 months (default)</option>
             <option value="YTD">Year to date</option>
@@ -164,7 +254,8 @@ export function WorkspaceStatementTab({
             <ExternalLink size={16} style={{ marginRight: 6 }} aria-hidden />
             Export PDF
           </button>
-          <button type="button" className="pg-btn pg-btn-primary" disabled title="Coming next: manual once-off expense">
+          <button type="button" className="pg-btn pg-btn-primary" onClick={() => setShowAddOnceOff(true)}>
+            <Plus size={16} style={{ marginRight: 6 }} aria-hidden />
             Add Once-Off Expense
           </button>
         </div>
@@ -195,11 +286,13 @@ export function WorkspaceStatementTab({
                 <th className="pg-statement-num">Credit</th>
                 <th>Status</th>
                 <th>Source</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
               {rows.map((r: any) => {
                 const creditClass = r.source === "INVOICE" && r.status !== "PAID" ? " pg-statement-credit-unpaid" : "";
+                const canEditExpense = r.source === "EXPENSE" && r.expenseId;
                 return (
                   <tr key={r.id ?? `${r.source}-${r.date}-${r.description}`}>
                     <td style={{ verticalAlign: "top" }}>{String(r.date ?? "")}</td>
@@ -213,12 +306,161 @@ export function WorkspaceStatementTab({
                     </td>
                     <td style={{ verticalAlign: "top" }}>{String(r.status ?? "")}</td>
                     <td style={{ verticalAlign: "top" }}>{String(r.source ?? "")}</td>
+                    <td style={{ verticalAlign: "top", whiteSpace: "nowrap" }}>
+                      {canEditExpense ? (
+                        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
+                          <button
+                            type="button"
+                            className="pg-btn pg-btn-ghost"
+                            style={{ fontSize: 12, padding: "4px 10px" }}
+                            onClick={() =>
+                              setEditExpense({
+                                id: String(r.expenseId),
+                                date: String(r.date ?? "").slice(0, 10),
+                                description: String(r.description ?? ""),
+                                category: String(r.expenseCategory ?? "OTHER"),
+                                amount: String(r.debit ?? "")
+                              })
+                            }
+                          >
+                            <Pencil size={14} style={{ marginRight: 6 }} aria-hidden />
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            className="pg-btn pg-btn-ghost"
+                            style={{ fontSize: 12, padding: "4px 10px" }}
+                            onClick={() => setConfirmDelete({ id: String(r.expenseId), description: String(r.description ?? "") })}
+                          >
+                            <Trash2 size={14} style={{ marginRight: 6 }} aria-hidden />
+                            Delete
+                          </button>
+                        </div>
+                      ) : (
+                        <span className="pg-muted">—</span>
+                      )}
+                    </td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
         </div>
+      ) : null}
+
+      {showAddOnceOff ? (
+        <>
+          <ModalOverlay open onClose={() => (!onceOffSaving ? setShowAddOnceOff(false) : null)} />
+          <div style={{ position: "fixed", inset: 0, display: "grid", placeItems: "center", padding: 16, zIndex: 60 }}>
+            <ModalPanel
+              title="Add once-off expense"
+              onClose={() => (!onceOffSaving ? setShowAddOnceOff(false) : null)}
+              actions={
+                <button className="pg-btn pg-btn-primary" type="button" disabled={onceOffSaving} onClick={() => void addOnceOffExpense()}>
+                  {onceOffSaving ? "Saving…" : "Add"}
+                </button>
+              }
+            >
+              <div style={{ padding: 14, display: "grid", gap: 10 }}>
+                <label className="pg-muted" style={{ fontSize: 12 }}>
+                  Date
+                  <Input type="date" value={onceOffForm.expenseDate} onChange={(e) => setOnceOffForm({ ...onceOffForm, expenseDate: e.target.value })} />
+                </label>
+                <label className="pg-muted" style={{ fontSize: 12 }}>
+                  Category
+                  <select className="pg-input" value={onceOffForm.category} onChange={(e) => setOnceOffForm({ ...onceOffForm, category: e.target.value })}>
+                    <option value="OTHER">Other</option>
+                    <option value="MAINTENANCE">Maintenance</option>
+                    <option value="RATES_TAXES">Rates &amp; Taxes</option>
+                    <option value="LEVIES">Levies</option>
+                    <option value="INSURANCE">Insurance</option>
+                    <option value="ELECTRICITY">Electricity</option>
+                    <option value="WATER_SEWER">Water &amp; Sewer</option>
+                    <option value="SECURITY">Security</option>
+                    <option value="WIFI">Wi-Fi</option>
+                  </select>
+                </label>
+                <label className="pg-muted" style={{ fontSize: 12 }}>
+                  Description
+                  <Input value={onceOffForm.description} onChange={(e) => setOnceOffForm({ ...onceOffForm, description: e.target.value })} placeholder="e.g. Plumber callout" />
+                </label>
+                <label className="pg-muted" style={{ fontSize: 12 }}>
+                  Amount
+                  <Input type="number" step="any" min={0} value={onceOffForm.amount} onChange={(e) => setOnceOffForm({ ...onceOffForm, amount: e.target.value })} />
+                </label>
+              </div>
+            </ModalPanel>
+          </div>
+        </>
+      ) : null}
+
+      {editExpense ? (
+        <>
+          <ModalOverlay open onClose={() => (!editSaving ? setEditExpense(null) : null)} />
+          <div style={{ position: "fixed", inset: 0, display: "grid", placeItems: "center", padding: 16, zIndex: 60 }}>
+            <ModalPanel
+              title="Edit expense"
+              onClose={() => (!editSaving ? setEditExpense(null) : null)}
+              actions={
+                <button className="pg-btn pg-btn-primary" type="button" disabled={editSaving} onClick={() => void saveExpenseEdit()}>
+                  {editSaving ? "Saving…" : "Save"}
+                </button>
+              }
+            >
+              <div style={{ padding: 14, display: "grid", gap: 10 }}>
+                <label className="pg-muted" style={{ fontSize: 12 }}>
+                  Date
+                  <Input type="date" value={String(editExpense.date ?? "")} onChange={(e) => setEditExpense({ ...editExpense, date: e.target.value })} />
+                </label>
+                <label className="pg-muted" style={{ fontSize: 12 }}>
+                  Category
+                  <select className="pg-input" value={String(editExpense.category ?? "OTHER")} onChange={(e) => setEditExpense({ ...editExpense, category: e.target.value })}>
+                    <option value="OTHER">Other</option>
+                    <option value="MAINTENANCE">Maintenance</option>
+                    <option value="RATES_TAXES">Rates &amp; Taxes</option>
+                    <option value="LEVIES">Levies</option>
+                    <option value="INSURANCE">Insurance</option>
+                    <option value="ELECTRICITY">Electricity</option>
+                    <option value="WATER_SEWER">Water &amp; Sewer</option>
+                    <option value="SECURITY">Security</option>
+                    <option value="WIFI">Wi-Fi</option>
+                  </select>
+                </label>
+                <label className="pg-muted" style={{ fontSize: 12 }}>
+                  Description
+                  <Input value={String(editExpense.description ?? "")} onChange={(e) => setEditExpense({ ...editExpense, description: e.target.value })} />
+                </label>
+                <label className="pg-muted" style={{ fontSize: 12 }}>
+                  Amount
+                  <Input type="number" step="any" min={0} value={String(editExpense.amount ?? "")} onChange={(e) => setEditExpense({ ...editExpense, amount: e.target.value })} />
+                </label>
+              </div>
+            </ModalPanel>
+          </div>
+        </>
+      ) : null}
+
+      {confirmDelete ? (
+        <>
+          <ModalOverlay open onClose={() => setConfirmDelete(null)} />
+          <div style={{ position: "fixed", inset: 0, display: "grid", placeItems: "center", padding: 16, zIndex: 60 }}>
+            <ModalPanel title="Delete expense" onClose={() => setConfirmDelete(null)}>
+              <div style={{ padding: 14, display: "grid", gap: 12 }}>
+                <div>
+                  Delete <strong>{confirmDelete.description || "this expense"}</strong>?
+                </div>
+                <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
+                  <button className="pg-btn pg-btn-ghost" type="button" onClick={() => setConfirmDelete(null)}>
+                    Cancel
+                  </button>
+                  <button className="pg-btn pg-btn-danger" type="button" onClick={() => void performDeleteExpense(String(confirmDelete.id))}>
+                    Delete
+                  </button>
+                </div>
+              </div>
+            </ModalPanel>
+          </div>
+        </>
       ) : null}
     </div>
   );

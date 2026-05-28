@@ -312,10 +312,10 @@ export function OwnedPropertyDetailPage() {
                 tabs={[
                   { key: "overview", label: "Overview" },
                   { key: "financials", label: "Financials" },
+                  { key: "statement", label: "Statement" },
                   { key: "tenants", label: "Link Tenants" },
                   { key: "leases", label: "Leases" },
                   { key: "documents", label: "Documents" },
-                  { key: "statement", label: "Statement" },
                   {
                     key: "reports",
                     label: (
