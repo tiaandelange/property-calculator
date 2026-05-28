@@ -54,6 +54,7 @@ export function WorkspaceStatementTab({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [rows, setRows] = useState<any[]>([]);
+  const [reloadKey, setReloadKey] = useState(0);
   const [showAddOnceOff, setShowAddOnceOff] = useState(false);
   const [onceOffSaving, setOnceOffSaving] = useState(false);
   const [onceOffForm, setOnceOffForm] = useState<{
@@ -152,7 +153,7 @@ export function WorkspaceStatementTab({
     return () => {
       cancelled = true;
     };
-  }, [propertyId, monthIds]);
+  }, [propertyId, monthIds, reloadKey]);
 
   const totals = useMemo(() => {
     let debit = 0;
@@ -171,8 +172,7 @@ export function WorkspaceStatementTab({
   const periodTotals = totals;
 
   const reload = async () => {
-    // triggers the effect by toggling preset to itself
-    setPreset((p) => p);
+    setReloadKey((k) => k + 1);
   };
 
   async function addOnceOffExpense() {
@@ -343,13 +343,24 @@ export function WorkspaceStatementTab({
                   })}
                 </select>
               ) : null}
-              <button type="button" className="pg-btn pg-btn-secondary" disabled title="Coming next: Statement PDF export">
+              <button
+                type="button"
+                className="pg-btn pg-btn-primary"
+                style={{ minWidth: 138, justifyContent: "center" }}
+                onClick={() => setShowAddOnceOff(true)}
+              >
+                <Plus size={16} style={{ marginRight: 6 }} aria-hidden />
+                Add Expense
+              </button>
+              <button
+                type="button"
+                className="pg-btn pg-btn-secondary"
+                style={{ minWidth: 132, justifyContent: "center" }}
+                disabled
+                title="Coming next: Statement PDF export"
+              >
                 <ExternalLink size={16} style={{ marginRight: 6 }} aria-hidden />
                 Export PDF
-              </button>
-              <button type="button" className="pg-btn pg-btn-primary" onClick={() => setShowAddOnceOff(true)}>
-                <Plus size={16} style={{ marginRight: 6 }} aria-hidden />
-                Add Once-Off Expense
               </button>
             </div>
           </div>
@@ -457,6 +468,7 @@ export function WorkspaceStatementTab({
                                 setError("");
                                 try {
                                   await markInvoicePaid(sourceId);
+                                  // Immediate UI update: the previous reload trigger was a no-op.
                                   await reload();
                                 } catch (e: any) {
                                   setError(e?.message ?? "Failed to mark invoice paid.");
