@@ -1,22 +1,20 @@
 import { useEffect, useMemo, useState } from "react";
 import { Helmet } from "react-helmet-async";
-import { useParams } from "react-router-dom";
-import { ExternalLink, Save } from "lucide-react";
+import { Link, useParams } from "react-router-dom";
+import { ExternalLink, List } from "lucide-react";
 import { Container } from "../components/ui/Container";
 import { Section } from "../components/ui/Section";
 import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
 import { generateReportViaVercel } from "../services/reportsVercel";
-import { uploadPropertyDocument } from "../services/documentsSupabase";
-import { invalidatePropertyWorkspace } from "../features/properties/invalidate";
 
 export function PropertyReportPage() {
   const { id } = useParams();
   const propertyId = String(id ?? "").trim();
   const [loading, setLoading] = useState(true);
   const [downloadUrl, setDownloadUrl] = useState<string>("");
+  const [reportId, setReportId] = useState<string>("");
   const [error, setError] = useState("");
-  const [saving, setSaving] = useState(false);
   const fileName = useMemo(() => `property-report-${propertyId || "property"}.pdf`, [propertyId]);
 
   useEffect(() => {
@@ -30,6 +28,7 @@ export function PropertyReportPage() {
         if (cancelled) return;
         if (!gen.downloadUrl) throw new Error(gen.error ?? "Report could not be generated.");
         setDownloadUrl(gen.downloadUrl);
+        setReportId(gen.reportId || "");
       } catch (e: any) {
         if (cancelled) return;
         setError(e?.message ?? "Failed to generate report.");
@@ -41,24 +40,6 @@ export function PropertyReportPage() {
       cancelled = true;
     };
   }, [propertyId]);
-
-  const saveToDocuments = async () => {
-    if (!propertyId || !downloadUrl) return;
-    setSaving(true);
-    setError("");
-    try {
-      const res = await fetch(downloadUrl);
-      if (!res.ok) throw new Error(`Failed to fetch PDF (${res.status}).`);
-      const blob = await res.blob();
-      const file = new File([blob], fileName, { type: "application/pdf" });
-      await uploadPropertyDocument(propertyId, file, { documentType: "REPORT" });
-      invalidatePropertyWorkspace(propertyId);
-    } catch (e: any) {
-      setError(e?.message ?? "Failed to save report to Documents.");
-    } finally {
-      setSaving(false);
-    }
-  };
 
   return (
     <Section>
@@ -78,7 +59,7 @@ export function PropertyReportPage() {
               Property report
             </div>
             <div className="pg-muted" style={{ marginTop: 4 }}>
-              {loading ? "Generating PDF…" : downloadUrl ? "Ready to export or save to Documents." : "—"}
+              {loading ? "Generating PDF…" : downloadUrl ? "Saved to Reports. You can export or revisit it later." : "—"}
             </div>
           </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -89,12 +70,20 @@ export function PropertyReportPage() {
               disabled={!downloadUrl}
             >
               <ExternalLink size={16} style={{ marginRight: 6 }} aria-hidden />
-              Export PDF
+              View / Download
             </Button>
-            <Button type="button" onClick={() => void saveToDocuments()} disabled={!downloadUrl || saving}>
-              <Save size={16} style={{ marginRight: 6 }} aria-hidden />
-              {saving ? "Saving…" : "Save to Documents"}
-            </Button>
+            <Link
+              className={`pg-btn pg-btn-primary${downloadUrl ? "" : " pg-btn-disabled"}`}
+              to={downloadUrl ? "/owned-properties/reports" : "#"}
+              aria-disabled={!downloadUrl}
+              onClick={(e) => {
+                if (!downloadUrl) e.preventDefault();
+              }}
+              title={reportId ? `Report id: ${reportId}` : undefined}
+            >
+              <List size={16} style={{ marginRight: 6 }} aria-hidden />
+              Open Reports
+            </Link>
           </div>
         </div>
 
