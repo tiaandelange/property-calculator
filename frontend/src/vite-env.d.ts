@@ -13,6 +13,11 @@ interface ImportMetaEnv {
   readonly VITE_SUPABASE_ANON_KEY?: string;
   readonly VITE_API_BASE_URL?: string;
   readonly VITE_API_URL?: string;
+  /**
+   * Optional canonical origin for auth redirect links (e.g. https://proplytic.co.za).
+   * If set, signup email links will redirect here instead of the current window origin.
+   */
+  readonly VITE_PUBLIC_SITE_URL?: string;
 }
 
 interface ImportMeta {

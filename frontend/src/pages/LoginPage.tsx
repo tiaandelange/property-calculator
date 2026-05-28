@@ -7,6 +7,7 @@ import { Button } from "../components/ui/Button";
 import { Field, Input } from "../components/ui/Input";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { getSupabase, isSupabaseConfigured } from "../lib/supabaseClient";
+import { getConfirmEmailRedirectUrl } from "../lib/authRedirect";
 import { formatAuthError } from "../utils/authErrors";
 import { useAuth } from "../contexts/AuthContext";
 
@@ -62,7 +63,7 @@ export function LoginPage() {
         email: email.trim(),
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/confirm-email`
+          emailRedirectTo: getConfirmEmailRedirectUrl()
         }
       });
       if (error) {
