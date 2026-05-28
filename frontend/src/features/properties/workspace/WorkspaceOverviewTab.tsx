@@ -220,7 +220,7 @@ export function WorkspaceOverviewTab({ data, statement, perf, propertyId, naviga
           title="Monthly NOI (operating)"
           value={noiOp == null ? "—" : `R ${Math.round(noiOp).toLocaleString()}`}
           subtitle="Excludes bond payment"
-          iconPreset="noi"
+          iconPreset="cash-flow"
         />
 
         <MetricCard
@@ -233,27 +233,27 @@ export function WorkspaceOverviewTab({ data, statement, perf, propertyId, naviga
         <MetricCard
           title="Equity"
           value={equity == null ? "Insufficient data" : `R ${Math.round(equity).toLocaleString()}`}
-          iconPreset="equity"
+          iconPreset="portfolio-value"
         />
 
         <MetricCard
           title="True cash-on-cash ROI"
           value={cocPercent == null ? "Insufficient data" : `${cocPercent.toFixed(1)}%`}
           subtitle="(Monthly rental income − monthly expenses) × 12 ÷ total cash invested × 100"
-          iconPreset="roi"
+          iconPreset="yield"
         />
 
         <MetricCard
           title="IRR"
           value={irrPct == null ? "Insufficient data" : `${irrPct.toFixed(2)}%`}
           subtitle="Portfolio-level estimate when filtered"
-          iconPreset="irr"
+          iconPreset="yield"
         />
 
         <MetricCard
           title="Property type"
           value={<span style={{ fontSize: 15 }}>{INV_LABEL[invType ?? "OTHER"] ?? invType ?? "—"}</span>}
-          iconPreset="home"
+          iconPreset="total-properties"
         />
       </div>
 
