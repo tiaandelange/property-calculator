@@ -1,25 +1,170 @@
+import { useEffect, useState } from "react";
 import { Helmet } from "react-helmet-async";
+import { ExternalLink, Trash2 } from "lucide-react";
+import { Link } from "react-router-dom";
 import { Container } from "../components/ui/Container";
 import { Section } from "../components/ui/Section";
 import { Card } from "../components/ui/Card";
-import { Link } from "react-router-dom";
+import { Button } from "../components/ui/Button";
+import { ModalOverlay, ModalPanel } from "../components/ui/Modal";
+import { deleteStoredReport, getStoredReportSignedUrl, listPropertyStoredReports, type PropertyStoredReportRow } from "../services/storedReportsSupabase";
 
 export function OwnedPropertiesReportsPage() {
+  const [rows, setRows] = useState<PropertyStoredReportRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [pendingDelete, setPendingDelete] = useState<PropertyStoredReportRow | null>(null);
+
+  const load = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      setRows(await listPropertyStoredReports());
+    } catch (e: any) {
+      setError(e?.message ?? "Failed to load reports.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void load();
+  }, []);
+
   return (
     <Section>
       <Helmet><title>Owned Properties Reports | The Property Guy</title></Helmet>
       <Container>
-        <h1 className="pg-h2" style={{ marginTop: 0 }}>Reports</h1>
-        <Card>
-          <div className="pg-muted">
-            Portfolio reporting lives in Invoices/Reports for now.
-          </div>
-          <div style={{ height: 10 }} />
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <Link className="pg-btn pg-btn-ghost" to="/invoices">Generate Portfolio Report</Link>
-            <Link className="pg-btn pg-btn-ghost" to="/dashboard">My Reports</Link>
-          </div>
-        </Card>
+        <div className="pg-workspace-page">
+          <Card>
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+              <div>
+                <div className="pg-h2" style={{ margin: 0 }}>Reports</div>
+                <div className="pg-muted" style={{ marginTop: 6 }}>
+                  Property reports generated from the Properties workspace.
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                <Link className="pg-btn pg-btn-ghost" to="/invoices">Generate Portfolio Report</Link>
+                <Link className="pg-btn pg-btn-ghost" to="/dashboard">My Reports</Link>
+                <button className="pg-btn pg-btn-secondary" type="button" onClick={() => void load()} disabled={loading}>
+                  Refresh
+                </button>
+              </div>
+            </div>
+          </Card>
+
+          {error ? (
+            <div className="pg-alert pg-alert-error" role="alert">
+              {error}
+            </div>
+          ) : null}
+
+          <section className="pg-tenants-list-panel pg-workspace-card" aria-busy={loading}>
+            {loading ? (
+              <div className="pg-muted">Loading reports…</div>
+            ) : rows.length ? (
+              <div className="pg-tenants-table-wrap">
+                <table className="pg-tenants-table" style={{ minWidth: 860 }}>
+                  <thead>
+                    <tr>
+                      <th scope="col">Generated</th>
+                      <th scope="col">Property</th>
+                      <th scope="col">File</th>
+                      <th scope="col">
+                        <span className="pg-tenants-sr-only">Actions</span>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rows.map((r) => {
+                      const dt = r.createdAt ? new Date(r.createdAt) : null;
+                      const when = dt && !Number.isNaN(dt.getTime()) ? dt.toLocaleString() : r.createdAt || "—";
+                      return (
+                        <tr key={r.id}>
+                          <td>
+                            <div style={{ fontWeight: 700 }}>{when}</div>
+                            <div className="pg-tenants-sub">{r.id}</div>
+                          </td>
+                          <td>
+                            <strong>{r.propertyName || "Property"}</strong>
+                            <div className="pg-tenants-sub">{r.propertyId ?? "—"}</div>
+                          </td>
+                          <td>
+                            <div style={{ fontWeight: 700 }}>{r.fileName}</div>
+                            <div className="pg-tenants-sub">{r.storageBucket ?? "—"}</div>
+                          </td>
+                          <td>
+                            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
+                              <Button
+                                type="button"
+                                variant="secondary"
+                                onClick={async () => {
+                                  const url = await getStoredReportSignedUrl(r);
+                                  if (!url) throw new Error("This report has no stored PDF.");
+                                  window.open(url, "_blank", "noopener,noreferrer");
+                                }}
+                                disabled={!r.storageBucket || !r.storageKey}
+                              >
+                                <ExternalLink size={16} style={{ marginRight: 6 }} aria-hidden />
+                                View / Download
+                              </Button>
+                              <Button type="button" variant="ghost" onClick={() => setPendingDelete(r)}>
+                                <Trash2 size={16} style={{ marginRight: 6 }} aria-hidden />
+                                Delete
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="pg-muted">No property reports generated yet.</div>
+            )}
+          </section>
+        </div>
+
+        {pendingDelete ? (
+          <>
+            <ModalOverlay open onClose={() => setPendingDelete(null)} />
+            <div style={{ position: "fixed", inset: 0, display: "grid", placeItems: "center", padding: 16, zIndex: 60 }}>
+              <ModalPanel title="Delete report" onClose={() => setPendingDelete(null)}>
+                <div style={{ padding: 14, display: "grid", gap: 12 }}>
+                  <div>
+                    Delete this report for <strong>{pendingDelete.propertyName}</strong>?
+                  </div>
+                  <div className="pg-muted" style={{ fontSize: 13 }}>
+                    This removes the PDF from Storage and deletes the report record.
+                  </div>
+                  <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
+                    <button className="pg-btn pg-btn-ghost" type="button" onClick={() => setPendingDelete(null)}>
+                      Cancel
+                    </button>
+                    <button
+                      className="pg-btn pg-btn-danger"
+                      type="button"
+                      onClick={async () => {
+                        const id = pendingDelete.id;
+                        setPendingDelete(null);
+                        try {
+                          await deleteStoredReport(id);
+                          await load();
+                        } catch (e: any) {
+                          setError(e?.message ?? "Failed to delete report.");
+                        }
+                      }}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              </ModalPanel>
+            </div>
+          </>
+        ) : null}
       </Container>
     </Section>
   );
