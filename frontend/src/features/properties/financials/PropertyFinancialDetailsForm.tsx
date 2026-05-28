@@ -5,8 +5,7 @@ import { PropertyFormField } from "../form/PropertyFormField";
 export type FinancialDetailsFormState = {
   leviesMonthly: string;
   ratesAndTaxesMonthly: string;
-  maintenanceMonthly: string;
-  expectedMonthlyIncome: string;
+  maintenancePercent: string;
   expectedMonthlyExpenses: string;
   notes: string;
 };
@@ -22,11 +21,13 @@ export function buildFinancialDetailsInitial(
   _depositHeldTotal: number
 ): FinancialDetailsFormState {
   const pf = propertyDetail ?? {};
+  const rent = Number(pf.expectedMonthlyIncome ?? 0);
+  const maintMonthly = Number(pf.maintenanceMonthly ?? 0);
+  const maintPct = rent > 0 && maintMonthly > 0 ? ((maintMonthly / rent) * 100) : null;
   return {
     leviesMonthly: str(pf.leviesMonthly),
     ratesAndTaxesMonthly: str(pf.ratesAndTaxesMonthly),
-    maintenanceMonthly: str(pf.maintenanceMonthly),
-    expectedMonthlyIncome: str(pf.expectedMonthlyIncome),
+    maintenancePercent: maintPct == null ? "" : String(Math.round(maintPct * 10) / 10),
     expectedMonthlyExpenses: str(pf.expectedMonthlyExpenses),
     notes: str(pf.notes)
   };
@@ -74,16 +75,22 @@ export function PropertyFinancialDetailsForm({
 
   const fields = (
     <>
-      <PropertyFormField label="Monthly rent" help="Derived from active leases (read-only).">
+      <PropertyFormField
+        label="Monthly rent"
+        info="Derived from active leases. Update this by creating or editing leases (read-only here)."
+      >
         <div className="pg-pfin-readonly">R {Math.round(combinedMonthlyRent).toLocaleString()}</div>
       </PropertyFormField>
-      <PropertyFormField label="Deposit held" help="Derived from active lease deposits (read-only).">
+      <PropertyFormField
+        label="Deposit held"
+        info="Derived from active lease deposits. Update this on the lease (read-only here)."
+      >
         <div className="pg-pfin-readonly">R {Math.round(combinedDepositHeld).toLocaleString()}</div>
       </PropertyFormField>
-      <PropertyFormField label="Purchase price" help="Property value (read-only).">
+      <PropertyFormField label="Purchase price" info="Saved on the property record (read-only here).">
         <div className="pg-pfin-readonly">{purchasePrice > 0 ? `R ${Math.round(purchasePrice).toLocaleString()}` : "—"}</div>
       </PropertyFormField>
-      <PropertyFormField label="Market value" help="Property value (read-only).">
+      <PropertyFormField label="Market value" info="Saved on the property record (read-only here).">
         <div className="pg-pfin-readonly">{marketValue > 0 ? `R ${Math.round(marketValue).toLocaleString()}` : "—"}</div>
       </PropertyFormField>
       <PropertyFormField label="HOA / levies">
@@ -103,26 +110,16 @@ export function PropertyFinancialDetailsForm({
           <span className="pg-pfin-input-suffix__tag">ZAR</span>
         </div>
       </PropertyFormField>
-      <PropertyFormField label="Maintenance reserve">
+      <PropertyFormField label="Maintenance" info="Reserve as a percentage of monthly rent. Used for planning and reporting.">
         <div className="pg-pfin-input-suffix">
           <Input
-            value={form.maintenanceMonthly}
-            onChange={(e) => patch({ maintenanceMonthly: e.target.value })}
+            value={form.maintenancePercent}
+            onChange={(e) => patch({ maintenancePercent: e.target.value })}
             type="number"
             min={0}
+            step="0.1"
           />
-          <span className="pg-pfin-input-suffix__tag">ZAR</span>
-        </div>
-      </PropertyFormField>
-      <PropertyFormField label="Expected monthly income (IRR)">
-        <div className="pg-pfin-input-suffix">
-          <Input
-            value={form.expectedMonthlyIncome}
-            onChange={(e) => patch({ expectedMonthlyIncome: e.target.value })}
-            type="number"
-            min={0}
-          />
-          <span className="pg-pfin-input-suffix__tag">ZAR</span>
+          <span className="pg-pfin-input-suffix__tag">%</span>
         </div>
       </PropertyFormField>
       <PropertyFormField label="Expected monthly expenses (IRR)">
@@ -168,14 +165,15 @@ export function PropertyFinancialDetailsForm({
               <span className="pg-pfin-input-suffix__tag">ZAR</span>
             </div>
           </PropertyFormField>
-          <PropertyFormField label="Maintenance reserve">
+          <PropertyFormField label="Maintenance">
             <div className="pg-pfin-input-suffix">
               <Input
-                value={form.maintenanceMonthly}
-                onChange={(e) => patch({ maintenanceMonthly: e.target.value })}
+                value={form.maintenancePercent}
+                onChange={(e) => patch({ maintenancePercent: e.target.value })}
                 type="number"
+                step="0.1"
               />
-              <span className="pg-pfin-input-suffix__tag">ZAR</span>
+              <span className="pg-pfin-input-suffix__tag">%</span>
             </div>
           </PropertyFormField>
         </form>

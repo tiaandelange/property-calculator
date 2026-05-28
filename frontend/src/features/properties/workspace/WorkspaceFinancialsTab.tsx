@@ -581,11 +581,15 @@ export function WorkspaceFinancialsTab({
         const x = Number(t);
         return Number.isFinite(x) ? x : null;
       };
+      const maintenancePercent = parseOpt(state.maintenancePercent);
+      const derivedMaintenanceMonthly =
+        maintenancePercent == null
+          ? null
+          : Math.max(0, (Number(maintenancePercent) / 100) * Math.max(0, Number(combinedMonthlyRent ?? 0)));
       const payload: Record<string, unknown> = {
         leviesMonthly: parseOpt(state.leviesMonthly),
         ratesAndTaxesMonthly: parseOpt(state.ratesAndTaxesMonthly),
-        maintenanceMonthly: parseOpt(state.maintenanceMonthly),
-        expectedMonthlyIncome: parseOpt(state.expectedMonthlyIncome),
+        maintenanceMonthly: derivedMaintenanceMonthly,
         expectedMonthlyExpenses: parseOpt(state.expectedMonthlyExpenses),
         notes: state.notes.trim() || null
       };
