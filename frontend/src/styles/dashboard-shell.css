@@ -194,6 +194,7 @@
 
 .pg-dashboard-shell-search {
   min-width: 0;
+  width: clamp(260px, 25vw, 420px);
   max-width: 520px;
   position: relative;
   display: flex;
