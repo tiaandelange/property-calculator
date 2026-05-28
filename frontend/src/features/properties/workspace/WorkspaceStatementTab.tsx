@@ -4,10 +4,20 @@ import { getPropertyStatement } from "../../../api/ownedProperties";
 import { Card } from "../../../components/ui/Card";
 import { Input } from "../../../components/ui/Input";
 import { ModalOverlay, ModalPanel } from "../../../components/ui/Modal";
-import { createPropertyExpense, deletePropertyExpense, updatePropertyExpense } from "../../../api/ownedProperties";
+import {
+  createPropertyExpense,
+  deletePropertyExpense,
+  deletePropertyIncome,
+  markInvoicePaid,
+  updateInvoice,
+  updatePropertyExpense,
+  updatePropertyIncome
+} from "../../../api/ownedProperties";
 import { MetricCard } from "../../../components/ui/DashboardKit";
 
 type PeriodPreset = "LAST_MONTH" | "SIX_MONTHS" | "YTD" | "TWELVE_MONTHS" | "PER_YEAR" | "FOREVER";
+const INCOME_STATUS_OPTIONS = ["EXPECTED", "RECEIVED", "CANCELLED"] as const;
+const INVOICE_STATUS_OPTIONS = ["DRAFT", "SENT", "PAID", "OVERDUE", "CANCELLED"] as const;
 
 function monthIdUtc(d: Date): string {
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
@@ -58,6 +68,8 @@ export function WorkspaceStatementTab({
     amount: ""
   }));
   const [editExpense, setEditExpense] = useState<any>(null);
+  const [editIncome, setEditIncome] = useState<any>(null);
+  const [editInvoice, setEditInvoice] = useState<any>(null);
   const [editSaving, setEditSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<any>(null);
 
@@ -156,6 +168,8 @@ export function WorkspaceStatementTab({
     return { debit, credit, net: credit - debit };
   }, [rows]);
 
+  const periodTotals = totals;
+
   const reload = async () => {
     // triggers the effect by toggling preset to itself
     setPreset((p) => p);
@@ -235,6 +249,54 @@ export function WorkspaceStatementTab({
     }
   }
 
+  async function saveIncomeEdit() {
+    if (!editIncome?.id) return;
+    const amount = Number(String(editIncome.amount ?? "").trim());
+    if (!String(editIncome.description ?? "").trim()) {
+      setError("Description is required.");
+      return;
+    }
+    if (!Number.isFinite(amount) || amount < 0) {
+      setError("Enter a valid amount.");
+      return;
+    }
+    setEditSaving(true);
+    setError("");
+    try {
+      await updatePropertyIncome(String(editIncome.id), {
+        description: String(editIncome.description).trim(),
+        amount,
+        incomeDate: String(editIncome.date ?? "").trim() || undefined,
+        status: String(editIncome.status ?? "RECEIVED"),
+        category: String(editIncome.category ?? "RENT")
+      });
+      setEditIncome(null);
+      await reload();
+    } catch (e: any) {
+      setError(e?.message ?? "Failed to save income.");
+    } finally {
+      setEditSaving(false);
+    }
+  }
+
+  async function saveInvoiceEdit() {
+    if (!editInvoice?.id) return;
+    setEditSaving(true);
+    setError("");
+    try {
+      await updateInvoice(String(editInvoice.id), {
+        status: String(editInvoice.status ?? "SENT"),
+        notes: editInvoice.notes != null ? String(editInvoice.notes) : null
+      });
+      setEditInvoice(null);
+      await reload();
+    } catch (e: any) {
+      setError(e?.message ?? "Failed to save invoice.");
+    } finally {
+      setEditSaving(false);
+    }
+  }
+
   return (
     <div className="pg-workspace-inset-list">
       {error ? (
@@ -243,7 +305,13 @@ export function WorkspaceStatementTab({
         </div>
       ) : null}
 
-      <div className="pg-metric-grid">
+      <div
+        className="pg-metric-grid"
+        style={{
+          gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+          ["--workspace-card-pad" as any]: "clamp(12px, 1vw, 16px)"
+        }}
+      >
         <MetricCard title="Income received" value={fmtZar(totals.credit)} subtitle="Paid credits only" iconPreset="monthly-income" />
         <MetricCard title="Expenses" value={fmtZar(totals.debit)} subtitle="Debits" iconPreset="expenses" />
         <MetricCard title="Net position" value={fmtZar(totals.net)} subtitle="Paid credits − debits" iconPreset="cash-flow" />
@@ -254,7 +322,7 @@ export function WorkspaceStatementTab({
         <div className="pg-statement-wrap">
           <div className="pg-statement-topbar">
             <div className="pg-statement-topbar__title">Statement</div>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+            <div style={{ display: "flex", gap: 8, flexWrap: "nowrap", alignItems: "center" }}>
               <select className="pg-input" value={preset} onChange={(e) => setPreset(e.target.value as PeriodPreset)} aria-label="Statement period">
                 <option value="LAST_MONTH">Last month</option>
                 <option value="SIX_MONTHS">6 months (default)</option>
@@ -301,7 +369,10 @@ export function WorkspaceStatementTab({
             <tbody>
               {rows.map((r: any) => {
                 const creditClass = r.source === "INVOICE" && r.status !== "PAID" ? " pg-statement-credit-unpaid" : "";
-                const canEditExpense = r.source === "EXPENSE" && r.expenseId;
+                const sourceId = r.sourceId != null ? String(r.sourceId) : "";
+                const canEditExpense = r.source === "EXPENSE" && sourceId;
+                const canEditIncome = r.source === "INCOME" && sourceId;
+                const canEditInvoice = r.source === "INVOICE" && sourceId;
                 return (
                   <tr key={r.id ?? `${r.source}-${r.date}-${r.description}`}>
                     <td style={{ verticalAlign: "top" }}>{String(r.date ?? "")}</td>
@@ -324,7 +395,7 @@ export function WorkspaceStatementTab({
                             style={{ fontSize: 12, padding: "4px 10px" }}
                             onClick={() =>
                               setEditExpense({
-                                id: String(r.expenseId),
+                                id: sourceId,
                                 date: String(r.date ?? "").slice(0, 10),
                                 description: String(r.description ?? ""),
                                 category: String(r.expenseCategory ?? "OTHER"),
@@ -339,10 +410,76 @@ export function WorkspaceStatementTab({
                             type="button"
                             className="pg-btn pg-btn-ghost"
                             style={{ fontSize: 12, padding: "4px 10px" }}
-                            onClick={() => setConfirmDelete({ id: String(r.expenseId), description: String(r.description ?? "") })}
+                            onClick={() => setConfirmDelete({ kind: "expense", id: sourceId, description: String(r.description ?? "") })}
                           >
                             <Trash2 size={14} style={{ marginRight: 6 }} aria-hidden />
                             Delete
+                          </button>
+                        </div>
+                      ) : canEditIncome ? (
+                        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
+                          <button
+                            type="button"
+                            className="pg-btn pg-btn-ghost"
+                            style={{ fontSize: 12, padding: "4px 10px" }}
+                            onClick={() =>
+                              setEditIncome({
+                                id: sourceId,
+                                date: String(r.date ?? "").slice(0, 10),
+                                description: String(r.incomeDescriptionPlain ?? r.description ?? ""),
+                                category: String(r.incomeCategory ?? "RENT"),
+                                status: String(r.status ?? "RECEIVED"),
+                                amount: String(r.credit ?? r.debit ?? "")
+                              })
+                            }
+                          >
+                            <Pencil size={14} style={{ marginRight: 6 }} aria-hidden />
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            className="pg-btn pg-btn-ghost"
+                            style={{ fontSize: 12, padding: "4px 10px" }}
+                            onClick={() => setConfirmDelete({ kind: "income", id: sourceId, description: String(r.description ?? "") })}
+                          >
+                            <Trash2 size={14} style={{ marginRight: 6 }} aria-hidden />
+                            Delete
+                          </button>
+                        </div>
+                      ) : canEditInvoice ? (
+                        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
+                          {String(r.status ?? "") !== "PAID" ? (
+                            <button
+                              type="button"
+                              className="pg-btn pg-btn-ghost"
+                              style={{ fontSize: 12, padding: "4px 10px" }}
+                              onClick={async () => {
+                                setError("");
+                                try {
+                                  await markInvoicePaid(sourceId);
+                                  await reload();
+                                } catch (e: any) {
+                                  setError(e?.message ?? "Failed to mark invoice paid.");
+                                }
+                              }}
+                            >
+                              Mark paid
+                            </button>
+                          ) : null}
+                          <button
+                            type="button"
+                            className="pg-btn pg-btn-ghost"
+                            style={{ fontSize: 12, padding: "4px 10px" }}
+                            onClick={() =>
+                              setEditInvoice({
+                                id: sourceId,
+                                status: String(r.status ?? "SENT"),
+                                notes: r.invoiceNotes != null ? String(r.invoiceNotes) : ""
+                              })
+                            }
+                          >
+                            <Pencil size={14} style={{ marginRight: 6 }} aria-hidden />
+                            Edit
                           </button>
                         </div>
                       ) : (
@@ -353,6 +490,22 @@ export function WorkspaceStatementTab({
                 );
               })}
             </tbody>
+            <tfoot>
+              <tr>
+                <td colSpan={3} style={{ fontWeight: 800 }}>
+                  Totals
+                </td>
+                <td className="pg-statement-num" style={{ fontWeight: 800 }}>
+                  {fmtZar(periodTotals.debit)}
+                </td>
+                <td className="pg-statement-num" style={{ fontWeight: 800 }}>
+                  {fmtZar(periodTotals.credit)}
+                </td>
+                <td colSpan={3} className="pg-muted" style={{ fontSize: 12 }}>
+                  Net: {fmtZar(periodTotals.net)} (paid credits − debits)
+                </td>
+              </tr>
+            </tfoot>
           </table>
         </div>
       ) : null}
@@ -396,6 +549,82 @@ export function WorkspaceStatementTab({
                 <label className="pg-muted" style={{ fontSize: 12 }}>
                   Amount
                   <Input type="number" step="any" min={0} value={onceOffForm.amount} onChange={(e) => setOnceOffForm({ ...onceOffForm, amount: e.target.value })} />
+                </label>
+              </div>
+            </ModalPanel>
+          </div>
+        </>
+      ) : null}
+
+      {editIncome ? (
+        <>
+          <ModalOverlay open onClose={() => (!editSaving ? setEditIncome(null) : null)} />
+          <div style={{ position: "fixed", inset: 0, display: "grid", placeItems: "center", padding: 16, zIndex: 60 }}>
+            <ModalPanel
+              title="Edit income"
+              onClose={() => (!editSaving ? setEditIncome(null) : null)}
+              actions={
+                <button className="pg-btn pg-btn-primary" type="button" disabled={editSaving} onClick={() => void saveIncomeEdit()}>
+                  {editSaving ? "Saving…" : "Save"}
+                </button>
+              }
+            >
+              <div style={{ padding: 14, display: "grid", gap: 10 }}>
+                <label className="pg-muted" style={{ fontSize: 12 }}>
+                  Date
+                  <Input type="date" value={String(editIncome.date ?? "")} onChange={(e) => setEditIncome({ ...editIncome, date: e.target.value })} />
+                </label>
+                <label className="pg-muted" style={{ fontSize: 12 }}>
+                  Status
+                  <select className="pg-input" value={String(editIncome.status ?? "RECEIVED")} onChange={(e) => setEditIncome({ ...editIncome, status: e.target.value })}>
+                    {INCOME_STATUS_OPTIONS.map((s) => (
+                      <option key={s} value={s}>
+                        {s === "EXPECTED" ? "Expected" : s === "RECEIVED" ? "Received" : "Cancelled"}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="pg-muted" style={{ fontSize: 12 }}>
+                  Description
+                  <Input value={String(editIncome.description ?? "")} onChange={(e) => setEditIncome({ ...editIncome, description: e.target.value })} />
+                </label>
+                <label className="pg-muted" style={{ fontSize: 12 }}>
+                  Amount
+                  <Input type="number" step="any" min={0} value={String(editIncome.amount ?? "")} onChange={(e) => setEditIncome({ ...editIncome, amount: e.target.value })} />
+                </label>
+              </div>
+            </ModalPanel>
+          </div>
+        </>
+      ) : null}
+
+      {editInvoice ? (
+        <>
+          <ModalOverlay open onClose={() => (!editSaving ? setEditInvoice(null) : null)} />
+          <div style={{ position: "fixed", inset: 0, display: "grid", placeItems: "center", padding: 16, zIndex: 60 }}>
+            <ModalPanel
+              title="Edit invoice"
+              onClose={() => (!editSaving ? setEditInvoice(null) : null)}
+              actions={
+                <button className="pg-btn pg-btn-primary" type="button" disabled={editSaving} onClick={() => void saveInvoiceEdit()}>
+                  {editSaving ? "Saving…" : "Save"}
+                </button>
+              }
+            >
+              <div style={{ padding: 14, display: "grid", gap: 10 }}>
+                <label className="pg-muted" style={{ fontSize: 12 }}>
+                  Status
+                  <select className="pg-input" value={String(editInvoice.status ?? "SENT")} onChange={(e) => setEditInvoice({ ...editInvoice, status: e.target.value })}>
+                    {INVOICE_STATUS_OPTIONS.map((s) => (
+                      <option key={s} value={s}>
+                        {s}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="pg-muted" style={{ fontSize: 12 }}>
+                  Notes
+                  <Input value={String(editInvoice.notes ?? "")} onChange={(e) => setEditInvoice({ ...editInvoice, notes: e.target.value })} placeholder="Optional" />
                 </label>
               </div>
             </ModalPanel>
@@ -453,7 +682,7 @@ export function WorkspaceStatementTab({
         <>
           <ModalOverlay open onClose={() => setConfirmDelete(null)} />
           <div style={{ position: "fixed", inset: 0, display: "grid", placeItems: "center", padding: 16, zIndex: 60 }}>
-            <ModalPanel title="Delete expense" onClose={() => setConfirmDelete(null)}>
+            <ModalPanel title="Delete item" onClose={() => setConfirmDelete(null)}>
               <div style={{ padding: 14, display: "grid", gap: 12 }}>
                 <div>
                   Delete <strong>{confirmDelete.description || "this expense"}</strong>?
@@ -462,7 +691,27 @@ export function WorkspaceStatementTab({
                   <button className="pg-btn pg-btn-ghost" type="button" onClick={() => setConfirmDelete(null)}>
                     Cancel
                   </button>
-                  <button className="pg-btn pg-btn-danger" type="button" onClick={() => void performDeleteExpense(String(confirmDelete.id))}>
+                  <button
+                    className="pg-btn pg-btn-danger"
+                    type="button"
+                    onClick={() => {
+                      const kind = String(confirmDelete.kind ?? "expense");
+                      if (kind === "income") {
+                        void (async () => {
+                          setError("");
+                          try {
+                            await deletePropertyIncome(String(confirmDelete.id));
+                            setConfirmDelete(null);
+                            await reload();
+                          } catch (e: any) {
+                            setError(e?.message ?? "Failed to delete income.");
+                          }
+                        })();
+                        return;
+                      }
+                      void performDeleteExpense(String(confirmDelete.id));
+                    }}
+                  >
                     Delete
                   </button>
                 </div>
