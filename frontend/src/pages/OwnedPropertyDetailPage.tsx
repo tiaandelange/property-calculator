@@ -363,7 +363,7 @@ export function OwnedPropertyDetailPage() {
               ) : null}
 
               {tab === "statement" && id ? (
-                <WorkspaceStatementTab propertyId={id} propertyName={data?.name ?? ""} />
+                <WorkspaceStatementTab propertyId={id} />
               ) : null}
 
               {tab === "tenants" ? (
