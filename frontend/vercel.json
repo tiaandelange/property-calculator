@@ -19,13 +19,13 @@
 
   "functions": {
     "api/reports/generate.ts": {
-      "includeFiles": "assets/fonts/**"
+      "includeFiles": "assets/fonts/pdfmake/**"
     },
     "api/reports/pdf-smoke-test.ts": {
-      "includeFiles": "assets/fonts/**"
+      "includeFiles": "assets/fonts/pdfmake/**"
     },
     "api/invoices/[id]/generate-pdf.ts": {
-      "includeFiles": "assets/fonts/**"
+      "includeFiles": "assets/fonts/pdfmake/**"
     }
   },
 

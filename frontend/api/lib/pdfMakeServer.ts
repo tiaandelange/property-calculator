@@ -1,6 +1,6 @@
 import { createRequire } from "node:module";
 import { existsSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { join } from "node:path";
 import type { TDocumentDefinitions } from "pdfmake/interfaces";
 // pdfmake is CommonJS. This project is ESM (`"type": "module"`), so we must load
 // pdfmake via `createRequire` to avoid default-import interop issues.
@@ -13,13 +13,10 @@ type PdfMakeFonts = Record<string, PdfMakeFontDescriptor>;
 
 let printer: any | null = null;
 
-function resolvePdfmakeRobotoFonts(): PdfMakeFontDescriptor {
-  const pkg = req.resolve("pdfmake/package.json");
-  const root = dirname(pkg);
+function resolveLocalPdfFonts(): PdfMakeFontDescriptor {
   const candidates = [
-    join(root, "examples", "fonts"),
-    join(root, "src", "fonts"),
-    join(root, "build", "fonts")
+    join(process.cwd(), "assets", "fonts", "pdfmake"),
+    join(process.cwd(), "frontend", "assets", "fonts", "pdfmake")
   ];
 
   const names = {
@@ -29,20 +26,18 @@ function resolvePdfmakeRobotoFonts(): PdfMakeFontDescriptor {
     bolditalics: "Roboto-MediumItalic.ttf"
   } as const;
 
-  for (const dir of candidates) {
-    const normal = join(dir, names.normal);
-    const bold = join(dir, names.bold);
-    const italics = join(dir, names.italics);
-    const bolditalics = join(dir, names.bolditalics);
-    if ([normal, bold, italics, bolditalics].every((p) => existsSync(p))) {
-      return { normal, bold, italics, bolditalics };
-    }
+  const tried: string[] = [];
+  for (const base of candidates) {
+    const normal = join(base, names.normal);
+    const bold = join(base, names.bold);
+    const italics = join(base, names.italics);
+    const bolditalics = join(base, names.bolditalics);
+    tried.push(normal, bold, italics, bolditalics);
+    if ([normal, bold, italics, bolditalics].every((p) => existsSync(p))) return { normal, bold, italics, bolditalics };
   }
 
   throw new Error(
-    `Roboto fonts not found inside pdfmake package. Tried:\n  ${candidates
-      .map((d) => `- ${d}`)
-      .join("\n")}`
+    `PDF fonts missing. Expected these files under assets/fonts/pdfmake/ (bundled into Vercel function).\nTried:\n  ${tried.join("\n  ")}`
   );
 }
 
@@ -51,10 +46,15 @@ function getPdfPrinter(): any {
     // Lazy-load pdfmake so failures don't become FUNCTION_INVOCATION_FAILED.
     const PdfPrinter = req("pdfmake") as any;
 
-    // Prefer Roboto fonts that ship within the pdfmake npm package.
-    // This avoids relying on repo-bundled font files and avoids pdfkit AFM path differences.
-    const roboto = resolvePdfmakeRobotoFonts();
-    const fonts: PdfMakeFonts = { Roboto: roboto };
+    const roboto = resolveLocalPdfFonts();
+    const fonts: PdfMakeFonts = {
+      Roboto: {
+        normal: roboto.normal,
+        bold: roboto.bold,
+        italics: roboto.italics,
+        bolditalics: roboto.bolditalics
+      }
+    };
 
     console.info("[pdfmake] init", {
       runtime: process.env.VERCEL_ENV ?? "local",
