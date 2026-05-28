@@ -41,9 +41,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   let buildCalculationReportPdfDefinition: any;
   let buildPropertySummaryPdfDefinition: any;
   try {
-    const pdf = await import("../lib/pdfMakeServer");
+    const pdf = await import(new URL("../lib/pdfMakeServer.js", import.meta.url).href);
     renderPdfDefinitionToBuffer = pdf.renderPdfDefinitionToBuffer as any;
-    const builders = await import("../lib/reportPdfBuilders");
+    const builders = await import(new URL("../lib/reportPdfBuilders.js", import.meta.url).href);
     buildCalculationReportPdfDefinition = (builders as any).buildCalculationReportPdfDefinition;
     buildPropertySummaryPdfDefinition = (builders as any).buildPropertySummaryPdfDefinition;
   } catch (e: any) {

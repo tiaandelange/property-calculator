@@ -30,9 +30,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   let renderPdfDefinitionToBuffer: (definition: any) => Promise<Buffer>;
   let buildInvoicePdfDefinition: any;
   try {
-    const pdf = await import("../../lib/pdfMakeServer");
+    const pdf = await import(new URL("../../lib/pdfMakeServer.js", import.meta.url).href);
     renderPdfDefinitionToBuffer = pdf.renderPdfDefinitionToBuffer as any;
-    const inv = await import("../../lib/invoicePdfBuilder");
+    const inv = await import(new URL("../../lib/invoicePdfBuilder.js", import.meta.url).href);
     buildInvoicePdfDefinition = (inv as any).buildInvoicePdfDefinition;
   } catch (e: any) {
     console.error("[invoices/generate-pdf] module load failed", e);
