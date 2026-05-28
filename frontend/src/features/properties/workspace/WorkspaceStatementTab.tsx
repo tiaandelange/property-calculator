@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { BookOpen, ChevronDown, ExternalLink, Pencil, Plus, Trash2 } from "lucide-react";
+import { BookOpen, Check, ChevronDown, ExternalLink, Pencil, Plus, Trash2, X } from "lucide-react";
 import { getPropertyStatement } from "../../../api/ownedProperties";
 import { Card } from "../../../components/ui/Card";
 import { Input } from "../../../components/ui/Input";
@@ -21,7 +21,6 @@ import { MetricCard } from "../../../components/ui/DashboardKit";
 
 type PeriodPreset = "LAST_MONTH" | "SIX_MONTHS" | "YTD" | "TWELVE_MONTHS" | "PER_YEAR" | "FOREVER";
 const INCOME_STATUS_OPTIONS = ["EXPECTED", "RECEIVED", "CANCELLED"] as const;
-const INVOICE_STATUS_OPTIONS = ["DRAFT", "SENT", "PAID", "OVERDUE", "CANCELLED"] as const;
 const INVOICE_STATUS_PICKER_OPTIONS = ["DRAFT", "SENT", "UNPAID", "PAID", "OVERDUE", "CANCELLED"] as const;
 
 function monthIdUtc(d: Date): string {
@@ -74,12 +73,18 @@ export function WorkspaceStatementTab({
     description: "",
     amount: ""
   }));
-  const [editExpense, setEditExpense] = useState<any>(null);
-  const [editIncome, setEditIncome] = useState<any>(null);
-  const [editInvoice, setEditInvoice] = useState<any>(null);
-  const [editStatus, setEditStatus] = useState<null | { source: string; id: string; status: string }>(null);
-  const [editStatusSaving, setEditStatusSaving] = useState(false);
-  const [editSaving, setEditSaving] = useState(false);
+  const [inlineEdit, setInlineEdit] = useState<null | {
+    source: "EXPENSE" | "INCOME";
+    id: string;
+    date: string;
+    description: string;
+    type: string;
+    debit: string;
+    credit: string;
+  }>(null);
+  const [inlineSaving, setInlineSaving] = useState(false);
+  const [statusPick, setStatusPick] = useState<null | { source: "INVOICE" | "INCOME"; id: string; status: string }>(null);
+  const [statusSaving, setStatusSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<any>(null);
 
   const monthIds = useMemo(() => {
@@ -218,32 +223,7 @@ export function WorkspaceStatementTab({
   }
 
   async function saveExpenseEdit() {
-    if (!editExpense?.id) return;
-    const amount = Number(String(editExpense.amount ?? "").trim());
-    if (!String(editExpense.description ?? "").trim()) {
-      setError("Description is required.");
-      return;
-    }
-    if (!Number.isFinite(amount) || amount <= 0) {
-      setError("Enter a valid amount.");
-      return;
-    }
-    setEditSaving(true);
-    setError("");
-    try {
-      await updatePropertyExpense(String(editExpense.id), {
-        description: String(editExpense.description).trim(),
-        amount,
-        expenseDate: String(editExpense.date ?? editExpense.expenseDate ?? "").trim() || undefined,
-        category: String(editExpense.category ?? editExpense.expenseCategory ?? "OTHER")
-      });
-      setEditExpense(null);
-      await reload();
-    } catch (e: any) {
-      setError(e?.message ?? "Failed to save expense.");
-    } finally {
-      setEditSaving(false);
-    }
+    // Deprecated: inline edit only.
   }
 
   async function performDeleteExpense(expenseId: string) {
@@ -258,54 +238,73 @@ export function WorkspaceStatementTab({
   }
 
   async function saveIncomeEdit() {
-    if (!editIncome?.id) return;
-    const amount = Number(String(editIncome.amount ?? "").trim());
-    if (!String(editIncome.description ?? "").trim()) {
+    // Deprecated: inline edit only.
+  }
+
+  async function saveInlineEdit() {
+    if (!inlineEdit?.id) return;
+    if (!String(inlineEdit.description ?? "").trim()) {
       setError("Description is required.");
       return;
     }
-    if (!Number.isFinite(amount) || amount < 0) {
-      setError("Enter a valid amount.");
-      return;
-    }
-    setEditSaving(true);
+
+    setInlineSaving(true);
     setError("");
     try {
-      const payload: Record<string, unknown> = {
-        description: String(editIncome.description).trim(),
-        amount,
-        incomeDate: String(editIncome.date ?? "").trim() || undefined,
-        category: String(editIncome.category ?? "RENT")
-      };
-      // Keep existing status if present, but status editing is driven from the Status dropdown.
-      if (editIncome.status != null && String(editIncome.status).trim() !== "") {
-        payload.status = String(editIncome.status);
+      if (inlineEdit.source === "EXPENSE") {
+        const amount = Number(String(inlineEdit.debit ?? "").trim());
+        if (!Number.isFinite(amount) || amount <= 0) {
+          setError("Enter a valid debit amount.");
+          return;
+        }
+        await updatePropertyExpense(String(inlineEdit.id), {
+          description: String(inlineEdit.description).trim(),
+          amount,
+          expenseDate: String(inlineEdit.date ?? "").trim() || undefined,
+          category: String(inlineEdit.type ?? "OTHER")
+        });
+      } else {
+        const amount = Number(String(inlineEdit.credit ?? "").trim());
+        if (!Number.isFinite(amount) || amount < 0) {
+          setError("Enter a valid credit amount.");
+          return;
+        }
+        await updatePropertyIncome(String(inlineEdit.id), {
+          description: String(inlineEdit.description).trim(),
+          amount,
+          incomeDate: String(inlineEdit.date ?? "").trim() || undefined,
+          category: String(inlineEdit.type ?? "RENT")
+        });
       }
-      await updatePropertyIncome(String(editIncome.id), payload);
-      setEditIncome(null);
+      setInlineEdit(null);
       await reload();
     } catch (e: any) {
-      setError(e?.message ?? "Failed to save income.");
+      setError(e?.message ?? "Failed to save line item.");
     } finally {
-      setEditSaving(false);
+      setInlineSaving(false);
     }
   }
 
-  async function saveInvoiceEdit() {
-    if (!editInvoice?.id) return;
-    setEditSaving(true);
+  async function setRowStatus(source: "INVOICE" | "INCOME", id: string, status: string) {
+    setStatusSaving(true);
     setError("");
     try {
-      await updateInvoice(String(editInvoice.id), {
-        invoiceDate: String(editInvoice.date ?? "").trim() || undefined,
-        notes: editInvoice.notes != null ? String(editInvoice.notes) : null
-      });
-      setEditInvoice(null);
+      if (source === "INVOICE") {
+        const mapped = status === "UNPAID" ? "SENT" : status;
+        if (mapped === "PAID") {
+          await markInvoicePaid(String(id));
+        } else {
+          await updateInvoice(String(id), { status: mapped });
+        }
+      } else {
+        await updatePropertyIncome(String(id), { status });
+      }
+      setStatusPick(null);
       await reload();
     } catch (e: any) {
-      setError(e?.message ?? "Failed to save invoice.");
+      setError(e?.message ?? "Failed to update status.");
     } finally {
-      setEditSaving(false);
+      setStatusSaving(false);
     }
   }
 
@@ -396,6 +395,7 @@ export function WorkspaceStatementTab({
                 const canEditExpense = r.source === "EXPENSE" && sourceId;
                 const canEditIncome = r.source === "INCOME" && sourceId;
                 const canEditInvoice = r.source === "INVOICE" && sourceId;
+                const isEditing = inlineEdit != null && inlineEdit.id === sourceId && inlineEdit.source === r.source;
                 const isExpectedRent =
                   r.source === "INCOME" &&
                   String(r.status ?? "").toUpperCase() === "EXPECTED" &&
@@ -403,24 +403,135 @@ export function WorkspaceStatementTab({
                   String(r.leaseId ?? "").trim() !== "";
                 return (
                   <tr key={r.id ?? `${r.source}-${r.date}-${r.description}`}>
-                    <td style={{ verticalAlign: "top" }}>{String(r.date ?? "")}</td>
-                    <td style={{ verticalAlign: "top", minWidth: 180 }}>{String(r.description ?? "")}</td>
-                    <td style={{ verticalAlign: "top", minWidth: 140 }}>{String(r.type ?? "")}</td>
-                    <td className="pg-statement-num" style={{ verticalAlign: "top" }}>
-                      {r.debit != null ? fmtZar(r.debit) : "—"}
+                    <td style={{ verticalAlign: "middle" }}>
+                      {isEditing ? (
+                        <Input
+                          type="date"
+                          value={inlineEdit?.date ?? ""}
+                          onChange={(e) => setInlineEdit((s) => (s ? { ...s, date: e.target.value } : s))}
+                          style={{ height: 34 }}
+                        />
+                      ) : (
+                        String(r.date ?? "")
+                      )}
                     </td>
-                    <td className={`pg-statement-num${creditClass}`} style={{ verticalAlign: "top" }}>
-                      {r.credit != null ? fmtZar(r.credit) : "—"}
+                    <td style={{ verticalAlign: "middle", minWidth: 180 }}>
+                      {isEditing ? (
+                        <Input
+                          value={inlineEdit?.description ?? ""}
+                          onChange={(e) => setInlineEdit((s) => (s ? { ...s, description: e.target.value } : s))}
+                          style={{ height: 34 }}
+                        />
+                      ) : (
+                        String(r.description ?? "")
+                      )}
                     </td>
-                    <td style={{ verticalAlign: "top" }}>
+                    <td style={{ verticalAlign: "middle", minWidth: 140 }}>
+                      {isEditing ? (
+                        <select
+                          className="pg-input"
+                          value={String(inlineEdit?.type ?? "")}
+                          onChange={(e) => setInlineEdit((s) => (s ? { ...s, type: e.target.value } : s))}
+                          style={{ height: 34 }}
+                        >
+                          {inlineEdit?.source === "EXPENSE" ? (
+                            <>
+                              <option value="OTHER">Other</option>
+                              <option value="MAINTENANCE">Maintenance</option>
+                              <option value="RATES_TAXES">Rates &amp; Taxes</option>
+                              <option value="LEVIES">Levies</option>
+                              <option value="INSURANCE">Insurance</option>
+                              <option value="ELECTRICITY">Electricity</option>
+                              <option value="WATER_SEWER">Water &amp; Sewer</option>
+                              <option value="SECURITY">Security</option>
+                              <option value="WIFI">Wi-Fi</option>
+                            </>
+                          ) : (
+                            <>
+                              <option value="RENT">Rent</option>
+                              <option value="OTHER">Other</option>
+                            </>
+                          )}
+                        </select>
+                      ) : (
+                        String(r.type ?? "")
+                      )}
+                    </td>
+                    <td className="pg-statement-num" style={{ verticalAlign: "middle" }}>
+                      {isEditing && inlineEdit?.source === "EXPENSE" ? (
+                        <Input
+                          type="number"
+                          step="any"
+                          min={0}
+                          value={inlineEdit?.debit ?? ""}
+                          onChange={(e) => setInlineEdit((s) => (s ? { ...s, debit: e.target.value } : s))}
+                          style={{ height: 34, textAlign: "right" }}
+                        />
+                      ) : r.debit != null ? (
+                        fmtZar(r.debit)
+                      ) : (
+                        "—"
+                      )}
+                    </td>
+                    <td className={`pg-statement-num${creditClass}`} style={{ verticalAlign: "middle" }}>
+                      {isEditing && inlineEdit?.source === "INCOME" ? (
+                        <Input
+                          type="number"
+                          step="any"
+                          min={0}
+                          value={inlineEdit?.credit ?? ""}
+                          onChange={(e) => setInlineEdit((s) => (s ? { ...s, credit: e.target.value } : s))}
+                          style={{ height: 34, textAlign: "right" }}
+                        />
+                      ) : r.credit != null ? (
+                        fmtZar(r.credit)
+                      ) : (
+                        "—"
+                      )}
+                    </td>
+                    <td style={{ verticalAlign: "middle" }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                        <span>{String(r.status ?? "")}</span>
+                        {statusPick && statusPick.id === sourceId && statusPick.source === r.source ? (
+                          <select
+                            className="pg-input"
+                            value={String(statusPick.status ?? "")}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              setStatusPick((s) => (s ? { ...s, status: v } : s));
+                              void setRowStatus(statusPick.source, sourceId, v);
+                            }}
+                            disabled={statusSaving}
+                            style={{ height: 34 }}
+                          >
+                            {statusPick.source === "INVOICE"
+                              ? INVOICE_STATUS_PICKER_OPTIONS.map((s) => (
+                                  <option key={s} value={s}>
+                                    {s}
+                                  </option>
+                                ))
+                              : INCOME_STATUS_OPTIONS.map((s) => (
+                                  <option key={s} value={s}>
+                                    {s === "EXPECTED" ? "UNPAID" : s === "RECEIVED" ? "PAID" : "CANCELLED"}
+                                  </option>
+                                ))}
+                          </select>
+                        ) : (
+                          <>
+                            <span>{String(r.status ?? "")}</span>
+                          </>
+                        )}
                         {(canEditInvoice || canEditIncome) && sourceId ? (
                           <button
                             type="button"
                             className="pg-btn pg-btn-ghost"
                             style={{ padding: 4, width: 26, height: 26, display: "grid", placeItems: "center" }}
-                            onClick={() => setEditStatus({ source: String(r.source ?? ""), id: sourceId, status: String(r.status ?? "") })}
+                            onClick={() =>
+                              setStatusPick({
+                                source: canEditInvoice ? "INVOICE" : "INCOME",
+                                id: sourceId,
+                                status: String(r.status ?? "")
+                              })
+                            }
                             aria-label="Change status"
                             title="Change status"
                           >
@@ -429,28 +540,57 @@ export function WorkspaceStatementTab({
                         ) : null}
                       </div>
                     </td>
-                    <td style={{ verticalAlign: "top" }}>{String(r.source ?? "")}</td>
-                    <td style={{ verticalAlign: "top", whiteSpace: "nowrap" }}>
+                    <td style={{ verticalAlign: "middle" }}>{String(r.source ?? "")}</td>
+                    <td style={{ verticalAlign: "middle", whiteSpace: "nowrap" }}>
                       {canEditExpense ? (
-                        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
-                          <button
-                            type="button"
-                            className="pg-btn pg-btn-ghost"
-                            style={{ padding: 6, width: 32, height: 32, display: "grid", placeItems: "center" }}
-                            onClick={() =>
-                              setEditExpense({
-                                id: sourceId,
-                                date: String(r.date ?? "").slice(0, 10),
-                                description: String(r.description ?? ""),
-                                category: String(r.expenseCategory ?? "OTHER"),
-                                amount: String(r.debit ?? "")
-                              })
-                            }
-                            aria-label="Edit"
-                            title="Edit"
-                          >
-                            <Pencil size={16} aria-hidden />
-                          </button>
+                        <div style={{ display: "flex", gap: 6, justifyContent: "flex-end", flexWrap: "nowrap", alignItems: "center" }}>
+                          {isEditing ? (
+                            <>
+                              <button
+                                type="button"
+                                className="pg-btn pg-btn-ghost"
+                                style={{ padding: 6, width: 32, height: 32, display: "grid", placeItems: "center" }}
+                                onClick={() => void saveInlineEdit()}
+                                aria-label="Save"
+                                title="Save"
+                                disabled={inlineSaving}
+                              >
+                                <Check size={16} aria-hidden />
+                              </button>
+                              <button
+                                type="button"
+                                className="pg-btn pg-btn-ghost"
+                                style={{ padding: 6, width: 32, height: 32, display: "grid", placeItems: "center" }}
+                                onClick={() => setInlineEdit(null)}
+                                aria-label="Cancel"
+                                title="Cancel"
+                                disabled={inlineSaving}
+                              >
+                                <X size={16} aria-hidden />
+                              </button>
+                            </>
+                          ) : (
+                            <button
+                              type="button"
+                              className="pg-btn pg-btn-ghost"
+                              style={{ padding: 6, width: 32, height: 32, display: "grid", placeItems: "center" }}
+                              onClick={() =>
+                                setInlineEdit({
+                                  source: "EXPENSE",
+                                  id: sourceId,
+                                  date: String(r.date ?? "").slice(0, 10),
+                                  description: String(r.description ?? ""),
+                                  type: String(r.expenseCategory ?? "OTHER"),
+                                  debit: String(r.debit ?? ""),
+                                  credit: ""
+                                })
+                              }
+                              aria-label="Edit"
+                              title="Edit"
+                            >
+                              <Pencil size={16} aria-hidden />
+                            </button>
+                          )}
                           <button
                             type="button"
                             className="pg-btn pg-btn-ghost"
@@ -470,7 +610,7 @@ export function WorkspaceStatementTab({
                           </button>
                         </div>
                       ) : canEditIncome ? (
-                        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
+                        <div style={{ display: "flex", gap: 6, justifyContent: "flex-end", flexWrap: "nowrap", alignItems: "center" }}>
                           {isExpectedRent ? (
                             <button
                               type="button"
@@ -512,25 +652,53 @@ export function WorkspaceStatementTab({
                               <BookOpen size={16} aria-hidden />
                             </button>
                           ) : null}
-                          <button
-                            type="button"
-                            className="pg-btn pg-btn-ghost"
-                            style={{ padding: 6, width: 32, height: 32, display: "grid", placeItems: "center" }}
-                            onClick={() =>
-                              setEditIncome({
-                                id: sourceId,
-                                date: String(r.date ?? "").slice(0, 10),
-                                description: String(r.incomeDescriptionPlain ?? r.description ?? ""),
-                                category: String(r.incomeCategory ?? "RENT"),
-                                status: String(r.status ?? "RECEIVED"),
-                                amount: String(r.credit ?? r.debit ?? "")
-                              })
-                            }
-                            aria-label="Edit"
-                            title="Edit"
-                          >
-                            <Pencil size={16} aria-hidden />
-                          </button>
+                          {isEditing ? (
+                            <>
+                              <button
+                                type="button"
+                                className="pg-btn pg-btn-ghost"
+                                style={{ padding: 6, width: 32, height: 32, display: "grid", placeItems: "center" }}
+                                onClick={() => void saveInlineEdit()}
+                                aria-label="Save"
+                                title="Save"
+                                disabled={inlineSaving}
+                              >
+                                <Check size={16} aria-hidden />
+                              </button>
+                              <button
+                                type="button"
+                                className="pg-btn pg-btn-ghost"
+                                style={{ padding: 6, width: 32, height: 32, display: "grid", placeItems: "center" }}
+                                onClick={() => setInlineEdit(null)}
+                                aria-label="Cancel"
+                                title="Cancel"
+                                disabled={inlineSaving}
+                              >
+                                <X size={16} aria-hidden />
+                              </button>
+                            </>
+                          ) : (
+                            <button
+                              type="button"
+                              className="pg-btn pg-btn-ghost"
+                              style={{ padding: 6, width: 32, height: 32, display: "grid", placeItems: "center" }}
+                              onClick={() =>
+                                setInlineEdit({
+                                  source: "INCOME",
+                                  id: sourceId,
+                                  date: String(r.date ?? "").slice(0, 10),
+                                  description: String(r.incomeDescriptionPlain ?? r.description ?? ""),
+                                  type: String(r.incomeCategory ?? "RENT"),
+                                  debit: "",
+                                  credit: String(r.credit ?? r.debit ?? "")
+                                })
+                              }
+                              aria-label="Edit"
+                              title="Edit"
+                            >
+                              <Pencil size={16} aria-hidden />
+                            </button>
+                          )}
                           <button
                             type="button"
                             className="pg-btn pg-btn-ghost"
@@ -550,7 +718,36 @@ export function WorkspaceStatementTab({
                           </button>
                         </div>
                       ) : canEditInvoice ? (
-                        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
+                        <div style={{ display: "flex", gap: 6, justifyContent: "flex-end", flexWrap: "nowrap", alignItems: "center" }}>
+                          <button
+                            type="button"
+                            className="pg-btn pg-btn-ghost"
+                            style={{ padding: 6, width: 32, height: 32, display: "grid", placeItems: "center", color: "var(--primary)" }}
+                            onClick={async () => {
+                              setError("");
+                              try {
+                                const inv = await getInvoice(sourceId);
+                                const invAny = inv as any;
+                                const invoiceAny = (invAny?.invoice ?? invAny) as any;
+                                const invoiceId = String(invoiceAny?.id ?? sourceId);
+                                const tenantId = String(
+                                  invoiceAny?.tenantId ??
+                                    invoiceAny?.tenant_id ??
+                                    invAny?.tenantId ??
+                                    invAny?.tenant_id ??
+                                    ""
+                                );
+                                if (!tenantId) throw new Error("Tenant id was missing for this invoice.");
+                                navigate(`/tenants/${tenantId}/invoices/${invoiceId}`);
+                              } catch (e: any) {
+                                setError(e?.message ?? "Could not open invoice.");
+                              }
+                            }}
+                            aria-label="Open invoice"
+                            title="Open invoice"
+                          >
+                            <BookOpen size={16} aria-hidden />
+                          </button>
                           {String(r.status ?? "") !== "PAID" ? (
                             <button
                               type="button"
@@ -570,22 +767,6 @@ export function WorkspaceStatementTab({
                               Mark paid
                             </button>
                           ) : null}
-                          <button
-                            type="button"
-                            className="pg-btn pg-btn-ghost"
-                            style={{ padding: 6, width: 32, height: 32, display: "grid", placeItems: "center" }}
-                            onClick={() =>
-                              setEditInvoice({
-                                id: sourceId,
-                                date: String(r.date ?? "").slice(0, 10),
-                                notes: r.invoiceNotes != null ? String(r.invoiceNotes) : ""
-                              })
-                            }
-                            aria-label="Edit"
-                            title="Edit"
-                          >
-                            <Pencil size={16} aria-hidden />
-                          </button>
                           <button
                             type="button"
                             className="pg-btn pg-btn-ghost"
