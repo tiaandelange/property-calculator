@@ -2,11 +2,11 @@ import { existsSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join, resolve } from "node:path";
 import type { TDocumentDefinitions } from "pdfmake/interfaces";
-// pdfmake is CommonJS. When the app is ESM (package.json `"type": "module"`),
-// importing it as a default export can crash the serverless function at module load
-// (Vercel surfaces this as FUNCTION_INVOCATION_FAILED).
+// pdfmake is CommonJS. This project is ESM (`"type": "module"`), so we must load
+// pdfmake via `createRequire` to avoid default-import interop issues.
+// Important: keep the actual `require("pdfmake")` lazy so that a missing module
+// yields a handled runtime error (JSON) instead of a Vercel module-load crash.
 const req = createRequire(import.meta.url);
-const PdfPrinter = req("pdfmake") as any;
 
 const FONT_FILES = ["Roboto-Regular.ttf", "Roboto-Medium.ttf", "Roboto-Italic.ttf", "Roboto-MediumItalic.ttf"] as const;
 
@@ -40,6 +40,8 @@ let printer: any | null = null;
 
 function getPdfPrinter(): any {
   if (!printer) {
+    // Lazy-load pdfmake so failures don't become FUNCTION_INVOCATION_FAILED.
+    const PdfPrinter = req("pdfmake") as any;
     const dir = resolveReportPdfFontDir();
     printer = new PdfPrinter({
       Roboto: {
