@@ -169,6 +169,12 @@
   background: var(--dash-page-bg, var(--background));
 }
 
+.pg-dashboard-shell-title-block {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
 .pg-dashboard-shell-header-title {
   margin: 0;
   font-size: 1.375rem;
@@ -176,6 +182,14 @@
   letter-spacing: -0.02em;
   flex: 0 0 auto;
   min-width: 120px;
+}
+
+.pg-dashboard-shell-title-sub {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  color: var(--dash-text-secondary, var(--text2));
+  font-size: 13px;
 }
 
 .pg-dashboard-shell-search {
@@ -222,29 +236,34 @@
   justify-self: end;
 }
 
-.pg-dashboard-shell-title-meta {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
-}
-
-.pg-dashboard-shell-title-dot {
-  color: var(--dash-text-secondary, var(--text2));
-}
-
 .pg-dashboard-shell-prop-switch {
   position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 10px;
-  border-radius: 10px;
-  border: 1px solid var(--dash-border, var(--border));
-  background: var(--dash-card-bg, var(--surface));
-  color: var(--dash-text-primary, var(--text));
-  cursor: pointer;
   max-width: min(420px, 50vw);
+}
+
+.pg-dashboard-shell-prop-switch-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--dash-text-secondary, var(--text2));
+  cursor: pointer;
+  font: inherit;
+  max-width: 100%;
+}
+
+.pg-dashboard-shell-prop-switch-btn:hover {
+  color: var(--dash-text-primary, var(--text));
+}
+
+.pg-dashboard-shell-prop-switch-btn:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--dash-accent, #7c5cff) 45%, transparent);
+  outline-offset: 3px;
+  border-radius: 8px;
 }
 
 .pg-dashboard-shell-prop-switch-label {

@@ -152,19 +152,16 @@ export function WorkspaceShellHeader({ mobile = false }: { mobile?: boolean }) {
 
   return (
     <header className="pg-dashboard-shell-header">
-      <h1 className="pg-dashboard-shell-header-title">
+      <div className="pg-dashboard-shell-title-block">
+        <h1 className="pg-dashboard-shell-header-title">
+          {showPropertySwitcher && propertyCtx ? "Properties" : title}
+        </h1>
         {showPropertySwitcher && propertyCtx ? (
-          <span className="pg-dashboard-shell-title-meta">
-            <span>Properties</span>
-            <span className="pg-dashboard-shell-title-dot">·</span>
-            <span
-              className="pg-dashboard-shell-prop-switch"
-              ref={propertyMenuRef}
-            >
+          <div className="pg-dashboard-shell-title-sub">
+            <div className="pg-dashboard-shell-prop-switch" ref={propertyMenuRef}>
               <button
                 type="button"
-                className="pg-btn pg-btn-ghost"
-                style={{ padding: 0, display: "inline-flex", alignItems: "center", gap: 8 }}
+                className="pg-dashboard-shell-prop-switch-btn"
                 onClick={() => setPropertyMenuOpen((v) => !v)}
                 aria-haspopup="menu"
                 aria-expanded={propertyMenuOpen}
@@ -196,12 +193,10 @@ export function WorkspaceShellHeader({ mobile = false }: { mobile?: boolean }) {
                   ))}
                 </div>
               ) : null}
-            </span>
-          </span>
-        ) : (
-          title
-        )}
-      </h1>
+            </div>
+          </div>
+        ) : null}
+      </div>
       <form className="pg-dashboard-shell-search" onSubmit={onSearchSubmit} role="search">
         <Search size={18} className="pg-dashboard-shell-search-icon" aria-hidden />
         <input
