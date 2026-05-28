@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { BookOpen, ExternalLink, Pencil, Plus, Trash2 } from "lucide-react";
+import { BookOpen, ChevronDown, ExternalLink, Pencil, Plus, Trash2 } from "lucide-react";
 import { getPropertyStatement } from "../../../api/ownedProperties";
 import { Card } from "../../../components/ui/Card";
 import { Input } from "../../../components/ui/Input";
@@ -22,6 +22,7 @@ import { MetricCard } from "../../../components/ui/DashboardKit";
 type PeriodPreset = "LAST_MONTH" | "SIX_MONTHS" | "YTD" | "TWELVE_MONTHS" | "PER_YEAR" | "FOREVER";
 const INCOME_STATUS_OPTIONS = ["EXPECTED", "RECEIVED", "CANCELLED"] as const;
 const INVOICE_STATUS_OPTIONS = ["DRAFT", "SENT", "PAID", "OVERDUE", "CANCELLED"] as const;
+const INVOICE_STATUS_PICKER_OPTIONS = ["DRAFT", "SENT", "UNPAID", "PAID", "OVERDUE", "CANCELLED"] as const;
 
 function monthIdUtc(d: Date): string {
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
@@ -76,6 +77,8 @@ export function WorkspaceStatementTab({
   const [editExpense, setEditExpense] = useState<any>(null);
   const [editIncome, setEditIncome] = useState<any>(null);
   const [editInvoice, setEditInvoice] = useState<any>(null);
+  const [editStatus, setEditStatus] = useState<null | { source: string; id: string; status: string }>(null);
+  const [editStatusSaving, setEditStatusSaving] = useState(false);
   const [editSaving, setEditSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<any>(null);
 
@@ -268,13 +271,17 @@ export function WorkspaceStatementTab({
     setEditSaving(true);
     setError("");
     try {
-      await updatePropertyIncome(String(editIncome.id), {
+      const payload: Record<string, unknown> = {
         description: String(editIncome.description).trim(),
         amount,
         incomeDate: String(editIncome.date ?? "").trim() || undefined,
-        status: String(editIncome.status ?? "RECEIVED"),
         category: String(editIncome.category ?? "RENT")
-      });
+      };
+      // Keep existing status if present, but status editing is driven from the Status dropdown.
+      if (editIncome.status != null && String(editIncome.status).trim() !== "") {
+        payload.status = String(editIncome.status);
+      }
+      await updatePropertyIncome(String(editIncome.id), payload);
       setEditIncome(null);
       await reload();
     } catch (e: any) {
@@ -290,7 +297,7 @@ export function WorkspaceStatementTab({
     setError("");
     try {
       await updateInvoice(String(editInvoice.id), {
-        status: String(editInvoice.status ?? "SENT"),
+        invoiceDate: String(editInvoice.date ?? "").trim() || undefined,
         notes: editInvoice.notes != null ? String(editInvoice.notes) : null
       });
       setEditInvoice(null);
@@ -405,7 +412,23 @@ export function WorkspaceStatementTab({
                     <td className={`pg-statement-num${creditClass}`} style={{ verticalAlign: "top" }}>
                       {r.credit != null ? fmtZar(r.credit) : "—"}
                     </td>
-                    <td style={{ verticalAlign: "top" }}>{String(r.status ?? "")}</td>
+                    <td style={{ verticalAlign: "top" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <span>{String(r.status ?? "")}</span>
+                        {(canEditInvoice || canEditIncome) && sourceId ? (
+                          <button
+                            type="button"
+                            className="pg-btn pg-btn-ghost"
+                            style={{ padding: 4, width: 26, height: 26, display: "grid", placeItems: "center" }}
+                            onClick={() => setEditStatus({ source: String(r.source ?? ""), id: sourceId, status: String(r.status ?? "") })}
+                            aria-label="Change status"
+                            title="Change status"
+                          >
+                            <ChevronDown size={16} aria-hidden />
+                          </button>
+                        ) : null}
+                      </div>
+                    </td>
                     <td style={{ verticalAlign: "top" }}>{String(r.source ?? "")}</td>
                     <td style={{ verticalAlign: "top", whiteSpace: "nowrap" }}>
                       {canEditExpense ? (
@@ -554,7 +577,7 @@ export function WorkspaceStatementTab({
                             onClick={() =>
                               setEditInvoice({
                                 id: sourceId,
-                                status: String(r.status ?? "SENT"),
+                                date: String(r.date ?? "").slice(0, 10),
                                 notes: r.invoiceNotes != null ? String(r.invoiceNotes) : ""
                               })
                             }
@@ -659,7 +682,7 @@ export function WorkspaceStatementTab({
           <ModalOverlay open onClose={() => (!editSaving ? setEditIncome(null) : null)} />
           <div style={{ position: "fixed", inset: 0, display: "grid", placeItems: "center", padding: 16, zIndex: 60 }}>
             <ModalPanel
-              title="Edit income"
+              title="Edit line item"
               onClose={() => (!editSaving ? setEditIncome(null) : null)}
               actions={
                 <button className="pg-btn pg-btn-primary" type="button" disabled={editSaving} onClick={() => void saveIncomeEdit()}>
@@ -673,13 +696,10 @@ export function WorkspaceStatementTab({
                   <Input type="date" value={String(editIncome.date ?? "")} onChange={(e) => setEditIncome({ ...editIncome, date: e.target.value })} />
                 </label>
                 <label className="pg-muted" style={{ fontSize: 12 }}>
-                  Status
-                  <select className="pg-input" value={String(editIncome.status ?? "RECEIVED")} onChange={(e) => setEditIncome({ ...editIncome, status: e.target.value })}>
-                    {INCOME_STATUS_OPTIONS.map((s) => (
-                      <option key={s} value={s}>
-                        {s === "EXPECTED" ? "Expected" : s === "RECEIVED" ? "Received" : "Cancelled"}
-                      </option>
-                    ))}
+                  Type
+                  <select className="pg-input" value={String(editIncome.category ?? "RENT")} onChange={(e) => setEditIncome({ ...editIncome, category: e.target.value })}>
+                    <option value="RENT">Rent</option>
+                    <option value="OTHER">Other</option>
                   </select>
                 </label>
                 <label className="pg-muted" style={{ fontSize: 12 }}>
@@ -687,7 +707,7 @@ export function WorkspaceStatementTab({
                   <Input value={String(editIncome.description ?? "")} onChange={(e) => setEditIncome({ ...editIncome, description: e.target.value })} />
                 </label>
                 <label className="pg-muted" style={{ fontSize: 12 }}>
-                  Amount
+                  Credit
                   <Input type="number" step="any" min={0} value={String(editIncome.amount ?? "")} onChange={(e) => setEditIncome({ ...editIncome, amount: e.target.value })} />
                 </label>
               </div>
@@ -701,7 +721,7 @@ export function WorkspaceStatementTab({
           <ModalOverlay open onClose={() => (!editSaving ? setEditInvoice(null) : null)} />
           <div style={{ position: "fixed", inset: 0, display: "grid", placeItems: "center", padding: 16, zIndex: 60 }}>
             <ModalPanel
-              title="Edit invoice"
+              title="Edit line item"
               onClose={() => (!editSaving ? setEditInvoice(null) : null)}
               actions={
                 <button className="pg-btn pg-btn-primary" type="button" disabled={editSaving} onClick={() => void saveInvoiceEdit()}>
@@ -711,14 +731,8 @@ export function WorkspaceStatementTab({
             >
               <div style={{ padding: 14, display: "grid", gap: 10 }}>
                 <label className="pg-muted" style={{ fontSize: 12 }}>
-                  Status
-                  <select className="pg-input" value={String(editInvoice.status ?? "SENT")} onChange={(e) => setEditInvoice({ ...editInvoice, status: e.target.value })}>
-                    {INVOICE_STATUS_OPTIONS.map((s) => (
-                      <option key={s} value={s}>
-                        {s}
-                      </option>
-                    ))}
-                  </select>
+                  Date
+                  <Input type="date" value={String(editInvoice.date ?? "")} onChange={(e) => setEditInvoice({ ...editInvoice, date: e.target.value })} />
                 </label>
                 <label className="pg-muted" style={{ fontSize: 12 }}>
                   Notes
@@ -735,7 +749,7 @@ export function WorkspaceStatementTab({
           <ModalOverlay open onClose={() => (!editSaving ? setEditExpense(null) : null)} />
           <div style={{ position: "fixed", inset: 0, display: "grid", placeItems: "center", padding: 16, zIndex: 60 }}>
             <ModalPanel
-              title="Edit expense"
+              title="Edit line item"
               onClose={() => (!editSaving ? setEditExpense(null) : null)}
               actions={
                 <button className="pg-btn pg-btn-primary" type="button" disabled={editSaving} onClick={() => void saveExpenseEdit()}>
@@ -749,7 +763,7 @@ export function WorkspaceStatementTab({
                   <Input type="date" value={String(editExpense.date ?? "")} onChange={(e) => setEditExpense({ ...editExpense, date: e.target.value })} />
                 </label>
                 <label className="pg-muted" style={{ fontSize: 12 }}>
-                  Category
+                  Type
                   <select className="pg-input" value={String(editExpense.category ?? "OTHER")} onChange={(e) => setEditExpense({ ...editExpense, category: e.target.value })}>
                     <option value="OTHER">Other</option>
                     <option value="MAINTENANCE">Maintenance</option>
@@ -767,8 +781,97 @@ export function WorkspaceStatementTab({
                   <Input value={String(editExpense.description ?? "")} onChange={(e) => setEditExpense({ ...editExpense, description: e.target.value })} />
                 </label>
                 <label className="pg-muted" style={{ fontSize: 12 }}>
-                  Amount
+                  Debit
                   <Input type="number" step="any" min={0} value={String(editExpense.amount ?? "")} onChange={(e) => setEditExpense({ ...editExpense, amount: e.target.value })} />
+                </label>
+              </div>
+            </ModalPanel>
+          </div>
+        </>
+      ) : null}
+
+      {editStatus ? (
+        <>
+          <ModalOverlay open onClose={() => (!editStatusSaving ? setEditStatus(null) : null)} />
+          <div style={{ position: "fixed", inset: 0, display: "grid", placeItems: "center", padding: 16, zIndex: 60 }}>
+            <ModalPanel
+              title="Change status"
+              onClose={() => (!editStatusSaving ? setEditStatus(null) : null)}
+              actions={
+                <button
+                  className="pg-btn pg-btn-primary"
+                  type="button"
+                  disabled={editStatusSaving}
+                  onClick={() => {
+                    void (async () => {
+                      if (!editStatus?.id) return;
+                      setEditStatusSaving(true);
+                      setError("");
+                      try {
+                        const src = String(editStatus.source ?? "");
+                        const chosen = String(editStatus.status ?? "");
+
+                        if (src === "INVOICE") {
+                          const mapped = chosen === "UNPAID" ? "SENT" : chosen;
+                          if (mapped === "PAID") {
+                            await markInvoicePaid(String(editStatus.id));
+                          } else {
+                            await updateInvoice(String(editStatus.id), { status: mapped });
+                          }
+                          setEditStatus(null);
+                          await reload();
+                          return;
+                        }
+
+                        if (src === "INCOME") {
+                          // Income supports EXPECTED/RECEIVED/CANCELLED (no draft/sent).
+                          await updatePropertyIncome(String(editStatus.id), { status: chosen });
+                          setEditStatus(null);
+                          await reload();
+                          return;
+                        }
+
+                        setEditStatus(null);
+                      } catch (e: any) {
+                        setError(e?.message ?? "Failed to update status.");
+                      } finally {
+                        setEditStatusSaving(false);
+                      }
+                    })();
+                  }}
+                >
+                  {editStatusSaving ? "Saving…" : "Save"}
+                </button>
+              }
+            >
+              <div style={{ padding: 14, display: "grid", gap: 10, minWidth: 320 }}>
+                <label className="pg-muted" style={{ fontSize: 12 }}>
+                  Status
+                  {String(editStatus.source ?? "") === "INVOICE" ? (
+                    <select
+                      className="pg-input"
+                      value={String(editStatus.status ?? "SENT")}
+                      onChange={(e) => setEditStatus({ ...editStatus, status: e.target.value })}
+                    >
+                      {INVOICE_STATUS_PICKER_OPTIONS.map((s) => (
+                        <option key={s} value={s}>
+                          {s}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <select
+                      className="pg-input"
+                      value={String(editStatus.status ?? "RECEIVED")}
+                      onChange={(e) => setEditStatus({ ...editStatus, status: e.target.value })}
+                    >
+                      {INCOME_STATUS_OPTIONS.map((s) => (
+                        <option key={s} value={s}>
+                          {s === "EXPECTED" ? "Unpaid" : s === "RECEIVED" ? "Paid" : "Cancelled"}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </label>
               </div>
             </ModalPanel>
