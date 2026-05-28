@@ -187,8 +187,11 @@ export function WorkspaceShellHeader({ mobile = false }: { mobile?: boolean }) {
                         navigate(`/owned-properties/${p.id}?${params.toString()}`);
                       }}
                     >
-                      <div style={{ fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis" }}>{p.name}</div>
-                      <div className="pg-dashboard-shell-prop-menu-sub">{p.typeLabel ?? "Property"}</div>
+                      <span className="pg-dashboard-shell-prop-menu-line">
+                        <span className="pg-dashboard-shell-prop-menu-name">{p.name}</span>
+                        <span className="pg-dashboard-shell-prop-menu-dot">·</span>
+                        <span className="pg-dashboard-shell-prop-menu-type">{p.typeLabel ?? "Property"}</span>
+                      </span>
                     </button>
                   ))}
                 </div>
