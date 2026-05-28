@@ -63,7 +63,7 @@ function asObject(v: unknown): Record<string, unknown> {
   return {};
 }
 
-async function requireUserId(): Promise<string> {
+export async function requireUserId(): Promise<string> {
   const sb = getSupabase();
   const { data, error } = await sb.auth.getUser();
   if (error) throw toError(error);
