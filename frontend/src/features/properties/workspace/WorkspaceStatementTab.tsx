@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { ExternalLink, Pencil, Plus, Trash2 } from "lucide-react";
 import { getPropertyStatement } from "../../../api/ownedProperties";
 import { Card } from "../../../components/ui/Card";
@@ -6,8 +7,10 @@ import { Input } from "../../../components/ui/Input";
 import { ModalOverlay, ModalPanel } from "../../../components/ui/Modal";
 import {
   createPropertyExpense,
+  createCurrentInvoiceFromLease,
   deletePropertyExpense,
   deletePropertyIncome,
+  getInvoice,
   markInvoicePaid,
   updateInvoice,
   updatePropertyExpense,
@@ -49,6 +52,7 @@ export function WorkspaceStatementTab({
 }: {
   propertyId: string;
 }) {
+  const navigate = useNavigate();
   const [preset, setPreset] = useState<PeriodPreset>("SIX_MONTHS");
   const [year, setYear] = useState<number>(() => new Date().getUTCFullYear());
   const [loading, setLoading] = useState(false);
@@ -346,7 +350,7 @@ export function WorkspaceStatementTab({
               <button
                 type="button"
                 className="pg-btn pg-btn-primary"
-                style={{ minWidth: 138, justifyContent: "center" }}
+                style={{ minWidth: 152, justifyContent: "center", whiteSpace: "nowrap" }}
                 onClick={() => setShowAddOnceOff(true)}
               >
                 <Plus size={16} style={{ marginRight: 6 }} aria-hidden />
@@ -355,7 +359,7 @@ export function WorkspaceStatementTab({
               <button
                 type="button"
                 className="pg-btn pg-btn-secondary"
-                style={{ minWidth: 132, justifyContent: "center" }}
+                style={{ minWidth: 140, justifyContent: "center", whiteSpace: "nowrap" }}
                 disabled
                 title="Coming next: Statement PDF export"
               >
@@ -384,6 +388,11 @@ export function WorkspaceStatementTab({
                 const canEditExpense = r.source === "EXPENSE" && sourceId;
                 const canEditIncome = r.source === "INCOME" && sourceId;
                 const canEditInvoice = r.source === "INVOICE" && sourceId;
+                const isExpectedRent =
+                  r.source === "INCOME" &&
+                  String(r.status ?? "").toUpperCase() === "EXPECTED" &&
+                  String(r.incomeCategory ?? "").toUpperCase() === "RENT" &&
+                  String(r.leaseId ?? "").trim() !== "";
                 return (
                   <tr key={r.id ?? `${r.source}-${r.date}-${r.description}`}>
                     <td style={{ verticalAlign: "top" }}>{String(r.date ?? "")}</td>
@@ -429,6 +438,30 @@ export function WorkspaceStatementTab({
                         </div>
                       ) : canEditIncome ? (
                         <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
+                          {isExpectedRent ? (
+                            <button
+                              type="button"
+                              className="pg-btn pg-btn-secondary"
+                              style={{ fontSize: 12, padding: "4px 10px" }}
+                              onClick={async () => {
+                                setError("");
+                                try {
+                                  const leaseId = String(r.leaseId).trim();
+                                  const created = await createCurrentInvoiceFromLease(propertyId, leaseId);
+                                  const invoiceId = String(created.invoiceId ?? "");
+                                  if (!invoiceId) throw new Error("Invoice could not be created.");
+                                  const inv = await getInvoice(invoiceId);
+                                  const tenantId = String(inv?.invoice?.tenantId ?? inv?.tenantId ?? "");
+                                  if (!tenantId) throw new Error("Invoice created, but tenant id was missing.");
+                                  navigate(`/tenants/${tenantId}/invoices/${invoiceId}`);
+                                } catch (e: any) {
+                                  setError(e?.message ?? "Could not generate invoice.");
+                                }
+                              }}
+                            >
+                              Generate invoice <ExternalLink size={14} style={{ marginLeft: 6 }} aria-hidden />
+                            </button>
+                          ) : null}
                           <button
                             type="button"
                             className="pg-btn pg-btn-ghost"
