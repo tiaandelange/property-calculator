@@ -1097,11 +1097,6 @@ export function WorkspaceFinancialsTab({
 
   return (
     <div className="pg-pfin-page">
-      <p className="pg-muted" style={{ margin: "8px 0 16px" }}>
-        {propertyDisplayName}
-        {unitLabel ? ` · Unit ${unitLabel}` : null}
-      </p>
-
       {loading ? (
         <div className="pg-pfin-metrics pg-pfin-metrics--compact">
           {[1, 2, 3, 4].map((i) => (
