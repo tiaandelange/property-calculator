@@ -185,9 +185,7 @@ export function OwnedPropertyFormPage() {
       <Helmet>
         <title>{pageTitle} | The Property Guy</title>
       </Helmet>
-
-      <header className="pg-prop-form-page__head">
-        <h1 className="pg-prop-form-page__title">{pageTitle}</h1>
+      <div className="pg-prop-form-page__head" style={{ justifyContent: "flex-end" }}>
         <div className="pg-prop-form-page__actions">
           <Button
             type="button"
@@ -200,7 +198,7 @@ export function OwnedPropertyFormPage() {
             {saveLabel}
           </Button>
         </div>
-      </header>
+      </div>
 
       {draftBanner ? (
         <div className="pg-alert" style={{ marginBottom: 12, display: "flex", gap: 10, justifyContent: "space-between", alignItems: "center" }}>

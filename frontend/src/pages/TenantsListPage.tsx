@@ -113,9 +113,6 @@ export function TenantsListPage() {
       <Container className="pg-container--tenants-dashboard">
         <div className="pg-tenants pg-workspace-page">
           <div className="pg-tenants-toolbar">
-            <h1 className="pg-h2 pg-tenants-desktop-only" style={{ margin: 0 }}>
-              Tenants
-            </h1>
             <div className="pg-tenants-toolbar-actions pg-tenants-desktop-only">
               <Button onClick={() => load()} loading={loading}>
                 Refresh

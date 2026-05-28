@@ -126,9 +126,6 @@ export function LeasesListPage() {
       <Container className="pg-container--leases-dashboard">
         <div className="pg-leases pg-workspace-page">
           <div className="pg-leases-toolbar">
-            <h1 className="pg-h2 pg-leases-desktop-only" style={{ margin: 0 }}>
-              Leases
-            </h1>
             <div className="pg-leases-toolbar-actions pg-leases-desktop-only">
               <Button onClick={() => load()} loading={loading}>
                 Refresh

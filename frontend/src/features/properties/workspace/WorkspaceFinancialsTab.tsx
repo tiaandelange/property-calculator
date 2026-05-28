@@ -1087,34 +1087,10 @@ export function WorkspaceFinancialsTab({
 
   return (
     <div className="pg-pfin-page">
-      <header className="pg-pfin-page-header">
-        <div>
-          <h1 className="pg-pfin-page-header__title">Property Financials</h1>
-          <p className="pg-pfin-page-header__context">
-            {propertyDisplayName}
-            {unitLabel ? ` · Unit ${unitLabel}` : null}
-          </p>
-        </div>
-        <div className="pg-pfin-page-header__actions">
-          <Link className="pg-btn pg-btn-secondary" to={`/owned-properties/${propertyId}?tab=overview`}>
-            View Property
-          </Link>
-          <Link className="pg-btn pg-btn-ghost" to={propertyFinancialsStatementUrl(propertyId, "statement")}>
-            Manage Income
-          </Link>
-          <Link className="pg-btn pg-btn-ghost" to={propertyFinancialsStatementUrl(propertyId, "expenses")}>
-            Manage Expenses
-          </Link>
-          <button
-            type="submit"
-            form="pfin-details-form"
-            className="pg-btn pg-btn-primary pg-pfin-save-header"
-            disabled={financialDetailsSaving}
-          >
-            {financialDetailsSaving ? "Saving…" : "Save Changes"}
-          </button>
-        </div>
-      </header>
+      <p className="pg-muted" style={{ margin: "8px 0 16px" }}>
+        {propertyDisplayName}
+        {unitLabel ? ` · Unit ${unitLabel}` : null}
+      </p>
 
       {loading ? (
         <div className="pg-pfin-metrics pg-pfin-metrics--compact">

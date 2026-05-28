@@ -403,14 +403,7 @@ export function OwnedPropertiesPortfolioDashboardPage() {
       <Container className="pg-container--portfolio-dashboard">
         <div className={`pg-pdash pg-workspace-page pg-pdash--${desktopLayout.tier}`}>
           <div className="pg-pdash-toolbar">
-            <div>
-              <h1 className="pg-h2" style={{ margin: 0 }}>
-                Portfolio Dashboard
-              </h1>
-              <p className="pg-muted" style={{ marginTop: 6 }}>
-                Monitor performance, risks and next actions across your portfolio.
-              </p>
-            </div>
+            <div />
             <div className="pg-pdash-toolbar-actions">
               <Button onClick={() => load()} loading={loading}>
                 Refresh

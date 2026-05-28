@@ -42,7 +42,6 @@ export function OwnedTenantsPage() {
     <Section>
       <Helmet><title>Tenants | The Property Guy</title></Helmet>
       <Container>
-        <h1 className="pg-h2">Tenants</h1>
         <Card>
           <Field label="Property">
             <select className="pg-input" value={propertyId} onChange={(e) => setPropertyId(Number(e.target.value))}>

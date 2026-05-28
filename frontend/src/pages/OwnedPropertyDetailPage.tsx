@@ -302,35 +302,11 @@ export function OwnedPropertyDetailPage() {
         {error ? <div className="pg-alert pg-alert-error">{error}</div> : null}
         {data ? (
           <>
-            {tab !== "financials" ? (
-              <>
-                <div
-                  style={{
-                    display: "flex",
-                    flexWrap: "wrap",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    gap: 12,
-                    marginTop: 8,
-                    rowGap: 8
-                  }}
-                >
-                  <h1 className="pg-workspace-title" style={{ margin: 0 }}>
-                    {data.name}
-                  </h1>
-                  <Link className="pg-btn pg-btn-secondary" to={`/owned-properties/${id}/edit`}>
-                    Edit Property
-                  </Link>
-                </div>
-                <div className="pg-workspace-subtitle pg-muted" style={{ marginTop: 6, marginBottom: 14 }}>
-                  {titleAddress !== data.name ? <span>{titleAddress}</span> : null}
-                  {titleAddress !== data.name ? <span> · </span> : null}
-                  {(INV_SHORT[data.investmentType] ?? data.investmentType) ?? "Property"}
-                  {" · "}
-                  {occupancySubtitle}
-                </div>
-              </>
-            ) : null}
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, flexWrap: "wrap", marginTop: 8 }}>
+              <Link className="pg-btn pg-btn-secondary" to={`/owned-properties/${id}/edit`}>
+                Edit Property
+              </Link>
+            </div>
 
             <WorkspaceTabs
               basePath={`/owned-properties/${id}`}

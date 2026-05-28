@@ -58,7 +58,9 @@ export function isWorkspaceNavActive(pathname: string, item: WorkspaceNavItem): 
 
 export function workspacePageTitle(pathname: string): string {
   if (pathname === "/owned-properties/dashboard" || pathname === "/dashboard") return "Dashboard";
-  if (pathname.startsWith("/owned-properties/my-properties") || pathname === "/owned-properties/new") return "Properties";
+  if (pathname === "/owned-properties/new") return "Create property";
+  if (/^\/owned-properties\/[^/]+\/edit$/.test(pathname)) return "Edit property";
+  if (pathname.startsWith("/owned-properties/my-properties")) return "Properties";
   if (pathname.startsWith("/owned-properties/") && !pathname.includes("/reports")) return "Properties";
   if (pathname.startsWith("/tenants")) return "Tenants";
   if (pathname.startsWith("/leases")) return "Leases";

@@ -118,9 +118,6 @@ export function FinancialsListPage() {
         <div className="pg-fins pg-workspace-page">
           <div className="pg-fins-toolbar">
             <div>
-              <h1 className="pg-h2 pg-fins-desktop-only" style={{ margin: 0 }}>
-                Financials
-              </h1>
               <p className="pg-muted" style={{ marginTop: 6, maxWidth: 560 }}>
                 Portfolio income and expenses in the same statement layout as each property. Add, edit, or delete entries on
                 the property&apos;s Financials tab.

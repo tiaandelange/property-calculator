@@ -99,11 +99,7 @@ export function OwnedPropertiesMyPropertiesPage() {
     <Section>
       <Helmet><title>My Properties | The Property Guy</title></Helmet>
       <Container>
-        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
-          <div>
-            <h1 className="pg-h2" style={{ margin: 0 }}>My Properties</h1>
-            <div className="pg-muted" style={{ marginTop: 6 }}>View and manage every property in your portfolio.</div>
-          </div>
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 12, flexWrap: "wrap", alignItems: "center", marginTop: 8 }}>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             <Button onClick={load} loading={loading}>Refresh</Button>
             <Link className="pg-btn pg-btn-primary" to="/owned-properties/new">Add Property</Link>
