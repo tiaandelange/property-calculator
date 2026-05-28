@@ -27,6 +27,7 @@ import { invalidatePropertyWorkspace } from "../features/properties/invalidate";
 import { usePropertyWorkspaceRefresh } from "../features/properties/usePropertyWorkspaceRefresh";
 import { WorkspaceFinancialsTab } from "../features/properties/workspace/WorkspaceFinancialsTab";
 import { WorkspaceOverviewTab } from "../features/properties/workspace/WorkspaceOverviewTab";
+import { WorkspaceStatementTab } from "../features/properties/workspace/WorkspaceStatementTab";
 
 /** YYYY-MM in the user's local calendar (avoid UTC drift from `toISOString().slice(0, 7)`). */
 function localCalendarMonth(d = new Date()) {
@@ -314,6 +315,7 @@ export function OwnedPropertyDetailPage() {
                   { key: "tenants", label: "Link Tenants" },
                   { key: "leases", label: "Leases" },
                   { key: "documents", label: "Documents" },
+                  { key: "statement", label: "Statement" },
                   {
                     key: "reports",
                     label: (
@@ -358,6 +360,10 @@ export function OwnedPropertyDetailPage() {
                   propertyInvoices={data?.invoices ?? []}
                   propertyDetail={data ?? null}
                 />
+              ) : null}
+
+              {tab === "statement" && id ? (
+                <WorkspaceStatementTab propertyId={id} propertyName={data?.name ?? ""} />
               ) : null}
 
               {tab === "tenants" ? (
