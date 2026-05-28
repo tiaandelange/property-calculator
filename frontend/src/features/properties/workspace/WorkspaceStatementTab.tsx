@@ -452,7 +452,15 @@ export function WorkspaceStatementTab({
                                   const invoiceId = String(created.invoiceId ?? "");
                                   if (!invoiceId) throw new Error("Invoice could not be created.");
                                   const inv = await getInvoice(invoiceId);
-                                  const tenantId = String(inv?.invoice?.tenantId ?? inv?.tenantId ?? "");
+                                  const invAny = inv as any;
+                                  const invoiceAny = (invAny?.invoice ?? invAny) as any;
+                                  const tenantId = String(
+                                    invoiceAny?.tenantId ??
+                                      invoiceAny?.tenant_id ??
+                                      invAny?.tenantId ??
+                                      invAny?.tenant_id ??
+                                      ""
+                                  );
                                   if (!tenantId) throw new Error("Invoice created, but tenant id was missing.");
                                   navigate(`/tenants/${tenantId}/invoices/${invoiceId}`);
                                 } catch (e: any) {
