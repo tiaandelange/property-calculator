@@ -11,6 +11,7 @@ import {
   deletePropertyExpense,
   deletePropertyIncome,
   getInvoice,
+  hardDeleteInvoice,
   markInvoicePaid,
   updateInvoice,
   updatePropertyExpense,
@@ -526,6 +527,23 @@ export function WorkspaceStatementTab({
                             <Pencil size={14} style={{ marginRight: 6 }} aria-hidden />
                             Edit
                           </button>
+                          <button
+                            type="button"
+                            className="pg-btn pg-btn-ghost"
+                            style={{ fontSize: 12, padding: "4px 10px", color: "var(--danger)" }}
+                            onClick={() =>
+                              setConfirmDelete({
+                                kind: "invoice_hard",
+                                id: sourceId,
+                                description: "this invoice line item"
+                              })
+                            }
+                            aria-label="Permanently delete invoice"
+                            title="Permanently delete invoice"
+                          >
+                            <Trash2 size={14} style={{ marginRight: 6 }} aria-hidden />
+                            Delete
+                          </button>
                         </div>
                       ) : (
                         <span className="pg-muted">—</span>
@@ -730,7 +748,13 @@ export function WorkspaceStatementTab({
             <ModalPanel title="Delete item" onClose={() => setConfirmDelete(null)}>
               <div style={{ padding: 14, display: "grid", gap: 12 }}>
                 <div>
-                  Delete <strong>{confirmDelete.description || "this expense"}</strong>?
+                  {String(confirmDelete.kind ?? "") === "invoice_hard" ? (
+                    <>Are you sure you want to permanently delete line item?</>
+                  ) : (
+                    <>
+                      Delete <strong>{confirmDelete.description || "this expense"}</strong>?
+                    </>
+                  )}
                 </div>
                 <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
                   <button className="pg-btn pg-btn-ghost" type="button" onClick={() => setConfirmDelete(null)}>
@@ -750,6 +774,19 @@ export function WorkspaceStatementTab({
                             await reload();
                           } catch (e: any) {
                             setError(e?.message ?? "Failed to delete income.");
+                          }
+                        })();
+                        return;
+                      }
+                      if (kind === "invoice_hard") {
+                        void (async () => {
+                          setError("");
+                          try {
+                            await hardDeleteInvoice(String(confirmDelete.id));
+                            setConfirmDelete(null);
+                            await reload();
+                          } catch (e: any) {
+                            setError(e?.message ?? "Failed to delete invoice.");
                           }
                         })();
                         return;
