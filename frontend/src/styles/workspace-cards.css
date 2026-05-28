@@ -37,6 +37,25 @@
   gap: var(--workspace-section-gap);
 }
 
+/* Property workspace overview: match Financials card density */
+.pg-dashboard-shell .pg-workspace-overview {
+  --workspace-card-pad: clamp(14px, 1.2vw, 18px);
+  --workspace-card-radius: 16px;
+}
+
+.pg-dashboard-shell .pg-workspace-overview .pg-stat-title {
+  font-size: 10px;
+}
+
+.pg-dashboard-shell .pg-workspace-overview .pg-metric-value {
+  font-size: clamp(16px, 1.6vw, 20px);
+  margin-top: 6px;
+}
+
+.pg-dashboard-shell .pg-workspace-overview .pg-stat-card-layout {
+  gap: 12px;
+}
+
 /* Shared card surface */
 .pg-workspace-card,
 .pg-dashboard-shell .pg-card,

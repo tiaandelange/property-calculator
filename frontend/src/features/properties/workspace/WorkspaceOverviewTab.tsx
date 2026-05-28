@@ -178,7 +178,7 @@ export function WorkspaceOverviewTab({ data, statement, perf, propertyId, naviga
   );
 
   return (
-    <div style={{ display: "grid", gap: 16 }}>
+    <div className="pg-workspace-overview" style={{ display: "grid", gap: 16 }}>
       <div className="pg-metric-grid">
         <MetricCard
           title="Occupancy status"
