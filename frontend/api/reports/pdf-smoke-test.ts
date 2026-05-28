@@ -10,7 +10,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
         { text: `Generated: ${new Date().toISOString()}` },
         { text: `Environment: ${process.env.VERCEL_ENV || "local"}` }
       ],
-      defaultStyle: { font: "Helvetica", fontSize: 10 }
+      defaultStyle: { font: "Roboto", fontSize: 10 }
     } as any;
 
     const buf = await renderPdfDefinitionToBuffer(definition);

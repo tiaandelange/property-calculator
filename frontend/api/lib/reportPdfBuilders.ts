@@ -198,7 +198,7 @@ export function buildCalculationReportPdfDefinition(opts: {
       subheader: { fontSize: 14, bold: true, margin: [0, 12, 0, 6] },
       code: { fontSize: 9 }
     },
-    defaultStyle: { font: "Helvetica" }
+    defaultStyle: { font: "Roboto" }
   };
 
   return { definition, scenarioName };
@@ -283,6 +283,6 @@ export function buildPropertySummaryPdfDefinition(opts: {
       subheader: { fontSize: 13, bold: true, margin: [0, 10, 0, 6] },
       th: { bold: true, fontSize: 9 }
     },
-    defaultStyle: { font: "Helvetica", fontSize: 9 }
+    defaultStyle: { font: "Roboto", fontSize: 9 }
   };
 }

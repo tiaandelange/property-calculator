@@ -196,6 +196,6 @@ export function buildInvoicePdfDefinition(data: InvoicePdfData): TDocumentDefini
       subheader: { fontSize: 12, bold: true, margin: [0, 0, 0, 6] },
       th: { bold: true, fontSize: 9 }
     },
-    defaultStyle: { font: "Helvetica", fontSize: 10 }
+    defaultStyle: { font: "Roboto", fontSize: 10 }
   };
 }
