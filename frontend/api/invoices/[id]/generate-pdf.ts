@@ -1,7 +1,5 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { renderPdfDefinitionToBuffer } from "../../lib/pdfMakeServer";
 import {
-  buildInvoicePdfDefinition,
   paymentDetailsLines,
   threeMonthBoundsFromInvoiceDate,
   type InvoicePdfLedgerRow,
@@ -25,6 +23,20 @@ function isoDate(v: unknown): string {
 export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
   if (req.method !== "POST") {
     res.status(405).setHeader("Allow", "POST").json({ error: "Method not allowed" });
+    return;
+  }
+
+  // Lazy-load PDF renderer to prevent FUNCTION_INVOCATION_FAILED on module load.
+  let renderPdfDefinitionToBuffer: (definition: any) => Promise<Buffer>;
+  let buildInvoicePdfDefinition: any;
+  try {
+    const pdf = await import("../../lib/pdfMakeServer");
+    renderPdfDefinitionToBuffer = pdf.renderPdfDefinitionToBuffer as any;
+    const inv = await import("../../lib/invoicePdfBuilder");
+    buildInvoicePdfDefinition = (inv as any).buildInvoicePdfDefinition;
+  } catch (e: any) {
+    console.error("[invoices/generate-pdf] module load failed", e);
+    res.status(500).json({ error: e?.message ?? "PDF dependencies failed to load." });
     return;
   }
 
