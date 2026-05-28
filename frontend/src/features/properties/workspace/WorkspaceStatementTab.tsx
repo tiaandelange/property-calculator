@@ -48,6 +48,30 @@ function fmtZar(n: unknown): string {
   return `R ${v.toLocaleString()}`;
 }
 
+function statementStatusBadgeClass(source: string, statusRaw: string): string {
+  const s = String(statusRaw ?? "").toUpperCase();
+  if (source === "INVOICE") {
+    if (s === "PAID") return "pg-tenants-badge pg-tenants-badge--success";
+    if (s === "OVERDUE") return "pg-tenants-badge pg-tenants-badge--danger";
+    if (s === "DRAFT") return "pg-tenants-badge pg-tenants-badge--info";
+    if (s === "SENT") return "pg-tenants-badge pg-tenants-badge--warning";
+    return "pg-tenants-badge pg-tenants-badge--warning";
+  }
+  if (source === "INCOME") {
+    if (s === "RECEIVED") return "pg-tenants-badge pg-tenants-badge--success";
+    if (s === "EXPECTED") return "pg-tenants-badge pg-tenants-badge--warning";
+    if (s === "CANCELLED") return "pg-tenants-badge pg-tenants-badge--danger";
+    return "pg-tenants-badge pg-tenants-badge--info";
+  }
+  if (source === "EXPENSE") {
+    if (s === "PAID") return "pg-tenants-badge pg-tenants-badge--success";
+    if (s === "OVERDUE") return "pg-tenants-badge pg-tenants-badge--danger";
+    if (s === "ACTIVE") return "pg-tenants-badge pg-tenants-badge--warning";
+    return "pg-tenants-badge pg-tenants-badge--info";
+  }
+  return "pg-tenants-badge pg-tenants-badge--info";
+}
+
 export function WorkspaceStatementTab({
   propertyId,
 }: {
@@ -517,7 +541,9 @@ export function WorkspaceStatementTab({
                           </select>
                         ) : (
                           <>
-                            <span>{String(r.status ?? "")}</span>
+                            <span className={statementStatusBadgeClass(String(r.source ?? ""), String(r.status ?? ""))}>
+                              {String(r.status ?? "")}
+                            </span>
                           </>
                         )}
                         {(canEditInvoice || canEditIncome) && sourceId ? (
