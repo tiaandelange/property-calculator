@@ -21,6 +21,7 @@ import { propertyFinancialsStatementUrl } from "../../financials/financialDirect
 ChartJS.register(ArcElement, Tooltip, Legend);
 import { Card } from "../../../components/ui/Card";
 import { Field, Input } from "../../../components/ui/Input";
+import { ModalOverlay, ModalPanel } from "../../../components/ui/Modal";
 import { fetchPdfBlob, isAbsoluteHttpUrl, openPdfBlobInNewTab } from "../../../api/pdfBlob";
 import { isSupabaseConfigured } from "../../../lib/supabaseClient";
 import { generateReportViaVercel } from "../../../services/reportsVercel";
@@ -69,7 +70,7 @@ function normalizeExpenseCategoryForApi(uiValue: string): string {
 const BOND_TERM_YEAR_OPTIONS = [5, 10, 15, 20, 25, 30] as const;
 
 type ScheduleEditorState = {
-  id: number;
+  id: string;
   category: string;
   description: string;
   amount: string;
@@ -251,7 +252,10 @@ export function WorkspaceFinancialsTab({
     bondPrincipalPortionOverride: ""
   });
   const [scheduleEditor, setScheduleEditor] = useState<ScheduleEditorState | null>(null);
-  const [scheduleBusyId, setScheduleBusyId] = useState<number | null>(null);
+  const [scheduleBusyId, setScheduleBusyId] = useState<string | null>(null);
+  const [scheduleConfirm, setScheduleConfirm] = useState<null | { kind: "archive" | "delete"; rc: any }>(null);
+  const [scheduleConfirmBusy, setScheduleConfirmBusy] = useState(false);
+  const [scheduleConfirmError, setScheduleConfirmError] = useState<string | null>(null);
   const [statementEditingRowId, setStatementEditingRowId] = useState<string | null>(null);
   const [statementDraft, setStatementDraft] = useState<Record<string, unknown> | null>(null);
   const statementDraftRef = useRef<Record<string, unknown> | null>(null);
@@ -765,7 +769,7 @@ export function WorkspaceFinancialsTab({
           ? String(rc.expenseDate).slice(0, 10)
           : todayYmd();
     setScheduleEditor({
-      id: Number(rc.id),
+      id: String(rc.id),
       category: String(rc.category ?? "OTHER"),
       description: String(rc.description ?? ""),
       amount: String(rc.amount ?? ""),
@@ -780,43 +784,38 @@ export function WorkspaceFinancialsTab({
     });
   }
 
-  async function archiveSchedule(rc: any) {
-    if (
-      !window.confirm(
-        "Stop this schedule? It will be archived — no new charges will post. Lines already posted to the statement stay as history."
-      )
-    )
-      return;
-    const sid = Number(rc.id);
-    setScheduleBusyId(sid);
-    try {
-      await deletePropertyExpense(sid);
-      closeScheduleEditor();
-      await onReload();
-    } catch (err: any) {
-      window.alert(err?.response?.data?.message ?? "Could not stop schedule.");
-    } finally {
-      setScheduleBusyId(null);
-    }
+  function requestArchiveSchedule(rc: any) {
+    setScheduleConfirmError(null);
+    setScheduleConfirm({ kind: "archive", rc });
   }
 
-  async function hardDeleteSchedule(rc: any) {
-    if (
-      !window.confirm(
-        "Permanently delete this schedule and every automated expense line created from it? Those rows are removed from the statement. This cannot be undone."
-      )
-    )
-      return;
-    const sid = Number(rc.id);
+  function requestHardDeleteSchedule(rc: any) {
+    setScheduleConfirmError(null);
+    setScheduleConfirm({ kind: "delete", rc });
+  }
+
+  async function confirmScheduleAction() {
+    if (!scheduleConfirm) return;
+    const rc = scheduleConfirm.rc;
+    const sid = String(rc?.id ?? "");
+    if (!sid) return;
+    setScheduleConfirmBusy(true);
+    setScheduleConfirmError(null);
     setScheduleBusyId(sid);
     try {
-      await hardDeletePropertyExpense(sid);
+      if (scheduleConfirm.kind === "archive") {
+        await deletePropertyExpense(sid);
+      } else {
+        await hardDeletePropertyExpense(sid);
+      }
       closeScheduleEditor();
+      setScheduleConfirm(null);
       await onReload();
     } catch (err: any) {
-      window.alert(err?.response?.data?.message ?? "Could not delete schedule.");
+      setScheduleConfirmError(err?.response?.data?.message ?? err?.message ?? "Request failed.");
     } finally {
       setScheduleBusyId(null);
+      setScheduleConfirmBusy(false);
     }
   }
 
@@ -1157,8 +1156,8 @@ export function WorkspaceFinancialsTab({
               setShowAddRecurring(true);
             }}
             onEdit={handleRecurringEdit}
-            onStop={(item) => void archiveSchedule(item.raw)}
-            onDelete={(item) => void hardDeleteSchedule(item.raw)}
+            onStop={(item) => requestArchiveSchedule(item.raw)}
+            onDelete={(item) => requestHardDeleteSchedule(item.raw)}
           />
 
           {isMobile ? <ExpenseCategoriesCard overview={financialOverview} /> : null}
@@ -1927,7 +1926,7 @@ export function WorkspaceFinancialsTab({
           ) : null}
           <div style={{ display: "grid", gap: 10 }}>
             {recurringChargesLandlord.map((rc: any) => {
-              const sid = Number(rc.id);
+              const sid = String(rc.id);
               const editing = scheduleEditor != null && scheduleEditor.id === sid;
               const rowBusy = scheduleBusyId === sid;
               const uiLocked = scheduleBusyId != null;
@@ -1973,10 +1972,10 @@ export function WorkspaceFinancialsTab({
                         >
                           Edit
                         </button>
-                        <button type="button" className="pg-btn pg-btn-ghost" disabled={uiLocked} onClick={() => void archiveSchedule(rc)}>
+                        <button type="button" className="pg-btn pg-btn-ghost" disabled={uiLocked} onClick={() => requestArchiveSchedule(rc)}>
                           Stop
                         </button>
-                        <button type="button" className="pg-btn pg-btn-ghost" disabled={uiLocked} onClick={() => void hardDeleteSchedule(rc)}>
+                        <button type="button" className="pg-btn pg-btn-ghost" disabled={uiLocked} onClick={() => requestHardDeleteSchedule(rc)}>
                           Delete…
                         </button>
                       </div>
@@ -2316,6 +2315,89 @@ export function WorkspaceFinancialsTab({
         saving={recurringModalSaving}
         categoryOptions={RECURRING_SCHEDULE_CATEGORY_OPTIONS}
       />
+
+      {scheduleConfirm ? (
+        <>
+          <ModalOverlay
+            open
+            onClose={() => {
+              if (scheduleConfirmBusy) return;
+              setScheduleConfirm(null);
+            }}
+          />
+          <div
+            style={{
+              position: "fixed",
+              inset: 0,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 92,
+              padding: 16
+            }}
+            role="presentation"
+            onMouseDown={(ev) => {
+              if (scheduleConfirmBusy) return;
+              if (ev.target === ev.currentTarget) setScheduleConfirm(null);
+            }}
+          >
+            <ModalPanel
+              title={scheduleConfirm.kind === "delete" ? "Delete schedule?" : "Stop schedule?"}
+              onClose={
+                scheduleConfirmBusy
+                  ? undefined
+                  : () => {
+                      setScheduleConfirm(null);
+                    }
+              }
+              actions={
+                scheduleConfirm.kind === "delete" ? (
+                  <button
+                    type="button"
+                    className="pg-btn pg-btn-danger"
+                    disabled={scheduleConfirmBusy}
+                    onClick={() => void confirmScheduleAction()}
+                  >
+                    {scheduleConfirmBusy ? "Deleting…" : "Delete permanently"}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="pg-btn pg-btn-primary"
+                    disabled={scheduleConfirmBusy}
+                    onClick={() => void confirmScheduleAction()}
+                  >
+                    {scheduleConfirmBusy ? "Stopping…" : "Stop schedule"}
+                  </button>
+                )
+              }
+              className="pg-modal-panel"
+            >
+              <div style={{ display: "grid", gap: 12, maxWidth: 520 }}>
+                <p className="pg-lead" style={{ marginTop: 0, marginBottom: 0 }}>
+                  {scheduleConfirm.kind === "delete"
+                    ? "This will permanently delete the schedule and any automated expense lines created from it. This cannot be undone."
+                    : "This will pause the schedule (archive it). No new charges will post, but existing statement lines stay as history."}
+                </p>
+                <div className="pg-muted" style={{ fontSize: 13 }}>
+                  Schedule: <strong>{String(scheduleConfirm.rc?.description ?? "") || "Untitled"}</strong>
+                </div>
+                {scheduleConfirmError ? <div className="pg-alert pg-alert-error">{scheduleConfirmError}</div> : null}
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                  <button
+                    type="button"
+                    className="pg-btn pg-btn-ghost"
+                    disabled={scheduleConfirmBusy}
+                    onClick={() => setScheduleConfirm(null)}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </ModalPanel>
+          </div>
+        </>
+      ) : null}
 
       {bondBackfillOpen ? (
         <div
