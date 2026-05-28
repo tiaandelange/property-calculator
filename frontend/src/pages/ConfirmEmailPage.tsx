@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Helmet } from "react-helmet-async";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Container } from "../components/ui/Container";
 import { Section } from "../components/ui/Section";
 import { Card } from "../components/ui/Card";
@@ -10,9 +10,11 @@ import type { EmailOtpType } from "@supabase/supabase-js";
 
 /** Supabase email confirmation (`token_hash` + `type` query params). */
 export function ConfirmEmailPage() {
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
+  const [redirectIn, setRedirectIn] = useState<number | null>(null);
 
   const tokenHash = searchParams.get("token_hash");
   const typeParam = searchParams.get("type");
@@ -54,7 +56,8 @@ export function ConfirmEmailPage() {
         setMessage({ kind: "error", text: formatAuthError(error) });
         return;
       }
-      setMessage({ kind: "ok", text: "Email confirmed. You can sign in." });
+      setMessage({ kind: "ok", text: "You have been successfully verified." });
+      setRedirectIn(3);
     }
 
     void run();
@@ -62,6 +65,17 @@ export function ConfirmEmailPage() {
       cancelled = true;
     };
   }, [tokenHash, typeParam]);
+
+  useEffect(() => {
+    if (redirectIn === null) return;
+    if (redirectIn <= 0) {
+      navigate("/owned-properties/dashboard", { replace: true });
+      return;
+    }
+
+    const t = window.setTimeout(() => setRedirectIn((n) => (n === null ? null : n - 1)), 1000);
+    return () => window.clearTimeout(t);
+  }, [redirectIn, navigate]);
 
   return (
     <Section>
@@ -83,9 +97,14 @@ export function ConfirmEmailPage() {
               </div>
             ) : null}
             {!loading && message?.kind === "ok" ? (
+              <p className="pg-muted" style={{ marginTop: 12 }}>
+                Redirecting you to your dashboard in {redirectIn ?? 3} seconds…
+              </p>
+            ) : null}
+            {!loading && message?.kind === "ok" ? (
               <div style={{ marginTop: 16 }}>
-                <Link className="pg-btn pg-btn-primary" to="/login">
-                  Go to sign in
+                <Link className="pg-btn pg-btn-primary" to="/owned-properties/dashboard">
+                  Go to dashboard now
                 </Link>
               </div>
             ) : null}
