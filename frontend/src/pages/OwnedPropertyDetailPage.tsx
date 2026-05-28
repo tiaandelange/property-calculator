@@ -302,25 +302,25 @@ export function OwnedPropertyDetailPage() {
         {error ? <div className="pg-alert pg-alert-error">{error}</div> : null}
         {data ? (
           <>
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, flexWrap: "wrap", marginTop: 8 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginTop: 8, marginBottom: 12 }}>
+              <WorkspaceTabs
+                basePath={`/owned-properties/${id}`}
+                active={tab}
+                tabs={[
+                  { key: "overview", label: "Overview" },
+                  { key: "financials", label: "Financials" },
+                  { key: "tenants", label: "Tenants" },
+                  { key: "leases", label: "Leases" },
+                  { key: "documents", label: "Documents" },
+                  { key: "reports", label: "Reports" }
+                ]}
+                extraQueryForTab={{ financials: `fin=${encodeURIComponent(finSub)}` }}
+                style={{ marginBottom: 0 }}
+              />
               <Link className="pg-btn pg-btn-secondary" to={`/owned-properties/${id}/edit`}>
                 Edit Property
               </Link>
             </div>
-
-            <WorkspaceTabs
-              basePath={`/owned-properties/${id}`}
-              active={tab}
-              tabs={[
-                { key: "overview", label: "Overview" },
-                { key: "financials", label: "Financials" },
-                { key: "tenants", label: "Tenants" },
-                { key: "leases", label: "Leases" },
-                { key: "documents", label: "Documents" },
-                { key: "reports", label: "Reports" }
-              ]}
-              extraQueryForTab={{ financials: `fin=${encodeURIComponent(finSub)}` }}
-            />
 
             <div className="pg-workspace-panel">
               {tab === "overview" ? (

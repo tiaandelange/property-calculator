@@ -1,19 +1,33 @@
+import type React from "react";
 import { Link } from "react-router-dom";
 
 export function WorkspaceTabs({
   basePath,
   active,
   tabs,
-  extraQueryForTab
+  extraQueryForTab,
+  className,
+  style
 }: {
   basePath: string;
   active: string;
   tabs: Array<{ key: string; label: string }>;
   /** e.g. { financials: "fin=statement" } — appended only for that tab link */
   extraQueryForTab?: Record<string, string>;
+  className?: string;
+  style?: React.CSSProperties;
 }) {
   return (
-    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
+    <div
+      className={className}
+      style={{
+        display: "flex",
+        gap: 8,
+        flexWrap: "wrap",
+        marginBottom: 12,
+        ...style
+      }}
+    >
       {tabs.map((t) => {
         const suffix = extraQueryForTab?.[t.key] ? `&${extraQueryForTab[t.key]}` : "";
         return (
