@@ -359,24 +359,13 @@ export function OwnedPropertyDetailPage() {
 
               {tab === "leases" ? (
                 <div className="pg-workspace-inset-list">
-                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-                    <Link className="pg-btn pg-btn-primary" to="/leases">
-                      {currentLeases.length === 0 ? "Create lease" : "Add another lease"}
-                    </Link>
-                    {currentLeases.length > 0 ? (
-                      <span className="pg-muted">
-                        Combined contractual rent: <strong>R {combinedContractRent.toLocaleString()}</strong>/mo ({currentLeases.length} active)
-                      </span>
-                    ) : null}
-                  </div>
                   {currentLeases.length > 0 ? (
                     <div className="pg-workspace-card-stack">
                       {currentLeases.map((lease: any) => (
                         <PropertyLeaseCard
                           key={lease.id}
                           lease={lease}
-                          title={`Current lease #${lease.id}`}
-                          tenantLabel={leaseTenantLabel(lease, data.tenants)}
+                          fallbackTenants={data.tenants}
                           showEdit
                           showCancel
                           showDelete
@@ -411,8 +400,7 @@ export function OwnedPropertyDetailPage() {
                             <PropertyLeaseCard
                               key={l.id}
                               lease={l}
-                              title={`Lease #${l.id}`}
-                              tenantLabel={leaseTenantLabel(l, data.tenants)}
+                              fallbackTenants={data.tenants}
                               showEdit={!["CANCELLED", "TERMINATED", "ARCHIVED"].includes(l.status)}
                               showCancel={false}
                               showDelete={!["ACTIVE", "MONTH_TO_MONTH"].includes(l.status)}
