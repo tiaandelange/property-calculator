@@ -29,10 +29,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   }
 
   try {
-    const [incomeRes, invoiceRes, expenseRes] = await Promise.all([
+    const [incomeRes, invoiceRes, expenseRes, leaseInvoicesRes] = await Promise.all([
       sb.rpc("run_due_recurring_income"),
       sb.rpc("run_due_recurring_invoices"),
-      sb.rpc("run_due_recurring_expenses")
+      sb.rpc("run_due_recurring_expenses"),
+      sb.rpc("generate_due_lease_invoices")
     ]);
 
     if (incomeRes.error) {
@@ -47,12 +48,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       res.status(500).json({ error: expenseRes.error.message, step: "expenses" });
       return;
     }
+    if (leaseInvoicesRes.error) {
+      res.status(500).json({ error: leaseInvoicesRes.error.message, step: "lease_invoices" });
+      return;
+    }
 
     res.status(200).json({
       ok: true,
       income: incomeRes.data,
       invoices: invoiceRes.data,
-      expenses: expenseRes.data
+      expenses: expenseRes.data,
+      leaseInvoices: leaseInvoicesRes.data
     });
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : "Cron run-due failed.";

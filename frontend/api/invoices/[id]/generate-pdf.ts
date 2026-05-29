@@ -124,7 +124,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
         .select("total, status")
         .eq("property_id", propertyId)
         .eq("tenant_id", tenantId)
-        .in("status", ["DRAFT", "SENT", "OVERDUE"])
+        .in("status", ["DRAFT", "GENERATED", "SENT", "OVERDUE", "DUE", "PARTIALLY_PAID"])
     ]);
 
     if (historyInvoicesRes.error) {

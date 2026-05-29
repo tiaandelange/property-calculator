@@ -5,6 +5,7 @@ import { Container } from "../components/ui/Container";
 import { Section } from "../components/ui/Section";
 import { fetchMe } from "../api/user";
 import { useEffect, useState } from "react";
+import { ProfileInvoiceAutomationCard } from "../features/invoices/ProfileInvoiceAutomationCard";
 
 export function SettingsPage() {
   const [role, setRole] = useState<string | null>(null);
@@ -63,6 +64,8 @@ export function SettingsPage() {
               </li>
             </ul>
           </Card>
+
+          <ProfileInvoiceAutomationCard />
 
           {isAdmin ? (
             <Card title="Admin">

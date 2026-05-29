@@ -5,6 +5,7 @@ import { fetchPortfolioProjectionMetrics, patchPortfolioProjectionMetrics } from
 import { fetchMe, patchProfileUiColorScheme } from "../api/user";
 import { useAuth } from "../contexts/AuthContext";
 import { UiColorSchemeSwitch } from "../components/ui/UiColorSchemeSwitch";
+import { AdminInvoiceAutomationPanel } from "../features/invoices/AdminInvoiceAutomationPanel";
 import { applyUiColorScheme, normalizeUiColorScheme, type UiColorScheme } from "../theme/uiColorScheme";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
@@ -151,6 +152,9 @@ export function AdminPanelPage() {
         ) : null}
 
         <div style={{ marginTop: 20 }}>
+        <AdminInvoiceAutomationPanel />
+
+        <div style={{ marginTop: 20 }}>
         <Card title="Portfolio IRR projections">
           {loading ? (
             <div className="pg-muted">Loading…</div>
@@ -204,6 +208,7 @@ export function AdminPanelPage() {
               />
             </div>
           </Card>
+        </div>
         </div>
         </div>
       </Container>
