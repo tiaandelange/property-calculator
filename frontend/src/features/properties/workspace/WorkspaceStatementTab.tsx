@@ -8,6 +8,8 @@ import {
   invoiceIdFromStatementRow,
   invoiceStatementCreditClass
 } from "../../invoices/invoiceStatementUtils";
+import { getOrCreateUserSettings } from "../../../services/settingsSupabase";
+import { statementFilterToPreset } from "../../settings/settingsDefaults";
 import { getPropertyStatement } from "../../../api/ownedProperties";
 import { Card } from "../../../components/ui/Card";
 import { Input } from "../../../components/ui/Input";
@@ -283,6 +285,7 @@ export function WorkspaceStatementTab({
 }) {
   const navigate = useNavigate();
   const [preset, setPreset] = useState<PeriodPreset>("SIX_MONTHS");
+  const [presetReady, setPresetReady] = useState(false);
   const [year, setYear] = useState<number>(() => new Date().getUTCFullYear());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -340,6 +343,26 @@ export function WorkspaceStatementTab({
 
   useEffect(() => {
     let cancelled = false;
+    void (async () => {
+      try {
+        const settings = await getOrCreateUserSettings();
+        if (!cancelled) {
+          setPreset(statementFilterToPreset(settings.statementDefaultFilter) as PeriodPreset);
+        }
+      } catch {
+        /* keep default */
+      } finally {
+        if (!cancelled) setPresetReady(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!presetReady) return;
+    let cancelled = false;
     setLoading(true);
     setError("");
     void (async () => {
@@ -389,7 +412,7 @@ export function WorkspaceStatementTab({
     return () => {
       cancelled = true;
     };
-  }, [propertyId, monthIds, reloadKey]);
+  }, [propertyId, monthIds, reloadKey, presetReady]);
 
   useEffect(() => {
     if (!statusMenuKey) return;

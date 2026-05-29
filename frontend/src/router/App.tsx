@@ -133,28 +133,8 @@ export function App() {
           }
         />
         <Route path="/settings" element={<RequireAuth><SettingsPage /></RequireAuth>} />
-        <Route
-          path="/settings/security"
-          element={
-            <RequireAuth>
-              <SimplePage
-                title="Security"
-                description="Password, sessions, and sign-in security settings will appear here."
-              />
-            </RequireAuth>
-          }
-        />
-        <Route
-          path="/settings/notifications"
-          element={
-            <RequireAuth>
-              <SimplePage
-                title="Notifications"
-                description="Email and in-app notification preferences will appear here."
-              />
-            </RequireAuth>
-          }
-        />
+        <Route path="/settings/security" element={<RequireAuth><Navigate to="/settings" replace /></RequireAuth>} />
+        <Route path="/settings/notifications" element={<RequireAuth><Navigate to="/settings" replace /></RequireAuth>} />
         <Route path="/owned-properties" element={<RequireAuth><Navigate to="/owned-properties/dashboard" replace /></RequireAuth>} />
         <Route
           path="/owned-properties/my-properties"

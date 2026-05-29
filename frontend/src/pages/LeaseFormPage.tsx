@@ -23,6 +23,7 @@ import { Section } from "../components/ui/Section";
 import { Card } from "../components/ui/Card";
 import { Field, Input } from "../components/ui/Input";
 import { Button } from "../components/ui/Button";
+import { getOrCreateUserSettings } from "../services/settingsSupabase";
 
 type RentDueMode = "first" | "last" | "custom";
 
@@ -98,6 +99,26 @@ export function LeaseFormPage() {
       else if (prefillPropertyId) setPropertyId(prefillPropertyId);
     })();
   }, [prefillPropertyId]);
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const settings = await getOrCreateUserSettings();
+        const termStr = String(settings.leaseDefaultTermMonths) as LeaseTermPreset;
+        const validTerms = ["6", "12", "24", "36", "custom"];
+        const termPreset = validTerms.includes(termStr) ? termStr : "12";
+        const dueDay = settings.defaultRentDueDay;
+        setForm((prev) => ({
+          ...prev,
+          termPreset: termPreset as LeaseTermPreset,
+          rentDueMode: dueDay === 1 ? "first" : dueDay === 31 ? "last" : "custom",
+          rentDueCustomDay: dueDay >= 1 && dueDay <= 28 ? dueDay : 15
+        }));
+      } catch {
+        /* keep form defaults */
+      }
+    })();
+  }, []);
 
   useEffect(() => {
     if (!propertyId) {

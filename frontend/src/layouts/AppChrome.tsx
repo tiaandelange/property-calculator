@@ -4,24 +4,32 @@ import { AuthenticatedShell } from "./AuthenticatedShell";
 import { HomePublicFooter } from "../components/home/HomePublicFooter";
 import { HomePublicHeader } from "../components/home/HomePublicHeader";
 import { isWorkspacePath } from "../utils/workspacePaths";
-import { applyUiColorScheme, normalizeUiColorScheme } from "../theme/uiColorScheme";
+import {
+  applyThemePreference,
+  readStoredThemePreference,
+  subscribeToSystemTheme,
+  type ThemePreference
+} from "../theme/uiColorScheme";
 import { useAuth } from "../contexts/AuthContext";
+import { getOrCreateUserSettings } from "../services/settingsSupabase";
 
 type Me = {
   email?: string;
   role?: "USER" | "ADMIN";
   freeUsesRemaining?: number | null;
-  uiColorScheme?: "dark" | "light";
+  themePreference?: ThemePreference;
 } | null;
 
 export function AppChrome() {
   const location = useLocation();
   const { session, initializing, profile, profileLoading } = useAuth();
   const [me, setMe] = useState<Me>(null);
+  const [themePref, setThemePref] = useState<ThemePreference>(
+    () => readStoredThemePreference() ?? "system"
+  );
 
   const useWorkspaceChrome = !initializing && Boolean(session) && isWorkspacePath(location.pathname);
   const isMarketingHome = location.pathname === "/";
-  /** Hub + individual tool pages share the same shell: navy hero under the fixed header, then content. */
   const isMarketingCalculatorsShell =
     location.pathname === "/calculators" || /^\/calculators\/.+/.test(location.pathname);
 
@@ -34,24 +42,42 @@ export function AppChrome() {
     if (!profile && profileLoading) {
       return;
     }
-    if (!profile) {
+
+    let cancelled = false;
+
+    void (async () => {
+      let pref: ThemePreference = "system";
+      try {
+        const settings = await getOrCreateUserSettings();
+        pref = settings.themePreference;
+      } catch {
+        if (profile?.ui_color_scheme === "light") pref = "light";
+        else if (profile?.ui_color_scheme === "dark") pref = "dark";
+      }
+      if (cancelled) return;
+      setThemePref(pref);
+      applyThemePreference(pref);
       setMe({
         email,
-        role: "USER",
-        freeUsesRemaining: null,
-        uiColorScheme: normalizeUiColorScheme("dark")
+        role: profile?.role === "ADMIN" ? "ADMIN" : "USER",
+        freeUsesRemaining: profile?.free_uses_remaining ?? null,
+        themePreference: pref
       });
-      return;
-    }
-    const scheme = normalizeUiColorScheme(profile.ui_color_scheme === "light" ? "light" : "dark");
-    setMe({
-      email,
-      role: profile.role === "ADMIN" ? "ADMIN" : "USER",
-      freeUsesRemaining: profile.free_uses_remaining ?? null,
-      uiColorScheme: scheme
-    });
-    applyUiColorScheme(scheme);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [session, profile, profileLoading]);
+
+  useEffect(() => {
+    applyThemePreference(themePref);
+  }, [themePref]);
+
+  useEffect(() => {
+    if (themePref !== "system") return;
+    return subscribeToSystemTheme(() => applyThemePreference("system"));
+  }, [themePref]);
 
   if (initializing) {
     return null;

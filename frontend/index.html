@@ -5,7 +5,11 @@
       (function () {
         try {
           var t = localStorage.getItem("pg-ui-color-scheme");
-          if (t === "light") document.documentElement.setAttribute("data-theme", "light");
+          var effective = t;
+          if (t === "system" || !t) {
+            effective = window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+          }
+          if (effective === "light") document.documentElement.setAttribute("data-theme", "light");
           else document.documentElement.removeAttribute("data-theme");
         } catch (e) {}
       })();

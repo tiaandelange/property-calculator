@@ -43,6 +43,15 @@ vi.mock("../lib/supabaseClient", () => ({
   getSupabase: () => mockSupabaseClient
 }));
 
+vi.mock("../services/settingsSupabase", () => ({
+  getOrCreateUserSettings: vi.fn(() =>
+    Promise.resolve({
+      themePreference: "system",
+      density: "comfortable"
+    })
+  )
+}));
+
 function renderWithAuth(ui: React.ReactElement) {
   return render(<AuthProvider>{ui}</AuthProvider>);
 }

@@ -1,10 +1,12 @@
 import type { PostgrestError } from "@supabase/supabase-js";
 import { getSupabase } from "../lib/supabaseClient";
 import { requireUserId } from "./profileSupabase";
+import { getOrCreateUserSettings, upsertUserSettings } from "./settingsSupabase";
 
 export type InvoiceAutomationSettings = {
   rentInvoiceDaysBeforeDue: number;
   rentInvoiceGracePeriodDays: number;
+  autoGenerateInvoices: boolean;
   profileDaysBeforeDue: number | null;
   profileGracePeriodDays: number | null;
   platformDaysBeforeDue: number;
@@ -17,6 +19,7 @@ export type GenerateDueLeaseInvoicesResult = {
   skippedDuplicate: number;
   skippedInactive: number;
   skippedNotDue: number;
+  skippedAutoDisabled?: number;
   errors: Array<{ leaseId?: string; propertyId?: string; message: string }>;
   asOfDate: string;
   timezone: string;
@@ -48,17 +51,19 @@ function mapGenerateResult(raw: Record<string, unknown>): GenerateDueLeaseInvoic
     skippedDuplicate: Number(raw.skipped_duplicate ?? raw.skippedDuplicate ?? 0),
     skippedInactive: Number(raw.skipped_inactive ?? raw.skippedInactive ?? 0),
     skippedNotDue: Number(raw.skipped_not_due ?? raw.skippedNotDue ?? 0),
+    skippedAutoDisabled: Number(raw.skipped_auto_disabled ?? raw.skippedAutoDisabled ?? 0),
     errors,
     asOfDate: String(raw.as_of_date ?? raw.asOfDate ?? ""),
     timezone: String(raw.timezone ?? "")
   };
 }
 
-/** Resolved settings: profile override → platform default → fallback. */
+/** Resolved settings: user_settings → profile override → platform default → fallback. */
 export async function getInvoiceAutomationSettings(): Promise<InvoiceAutomationSettings> {
   const uid = await requireUserId();
   const sb = getSupabase();
-  const [{ data: profile, error: pErr }, { data: defaults, error: dErr }] = await Promise.all([
+  const [userSettings, { data: profile, error: pErr }, { data: defaults, error: dErr }] = await Promise.all([
+    getOrCreateUserSettings(),
     sb
       .from("profiles")
       .select("rent_invoice_days_before_due, rent_invoice_grace_period_days")
@@ -82,8 +87,9 @@ export async function getInvoiceAutomationSettings(): Promise<InvoiceAutomationS
     profile?.rent_invoice_grace_period_days != null ? Number(profile.rent_invoice_grace_period_days) : null;
 
   return {
-    rentInvoiceDaysBeforeDue: profileDaysBeforeDue ?? platformDaysBeforeDue,
+    rentInvoiceDaysBeforeDue: userSettings.invoiceGenerateDaysBeforeDue,
     rentInvoiceGracePeriodDays: profileGracePeriodDays ?? platformGracePeriodDays,
+    autoGenerateInvoices: userSettings.autoGenerateInvoices,
     profileDaysBeforeDue,
     profileGracePeriodDays,
     platformDaysBeforeDue,
@@ -94,18 +100,28 @@ export async function getInvoiceAutomationSettings(): Promise<InvoiceAutomationS
 export async function updateProfileInvoiceAutomationSettings(patch: {
   rentInvoiceDaysBeforeDue?: number;
   rentInvoiceGracePeriodDays?: number;
+  autoGenerateInvoices?: boolean;
 }): Promise<InvoiceAutomationSettings> {
-  await requireUserId();
-  const sb = getSupabase();
-  const payload: Record<string, unknown> = {};
+  const settingsPatch: {
+    invoiceGenerateDaysBeforeDue?: number;
+    autoGenerateInvoices?: boolean;
+  } = {};
   if (patch.rentInvoiceDaysBeforeDue != null) {
-    payload.rentInvoiceDaysBeforeDue = patch.rentInvoiceDaysBeforeDue;
+    settingsPatch.invoiceGenerateDaysBeforeDue = patch.rentInvoiceDaysBeforeDue;
+  }
+  if (patch.autoGenerateInvoices != null) {
+    settingsPatch.autoGenerateInvoices = patch.autoGenerateInvoices;
+  }
+  if (Object.keys(settingsPatch).length > 0) {
+    await upsertUserSettings(settingsPatch);
   }
   if (patch.rentInvoiceGracePeriodDays != null) {
-    payload.rentInvoiceGracePeriodDays = patch.rentInvoiceGracePeriodDays;
+    const sb = getSupabase();
+    const { error } = await sb.rpc("update_profile_invoice_automation_settings", {
+      p_payload: { rentInvoiceGracePeriodDays: patch.rentInvoiceGracePeriodDays }
+    });
+    if (error) throw toError(error);
   }
-  const { error } = await sb.rpc("update_profile_invoice_automation_settings", { p_payload: payload });
-  if (error) throw toError(error);
   return getInvoiceAutomationSettings();
 }
 

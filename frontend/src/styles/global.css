@@ -10,6 +10,7 @@
 @import "./property-form.css";
 @import "./property-financials.css";
 @import "./tenant-statement.css";
+@import "./settings-dashboard.css";
 
 /* Structural tokens (spacing + typography). Palette: proplytic.tokens.css */
 :root {

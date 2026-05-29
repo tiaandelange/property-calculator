@@ -13,6 +13,15 @@ vi.mock("../lib/supabaseClient", () => ({
   })
 }));
 
+vi.mock("./settingsSupabase", () => ({
+  getOrCreateUserSettings: vi.fn(() =>
+    Promise.resolve({
+      invoiceGenerateDaysBeforeDue: 12,
+      autoGenerateInvoices: true
+    })
+  )
+}));
+
 describe("invoiceAutomationSupabase", () => {
   beforeEach(() => {
     getUser.mockReset();
@@ -76,6 +85,7 @@ describe("invoiceAutomationSupabase", () => {
     });
     const settings = await getInvoiceAutomationSettings();
     expect(settings.rentInvoiceDaysBeforeDue).toBe(12);
+    expect(settings.autoGenerateInvoices).toBe(true);
     expect(settings.rentInvoiceGracePeriodDays).toBe(7);
   });
 });
