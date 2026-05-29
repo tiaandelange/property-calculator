@@ -101,8 +101,8 @@ export function OwnedPropertiesMyPropertiesPage() {
       return v != null && b != null ? v - b : null;
     };
 
-    const cashFlow = (p: any) => asNum(p.monthlyCashFlowAfterDebtService ?? p.netCashFlow) ?? 0;
-    const noi = (p: any) => asNum(p.monthlyNOI) ?? (asNum(p.monthlyIncome) ?? 0) - (asNum(p.monthlyOperatingExpenses) ?? 0);
+    const cashFlow = (p: any) => Number(p.monthlyCashFlowAfterDebtService ?? p.netCashFlow ?? 0);
+    const noi = (p: any) => Number(p.monthlyNOI ?? 0);
     const leaseEnd = (p: any) => (p.currentLease?.fixedTermEndDate ? new Date(p.currentLease.fixedTermEndDate).getTime() : Infinity);
 
     if (sort === "HIGHEST_NOI") next.sort((a, b) => noi(b) - noi(a));

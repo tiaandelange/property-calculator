@@ -65,7 +65,7 @@ function n(v: unknown): number {
 
 function monthlyAmountFromRecurring(rc: Record<string, unknown>): number {
   const amt = n(rc.amount);
-  const freq = String(rc.frequency ?? "MONTHLY").toUpperCase();
+  const freq = String(rc.frequency ?? rc.recurringFrequency ?? "MONTHLY").toUpperCase();
   if (freq === "WEEKLY") return amt * (52 / 12);
   if (freq === "QUARTERLY") return amt / 3;
   if (freq === "ANNUALLY" || freq === "YEARLY") return amt / 12;
@@ -92,7 +92,7 @@ export function mapRecurringCharges(rows: unknown[]): RecurringExpenseDisplayIte
       name: String(rc.description ?? expenseCategoryLabel(category)),
       category,
       categoryLabel: CATEGORY_GROUP_LABELS[category] ?? category,
-      frequency: String(rc.frequency ?? "MONTHLY"),
+      frequency: String(rc.frequency ?? rc.recurringFrequency ?? "MONTHLY"),
       amount: n(rc.amount),
       nextDueDate: nextDueFromRecurring(rc),
       status: recurringStatus(rc),
@@ -118,6 +118,77 @@ export function expenseCategoryLabel(value: string): string {
   return labels[value] ?? value;
 }
 
+/** Recurring landlord charges used for operating expenses (excludes bond payment rows). */
+export function filterLandlordRecurringCharges(rows: unknown[]): Record<string, unknown>[] {
+  return (rows as Record<string, unknown>[]).filter((rc) => String(rc.category ?? "") !== "BOND_PAYMENT");
+}
+
+export type PropertyMonthlyFinancialSnapshot = {
+  monthlyIncome: number;
+  monthlyOperatingExpenses: number;
+  monthlyDebtService: number;
+  monthlyBondPayment: number;
+  monthlyAdditionalBondPayment: number;
+  monthlyNOI: number;
+  netCashFlow: number;
+  combinedMonthlyLeaseRent: number;
+  monthlyRent: number;
+  monthlyExpenses: number;
+  monthlyCashFlowAfterDebtService: number;
+};
+
+/** Monthly income, operating expenses, NOI, and cash flow — same rules as the Financials tab. */
+export function computePropertyMonthlyFinancialSnapshot({
+  property,
+  currentLeases = [],
+  recurringCharges = [],
+  additionalBondMonthlyTotal = 0,
+  statement = null
+}: {
+  property: Record<string, unknown>;
+  currentLeases?: unknown[];
+  recurringCharges?: unknown[];
+  additionalBondMonthlyTotal?: number;
+  statement?: Record<string, unknown> | null;
+}): PropertyMonthlyFinancialSnapshot {
+  const pf = property;
+  const leases = currentLeases as Record<string, unknown>[];
+  const active = leases.filter((l) => ["ACTIVE", "MONTH_TO_MONTH"].includes(String(l.status ?? "")));
+  const rentRoll = active.reduce((a, l) => a + n(l.monthlyRent), 0);
+  const expectedIncome = n(pf.expectedMonthlyIncome);
+  const monthlyIncome = rentRoll > 0 ? rentRoll : expectedIncome;
+
+  const recurringRows = filterLandlordRecurringCharges(recurringCharges);
+  const recurringOnly = recurringRows.reduce((a, rc) => a + monthlyAmountFromRecurring(rc), 0);
+  const expectedExpenses = n(pf.expectedMonthlyExpenses);
+
+  const bondRows = mapPropertyBondPayment(pf, String(pf.name ?? "Property"), {
+    statementBondFinance: (statement?.bondFinance as Record<string, unknown> | undefined) ?? null
+  });
+  const monthlyBondPayment = bondRows[0]?.monthlyPayment ?? 0;
+  const monthlyAdditionalBondPayment = Math.max(0, n(additionalBondMonthlyTotal));
+  const monthlyDebtService = monthlyBondPayment + monthlyAdditionalBondPayment;
+
+  const monthlyOperatingExpenses = recurringOnly > 0 ? recurringOnly : expectedExpenses;
+  const totalMonthlyExpenses = monthlyOperatingExpenses + monthlyDebtService;
+  const monthlyNOI = monthlyIncome - monthlyOperatingExpenses;
+  const netCashFlow = monthlyIncome - totalMonthlyExpenses;
+
+  return {
+    monthlyIncome,
+    monthlyOperatingExpenses,
+    monthlyDebtService,
+    monthlyBondPayment,
+    monthlyAdditionalBondPayment,
+    monthlyNOI,
+    netCashFlow,
+    combinedMonthlyLeaseRent: rentRoll,
+    monthlyRent: rentRoll,
+    monthlyExpenses: totalMonthlyExpenses,
+    monthlyCashFlowAfterDebtService: netCashFlow
+  };
+}
+
 export function buildPropertyFinancialOverview({
   propertyId,
   propertyDetail,
@@ -138,30 +209,29 @@ export function buildPropertyFinancialOverview({
   const pf = propertyDetail ?? {};
   const leases = currentLeases as Record<string, unknown>[];
   const active = leases.filter((l) => ["ACTIVE", "MONTH_TO_MONTH"].includes(String(l.status ?? "")));
-  const rentRoll = active.reduce((a, l) => a + n(l.monthlyRent), 0);
-  const expectedIncome = n(pf.expectedMonthlyIncome);
-  const monthlyIncome = rentRoll > 0 ? rentRoll : expectedIncome;
 
-  const recurringRows = recurringChargesLandlord as Record<string, unknown>[];
-  const recurringOnly = recurringRows.reduce((a, rc) => a + monthlyAmountFromRecurring(rc), 0);
-
-  const bondRows = mapPropertyBondPayment(pf as Record<string, unknown>, String(pf.name ?? "Property"), {
-    statementBondFinance: (statement?.bondFinance as Record<string, unknown> | undefined) ?? null
+  const snap = computePropertyMonthlyFinancialSnapshot({
+    property: pf as Record<string, unknown>,
+    currentLeases,
+    recurringCharges: recurringChargesLandlord,
+    additionalBondMonthlyTotal,
+    statement
   });
-  const expectedExpenses = n(pf.expectedMonthlyExpenses);
 
-  const monthlyBondPayment = bondRows[0]?.monthlyPayment ?? 0;
-  const monthlyAdditionalBondPayment = Math.max(0, n(additionalBondMonthlyTotal));
-  const monthlyDebtService = monthlyBondPayment + monthlyAdditionalBondPayment;
-
-  const monthlyOperatingExpenses = recurringOnly > 0 ? recurringOnly : expectedExpenses;
+  const {
+    monthlyIncome,
+    monthlyOperatingExpenses,
+    monthlyDebtService,
+    monthlyBondPayment,
+    monthlyAdditionalBondPayment,
+    monthlyNOI: netOperatingIncome,
+    netCashFlow
+  } = snap;
   const totalRecurringExpenses = monthlyOperatingExpenses;
   const totalMonthlyExpenses = monthlyOperatingExpenses + monthlyDebtService;
 
-  const netOperatingIncome = monthlyIncome - monthlyOperatingExpenses;
-  const netCashFlow = monthlyIncome - totalMonthlyExpenses;
+  const recurringRows = filterLandlordRecurringCharges(recurringChargesLandlord);
   const purchase = n(pf.purchasePrice);
-  const value = n(pf.currentEstimatedValue);
   const annualYieldPercent =
     purchase > 0 && monthlyIncome > 0 ? Number((((monthlyIncome * 12) / purchase) * 100).toFixed(2)) : null;
 

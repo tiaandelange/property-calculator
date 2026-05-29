@@ -169,8 +169,7 @@ export function OwnedPropertyFormPage() {
         expectedMonthlyIncome: rolledIncome ?? form.expectedMonthlyIncome ?? null,
         bondTermYears,
         bondStartDate,
-        bondRemainingTermMonths:
-          bondTermYears != null && bondStartDate != null ? null : (form.bondRemainingTermMonths ?? null)
+        bondRemainingTermMonths: null
       };
       const saved = isEdit && id ? await updateProperty(id, propertyPayload) : await createProperty(propertyPayload);
       const propertyId = isEdit && id ? id : (saved?.id as string | number | undefined);

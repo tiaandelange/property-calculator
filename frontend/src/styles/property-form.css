@@ -222,69 +222,9 @@
   gap: 8px;
 }
 
-.pg-prop-field__info-wrap {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 18px;
-  height: 18px;
-  border-radius: 999px;
-  border: 1px solid var(--border-soft);
-  background: var(--surface-muted);
-  color: var(--text-muted);
-  cursor: help;
-  user-select: none;
-}
-
-.pg-prop-field__info-wrap:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}
-
-.pg-prop-field__info-icon {
-  font-size: 12px;
-  font-weight: 700;
-  line-height: 1;
-}
-
-.pg-prop-field__info-tooltip {
-  position: absolute;
-  left: calc(100% + 10px);
-  top: 50%;
-  transform: translateY(-50%);
-  min-width: 220px;
-  max-width: 320px;
-  padding: 10px 12px;
-  border-radius: 10px;
-  font-size: 12px;
-  line-height: 1.35;
-  color: var(--text-secondary);
-  background: color-mix(in srgb, var(--surface) 92%, transparent);
-  border: 1px solid var(--border-soft);
-  box-shadow: var(--shadow-md);
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.12s ease;
-  z-index: 120;
-}
-
-.pg-prop-field__info-wrap:hover .pg-prop-field__info-tooltip,
-.pg-prop-field__info-wrap:focus-within .pg-prop-field__info-tooltip {
-  opacity: 1;
-}
-
 .pg-prop-field__required {
   color: var(--danger);
   font-weight: 600;
-}
-
-.pg-prop-field__help {
-  display: block;
-  font-size: 0.72rem;
-  color: var(--text-muted);
-  margin-top: 2px;
-  line-height: 1.35;
 }
 
 .pg-prop-field .pg-input,

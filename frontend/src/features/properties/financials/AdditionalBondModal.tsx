@@ -10,7 +10,6 @@ export type AdditionalBondFormState = {
   bondAnnualInterestRatePercent: string;
   bondTermYears: string;
   bondStartDate: string;
-  bondRemainingTermMonths: string;
   monthlyBondPayment: string;
 };
 
@@ -21,7 +20,6 @@ export function emptyAdditionalBondForm(): AdditionalBondFormState {
     bondAnnualInterestRatePercent: "",
     bondTermYears: "",
     bondStartDate: "",
-    bondRemainingTermMonths: "",
     monthlyBondPayment: ""
   };
 }
@@ -32,7 +30,6 @@ export function additionalBondFormFromRecord(bond: {
   bondAnnualInterestRatePercent: number | null;
   bondTermYears: number | null;
   bondStartDate: string | null;
-  bondRemainingTermMonths: number | null;
   monthlyPayment: number | null;
 }): AdditionalBondFormState {
   const str = (v: number | null | undefined) => (v == null || Number.isNaN(Number(v)) ? "" : String(v));
@@ -42,7 +39,6 @@ export function additionalBondFormFromRecord(bond: {
     bondAnnualInterestRatePercent: str(bond.bondAnnualInterestRatePercent),
     bondTermYears: bond.bondTermYears != null ? String(bond.bondTermYears) : "",
     bondStartDate: bond.bondStartDate ?? "",
-    bondRemainingTermMonths: str(bond.bondRemainingTermMonths),
     monthlyBondPayment: str(bond.monthlyPayment)
   };
 }
@@ -53,7 +49,7 @@ export function parseAdditionalBondForm(form: AdditionalBondFormState): {
   bondAnnualInterestRatePercent: number | null;
   bondTermYears: number | null;
   bondStartDate: string | null;
-  bondRemainingTermMonths: number | null;
+  bondRemainingTermMonths: null;
   monthlyPayment: number | null;
 } {
   const parseOpt = (s: string) => {
@@ -74,12 +70,7 @@ export function parseAdditionalBondForm(form: AdditionalBondFormState): {
     bondAnnualInterestRatePercent: parseOpt(form.bondAnnualInterestRatePercent),
     bondTermYears,
     bondStartDate,
-    bondRemainingTermMonths:
-      bondTermYears != null && bondStartDate != null
-        ? null
-        : parseOpt(form.bondRemainingTermMonths) != null
-          ? Math.max(0, Math.floor(Number(parseOpt(form.bondRemainingTermMonths))))
-          : null,
+    bondRemainingTermMonths: null,
     monthlyPayment: parseOpt(form.monthlyBondPayment)
   };
 }
@@ -141,7 +132,7 @@ export function AdditionalBondModal({
                 onChange={(e) => onPatch({ outstandingBondBalance: e.target.value })}
               />
             </Field>
-            <Field label="Interest rate (% p.a.)">
+            <Field label="Interest rate (% p.a.)" help="Used with term and start date to derive months remaining.">
               <Input
                 type="number"
                 step="any"
@@ -150,7 +141,7 @@ export function AdditionalBondModal({
                 onChange={(e) => onPatch({ bondAnnualInterestRatePercent: e.target.value })}
               />
             </Field>
-            <Field label="Original term (years)">
+            <Field label="Original term (years)" help="Registered term in 5-year steps up to 30 years.">
               <select
                 className="pg-input"
                 value={form.bondTermYears}
@@ -164,26 +155,14 @@ export function AdditionalBondModal({
                 ))}
               </select>
             </Field>
-            <Field label="Start date">
+            <Field label="Start date" help="Registration or first debit date — pairs with term for remaining months.">
               <Input
                 type="date"
                 value={form.bondStartDate}
                 onChange={(e) => onPatch({ bondStartDate: e.target.value })}
               />
             </Field>
-            <Field
-              label="Months remaining (manual)"
-              help="Only used when term and start date are not both set."
-            >
-              <Input
-                type="number"
-                step={1}
-                min={0}
-                value={form.bondRemainingTermMonths}
-                onChange={(e) => onPatch({ bondRemainingTermMonths: e.target.value })}
-              />
-            </Field>
-            <Field label="Monthly payment" help="Leave blank to derive from balance, rate, and term where possible.">
+            <Field label="Monthly payment" help="Leave blank to derive from balance, rate, and term. Adjust actual debits on the statement.">
               <Input
                 type="number"
                 step="any"

@@ -243,7 +243,7 @@ export function PropertyFormSections({
         <div className="pg-prop-grid pg-prop-grid--2">
           <PropertyFormField
             label="Bond interest rate (% p.a.)"
-            help="Nominal annual rate — used with remaining term (from duration + start date) to estimate instalment and interest split."
+            help="Nominal annual rate — used with duration and start date to estimate instalment and interest split."
           >
             <Input
               type="number"
@@ -285,24 +285,7 @@ export function PropertyFormSections({
               onChange={(e) => patch({ bondStartDate: e.target.value || "" })}
             />
           </PropertyFormField>
-          <PropertyFormField
-            label="Bond — months remaining (manual)"
-            help="Used only when bond duration and start date are not both set."
-          >
-            <Input
-              type="number"
-              step={1}
-              min={0}
-              value={numInputValue(form.bondRemainingTermMonths)}
-              onChange={(e) =>
-                patch({
-                  bondRemainingTermMonths:
-                    e.target.value === "" ? null : Math.max(0, Math.floor(Number(e.target.value)))
-                })
-              }
-            />
-          </PropertyFormField>
-          <PropertyFormField label="Monthly bond payment" help="Leave blank to derive from balance + rate + term where possible.">
+          <PropertyFormField label="Monthly bond payment" help="Leave blank to derive from balance, rate, and term. Actual debits can be adjusted on the statement.">
             <div className="pg-prop-input-suffix">
               <Input
                 type="number"

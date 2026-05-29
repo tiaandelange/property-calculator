@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { FieldInfoTip } from "../../../components/ui/FieldInfoTip";
 
 export function PropertyFormField({
   label,
@@ -11,10 +12,13 @@ export function PropertyFormField({
   label: string;
   required?: boolean;
   help?: string;
+  /** Shown in the info icon tooltip (preferred over `help`). */
   info?: string;
   children: ReactNode;
   className?: string;
 }) {
+  const tip = (info ?? help)?.trim();
+
   return (
     <div className={["pg-prop-field", className].filter(Boolean).join(" ")}>
       <div className="pg-prop-field__head">
@@ -28,16 +32,8 @@ export function PropertyFormField({
               </span>
             ) : null}
           </span>
-          {info ? (
-            <span className="pg-prop-field__info-wrap" tabIndex={0} role="note" aria-label={`${label} info`}>
-              <span className="pg-prop-field__info-icon" aria-hidden="true">
-                i
-              </span>
-              <span className="pg-prop-field__info-tooltip">{info}</span>
-            </span>
-          ) : null}
+          <FieldInfoTip label={label} text={tip} />
         </div>
-        {help ? <span className="pg-prop-field__help">{help}</span> : null}
       </div>
       <div className="pg-prop-field__control">{children}</div>
     </div>

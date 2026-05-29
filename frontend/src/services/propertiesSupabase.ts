@@ -8,6 +8,9 @@ import {
   buildPropertyFieldsFromBody,
   snakeRowToCamel
 } from "../api/propertyRowMapping";
+import { dbToExpense } from "../api/financialRowMapping";
+import { computePropertyMonthlyFinancialSnapshot } from "../features/properties/financials/propertyFinancialsAdapter";
+import { mapAdditionalBondPayments } from "../features/properties/financials/propertyBondAdapter";
 import * as leasesSupabase from "./leasesSupabase";
 import * as invoicesSupabase from "./invoicesSupabase";
 import * as propertyUnitsSupabase from "./propertyUnitsSupabase";
@@ -36,6 +39,22 @@ async function requireUserId(): Promise<string> {
   return data.user.id;
 }
 
+function groupRowsByPropertyId(rows: Record<string, unknown>[]): Map<string, Record<string, unknown>[]> {
+  const map = new Map<string, Record<string, unknown>[]>();
+  for (const row of rows) {
+    const pid = String(row.propertyId ?? row.property_id ?? "");
+    if (!pid) continue;
+    const list = map.get(pid) ?? [];
+    list.push(row);
+    map.set(pid, list);
+  }
+  return map;
+}
+
+function activeLeasesFromRows(rows: Record<string, unknown>[]): Record<string, unknown>[] {
+  return rows.filter((l) => ["ACTIVE", "MONTH_TO_MONTH"].includes(String(l.status ?? "")));
+}
+
 /**
  * Maps a raw `properties` table row (snake_case keys) to the SPA camelCase shape.
  * @param variant `list` — card row + empty aggregates; `detail` — workspace detail + empty relations.
@@ -53,21 +72,67 @@ export function propertyToDb(payload: Record<string, unknown>): Record<string, u
 /** Lists properties for the signed-in user (RLS + `user_id` filter). `month` is ignored until dashboard-summary migrates. */
 export type PropertyListItem = Record<string, unknown> & { id: string };
 
-async function enrichListWithLeaseOccupancy(
-  uid: string,
-  items: PropertyListItem[]
-): Promise<PropertyListItem[]> {
+async function enrichPropertyListItems(uid: string, items: PropertyListItem[]): Promise<PropertyListItem[]> {
   if (items.length === 0) return items;
   const sb = getSupabase();
   const ids = items.map((p) => String(p.id));
 
   const { data: leaseRows, error: leaseErr } = await sb
     .from("leases")
-    .select("property_id, status, fixed_term_end_date")
+    .select("property_id, status, monthly_rent, fixed_term_end_date, end_date")
     .eq("user_id", uid)
     .in("property_id", ids);
   if (leaseErr) throw toError(leaseErr);
+  const leasesByProperty = groupRowsByPropertyId(
+    (leaseRows ?? []).map((row) => snakeRowToCamel(row as Record<string, unknown>) as Record<string, unknown>)
+  );
   const leaseCounts = countCurrentLeasesByProperty(leaseRows ?? []);
+
+  const { data: recurringRows, error: recurringErr } = await sb
+    .from("expense_entries")
+    .select("*")
+    .eq("user_id", uid)
+    .in("property_id", ids)
+    .eq("is_recurring", true)
+    .is("recurring_schedule_parent_id", null)
+    .neq("status", "ARCHIVED");
+  if (recurringErr) throw toError(recurringErr);
+  const recurringByProperty = groupRowsByPropertyId((recurringRows ?? []).map((row) => dbToExpense(row as Record<string, unknown>)));
+
+  const additionalBondByProperty = new Map<string, number>();
+  type AdditionalBondRow = Parameters<typeof mapAdditionalBondPayments>[0][number];
+  const { data: additionalBondRows, error: bondErr } = await sb
+    .from("property_additional_bonds")
+    .select("*")
+    .eq("user_id", uid)
+    .eq("is_active", true)
+    .in("property_id", ids);
+  if (!bondErr && additionalBondRows) {
+    const bondsGrouped = new Map<string, AdditionalBondRow[]>();
+    for (const row of additionalBondRows as Record<string, unknown>[]) {
+      const c = snakeRowToCamel(row) as Record<string, unknown>;
+      const pid = String(c.propertyId ?? "");
+      if (!pid) continue;
+      const bond: AdditionalBondRow = {
+        id: String(c.id),
+        description: String(c.description ?? ""),
+        outstandingBalance: c.outstandingBalance != null ? Number(c.outstandingBalance) : null,
+        monthlyPayment: c.monthlyPayment != null ? Number(c.monthlyPayment) : null,
+        bondAnnualInterestRatePercent:
+          c.annualInterestRatePercent != null ? Number(c.annualInterestRatePercent) : null,
+        bondTermYears: c.bondTermYears != null ? Number(c.bondTermYears) : null,
+        bondStartDate: c.bondStartDate != null ? String(c.bondStartDate).slice(0, 10) : null,
+        bondRemainingTermMonths: c.bondRemainingTermMonths != null ? Number(c.bondRemainingTermMonths) : null
+      };
+      const list = bondsGrouped.get(pid) ?? [];
+      list.push(bond);
+      bondsGrouped.set(pid, list);
+    }
+    for (const [pid, bonds] of bondsGrouped) {
+      const total = mapAdditionalBondPayments(bonds).reduce((a, b) => a + b.monthlyPayment, 0);
+      additionalBondByProperty.set(pid, total);
+    }
+  }
 
   const unitCounts = new Map<string, number>();
   const { data: unitRows, error: unitErr } = await sb
@@ -84,20 +149,41 @@ async function enrichListWithLeaseOccupancy(
   }
 
   return items.map((p) => {
+    const pid = String(p.id);
     const structureTypeId = structureTypeIdFromProperty(p);
-    const totalUnitCount = effectiveActiveUnitCount(structureTypeId, unitCounts.get(String(p.id)));
+    const totalUnitCount = effectiveActiveUnitCount(structureTypeId, unitCounts.get(pid));
+    const propertyLeases = leasesByProperty.get(pid) ?? [];
+    const currentLeases = activeLeasesFromRows(propertyLeases);
     const occupancy = derivePropertyOccupancy({
       structureTypeId,
       investmentType: p.investmentType as string | undefined,
-      activeLeaseCount: leaseCounts.get(String(p.id)) ?? 0,
+      activeLeaseCount: leaseCounts.get(pid) ?? 0,
       totalUnitCount
     });
+
+    const financials = computePropertyMonthlyFinancialSnapshot({
+      property: p,
+      currentLeases,
+      recurringCharges: recurringByProperty.get(pid) ?? [],
+      additionalBondMonthlyTotal: additionalBondByProperty.get(pid) ?? 0
+    });
+
     return {
       ...p,
       occupancyStatus: occupancy.code,
       tenantStatus: occupancyCodeToTenantStatus(occupancy.code),
       leasedUnitCount: occupancy.activeLeaseCount,
-      activeUnitCount: totalUnitCount
+      activeUnitCount: totalUnitCount,
+      currentLeases,
+      combinedMonthlyLeaseRent: financials.combinedMonthlyLeaseRent,
+      monthlyRent: financials.monthlyRent,
+      monthlyIncome: financials.monthlyIncome,
+      monthlyOperatingExpenses: financials.monthlyOperatingExpenses,
+      monthlyDebtService: financials.monthlyDebtService,
+      monthlyExpenses: financials.monthlyExpenses,
+      monthlyNOI: financials.monthlyNOI,
+      monthlyCashFlowAfterDebtService: financials.monthlyCashFlowAfterDebtService,
+      netCashFlow: financials.netCashFlow
     };
   });
 }
@@ -112,7 +198,7 @@ export async function listProperties(_params?: { month?: string }): Promise<Prop
     .order("created_at", { ascending: false });
   if (error) throw toError(error);
   const list = (data ?? []).map((row) => dbToProperty(row as Record<string, unknown>, "list") as PropertyListItem);
-  return enrichListWithLeaseOccupancy(uid, list);
+  return enrichPropertyListItems(uid, list);
 }
 
 /** Fetches one property by id for the signed-in user. */

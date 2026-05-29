@@ -163,27 +163,17 @@ export function snakeRowToCamel<T extends Record<string, unknown>>(row: T): Reco
   return out;
 }
 
-/** List card shape — mirrors Express GET /properties enrichment where Supabase has no joins yet. */
+/** List card shape — occupancy/lease placeholders; financials filled in `listProperties` enrichment. */
 export function enrichPropertyListItem(base: Record<string, unknown>): Record<string, unknown> {
-  const occupancyStatus = "VACANT";
   return {
     ...base,
     tenantStatus: "Vacant",
-    occupancyStatus,
+    occupancyStatus: "VACANT",
     leaseDisplayStatus: "VACANT",
     currentLeases: [],
     currentTenant: null,
     currentLease: null,
     allTenantsCount: 0,
-    monthlyRent: 0,
-    combinedMonthlyLeaseRent: 0,
-    monthlyIncome: 0,
-    monthlyOperatingExpenses: 0,
-    monthlyDebtService: 0,
-    monthlyExpenses: 0,
-    monthlyNOI: 0,
-    monthlyCashFlowAfterDebtService: 0,
-    netCashFlow: 0,
     rentOverdue: false,
     rentDueSoon: false,
     leaseExpiringSoon: false,
