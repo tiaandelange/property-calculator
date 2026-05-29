@@ -572,9 +572,12 @@ export function WorkspaceStatementTab({
 
       {(rows?.length ?? 0) === 0 && !loading ? <div className="pg-muted">No statement lines found.</div> : null}
       {(rows?.length ?? 0) > 0 ? (
-        <div className="pg-statement-wrap">
-          <div className="pg-statement-topbar">
-            <div className="pg-statement-topbar__title">Statement</div>
+        <section className="pg-pfin-section" aria-label="Statement">
+          <header className="pg-pfin-section__head pg-pfin-section__head--row">
+            <div>
+              <h2 className="pg-pfin-section__title">Statement</h2>
+              <p className="pg-pfin-section__desc">Accounting-style ledger lines (income, expenses, invoices).</p>
+            </div>
             <div style={{ display: "flex", gap: 8, flexWrap: "nowrap", alignItems: "center" }}>
               <select className="pg-input" value={preset} onChange={(e) => setPreset(e.target.value as PeriodPreset)} aria-label="Statement period">
                 <option value="LAST_MONTH">Last month</option>
@@ -616,25 +619,24 @@ export function WorkspaceStatementTab({
                 Export PDF
               </button>
             </div>
-          </div>
-          <div className="pg-statement-table-shell">
-          <div className="pg-tstmt-table-wrap">
-            <table className="pg-tstmt-table pg-statement-table">
+          </header>
+          <div className="pg-pfin-table-wrap">
+            <table className="pg-pfin-table">
               <thead>
                 <tr>
                   <th>Date</th>
                   <th>Description</th>
                   <th>Type</th>
-                  <th className="pg-statement-num">Debit</th>
-                  <th className="pg-statement-num">Credit</th>
+                  <th style={{ textAlign: "right" }}>Debit</th>
+                  <th style={{ textAlign: "right" }}>Credit</th>
                   <th>Status</th>
                   <th>Source</th>
-                  <th className="pg-statement-table__actions">Actions</th>
+                  <th style={{ textAlign: "right" }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {rows.map((r: Record<string, unknown>) => {
-                const creditClass = r.source === "INVOICE" && r.status !== "PAID" ? " pg-statement-credit-unpaid" : "";
+                const creditClass = r.source === "INVOICE" && r.status !== "PAID" ? "pg-statement-credit-unpaid" : "";
                 const sourceId = rowSourceId(r);
                 const rowKey = r.id != null ? String(r.id) : `${String(r.source)}-${String(r.date)}-${String(r.description)}`;
                 const editKey = sourceId ? statementRowKey(String(r.source), sourceId) : "";
@@ -719,7 +721,7 @@ export function WorkspaceStatementTab({
                         String(r.type ?? "")
                       )}
                     </td>
-                    <td className="pg-statement-num" style={{ verticalAlign: "middle" }}>
+                    <td className="pg-pfin-table__amount" style={{ textAlign: "right" }}>
                       {isEditing && draft && (draft.source === "EXPENSE" || (draft.source === "INCOME" && isExpectedIncome)) ? (
                         amountLocked ? (
                           <span title="Edit the source record to change this amount.">{fmtZar(r.debit)}</span>
@@ -740,7 +742,7 @@ export function WorkspaceStatementTab({
                         "—"
                       )}
                     </td>
-                    <td className={`pg-statement-num${creditClass}`} style={{ verticalAlign: "middle" }}>
+                    <td className={`pg-pfin-table__amount ${creditClass}`} style={{ textAlign: "right" }}>
                       {isEditing && draft && (draft.source === "INVOICE" || (draft.source === "INCOME" && !isExpectedIncome)) ? (
                         amountLocked ? (
                           <span title="Edit the source record to change this amount.">{fmtZar(r.credit)}</span>
@@ -811,13 +813,13 @@ export function WorkspaceStatementTab({
                       )}
                     </td>
                     <td style={{ verticalAlign: "middle" }}>{String(r.source ?? "")}</td>
-                    <td className="pg-statement-table__actions" style={{ verticalAlign: "middle" }}>
-                      <div className="pg-statement-row-actions" onClick={stopRowEvent}>
+                    <td style={{ verticalAlign: "middle" }}>
+                      <div className="pg-pfin-row-actions" style={{ justifyContent: "flex-end" }} onClick={stopRowEvent}>
                       {isEditing ? (
                             <>
                               <button
                                 type="button"
-                                className="pg-statement-icon-btn pg-statement-icon-save"
+                                className="pg-pfin-icon-btn"
                                 onClick={(e) => {
                                   stopRowEvent(e);
                                   void saveRowEdit();
@@ -830,7 +832,7 @@ export function WorkspaceStatementTab({
                               </button>
                               <button
                                 type="button"
-                                className="pg-statement-icon-btn pg-statement-icon-discard"
+                                className="pg-pfin-icon-btn pg-pfin-icon-btn--danger"
                                 onClick={(e) => {
                                   stopRowEvent(e);
                                   cancelRowEdit();
@@ -846,7 +848,8 @@ export function WorkspaceStatementTab({
                             <>
                               <button
                                 type="button"
-                                className="pg-statement-icon-btn pg-statement-icon-btn--primary"
+                                className="pg-pfin-icon-btn"
+                                style={{ color: "var(--primary)" }}
                                 disabled={!invoiceActionEnabled(r) || rowBusy}
                                 title={
                                   invoiceActionEnabled(r)
@@ -865,7 +868,7 @@ export function WorkspaceStatementTab({
                               </button>
                               <button
                                 type="button"
-                                className="pg-statement-icon-btn"
+                                className="pg-pfin-icon-btn"
                                 disabled={!canEditRow(r) || rowSaving || rowBusy}
                                 onClick={(e) => {
                                   stopRowEvent(e);
@@ -879,7 +882,7 @@ export function WorkspaceStatementTab({
                               </button>
                               <button
                                 type="button"
-                                className="pg-statement-icon-btn pg-statement-icon-btn--danger"
+                                className="pg-pfin-icon-btn pg-pfin-icon-btn--danger"
                                 disabled={!deleteActionEnabled(r) || rowBusy}
                                 onClick={(e) => {
                                   stopRowEvent(e);
@@ -933,10 +936,10 @@ export function WorkspaceStatementTab({
                   <td colSpan={3} style={{ fontWeight: 800 }}>
                     Totals
                   </td>
-                  <td className="pg-statement-num" style={{ fontWeight: 800 }}>
+                  <td className="pg-pfin-table__amount" style={{ textAlign: "right", fontWeight: 800 }}>
                     {fmtZar(periodTotals.debit)}
                   </td>
-                  <td className="pg-statement-num" style={{ fontWeight: 800 }}>
+                  <td className="pg-pfin-table__amount" style={{ textAlign: "right", fontWeight: 800 }}>
                     {fmtZar(periodTotals.credit)}
                   </td>
                   <td colSpan={3} className="pg-muted" style={{ fontSize: 12 }}>
@@ -946,8 +949,7 @@ export function WorkspaceStatementTab({
               </tfoot>
             </table>
           </div>
-          </div>
-        </div>
+        </section>
       ) : null}
 
       {showAddOnceOff ? (
