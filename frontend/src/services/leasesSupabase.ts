@@ -279,6 +279,25 @@ export async function updateLease(id: string | number, input: Record<string, unk
   return dbToLease(updatedRow as Record<string, unknown>);
 }
 
+/** Permanently deletes a lease with no invoices or income (via `public.hard_delete_lease`). */
+export async function hardDeleteLease(id: string | number): Promise<{ message: string }> {
+  await requireUserId();
+  const sb = getSupabase();
+  const { data, error } = await sb.rpc("hard_delete_lease", { p_lease_id: String(id) });
+  if (error) {
+    const raw = error.message ?? "";
+    if (raw.includes("LEASE_NOT_FOUND")) throw new Error("Lease not found");
+    if (raw.includes("LEASE_HAS_FINANCIALS")) {
+      throw new Error(
+        "This lease has invoices or income on record and cannot be permanently deleted. Cancel the lease instead to keep financial history."
+      );
+    }
+    throw toError(error);
+  }
+  const out = (data ?? {}) as Record<string, unknown>;
+  return { message: String(out.message ?? "Lease permanently deleted") };
+}
+
 /** Draft hard-delete or archive + cancel rent rules (via `public.delete_or_archive_lease`). */
 export async function deleteOrArchiveLease(id: string | number): Promise<Record<string, unknown>> {
   await requireUserId();

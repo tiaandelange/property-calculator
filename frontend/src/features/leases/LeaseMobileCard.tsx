@@ -6,10 +6,12 @@ import { LeaseRowActions } from "./LeaseRowActions";
 
 export function LeaseMobileCard({
   lease,
-  onCancelLease
+  onCancelLease,
+  onDeleteLease
 }: {
   lease: LeaseListItem;
   onCancelLease?: (leaseId: string) => void;
+  onDeleteLease?: (leaseId: string) => void;
 }) {
   return (
     <article className="pg-leases-mobile-card pg-workspace-card">
@@ -45,7 +47,7 @@ export function LeaseMobileCard({
           <LeaseLifecycleBadge status={lease.lifecycleStatus} />
           <LeaseDisplayStatusBadge status={lease.displayStatus} />
         </div>
-        <LeaseRowActions lease={lease} onCancel={onCancelLease} />
+        <LeaseRowActions lease={lease} onCancel={onCancelLease} onDelete={onDeleteLease} />
       </div>
     </article>
   );
@@ -54,11 +56,13 @@ export function LeaseMobileCard({
 export function LeaseMobileList({
   items,
   loading,
-  onCancelLease
+  onCancelLease,
+  onDeleteLease
 }: {
   items: LeaseListItem[];
   loading?: boolean;
   onCancelLease?: (leaseId: string) => void;
+  onDeleteLease?: (leaseId: string) => void;
 }) {
   if (loading) {
     return (
@@ -72,7 +76,7 @@ export function LeaseMobileList({
   return (
     <div className="pg-leases-mobile-list">
       {items.map((lease) => (
-        <LeaseMobileCard key={lease.id} lease={lease} onCancelLease={onCancelLease} />
+        <LeaseMobileCard key={lease.id} lease={lease} onCancelLease={onCancelLease} onDeleteLease={onDeleteLease} />
       ))}
     </div>
   );

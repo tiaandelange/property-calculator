@@ -5,6 +5,7 @@ import {
   createLease,
   updateLease,
   deleteOrArchiveLease,
+  hardDeleteLease,
   cancelLease,
   mergeLeaseBundleIntoPropertyDetail
 } from "./leasesSupabase";
@@ -134,6 +135,17 @@ describe("leasesSupabase", () => {
       })
     );
     expect(out.lease.status).toBe("CANCELLED");
+  });
+
+  it("hardDeleteLease calls hard_delete_lease RPC", async () => {
+    getUser.mockResolvedValue({ data: { user: { id: userId } }, error: null });
+    rpc.mockResolvedValue({
+      data: { deleted: true, message: "Lease permanently deleted" },
+      error: null
+    });
+    const out = await hardDeleteLease(leaseId);
+    expect(rpc).toHaveBeenCalledWith("hard_delete_lease", { p_lease_id: leaseId });
+    expect(out.message).toMatch(/permanently deleted/i);
   });
 
   it("deleteOrArchiveLease calls delete_or_archive_lease RPC", async () => {

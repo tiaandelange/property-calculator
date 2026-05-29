@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, Trash2 } from "lucide-react";
 import { Container } from "../components/ui/Container";
 import { Section } from "../components/ui/Section";
 import { Card } from "../components/ui/Card";
@@ -190,10 +190,20 @@ export function OwnedPropertyDetailPage() {
     await refreshAfterMutation();
   };
 
-  const onArchiveLease = async (leaseId: string | number) => {
-    if (!window.confirm("Archive this lease? (Historical record is kept.)")) return;
-    await deleteLease(leaseId);
-    await refreshAfterMutation();
+  const onHardDeleteLease = async (leaseId: string | number) => {
+    if (
+      !window.confirm(
+        "Permanently delete this lease? This cannot be undone. If it has invoices or income on record, cancel the lease instead to keep financial history."
+      )
+    ) {
+      return;
+    }
+    try {
+      await deleteLease(leaseId);
+      await refreshAfterMutation();
+    } catch (e: any) {
+      window.alert(e?.response?.data?.message ?? e?.message ?? "Failed to delete lease.");
+    }
   };
 
   const onEditLease = async (lease: any) => {
@@ -377,6 +387,15 @@ export function OwnedPropertyDetailPage() {
                               <button className="pg-btn pg-btn-secondary" type="button" onClick={() => void onCancelLease(lease)}>
                                 Cancel lease
                               </button>
+                              <button
+                                className="pg-btn pg-btn-ghost"
+                                type="button"
+                                style={{ color: "var(--danger)" }}
+                                onClick={() => void onHardDeleteLease(lease.id)}
+                              >
+                                <Trash2 size={16} style={{ marginRight: 6 }} aria-hidden />
+                                Delete permanently
+                              </button>
                               <Link className="pg-btn pg-btn-primary" to={`/owned-properties/${id}?tab=financials&fin=invoice`}>
                                 Create invoice from lease
                               </Link>
@@ -427,8 +446,14 @@ export function OwnedPropertyDetailPage() {
                                   </button>
                                 ) : null}
                                 {["ACTIVE", "MONTH_TO_MONTH"].includes(l.status) ? null : (
-                                  <button className="pg-btn pg-btn-ghost" type="button" onClick={() => void onArchiveLease(l.id)}>
-                                    Archive lease
+                                  <button
+                                    className="pg-btn pg-btn-ghost"
+                                    type="button"
+                                    style={{ color: "var(--danger)" }}
+                                    onClick={() => void onHardDeleteLease(l.id)}
+                                  >
+                                    <Trash2 size={16} style={{ marginRight: 6 }} aria-hidden />
+                                    Delete permanently
                                   </button>
                                 )}
                               </div>

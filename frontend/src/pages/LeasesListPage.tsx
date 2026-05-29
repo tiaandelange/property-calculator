@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { Link } from "react-router-dom";
-import { cancelLease as cancelLeaseApi, getLeasesDirectory, getProperties, propertyApiErrorMessage } from "../api/ownedProperties";
+import { cancelLease as cancelLeaseApi, hardDeleteLease, getLeasesDirectory, getProperties, propertyApiErrorMessage } from "../api/ownedProperties";
 import { PROPERTY_DATA_INVALIDATION, invalidatePropertyWorkspace } from "../features/properties/invalidate";
 import { LeaseControlsBar } from "../features/leases/LeaseControlsBar";
 import { LeaseDesktopTable } from "../features/leases/LeaseDesktopTable";
@@ -118,6 +118,24 @@ export function LeasesListPage() {
     }
   };
 
+  const handleDeleteLease = async (leaseId: string) => {
+    const lease = items.find((l) => l.id === leaseId);
+    if (
+      !window.confirm(
+        "Permanently delete this lease? This cannot be undone. If the lease has invoices or income on record, cancel it instead to keep financial history."
+      )
+    ) {
+      return;
+    }
+    try {
+      await hardDeleteLease(leaseId);
+      if (lease?.propertyId) invalidatePropertyWorkspace(lease.propertyId);
+      await load();
+    } catch (e: unknown) {
+      window.alert(propertyApiErrorMessage(e));
+    }
+  };
+
   return (
     <Section>
       <Helmet>
@@ -154,11 +172,21 @@ export function LeasesListPage() {
           ) : (
             <>
               <section className="pg-leases-list-panel pg-workspace-card pg-leases-desktop-only" aria-busy={loading}>
-                <LeaseDesktopTable items={pageItems} loading={loading} onCancelLease={(id) => void handleCancelLease(id)} />
+                <LeaseDesktopTable
+                  items={pageItems}
+                  loading={loading}
+                  onCancelLease={(id) => void handleCancelLease(id)}
+                  onDeleteLease={(id) => void handleDeleteLease(id)}
+                />
                 <LeasePagination page={page} totalItems={filtered.length} onPageChange={setPage} />
               </section>
               <div className="pg-leases-mobile-only pg-workspace-card-stack" aria-busy={loading}>
-                <LeaseMobileList items={pageItems} loading={loading} onCancelLease={(id) => void handleCancelLease(id)} />
+                <LeaseMobileList
+                  items={pageItems}
+                  loading={loading}
+                  onCancelLease={(id) => void handleCancelLease(id)}
+                  onDeleteLease={(id) => void handleDeleteLease(id)}
+                />
                 <section className="pg-workspace-card pg-leases-pagination-panel">
                   <LeasePagination page={page} totalItems={filtered.length} onPageChange={setPage} />
                 </section>

@@ -277,6 +277,16 @@
   cursor: not-allowed;
 }
 
+.pg-leases-action-btn--danger {
+  color: var(--danger);
+}
+
+.pg-leases-action-btn--danger:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--danger) 45%, var(--border-soft));
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 12%, var(--surface));
+}
+
 .pg-leases-table-skeleton {
   min-height: 320px;
   animation: pg-leases-pulse 1.2s ease-in-out infinite;

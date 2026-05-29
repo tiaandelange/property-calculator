@@ -1,13 +1,15 @@
-import { Building2, Eye, User, XCircle } from "lucide-react";
+import { Building2, Eye, Trash2, User, XCircle } from "lucide-react";
 import { Link } from "react-router-dom";
 import type { LeaseListItem } from "./leaseDirectoryTypes";
 
 export function LeaseRowActions({
   lease,
-  onCancel
+  onCancel,
+  onDelete
 }: {
   lease: LeaseListItem;
   onCancel?: (leaseId: string) => void;
+  onDelete?: (leaseId: string) => void;
 }) {
   return (
     <div className="pg-leases-actions">
@@ -43,9 +45,21 @@ export function LeaseRowActions({
           type="button"
           className="pg-leases-action-btn"
           aria-label={`Cancel lease for ${lease.tenantName}`}
+          title="Cancel lease (keeps history)"
           onClick={() => onCancel(lease.id)}
         >
           <XCircle size={16} aria-hidden />
+        </button>
+      ) : null}
+      {onDelete ? (
+        <button
+          type="button"
+          className="pg-leases-action-btn pg-leases-action-btn--danger"
+          aria-label={`Permanently delete lease for ${lease.tenantName}`}
+          title="Delete permanently"
+          onClick={() => onDelete(lease.id)}
+        >
+          <Trash2 size={16} aria-hidden />
         </button>
       ) : null}
     </div>

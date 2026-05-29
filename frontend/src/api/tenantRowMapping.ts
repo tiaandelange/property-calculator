@@ -31,17 +31,28 @@ export function coercePropertyIdForDb(v: unknown): string | null {
 
 /** Insert/update body for `public.tenants` (no `user_id`). */
 export function tenantToDb(input: Record<string, unknown>): Record<string, unknown> {
-  return {
+  const out: Record<string, unknown> = {
     first_name: requiredName(input.firstName, "firstName"),
     last_name: requiredName(input.lastName, "lastName"),
     email: strOrNull(input.email),
     phone: strOrNull(input.phone),
     id_number: strOrNull(input.idNumber),
     emergency_contact_name: strOrNull(input.emergencyContactName),
-    emergency_contact_phone: strOrNull(input.emergencyContactPhone),
-    status: coerceStatus(input.status),
-    property_id: coercePropertyIdForDb(input.propertyId)
+    emergency_contact_phone: strOrNull(input.emergencyContactPhone)
   };
+  if (input.status !== undefined) {
+    out.status = coerceStatus(input.status);
+  }
+  if (input.propertyId !== undefined) {
+    out.property_id = coercePropertyIdForDb(input.propertyId);
+  }
+  if (input.appliedPropertyId !== undefined) {
+    out.applied_property_id = coercePropertyIdForDb(input.appliedPropertyId);
+  }
+  if (input.appliedUnitId !== undefined) {
+    out.applied_unit_id = coercePropertyIdForDb(input.appliedUnitId);
+  }
+  return out;
 }
 
 /** Flat tenant row + optional embedded `properties` join → camelCase `property`. */

@@ -7,11 +7,13 @@ import { LeaseRowActions } from "./LeaseRowActions";
 export function LeaseDesktopTable({
   items,
   loading,
-  onCancelLease
+  onCancelLease,
+  onDeleteLease
 }: {
   items: LeaseListItem[];
   loading?: boolean;
   onCancelLease?: (leaseId: string) => void;
+  onDeleteLease?: (leaseId: string) => void;
 }) {
   if (loading) {
     return (
@@ -97,7 +99,7 @@ export function LeaseDesktopTable({
                 </div>
               </td>
               <td>
-                <LeaseRowActions lease={lease} onCancel={onCancelLease} />
+                <LeaseRowActions lease={lease} onCancel={onCancelLease} onDelete={onDeleteLease} />
               </td>
             </tr>
           ))}

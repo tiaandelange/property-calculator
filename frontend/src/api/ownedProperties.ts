@@ -185,7 +185,17 @@ export async function updateLease(leaseId: string | number, payload: Record<stri
 
 export async function deleteLease(leaseId: string | number) {
   assertSupabaseConfigured();
+  return leasesSupabase.hardDeleteLease(leaseId);
+}
+
+export async function archiveLease(leaseId: string | number) {
+  assertSupabaseConfigured();
   return leasesSupabase.deleteOrArchiveLease(leaseId);
+}
+
+export async function hardDeleteLease(leaseId: string | number) {
+  assertSupabaseConfigured();
+  return leasesSupabase.hardDeleteLease(leaseId);
 }
 
 export async function cancelLease(leaseId: string | number, payload: Record<string, unknown>) {
