@@ -40,7 +40,8 @@ function leaseRowToSummary(row: Record<string, unknown>): Record<string, unknown
 
 const TENANT_SELECT_WITH_PROPERTY = `
   *,
-  properties (*)
+  properties!tenants_property_id_fkey (*),
+  applied_property:properties!tenants_applied_property_id_fkey ( id, name, address_line1, address_line2, suburb, city )
 `;
 
 const LEASE_SELECT_WITH_PROPERTY = `
@@ -105,56 +106,81 @@ export async function listTenants(): Promise<Record<string, unknown>[]> {
 }
 
 /**
- * Tenants for a property: `property_id` match, or active lease on this property.
- * Property ownership is enforced by RLS on `tenants` / `leases` / `properties`.
+ * Tenants for a property: linked via `property_id`, `applied_property_id`, unit links, or lease on this property.
+ * Property ownership is enforced by RLS on `tenants` / `leases` / `properties` / `tenant_unit_links`.
  */
 export async function listTenantsForProperty(propertyId: string | number): Promise<Record<string, unknown>[]> {
   const uid = await requireUserId();
   const pid = String(propertyId);
   const sb = getSupabase();
 
-  const { data: directRows, error: dErr } = await sb
-    .from("tenants")
-    .select("*")
-    .eq("user_id", uid)
-    .eq("property_id", pid)
-    .order("created_at", { ascending: false });
-  if (dErr) throw toError(dErr);
+  const [directRes, appliedRes, linkRes, leaseTenantRes, leasesForPropRes] = await Promise.all([
+    sb
+      .from("tenants")
+      .select("*")
+      .eq("user_id", uid)
+      .eq("property_id", pid)
+      .order("created_at", { ascending: false }),
+    sb
+      .from("tenants")
+      .select("*")
+      .eq("user_id", uid)
+      .eq("applied_property_id", pid)
+      .order("created_at", { ascending: false }),
+    sb
+      .from("tenant_unit_links")
+      .select("tenant_id")
+      .eq("user_id", uid)
+      .eq("property_id", pid)
+      .not("status", "in", '("removed","ended")'),
+    sb
+      .from("leases")
+      .select("tenant_id")
+      .eq("user_id", uid)
+      .eq("property_id", pid)
+      .in("status", [...ACTIVE_LEASE]),
+    sb
+      .from("leases")
+      .select("*")
+      .eq("user_id", uid)
+      .eq("property_id", pid)
+      .order("created_at", { ascending: false })
+  ]);
 
-  const { data: leaseRows, error: lErr } = await sb
-    .from("leases")
-    .select("tenant_id")
-    .eq("user_id", uid)
-    .eq("property_id", pid)
-    .in("status", [...ACTIVE_LEASE]);
-  if (lErr) throw toError(lErr);
+  if (directRes.error) throw toError(directRes.error);
+  if (appliedRes.error) throw toError(appliedRes.error);
+  if (linkRes.error) throw toError(linkRes.error);
+  if (leaseTenantRes.error) throw toError(leaseTenantRes.error);
+  if (leasesForPropRes.error) throw toError(leasesForPropRes.error);
 
-  const leaseTenantIds = [
-    ...new Set((leaseRows ?? []).map((r) => String((r as { tenant_id: string }).tenant_id)))
+  const linkedTenantIds = [
+    ...new Set((linkRes.data ?? []).map((r) => String((r as { tenant_id: string }).tenant_id)))
   ].filter(Boolean);
 
-  let viaLease: Record<string, unknown>[] = [];
-  if (leaseTenantIds.length) {
-    const { data: ltRows, error: ltErr } = await sb.from("tenants").select("*").eq("user_id", uid).in("id", leaseTenantIds);
+  const leaseTenantIds = [
+    ...new Set((leaseTenantRes.data ?? []).map((r) => String((r as { tenant_id: string }).tenant_id)))
+  ].filter(Boolean);
+
+  const extraTenantIds = [...new Set([...linkedTenantIds, ...leaseTenantIds])].filter(
+    (tid) =>
+      !(directRes.data ?? []).some((r) => String((r as { id: string }).id) === tid) &&
+      !(appliedRes.data ?? []).some((r) => String((r as { id: string }).id) === tid)
+  );
+
+  let extraRows: Record<string, unknown>[] = [];
+  if (extraTenantIds.length) {
+    const { data: ltRows, error: ltErr } = await sb.from("tenants").select("*").eq("user_id", uid).in("id", extraTenantIds);
     if (ltErr) throw toError(ltErr);
-    viaLease = (ltRows ?? []) as Record<string, unknown>[];
+    extraRows = (ltRows ?? []) as Record<string, unknown>[];
   }
 
   const byId = new Map<string, Record<string, unknown>>();
-  for (const r of [...(directRows ?? []), ...viaLease]) {
+  for (const r of [...(directRes.data ?? []), ...(appliedRes.data ?? []), ...extraRows]) {
     byId.set(String((r as { id: string }).id), r as Record<string, unknown>);
   }
 
-  const { data: leasesForProp, error: lpErr } = await sb
-    .from("leases")
-    .select("*")
-    .eq("user_id", uid)
-    .eq("property_id", pid)
-    .order("created_at", { ascending: false });
-  if (lpErr) throw toError(lpErr);
-
   const leasesByTenant = new Map<string, Record<string, unknown>[]>();
-  for (const lr of leasesForProp ?? []) {
+  for (const lr of leasesForPropRes.data ?? []) {
     const row = lr as Record<string, unknown>;
     const tid = String(row.tenant_id);
     const list = leasesByTenant.get(tid) ?? [];
@@ -199,6 +225,18 @@ export async function listTenantsEligibleForProperty(
     .in("status", [...ACTIVE_LEASE]);
   if (lErr) throw toError(lErr);
 
+  const { data: unitLinks, error: ulErr } = await sb
+    .from("tenant_unit_links")
+    .select("tenant_id, property_id")
+    .eq("user_id", uid)
+    .eq("property_id", pid)
+    .not("status", "in", '("removed","ended")');
+  if (ulErr) throw toError(ulErr);
+
+  const linkedToPropertyViaUnit = new Set(
+    (unitLinks ?? []).map((r) => String((r as { tenant_id: string }).tenant_id))
+  );
+
   const activeLeasePropertyByTenant = new Map<string, string>();
   for (const lr of activeLeases ?? []) {
     const row = lr as { tenant_id: string; property_id: string };
@@ -207,11 +245,14 @@ export async function listTenantsEligibleForProperty(
 
   return (allRows ?? [])
     .filter((row) => {
-      const r = row as { id: string; property_id: string | null };
+      const r = row as { id: string; property_id: string | null; applied_property_id?: string | null };
       const tid = String(r.id);
       const linkedProperty = r.property_id != null ? String(r.property_id) : null;
+      const appliedProperty = r.applied_property_id != null ? String(r.applied_property_id) : null;
 
       if (linkedProperty != null && linkedProperty !== pid) return false;
+
+      if (appliedProperty != null && appliedProperty !== pid && !linkedToPropertyViaUnit.has(tid)) return false;
 
       const activeOn = activeLeasePropertyByTenant.get(tid);
       if (activeOn && activeOn !== pid) return false;
@@ -304,6 +345,8 @@ export async function updateTenant(id: string | number, input: Record<string, un
   const cur = snakeRowToCamel(existing as Record<string, unknown>) as Record<string, unknown>;
   delete cur.property;
   delete cur.properties;
+  delete cur.appliedProperty;
+  delete cur.applied_property;
   const merged = { ...cur, ...input };
   const fields = tenantToDb(merged);
 

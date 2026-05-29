@@ -55,7 +55,7 @@ export function tenantToDb(input: Record<string, unknown>): Record<string, unkno
   return out;
 }
 
-/** Flat tenant row + optional embedded `properties` join → camelCase `property`. */
+/** Flat tenant row + optional embedded property joins → camelCase `property` / `appliedProperty`. */
 export function dbToTenant(row: Record<string, unknown>): Record<string, unknown> {
   const c = { ...snakeRowToCamel(row) } as Record<string, unknown>;
   const rel = c.properties ?? c.property;
@@ -65,5 +65,14 @@ export function dbToTenant(row: Record<string, unknown>): Record<string, unknown
     c.property = snakeRowToCamel(rel[0] as Record<string, unknown>);
   }
   delete c.properties;
+
+  const appliedRel = c.appliedProperty ?? c.applied_property;
+  if (appliedRel && typeof appliedRel === "object" && !Array.isArray(appliedRel)) {
+    c.appliedProperty = snakeRowToCamel(appliedRel as Record<string, unknown>);
+  } else if (Array.isArray(appliedRel) && appliedRel[0] && typeof appliedRel[0] === "object") {
+    c.appliedProperty = snakeRowToCamel(appliedRel[0] as Record<string, unknown>);
+  }
+  delete c.applied_property;
+
   return c;
 }

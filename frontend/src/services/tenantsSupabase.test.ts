@@ -103,6 +103,17 @@ describe("tenantsSupabase", () => {
           }))
         };
       }
+      if (table === "tenant_unit_links") {
+        return {
+          select: vi.fn(() => ({
+            eq: vi.fn(() => ({
+              eq: vi.fn(() => ({
+                not: vi.fn(() => Promise.resolve({ data: [], error: null }))
+              }))
+            }))
+          }))
+        };
+      }
       return { select: vi.fn() };
     });
 
@@ -111,46 +122,115 @@ describe("tenantsSupabase", () => {
     expect(rows.map((r) => r.id)).not.toContain("t-other");
   });
 
-  it("listTenantsForProperty runs direct tenants + lease lookups", async () => {
+  it("listTenantsForProperty includes applied-property and unit-linked tenants", async () => {
     getUser.mockResolvedValue({ data: { user: { id: userId } }, error: null });
-    from.mockImplementation(() => {
-      const n = from.mock.calls.length;
-      if (n === 1) {
+    const appliedTenant = {
+      ...tenantRowSnake,
+      id: "t-applied",
+      property_id: null,
+      applied_property_id: propertyId
+    };
+    from.mockImplementation((table: string) => {
+      if (table === "tenants") {
         return {
           select: vi.fn(() => ({
             eq: vi.fn(() => ({
-              eq: vi.fn(() => ({
-                order: vi.fn(() => Promise.resolve({ data: [{ ...tenantRowSnake, property_id: propertyId }], error: null }))
-              }))
-            }))
-          }))
-        };
-      }
-      if (n === 2) {
-        return {
-          select: vi.fn(() => ({
-            eq: vi.fn(() => ({
-              eq: vi.fn(() => ({
+              eq: vi.fn((col2: string) => ({
+                order: vi.fn(() =>
+                  Promise.resolve({
+                    data: col2 === "applied_property_id" ? [appliedTenant] : [],
+                    error: null
+                  })
+                ),
                 in: vi.fn(() => Promise.resolve({ data: [], error: null }))
               }))
             }))
           }))
         };
       }
-      return {
-        select: vi.fn(() => ({
-          eq: vi.fn(() => ({
+      if (table === "tenant_unit_links") {
+        return {
+          select: vi.fn(() => ({
             eq: vi.fn(() => ({
-              order: vi.fn(() => Promise.resolve({ data: [], error: null }))
+              eq: vi.fn(() => ({
+                not: vi.fn(() => Promise.resolve({ data: [], error: null }))
+              }))
             }))
           }))
-        }))
-      };
+        };
+      }
+      if (table === "leases") {
+        return {
+          select: vi.fn(() => ({
+            eq: vi.fn(() => ({
+              eq: vi.fn(() => ({
+                in: vi.fn(() => Promise.resolve({ data: [], error: null })),
+                order: vi.fn(() => Promise.resolve({ data: [], error: null }))
+              }))
+            }))
+          }))
+        };
+      }
+      return { select: vi.fn() };
+    });
+
+    const rows = await listTenantsForProperty(propertyId);
+    expect(rows.map((r) => r.id)).toContain("t-applied");
+  });
+
+  it("listTenantsForProperty runs direct tenants + lease lookups", async () => {
+    getUser.mockResolvedValue({ data: { user: { id: userId } }, error: null });
+    from.mockImplementation((table: string) => {
+      if (table === "tenants") {
+        return {
+          select: vi.fn(() => ({
+            eq: vi.fn(() => ({
+              eq: vi.fn((col2: string) => ({
+                order: vi.fn(() =>
+                  Promise.resolve({
+                    data:
+                      col2 === "property_id"
+                        ? [{ ...tenantRowSnake, property_id: propertyId }]
+                        : [],
+                    error: null
+                  })
+                ),
+                in: vi.fn(() => Promise.resolve({ data: [], error: null }))
+              }))
+            }))
+          }))
+        };
+      }
+      if (table === "tenant_unit_links") {
+        return {
+          select: vi.fn(() => ({
+            eq: vi.fn(() => ({
+              eq: vi.fn(() => ({
+                not: vi.fn(() => Promise.resolve({ data: [], error: null }))
+              }))
+            }))
+          }))
+        };
+      }
+      if (table === "leases") {
+        return {
+          select: vi.fn(() => ({
+            eq: vi.fn(() => ({
+              eq: vi.fn(() => ({
+                in: vi.fn(() => Promise.resolve({ data: [], error: null })),
+                order: vi.fn(() => Promise.resolve({ data: [], error: null }))
+              }))
+            }))
+          }))
+        };
+      }
+      return { select: vi.fn() };
     });
 
     const rows = await listTenantsForProperty(propertyId);
     expect(from).toHaveBeenCalledWith("tenants");
     expect(from).toHaveBeenCalledWith("leases");
+    expect(from).toHaveBeenCalledWith("tenant_unit_links");
     expect(rows).toHaveLength(1);
     expect(rows[0].currentLease).toBeNull();
   });
@@ -455,5 +535,10 @@ describe("tenantsSupabase", () => {
     const round = dbToTenant({ ...tenantRowSnake, first_name: "A", last_name: "B" });
     expect(round.firstName).toBe("A");
     expect(round.lastName).toBe("B");
+    const withApplied = dbToTenant({
+      ...tenantRowSnake,
+      applied_property: { id: propertyId, name: "Flat 1" }
+    });
+    expect(withApplied.appliedProperty).toEqual(expect.objectContaining({ id: propertyId, name: "Flat 1" }));
   });
 });
