@@ -617,21 +617,22 @@ export function WorkspaceStatementTab({
               </button>
             </div>
           </div>
-          <table className="pg-statement-table">
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Description</th>
-                <th>Type</th>
-                <th className="pg-statement-num">Debit</th>
-                <th className="pg-statement-num">Credit</th>
-                <th>Status</th>
-                <th>Source</th>
-                <th className="pg-statement-table__actions">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r: Record<string, unknown>) => {
+          <div className="pg-tstmt-table-wrap">
+            <table className="pg-tstmt-table pg-statement-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Description</th>
+                  <th>Type</th>
+                  <th className="pg-statement-num">Debit</th>
+                  <th className="pg-statement-num">Credit</th>
+                  <th>Status</th>
+                  <th>Source</th>
+                  <th className="pg-statement-table__actions">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((r: Record<string, unknown>) => {
                 const creditClass = r.source === "INVOICE" && r.status !== "PAID" ? " pg-statement-credit-unpaid" : "";
                 const sourceId = rowSourceId(r);
                 const rowKey = r.id != null ? String(r.id) : `${String(r.source)}-${String(r.date)}-${String(r.description)}`;
@@ -924,25 +925,26 @@ export function WorkspaceStatementTab({
                   ) : null}
                   </Fragment>
                 );
-              })}
-            </tbody>
-            <tfoot>
-              <tr>
-                <td colSpan={3} style={{ fontWeight: 800 }}>
-                  Totals
-                </td>
-                <td className="pg-statement-num" style={{ fontWeight: 800 }}>
-                  {fmtZar(periodTotals.debit)}
-                </td>
-                <td className="pg-statement-num" style={{ fontWeight: 800 }}>
-                  {fmtZar(periodTotals.credit)}
-                </td>
-                <td colSpan={3} className="pg-muted" style={{ fontSize: 12 }}>
-                  Net: {fmtZar(periodTotals.net)} (paid credits − debits)
-                </td>
-              </tr>
-            </tfoot>
-          </table>
+                })}
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td colSpan={3} style={{ fontWeight: 800 }}>
+                    Totals
+                  </td>
+                  <td className="pg-statement-num" style={{ fontWeight: 800 }}>
+                    {fmtZar(periodTotals.debit)}
+                  </td>
+                  <td className="pg-statement-num" style={{ fontWeight: 800 }}>
+                    {fmtZar(periodTotals.credit)}
+                  </td>
+                  <td colSpan={3} className="pg-muted" style={{ fontSize: 12 }}>
+                    Net: {fmtZar(periodTotals.net)} (paid credits − debits)
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
         </div>
       ) : null}
 

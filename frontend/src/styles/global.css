@@ -2359,21 +2359,20 @@ textarea {
 .pg-statement-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 13px;
+  font-size: 0.875rem;
   color: var(--text-primary);
 }
 .pg-statement-table th,
 .pg-statement-table td {
-  padding: 12px 14px;
+  padding: 12px;
   text-align: left;
   border-bottom: 1px solid var(--border-soft);
 }
 .pg-statement-table th {
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--text-secondary);
-  background: var(--surface-muted);
-  border-bottom: 1px solid var(--border-soft);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: transparent;
   white-space: nowrap;
 }
 .pg-statement-table tbody tr:hover td {
