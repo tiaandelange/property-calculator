@@ -27,6 +27,8 @@ export type PropertyFinancialOverview = {
   monthlyIncome: number;
   monthlyBondPayment: number;
   monthlyAdditionalBondPayment: number;
+  monthlyOperatingExpenses: number;
+  monthlyDebtService: number;
   totalRecurringExpenses: number;
   netCashFlow: number;
   occupancyStatus: string;
@@ -146,14 +148,17 @@ export function buildPropertyFinancialOverview({
   const bondRows = mapPropertyBondPayment(pf as Record<string, unknown>, String(pf.name ?? "Property"), {
     statementBondFinance: (statement?.bondFinance as Record<string, unknown> | undefined) ?? null
   });
+  const expectedExpenses = n(pf.expectedMonthlyExpenses);
+
   const monthlyBondPayment = bondRows[0]?.monthlyPayment ?? 0;
   const monthlyAdditionalBondPayment = Math.max(0, n(additionalBondMonthlyTotal));
-  const monthlyBondPaymentTotal = monthlyBondPayment + monthlyAdditionalBondPayment;
+  const monthlyDebtService = monthlyBondPayment + monthlyAdditionalBondPayment;
 
-  const totalRecurringExpenses = recurringOnly + monthlyBondPaymentTotal;
-  const expectedExpenses = n(pf.expectedMonthlyExpenses);
-  const totalMonthlyExpenses = totalRecurringExpenses > 0 ? totalRecurringExpenses : expectedExpenses;
+  const monthlyOperatingExpenses = recurringOnly > 0 ? recurringOnly : expectedExpenses;
+  const totalRecurringExpenses = monthlyOperatingExpenses;
+  const totalMonthlyExpenses = monthlyOperatingExpenses + monthlyDebtService;
 
+  const netOperatingIncome = monthlyIncome - monthlyOperatingExpenses;
   const netCashFlow = monthlyIncome - totalMonthlyExpenses;
   const purchase = n(pf.purchasePrice);
   const value = n(pf.currentEstimatedValue);
@@ -224,13 +229,15 @@ export function buildPropertyFinancialOverview({
     monthlyIncome,
     monthlyBondPayment,
     monthlyAdditionalBondPayment,
+    monthlyOperatingExpenses,
+    monthlyDebtService,
     totalRecurringExpenses,
     netCashFlow,
     occupancyStatus,
     occupancyHelper,
     grossRentalIncome: monthlyIncome,
     totalMonthlyExpenses,
-    netOperatingIncome: monthlyIncome - totalMonthlyExpenses,
+    netOperatingIncome,
     estimatedCashFlow: netCashFlow,
     annualYieldPercent,
     leaseStatus,

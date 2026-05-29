@@ -27,7 +27,7 @@ export function ExpenseCategoriesCard({ overview }: { overview: PropertyFinancia
       <header className="pg-pfin-section__head">
         <h2 className="pg-pfin-section__title">Expense Categories</h2>
         <p className="pg-pfin-section__desc">
-          Recurring expenses and bond payment grouped by category (monthly equivalent).
+          Operating and debt expenses grouped by category (monthly equivalent). Bond slices are debt service, not NOI.
         </p>
       </header>
 

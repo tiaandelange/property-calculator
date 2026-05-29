@@ -31,9 +31,9 @@ export function PropertyFinancialMetricCards({
     },
     {
       key: "expenses",
-      label: "Total Recurring Expenses",
+      label: "Operating Expenses",
       value: fmtZar(overview.totalRecurringExpenses),
-      helper: "Recurring expenses incl. bond",
+      helper: "Operating expenses excl. debt",
       icon: Receipt,
       accent: "warning" as const
     },
@@ -41,7 +41,7 @@ export function PropertyFinancialMetricCards({
       key: "cashflow",
       label: "Net Cash Flow",
       value: fmtZar(overview.netCashFlow),
-      helper: "Income after expenses",
+      helper: "Income after operating & debt",
       icon: TrendingUp,
       accent: cashAccent
     },

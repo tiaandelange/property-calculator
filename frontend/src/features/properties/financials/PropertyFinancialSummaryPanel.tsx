@@ -43,6 +43,16 @@ export function PropertyFinancialSummaryPanel({
             <dd className="pg-pfin-summary__pos">{fmtZar(overview.grossRentalIncome)}</dd>
           </div>
           <div>
+            <dt>Operating expenses</dt>
+            <dd className="pg-pfin-summary__neg">{fmtZar(overview.monthlyOperatingExpenses)}</dd>
+          </div>
+          <div>
+            <dt>Net operating income</dt>
+            <dd className={overview.netOperatingIncome >= 0 ? "pg-pfin-summary__pos" : "pg-pfin-summary__neg"}>
+              {fmtZar(overview.netOperatingIncome)}
+            </dd>
+          </div>
+          <div>
             <dt>Bond payment</dt>
             <dd className="pg-pfin-summary__neg">{fmtZar(overview.monthlyBondPayment)}</dd>
           </div>
@@ -52,16 +62,6 @@ export function PropertyFinancialSummaryPanel({
               <dd className="pg-pfin-summary__neg">{fmtZar(overview.monthlyAdditionalBondPayment)}</dd>
             </div>
           ) : null}
-          <div>
-            <dt>Total monthly expenses</dt>
-            <dd className="pg-pfin-summary__neg">{fmtZar(overview.totalMonthlyExpenses)}</dd>
-          </div>
-          <div>
-            <dt>Net operating income</dt>
-            <dd className={overview.netOperatingIncome >= 0 ? "pg-pfin-summary__pos" : "pg-pfin-summary__neg"}>
-              {fmtZar(overview.netOperatingIncome)}
-            </dd>
-          </div>
           <div>
             <dt>Estimated cash flow</dt>
             <dd className={overview.estimatedCashFlow >= 0 ? "pg-pfin-summary__pos" : "pg-pfin-summary__neg"}>
