@@ -78,17 +78,17 @@ describe("tenantsSupabase", () => {
     expect(rows[0].firstName).toBe("Jane");
   });
 
-  it("listTenantsEligibleForProperty returns all tenants without active lease elsewhere", async () => {
+  it("listTenantsEligibleForProperty returns global tenants without an active lease", async () => {
     getUser.mockResolvedValue({ data: { user: { id: userId } }, error: null });
-    const unassigned = { ...tenantRowSnake, id: "t-unassigned", property_id: null };
-    const otherProperty = { ...tenantRowSnake, id: "t-other", property_id: "other-prop" };
+    const applicant = { ...tenantRowSnake, id: "t-applicant", status: "APPLICANT", property_id: null };
+    const past = { ...tenantRowSnake, id: "t-past", status: "PAST", property_id: null };
     from.mockImplementation((table: string) => {
       if (table === "tenants") {
         return {
           select: vi.fn(() => ({
             eq: vi.fn(() => ({
               order: vi.fn(() =>
-                Promise.resolve({ data: [unassigned, otherProperty, { ...tenantRowSnake, property_id: propertyId }], error: null })
+                Promise.resolve({ data: [applicant, past, { ...tenantRowSnake, property_id: propertyId }], error: null })
               )
             }))
           }))
@@ -105,8 +105,44 @@ describe("tenantsSupabase", () => {
     });
 
     const rows = await listTenantsEligibleForProperty(propertyId);
-    expect(rows.map((r) => r.id)).toEqual(expect.arrayContaining(["t-unassigned", tenantId]));
-    expect(rows.map((r) => r.id)).toContain("t-other");
+    expect(rows.map((r) => r.id)).toEqual(expect.arrayContaining(["t-applicant", tenantId]));
+    expect(rows.map((r) => r.id)).not.toContain("t-past");
+  });
+
+  it("listTenantsEligibleForProperty excludes tenants with an active lease", async () => {
+    getUser.mockResolvedValue({ data: { user: { id: userId } }, error: null });
+    from.mockImplementation((table: string) => {
+      if (table === "tenants") {
+        return {
+          select: vi.fn(() => ({
+            eq: vi.fn(() => ({
+              order: vi.fn(() => Promise.resolve({ data: [tenantRowSnake], error: null }))
+            }))
+          }))
+        };
+      }
+      if (table === "lease_tenants") {
+        return {
+          select: vi.fn(() => ({
+            eq: vi.fn(() =>
+              Promise.resolve({
+                data: [
+                  {
+                    tenant_id: tenantId,
+                    leases: { property_id: propertyId, status: "ACTIVE", cancellation_date: null }
+                  }
+                ],
+                error: null
+              })
+            )
+          }))
+        };
+      }
+      return { select: vi.fn() };
+    });
+
+    const rows = await listTenantsEligibleForProperty(propertyId);
+    expect(rows).toHaveLength(0);
   });
 
   it("listTenantsForProperty derives tenants from leases and lease_tenants", async () => {
@@ -186,7 +222,7 @@ describe("tenantsSupabase", () => {
     expect(currentLease).toBeNull();
   });
 
-  it("createTenant sets user_id on insert", async () => {
+  it("createTenant sets user_id on insert and defaults status to ACTIVE", async () => {
     getUser.mockResolvedValue({ data: { user: { id: userId } }, error: null });
     const insert = vi.fn(() => ({
       select: vi.fn(() => ({
@@ -196,7 +232,7 @@ describe("tenantsSupabase", () => {
     from.mockReturnValue({ insert });
 
     const created = await createTenant({ firstName: "Jane", lastName: "Doe" });
-    expect(insert).toHaveBeenCalledWith(expect.objectContaining({ user_id: userId }));
+    expect(insert).toHaveBeenCalledWith(expect.objectContaining({ user_id: userId, status: "ACTIVE" }));
     expect(created.id).toBe(tenantId);
   });
 

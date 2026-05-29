@@ -175,13 +175,14 @@ export async function listTenantsForProperty(propertyId: string | number): Promi
 }
 
 /**
- * Global tenants eligible for a new lease on this property (not blocked by active lease elsewhere).
+ * Global tenants eligible for a new lease on this property.
+ * Uses the single tenants directory — excludes past tenants and anyone with an active lease.
  */
 export async function listTenantsEligibleForProperty(
   propertyId: string | number
 ): Promise<Record<string, unknown>[]> {
   const uid = await requireUserId();
-  const pid = String(propertyId);
+  void propertyId;
   const sb = getSupabase();
 
   const { data: allRows, error } = await sb
@@ -197,7 +198,7 @@ export async function listTenantsEligibleForProperty(
     .eq("user_id", uid);
   if (ltErr) throw toError(ltErr);
 
-  const activeLeasePropertyByTenant = new Map<string, string>();
+  const tenantsWithActiveLease = new Set<string>();
   for (const row of activeLeaseTenants ?? []) {
     const r = row as { tenant_id: string; leases?: { property_id?: string; status?: string; cancellation_date?: string | null } | { property_id?: string; status?: string; cancellation_date?: string | null }[] };
     const leaseRaw = r.leases;
@@ -206,23 +207,17 @@ export async function listTenantsEligibleForProperty(
     const st = String(lease.status ?? "").toUpperCase();
     if (st !== "ACTIVE" && st !== "MONTH_TO_MONTH") continue;
     if (lease.cancellation_date != null) continue;
-    activeLeasePropertyByTenant.set(String(r.tenant_id), String(lease.property_id));
+    tenantsWithActiveLease.add(String(r.tenant_id));
   }
 
   return (allRows ?? [])
     .filter((row) => {
-      const tid = String((row as { id: string }).id);
-      const activeOn = activeLeasePropertyByTenant.get(tid);
-      if (activeOn && activeOn !== pid) return false;
-      return true;
+      const r = row as { id: string; status?: string };
+      const status = String(r.status ?? "ACTIVE").toUpperCase();
+      if (status === "PAST") return false;
+      return !tenantsWithActiveLease.has(String(r.id));
     })
     .map((row) => dbToTenant(row as Record<string, unknown>));
-}
-
-/** Active global tenants available for a new lease on this property. */
-export async function listActiveTenantsForLease(propertyId: string | number): Promise<Record<string, unknown>[]> {
-  const eligible = await listTenantsEligibleForProperty(propertyId);
-  return eligible.filter((t) => String(t.status ?? "ACTIVE").toUpperCase() === "ACTIVE");
 }
 
 /** `GET /tenants/:id` shape: `{ tenant, currentLease }`. */
@@ -269,7 +264,7 @@ export async function createTenant(input: Record<string, unknown>): Promise<Reco
   const fields = tenantToDb(input);
   const { data, error } = await sb
     .from("tenants")
-    .insert({ user_id: uid, ...fields })
+    .insert({ user_id: uid, status: "ACTIVE", ...fields })
     .select(TENANT_SELECT_WITH_PROPERTY)
     .single();
   if (error) throw toError(error);

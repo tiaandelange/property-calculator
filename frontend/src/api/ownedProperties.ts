@@ -148,16 +148,6 @@ export async function getTenantsEligibleForProperty(propertyId: string | number)
   return tenantsSupabase.listTenantsEligibleForProperty(propertyId);
 }
 
-export async function getActiveTenantsForLease(propertyId: string | number) {
-  assertSupabaseConfigured();
-  return tenantsSupabase.listActiveTenantsForLease(propertyId);
-}
-
-export async function createPropertyTenant(propertyId: string | number, payload: Record<string, unknown>) {
-  assertSupabaseConfigured();
-  return tenantsSupabase.createTenantForProperty(propertyId, payload);
-}
-
 export async function linkTenantToProperty(propertyId: string | number, tenantId: string | number) {
   assertSupabaseConfigured();
   return tenantsSupabase.linkTenantToProperty(propertyId, tenantId);

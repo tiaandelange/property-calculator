@@ -3,7 +3,7 @@ import { Helmet } from "react-helmet-async";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
   createLease,
-  getActiveTenantsForLease,
+  getTenantsEligibleForProperty,
   getProperties,
   listPropertyUnits,
   propertyApiErrorMessage
@@ -114,7 +114,7 @@ export function LeaseFormPage() {
       try {
         const [unitRows, tenantRows] = await Promise.all([
           listPropertyUnits(propertyId),
-          getActiveTenantsForLease(propertyId)
+          getTenantsEligibleForProperty(propertyId)
         ]);
         const active = unitRows.filter((u) => u.isActive !== false);
         setUnits(active);
@@ -340,7 +340,7 @@ export function LeaseFormPage() {
                 </select>
                 {!tenantsLoading && propertyId && tenants.length === 0 ? (
                   <p className="pg-muted" style={{ fontSize: 12, margin: "6px 0 0" }}>
-                    No active tenants yet.{" "}
+                    No tenants yet.{" "}
                     <Link className="pg-link" to="/tenants/new">
                       Create a tenant
                     </Link>{" "}

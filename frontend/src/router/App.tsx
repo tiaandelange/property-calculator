@@ -13,7 +13,6 @@ import { SubscriptionResultPage } from "../pages/SubscriptionResultPage";
 import { RequireAuth } from "../components/auth/RequireAuth";
 import { OwnedPropertyFormPage } from "../pages/OwnedPropertyFormPage";
 import { OwnedPropertyDetailPage } from "../pages/OwnedPropertyDetailPage";
-import { OwnedTenantsPage } from "../pages/OwnedTenantsPage";
 import { OwnedLeasesPage } from "../pages/OwnedLeasesPage";
 import { LeaseFormPage } from "../pages/LeaseFormPage";
 import { FinancialsListPage } from "../pages/FinancialsListPage";
