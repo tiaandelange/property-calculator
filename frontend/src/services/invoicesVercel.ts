@@ -17,6 +17,16 @@ export type GenerateInvoicePdfResponse = {
   error?: string;
 };
 
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  let binary = "";
+  const chunkSize = 8192;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+  }
+  return btoa(binary);
+}
+
 /**
  * Calls `POST /api/invoices/:id/generate-pdf` (Vercel serverless).
  * Requires a Supabase session access token.
@@ -38,6 +48,17 @@ export async function generateInvoicePdfViaVercel(invoiceId: string): Promise<Ge
   if (!res.ok) {
     const msg = await readVercelError(res);
     throw new Error(`${msg} (HTTP ${res.status})`);
+  }
+
+  const contentType = (res.headers.get("content-type") ?? "").toLowerCase();
+  if (contentType.includes("application/pdf")) {
+    const pdfBase64 = arrayBufferToBase64(await res.arrayBuffer());
+    return {
+      invoiceId: res.headers.get("X-Invoice-Id") ?? invoiceId,
+      hasPdf: false,
+      ephemeral: true,
+      pdfBase64
+    };
   }
 
   const json = (await res.json().catch(() => ({}))) as GenerateInvoicePdfResponse & { error?: string };

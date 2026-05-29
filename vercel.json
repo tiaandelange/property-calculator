@@ -14,14 +14,15 @@
   ],
 
   "functions": {
-    "frontend/api/reports/generate.ts": {
-      "includeFiles": "frontend/assets/fonts/pdfmake/**"
+    "frontend/api/invoices/**/*.ts": {
+      "includeFiles": "frontend/assets/fonts/pdfmake/**",
+      "maxDuration": 60,
+      "memory": 1024
     },
-    "frontend/api/reports/pdf-smoke-test.ts": {
-      "includeFiles": "frontend/assets/fonts/pdfmake/**"
-    },
-    "frontend/api/invoices/[id]/generate-pdf.ts": {
-      "includeFiles": "frontend/assets/fonts/pdfmake/**"
+    "frontend/api/reports/**/*.ts": {
+      "includeFiles": "frontend/assets/fonts/pdfmake/**",
+      "maxDuration": 60,
+      "memory": 1024
     }
   },
 

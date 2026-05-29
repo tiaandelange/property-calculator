@@ -59,6 +59,18 @@ function paymentReferenceFromProfile(raw: unknown, invoiceNumber: string): strin
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
+  try {
+    await handleGenerateInvoicePdf(req, res);
+  } catch (e: unknown) {
+    if (res.headersSent) return;
+    console.error("[invoices/generate-pdf] unhandled", e);
+    res.status(500).json({
+      error: e instanceof Error ? e.message : "Failed to generate invoice PDF."
+    });
+  }
+}
+
+async function handleGenerateInvoicePdf(req: VercelRequest, res: VercelResponse): Promise<void> {
   if (req.method === "OPTIONS") {
     res.status(204).end();
     return;
@@ -328,13 +340,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
           .eq("id", invoiceId)
           .eq("user_id", uid);
       }
-      res.status(200).json({
-        message: "Draft invoice PDF generated (not stored)",
-        invoiceId,
-        hasPdf: false,
-        ephemeral: true,
-        pdfBase64: pdfBuffer.toString("base64")
-      });
+      const safeName = invoiceNumber.replace(/[^\w.-]+/g, "_") || "invoice";
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", `inline; filename="${safeName}.pdf"`);
+      res.setHeader("X-Invoice-Id", invoiceId);
+      res.setHeader("X-Invoice-Ephemeral", "1");
+      res.status(200).send(pdfBuffer);
       return;
     }
 
