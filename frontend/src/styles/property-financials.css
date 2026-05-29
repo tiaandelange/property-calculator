@@ -741,6 +741,47 @@
   }
 }
 
+/* Link Tenants — unit cards (Recurring Expenses theme) */
+.pg-pfin-unit-card {
+  margin-bottom: 16px;
+}
+
+.pg-pfin-unit-card__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding-bottom: 12px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--border-soft);
+  border-left: 3px solid color-mix(in srgb, var(--primary) 55%, transparent);
+  padding-left: 12px;
+}
+
+.pg-pfin-unit-card__title {
+  margin: 0 0 4px;
+  font-size: 1.05rem;
+  font-weight: 650;
+  color: var(--text-primary);
+}
+
+.pg-pfin-unit-card__meta {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: 8px;
+  font-size: 0.85rem;
+}
+
+@media (max-width: 767px) {
+  .pg-pfin-unit-card__head .pg-pfin-add-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
 @media (max-width: 900px) {
   .pg-pfin-metrics:not(.pg-pfin-metrics--compact) {
     grid-template-columns: repeat(2, minmax(0, 1fr));

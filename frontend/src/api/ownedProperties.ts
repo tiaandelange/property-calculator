@@ -1,6 +1,7 @@
 import { assertSupabaseConfigured } from "../lib/supabaseClient";
 import * as propertiesSupabase from "../services/propertiesSupabase";
 import * as propertyUnitsSupabase from "../services/propertyUnitsSupabase";
+import * as tenantUnitLinksSupabase from "../services/tenantUnitLinksSupabase";
 import * as tenantsSupabase from "../services/tenantsSupabase";
 import * as leasesSupabase from "../services/leasesSupabase";
 import { buildLeaseDirectory } from "../features/leases/leaseDirectoryAdapter";
@@ -79,6 +80,26 @@ export async function listPropertyUnits(propertyId: string | number) {
 export async function syncPropertyUnits(propertyId: string | number, units: Parameters<typeof propertyUnitsSupabase.syncPropertyUnits>[1]) {
   assertSupabaseConfigured();
   return propertyUnitsSupabase.syncPropertyUnits(String(propertyId), units);
+}
+
+export async function listTenantUnitLinks(propertyId: string | number) {
+  assertSupabaseConfigured();
+  return tenantUnitLinksSupabase.listTenantUnitLinksForProperty(String(propertyId));
+}
+
+export async function createTenantUnitLink(payload: tenantUnitLinksSupabase.CreateTenantUnitLinkInput) {
+  assertSupabaseConfigured();
+  return tenantUnitLinksSupabase.createTenantUnitLink(payload);
+}
+
+export async function updateTenantUnitLink(linkId: string, payload: tenantUnitLinksSupabase.UpdateTenantUnitLinkInput) {
+  assertSupabaseConfigured();
+  return tenantUnitLinksSupabase.updateTenantUnitLink(linkId, payload);
+}
+
+export async function removeTenantUnitLink(linkId: string) {
+  assertSupabaseConfigured();
+  return tenantUnitLinksSupabase.removeTenantUnitLink(linkId);
 }
 
 export async function getTenants() {

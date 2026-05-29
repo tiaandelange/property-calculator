@@ -1,12 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
-import { ExternalLink, Plus, Trash2 } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 import { Container } from "../components/ui/Container";
 import { Section } from "../components/ui/Section";
 import { Card } from "../components/ui/Card";
-import { Input } from "../components/ui/Input";
-import { ModalOverlay, ModalPanel } from "../components/ui/Modal";
 import {
   cancelLease,
   createPropertyIncome,
@@ -15,12 +13,8 @@ import {
   getPropertyTenants,
   getPropertyStatement,
   getPropertyWorkspaceReports,
-  getTenants,
   getPortfolioDashboardSummary,
-  getTenantsEligibleForProperty,
-  linkTenantToProperty,
-  updateLease,
-  unlinkTenantFromProperty
+  updateLease
 } from "../api/ownedProperties";
 import { WorkspaceTabs } from "../components/workspace/WorkspaceTabs";
 import { invalidatePropertyWorkspace } from "../features/properties/invalidate";
@@ -28,6 +22,7 @@ import { usePropertyWorkspaceRefresh } from "../features/properties/usePropertyW
 import { WorkspaceFinancialsTab } from "../features/properties/workspace/WorkspaceFinancialsTab";
 import { WorkspaceOverviewTab } from "../features/properties/workspace/WorkspaceOverviewTab";
 import { WorkspaceStatementTab } from "../features/properties/workspace/WorkspaceStatementTab";
+import { WorkspaceLinkTenantsTab } from "../features/properties/link-tenants/WorkspaceLinkTenantsTab";
 
 /** YYYY-MM in the user's local calendar (avoid UTC drift from `toISOString().slice(0, 7)`). */
 function localCalendarMonth(d = new Date()) {
@@ -53,19 +48,20 @@ export function OwnedPropertyDetailPage() {
   const navigate = useNavigate();
   const [data, setData] = useState<any>(null);
   const [error, setError] = useState("");
-  const [allTenants, setAllTenants] = useState<any[]>([]);
-  const [eligibleTenants, setEligibleTenants] = useState<any[]>([]);
   const [perf, setPerf] = useState<any>(null);
-  const [linkTenantId, setLinkTenantId] = useState<string | "">("");
-  const [linkModalOpen, setLinkModalOpen] = useState(false);
-  const [linkSearch, setLinkSearch] = useState("");
-  const [unlinkTenantPending, setUnlinkTenantPending] = useState<any>(null);
   const [stmt, setStmt] = useState<any>(null);
   const [stmtLoading, setStmtLoading] = useState(false);
   const [reportsCatalog, setReportsCatalog] = useState<any>(null);
   const [reportsLoading, setReportsLoading] = useState(false);
   const tabRaw = useMemo(() => new URLSearchParams(search).get("tab") ?? "overview", [search]);
-  const tab = tabRaw === "lease" ? "leases" : tabRaw === "performance" ? "reports" : tabRaw;
+  const tab =
+    tabRaw === "lease"
+      ? "leases"
+      : tabRaw === "performance"
+        ? "reports"
+        : tabRaw === "link-tenants"
+          ? "tenants"
+          : tabRaw;
   const finSub = useMemo(() => new URLSearchParams(search).get("fin") ?? "statement", [search]);
   const prevTabRef = useRef<string | null>(null);
   /** Ignore out-of-order responses when multiple loadAll() runs overlap (fixes stale Overview after Financials edits). */
@@ -130,18 +126,14 @@ export function OwnedPropertyDetailPage() {
         month: summaryMonth,
         bustCache: true
       });
-      const [prop, tenants, dash, ledgerOutcome, propTenants, eligible] = await Promise.all([
+      const [prop, dash, ledgerOutcome, propTenants] = await Promise.all([
         getProperty(id, { bustCache: true, month: summaryMonth }),
-        getTenants(),
         dashPromise,
         ledgerOutcomePromise,
-        getPropertyTenants(id),
-        getTenantsEligibleForProperty(id)
+        getPropertyTenants(id)
       ]);
       if (seq !== loadSeqRef.current) return;
       setData({ ...prop, tenants: propTenants });
-      setAllTenants(tenants);
-      setEligibleTenants(eligible);
       setPerf(dash);
       setStmt((prev: any) => (ledgerOutcome.ok ? ledgerOutcome.ledger : prev));
     } catch (e: any) {
@@ -195,25 +187,6 @@ export function OwnedPropertyDetailPage() {
     if (!cancellationDate) return;
     const cancellationReason = window.prompt("Cancellation reason (optional)", "") ?? undefined;
     await cancelLease(lease.id, { cancellationDate, cancellationReason, cancelledBy: "LANDLORD" });
-    await refreshAfterMutation();
-  };
-
-  const onUnlinkTenant = async (tenantId: string | number) => {
-    if (!id) return;
-    if (!window.confirm("Unlink this tenant from the property? (Active leases may block this.)")) return;
-    try {
-      await unlinkTenantFromProperty(id, tenantId);
-      await refreshAfterMutation();
-    } catch (e: any) {
-      window.alert(e?.response?.data?.message ?? "Failed to unlink tenant.");
-    }
-  };
-
-  const onLinkExistingTenant = async () => {
-    if (!id || !linkTenantId) return;
-    await linkTenantToProperty(id, linkTenantId);
-    setLinkTenantId("");
-    setLinkModalOpen(false);
     await refreshAfterMutation();
   };
 
@@ -282,19 +255,6 @@ export function OwnedPropertyDetailPage() {
       window.alert(e?.response?.data?.message ?? e?.message ?? "Failed to add income.");
     }
   };
-
-  const linkedTenantIds = useMemo(() => new Set((data?.tenants ?? []).map((t: any) => String(t.id))), [data]);
-  const filteredEligibleTenants = useMemo(() => {
-    const q = linkSearch.trim().toLowerCase();
-    const rows = eligibleTenants.filter((t: any) => !linkedTenantIds.has(String(t.id)));
-    if (!q) return rows;
-    return rows.filter((t: any) => {
-      const name = `${t.firstName ?? ""} ${t.lastName ?? ""}`.trim().toLowerCase();
-      const email = String(t.email ?? "").toLowerCase();
-      const phone = String(t.phone ?? "").toLowerCase();
-      return name.includes(q) || email.includes(q) || phone.includes(q);
-    });
-  }, [eligibleTenants, linkSearch, linkedTenantIds]);
 
   return (
     <Section>
@@ -366,86 +326,8 @@ export function OwnedPropertyDetailPage() {
                 <WorkspaceStatementTab propertyId={id} />
               ) : null}
 
-              {tab === "tenants" ? (
-                <div className="pg-workspace-inset-list">
-                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                    <button className="pg-btn pg-btn-primary" type="button" onClick={() => setLinkModalOpen(true)}>
-                      <Plus size={18} style={{ marginRight: 8 }} aria-hidden />
-                      Link New Tenant
-                    </button>
-                    <Link className="pg-btn pg-btn-ghost" to="/tenants">
-                      Open Tenant Directory
-                    </Link>
-                  </div>
-
-                  {(data.tenants?.length ?? 0) ? (
-                    <Card title="Linked tenants">
-                      <div className="pg-tenants-table-wrap">
-                        <table className="pg-tenants-table">
-                          <thead>
-                            <tr>
-                              <th scope="col">Tenant</th>
-                              <th scope="col">Contact</th>
-                              <th scope="col">Lease Status</th>
-                              <th scope="col">
-                                <span className="pg-tenants-sr-only">Actions</span>
-                              </th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {data.tenants.map((t: any) => (
-                              <tr key={t.id}>
-                                <td>
-                                  <div className="pg-tenants-cell-tenant">
-                                    <span className="pg-tenants-avatar" aria-hidden>
-                                      {String(t.firstName ?? "T").slice(0, 1).toUpperCase()}
-                                      {String(t.lastName ?? "").slice(0, 1).toUpperCase()}
-                                    </span>
-                                    <div className="pg-tenants-cell-tenant-text">
-                                      <Link className="pg-tenants-name" to={`/tenants/${t.id}`}>
-                                        {(t.firstName ?? "").trim()} {(t.lastName ?? "").trim()}
-                                      </Link>
-                                      <div className="pg-tenants-sub">{t.email?.trim() || "No email"}</div>
-                                    </div>
-                                  </div>
-                                </td>
-                                <td>
-                                  <div className="pg-tenants-contact">{t.phone?.trim() || "No phone"}</div>
-                                </td>
-                                <td>
-                                  <span className="pg-tenants-sub">{t.currentLease?.displayStatus ?? t.currentLease?.status ?? "No active lease"}</span>
-                                </td>
-                                <td>
-                                  <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
-                                    <Link className="pg-btn pg-btn-ghost" to={`/tenants/${t.id}/edit`}>
-                                      Edit
-                                    </Link>
-                                    <button
-                                      className="pg-btn pg-btn-ghost"
-                                      type="button"
-                                      disabled={tenantIdsWithCurrentLease.has(String(t.id))}
-                                      title={
-                                        tenantIdsWithCurrentLease.has(String(t.id))
-                                          ? "Cancel the current lease before de-linking this tenant."
-                                          : undefined
-                                      }
-                                      onClick={() => setUnlinkTenantPending(t)}
-                                    >
-                                      <Trash2 size={16} style={{ marginRight: 6 }} aria-hidden />
-                                      De-link
-                                    </button>
-                                  </div>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </Card>
-                  ) : (
-                    <div className="pg-muted">No tenant linked to this property yet.</div>
-                  )}
-                </div>
+              {tab === "tenants" && id ? (
+                <WorkspaceLinkTenantsTab propertyId={id} property={data} onRefresh={refreshAfterMutation} />
               ) : null}
 
               {tab === "leases" ? (
@@ -612,107 +494,6 @@ export function OwnedPropertyDetailPage() {
           </>
         ) : null}
       </Container>
-      {linkModalOpen ? (
-        <>
-          <ModalOverlay open onClose={() => setLinkModalOpen(false)} />
-          <div style={{ position: "fixed", inset: 0, display: "grid", placeItems: "center", padding: 16, zIndex: 60 }}>
-            <ModalPanel
-              title="Link tenant"
-              onClose={() => setLinkModalOpen(false)}
-              actions={
-                <button className="pg-btn pg-btn-primary" type="button" onClick={() => void onLinkExistingTenant()} disabled={!linkTenantId}>
-                  Link
-                </button>
-              }
-            >
-              <div style={{ padding: 14, display: "grid", gap: 10 }}>
-                <div className="pg-muted">
-                  Select an existing tenant to link to this property. New tenant profiles are created in the Tenants page.
-                </div>
-                <Input placeholder="Search tenant…" value={linkSearch} onChange={(e) => setLinkSearch(e.target.value)} />
-                <div style={{ maxHeight: "52vh", overflow: "auto" }} className="pg-workspace-inset-list">
-                  {filteredEligibleTenants.length ? (
-                    filteredEligibleTenants.map((t: any) => (
-                      <button
-                        key={t.id}
-                        type="button"
-                        className="pg-workspace-inset"
-                        onClick={() => setLinkTenantId(String(t.id))}
-                        aria-pressed={String(linkTenantId) === String(t.id)}
-                        style={{
-                          textAlign: "left",
-                          width: "100%",
-                          cursor: "pointer",
-                          outline: "none",
-                          border: String(linkTenantId) === String(t.id) ? "1px solid var(--primary-border)" : undefined
-                        }}
-                      >
-                        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
-                          <div>
-                            <div style={{ fontWeight: 700 }}>
-                              {(t.firstName ?? "").trim()} {(t.lastName ?? "").trim()}
-                            </div>
-                            <div className="pg-muted" style={{ fontSize: 13 }}>
-                              {t.email?.trim() || "No email"} {t.phone?.trim() ? `· ${t.phone.trim()}` : ""}
-                            </div>
-                          </div>
-                          {String(linkTenantId) === String(t.id) ? <span className="pg-muted">Selected</span> : null}
-                        </div>
-                      </button>
-                    ))
-                  ) : (
-                    <div className="pg-muted">No eligible tenants found.</div>
-                  )}
-                </div>
-              </div>
-            </ModalPanel>
-          </div>
-        </>
-      ) : null}
-
-      {unlinkTenantPending ? (
-        <>
-          <ModalOverlay open onClose={() => setUnlinkTenantPending(null)} />
-          <div style={{ position: "fixed", inset: 0, display: "grid", placeItems: "center", padding: 16, zIndex: 60 }}>
-            <ModalPanel title="De-link tenant" onClose={() => setUnlinkTenantPending(null)}>
-              <div style={{ padding: 14, display: "grid", gap: 12 }}>
-                <div>
-                  Remove{" "}
-                  <strong>
-                    {unlinkTenantPending.firstName} {unlinkTenantPending.lastName}
-                  </strong>{" "}
-                  from this property?
-                </div>
-                <div className="pg-muted" style={{ fontSize: 13 }}>
-                  This only de-links the tenant from this property. Tenant profiles remain available in the Tenants directory.
-                </div>
-                <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
-                  <button className="pg-btn pg-btn-ghost" type="button" onClick={() => setUnlinkTenantPending(null)}>
-                    Cancel
-                  </button>
-                  <button
-                    className="pg-btn pg-btn-danger"
-                    type="button"
-                    disabled={tenantIdsWithCurrentLease.has(String(unlinkTenantPending.id))}
-                    title={
-                      tenantIdsWithCurrentLease.has(String(unlinkTenantPending.id))
-                        ? "Cancel the current lease before de-linking this tenant."
-                        : undefined
-                    }
-                    onClick={() => {
-                      const tid = unlinkTenantPending.id;
-                      setUnlinkTenantPending(null);
-                      void onUnlinkTenant(tid);
-                    }}
-                  >
-                    De-link tenant
-                  </button>
-                </div>
-              </div>
-            </ModalPanel>
-          </div>
-        </>
-      ) : null}
     </Section>
   );
 }
