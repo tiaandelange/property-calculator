@@ -342,3 +342,84 @@
   margin: 4px 0 0;
   font-weight: 500;
 }
+
+.pg-invoice-line-items {
+  margin-top: 4px;
+}
+
+.pg-invoice-line-items__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.pg-invoice-line-items__table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border-soft);
+  border-radius: 10px;
+}
+
+.pg-invoice-line-items__table {
+  width: 100%;
+  min-width: 640px;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.pg-invoice-line-items__table th,
+.pg-invoice-line-items__table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border-soft);
+  vertical-align: middle;
+}
+
+.pg-invoice-line-items__table th {
+  text-align: left;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: var(--surface-muted);
+}
+
+.pg-invoice-line-items__table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.pg-invoice-line-items__num {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.pg-invoice-line-items__amount {
+  font-weight: 600;
+}
+
+.pg-invoice-line-items__actions {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.pg-invoice-line-items__totals {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  margin-top: 12px;
+  font-size: 14px;
+}
+
+.pg-invoice-line-items__totals > div {
+  display: flex;
+  gap: 16px;
+  align-items: baseline;
+  min-width: 220px;
+  justify-content: space-between;
+}
+
+.pg-invoice-line-items__totals-total strong {
+  font-size: 1.125rem;
+  color: var(--primary);
+}

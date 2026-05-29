@@ -34,8 +34,8 @@ export function isInvoiceTerminal(status: unknown): boolean {
   return ["CANCELLED", "VOID"].includes(normalizeInvoiceStatus(status));
 }
 
-/** Line-item category for tenant utility recovery (credit receivable on statements). */
-export const UTILITY_RECOVERY_CATEGORIES = ["UTILITIES_RECOVERY", "WATER", "OTHER"] as const;
+/** Line-item categories that post as tenant recoveries (invoice-linked credit on statements). */
+export const UTILITY_RECOVERY_CATEGORIES = ["UTILITIES_RECOVERY"] as const;
 
 export type InvoiceListFilters = {
   propertyId?: string;

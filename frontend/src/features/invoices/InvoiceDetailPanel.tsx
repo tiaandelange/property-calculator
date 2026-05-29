@@ -1,5 +1,5 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
-import { Download, ExternalLink, Mail, Plus, Save, Trash2 } from "lucide-react";
+import { Download, ExternalLink, Mail, Save, Trash2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import {
   createPropertyInvoice,
@@ -23,26 +23,16 @@ import {
 } from "./invoiceDirectoryUtils";
 import { InvoiceStatusBadge } from "./InvoiceStatusBadge";
 import { isInvoiceEditable } from "./invoiceFoundation";
+import { InvoiceLineItemsEditor } from "./InvoiceLineItemsEditor";
+import {
+  calcInvoiceSubtotal,
+  emptyInvoiceLine,
+  invoiceLineItemsForSave,
+  mapDbLineItem,
+  sortInvoiceLineItems,
+  type InvoiceLineItemDraft
+} from "./invoiceLineItemUtils";
 import { invoiceDetailPath, invoiceStatementPath } from "./invoiceRoutes";
-
-type LineItem = {
-  description: string;
-  category: string;
-  quantity: number;
-  unitPrice: number;
-  total: number;
-};
-
-const LINE_CATEGORIES = [
-  { value: "RENT", label: "Rent" },
-  { value: "UTILITIES_RECOVERY", label: "Utilities recovery" },
-  { value: "OTHER", label: "Other" }
-] as const;
-
-function emptyLine(defaultRent?: number): LineItem {
-  const amt = defaultRent != null && Number.isFinite(defaultRent) ? defaultRent : 0;
-  return { description: "Monthly Rent", category: "RENT", quantity: 1, unitPrice: amt, total: amt };
-}
 
 function bankingLines(details: unknown): string[] {
   if (!details || typeof details !== "object" || Array.isArray(details)) return [];
@@ -121,7 +111,7 @@ export function InvoiceDetailPanel({
   const [issueDate, setIssueDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [dueDate, setDueDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [notes, setNotes] = useState("");
-  const [lineItems, setLineItems] = useState<LineItem[]>([emptyLine(defaultRent)]);
+  const [lineItems, setLineItems] = useState<InvoiceLineItemDraft[]>([emptyInvoiceLine(defaultRent)]);
   const [paymentDetails, setPaymentDetails] = useState<unknown>(invoicePaymentDetails);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -196,15 +186,7 @@ export function InvoiceDetailPanel({
 
       const lines = (inv.lineItems as Array<Record<string, unknown>> | undefined) ?? [];
       if (lines.length) {
-        setLineItems(
-          lines.map((l) => ({
-            description: String(l.description ?? ""),
-            category: String(l.category ?? "OTHER"),
-            quantity: Number(l.quantity ?? 1),
-            unitPrice: Number(l.unitPrice ?? 0),
-            total: Number(l.total ?? 0)
-          }))
-        );
+        setLineItems(sortInvoiceLineItems(lines.map((l, i) => mapDbLineItem(l, i))));
       }
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Could not load invoice.");
@@ -224,7 +206,7 @@ export function InvoiceDetailPanel({
     if (bootstrapTenantEmail != null) setTenantEmail(bootstrapTenantEmail);
     if (bootstrapLeaseId) setLeaseId(bootstrapLeaseId);
     if (defaultRent != null && Number.isFinite(defaultRent)) {
-      setLineItems([emptyLine(defaultRent)]);
+      setLineItems([emptyInvoiceLine(defaultRent)]);
     }
     setLoading(false);
   }, [
@@ -238,24 +220,11 @@ export function InvoiceDetailPanel({
     loadInvoice
   ]);
 
-  const total = useMemo(
-    () => lineItems.reduce((s, li) => s + (Number.isFinite(li.total) ? li.total : li.quantity * li.unitPrice), 0),
-    [lineItems]
-  );
+  const subtotal = useMemo(() => calcInvoiceSubtotal(lineItems), [lineItems]);
+  const total = subtotal;
+  const taxAmount = 0;
 
   const bankLines = bankingLines(paymentDetails);
-
-  const patchLine = (idx: number, patch: Partial<LineItem>) => {
-    if (!editable) return;
-    setLineItems((prev) =>
-      prev.map((row, i) => {
-        if (i !== idx) return row;
-        const next = { ...row, ...patch };
-        next.total = next.quantity * next.unitPrice;
-        return next;
-      })
-    );
-  };
 
   const buildPayload = () => ({
     tenantId,
@@ -263,16 +232,11 @@ export function InvoiceDetailPanel({
     invoiceDate: issueDate,
     issueDate,
     dueDate,
-    status,
     notes: notes.trim() || null,
+    subtotal,
+    taxAmount,
     total,
-    lineItems: lineItems.map((li) => ({
-      description: li.description.trim() || "Line item",
-      category: li.category,
-      quantity: li.quantity,
-      unitPrice: li.unitPrice,
-      total: li.quantity * li.unitPrice
-    }))
+    lineItems: invoiceLineItemsForSave(lineItems)
   });
 
   const saveInvoice = async (): Promise<string | null> => {
@@ -297,7 +261,7 @@ export function InvoiceDetailPanel({
       invalidatePropertyWorkspace(propertyId);
       if (savedId) {
         setSuccess("Invoice saved.");
-        setBalanceDue(total);
+        await loadInvoice(savedId);
         onSaved?.(savedId);
         return savedId;
       }
@@ -575,84 +539,28 @@ export function InvoiceDetailPanel({
           </div>
 
           <div style={{ marginTop: 16 }}>
-            <div className="pg-muted" style={{ marginBottom: 8 }}>
-              Line items
-            </div>
-            {lineItems.map((li, idx) => (
-              <div
-                key={idx}
-                style={{
-                  display: "grid",
-                  gap: 8,
-                  gridTemplateColumns: editable ? "1fr 120px 2fr 80px 120px auto" : "2fr 120px 1fr 80px 120px",
-                  marginBottom: 8,
-                  alignItems: "end"
-                }}
-              >
-                <Field label={idx === 0 ? "Description" : "\u00a0"}>
-                  <Input
-                    value={li.description}
-                    onChange={(e) => patchLine(idx, { description: e.target.value })}
-                    readOnly={!editable}
-                    disabled={!editable}
-                  />
-                </Field>
-                <Field label={idx === 0 ? "Category" : "\u00a0"}>
-                  <select
-                    className="pg-input"
-                    value={li.category}
-                    onChange={(e) => patchLine(idx, { category: e.target.value })}
-                    disabled={!editable}
-                  >
-                    {LINE_CATEGORIES.map((c) => (
-                      <option key={c.value} value={c.value}>
-                        {c.label}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-                <span />
-                <Field label={idx === 0 ? "Qty" : "\u00a0"}>
-                  <Input
-                    type="number"
-                    min={1}
-                    value={li.quantity}
-                    onChange={(e) => patchLine(idx, { quantity: Number(e.target.value) || 1 })}
-                    readOnly={!editable}
-                    disabled={!editable}
-                  />
-                </Field>
-                <Field label={idx === 0 ? "Unit price" : "\u00a0"}>
-                  <Input
-                    type="number"
-                    min={0}
-                    step="0.01"
-                    value={li.unitPrice}
-                    onChange={(e) => patchLine(idx, { unitPrice: Number(e.target.value) || 0 })}
-                    readOnly={!editable}
-                    disabled={!editable}
-                  />
-                </Field>
-                {editable && lineItems.length > 1 ? (
-                  <button
-                    type="button"
-                    className="pg-btn pg-btn-ghost"
-                    aria-label="Remove line"
-                    onClick={() => setLineItems((p) => p.filter((_, i) => i !== idx))}
-                  >
-                    <Trash2 size={18} />
-                  </button>
-                ) : (
-                  <span />
-                )}
+            <InvoiceLineItemsEditor
+              lineItems={lineItems}
+              editable={editable}
+              defaultRent={defaultRent}
+              onChange={setLineItems}
+            />
+            <div className="pg-invoice-line-items__totals">
+              <div>
+                <span className="pg-muted">Subtotal</span>
+                <strong>{fmtZar(subtotal)}</strong>
               </div>
-            ))}
-            {editable ? (
-              <Button type="button" variant="ghost" onClick={() => setLineItems((p) => [...p, emptyLine()])}>
-                <Plus size={16} style={{ marginRight: 6 }} aria-hidden />
-                Add item
-              </Button>
-            ) : null}
+              {taxAmount > 0 ? (
+                <div>
+                  <span className="pg-muted">Tax</span>
+                  <strong>{fmtZar(taxAmount)}</strong>
+                </div>
+              ) : null}
+              <div className="pg-invoice-line-items__totals-total">
+                <span className="pg-muted">Total</span>
+                <strong>{fmtZar(total)}</strong>
+              </div>
+            </div>
           </div>
 
           <Field label="Notes">
