@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState, type MouseEvent } from "react";
 import { useNavigate } from "react-router-dom";
-import { BookOpen, Check, ChevronDown, ExternalLink, Pencil, Plus, Trash2, X } from "lucide-react";
+import { BookOpen, Check, ExternalLink, Pencil, Plus, Trash2, X } from "lucide-react";
 import { getPropertyStatement } from "../../../api/ownedProperties";
 import { Card } from "../../../components/ui/Card";
 import { Input } from "../../../components/ui/Input";
+import { Select } from "../../../components/ui/Select";
 import { ModalOverlay, ModalPanel } from "../../../components/ui/Modal";
 import {
   createPropertyExpense,
@@ -20,8 +21,147 @@ import {
 import { MetricCard } from "../../../components/ui/DashboardKit";
 
 type PeriodPreset = "LAST_MONTH" | "SIX_MONTHS" | "YTD" | "TWELVE_MONTHS" | "PER_YEAR" | "FOREVER";
-const INCOME_STATUS_OPTIONS = ["EXPECTED", "RECEIVED", "CANCELLED"] as const;
-const INVOICE_STATUS_PICKER_OPTIONS = ["DRAFT", "SENT", "UNPAID", "PAID", "OVERDUE", "CANCELLED"] as const;
+type StatementSource = "EXPENSE" | "INCOME" | "INVOICE";
+
+type StatementDraft = {
+  rowKey: string;
+  source: StatementSource;
+  id: string;
+  date: string;
+  description: string;
+  type: string;
+  debit: string;
+  credit: string;
+  reference: string;
+};
+
+const INVOICE_STATUS_UI = [
+  { value: "DRAFT", label: "Draft", api: "DRAFT" },
+  { value: "SENT", label: "Sent", api: "SENT" },
+  { value: "DUE", label: "Due", api: "SENT" },
+  { value: "UNPAID", label: "Unpaid", api: "SENT" },
+  { value: "PARTIALLY_PAID", label: "Partially Paid", api: "SENT" },
+  { value: "PAID", label: "Paid", api: "PAID" },
+  { value: "OVERDUE", label: "Overdue", api: "OVERDUE" },
+  { value: "CANCELLED", label: "Cancelled", api: "CANCELLED" }
+] as const;
+
+const INCOME_STATUS_UI = [
+  { value: "EXPECTED", label: "Due", api: "EXPECTED" },
+  { value: "RECEIVED", label: "Paid", api: "RECEIVED" },
+  { value: "CANCELLED", label: "Cancelled", api: "CANCELLED" }
+] as const;
+
+function stopRowEvent(e: MouseEvent) {
+  e.stopPropagation();
+}
+
+function statementRowKey(source: string, sourceId: string): string {
+  return `${source}:${sourceId}`;
+}
+
+function rowSourceId(r: Record<string, unknown>): string {
+  return r.sourceId != null ? String(r.sourceId) : "";
+}
+
+function isExpectedRentRow(r: Record<string, unknown>): boolean {
+  return (
+    r.source === "INCOME" &&
+    String(r.status ?? "").toUpperCase() === "EXPECTED" &&
+    String(r.incomeCategory ?? "").toUpperCase() === "RENT" &&
+    String(r.leaseId ?? "").trim() !== ""
+  );
+}
+
+function isAmountLocked(r: Record<string, unknown>): boolean {
+  if (r.source === "INVOICE") return false;
+  if (r.source === "EXPENSE") {
+    const cat = String(r.expenseCategory ?? "").toUpperCase();
+    const typ = String(r.type ?? "").toLowerCase();
+    if (cat === "BOND_PAYMENT") return true;
+    if (typ.includes("recurring")) return true;
+  }
+  return false;
+}
+
+function canEditRow(r: Record<string, unknown>): boolean {
+  const sourceId = rowSourceId(r);
+  if (!sourceId) return false;
+  return r.source === "EXPENSE" || r.source === "INCOME" || r.source === "INVOICE";
+}
+
+function invoiceUiStatus(raw: string): string {
+  const s = String(raw ?? "").toUpperCase();
+  if (s === "PAID") return "PAID";
+  if (s === "OVERDUE") return "OVERDUE";
+  if (s === "CANCELLED") return "CANCELLED";
+  if (s === "DRAFT") return "DRAFT";
+  return "SENT";
+}
+
+function invoiceApiStatus(uiValue: string): string {
+  const hit = INVOICE_STATUS_UI.find((o) => o.value === uiValue);
+  return hit?.api ?? uiValue;
+}
+
+function incomeUiStatus(raw: string): string {
+  const s = String(raw ?? "").toUpperCase();
+  if (s === "RECEIVED") return "RECEIVED";
+  if (s === "CANCELLED") return "CANCELLED";
+  return "EXPECTED";
+}
+
+function rowToDraft(r: Record<string, unknown>): StatementDraft {
+  const source = r.source as StatementSource;
+  const id = rowSourceId(r);
+  const isExpectedIncome = source === "INCOME" && String(r.status ?? "").toUpperCase() === "EXPECTED";
+  return {
+    rowKey: statementRowKey(String(r.source), id),
+    source,
+    id,
+    date: String(r.date ?? "").slice(0, 10),
+    description:
+      source === "INCOME"
+        ? String(r.incomeDescriptionPlain ?? r.description ?? "")
+        : source === "INVOICE"
+          ? String(r.invoiceNotes ?? "").trim() || String(r.description ?? "")
+          : String(r.description ?? ""),
+    type:
+      source === "EXPENSE"
+        ? String(r.expenseCategory ?? "OTHER")
+        : source === "INCOME"
+          ? String(r.incomeCategory ?? "RENT")
+          : String(r.type ?? ""),
+    debit: isExpectedIncome ? String(r.debit ?? "") : source === "EXPENSE" ? String(r.debit ?? "") : "",
+    credit:
+      source === "INVOICE"
+        ? String(r.credit ?? "")
+        : source === "INCOME" && !isExpectedIncome
+          ? String(r.credit ?? r.debit ?? "")
+          : "",
+    reference: source === "INVOICE" ? String(r.invoiceNumber ?? "") : ""
+  };
+}
+
+function statementStatusSelectClass(source: string, statusRaw: string): string {
+  const s = String(statusRaw ?? "").toUpperCase();
+  if (source === "INVOICE") {
+    if (s === "PAID") return "pg-statement-status-select--paid";
+    if (s === "OVERDUE") return "pg-statement-status-select--overdue";
+    if (s === "CANCELLED") return "pg-statement-status-select--cancelled";
+    if (s === "DRAFT") return "pg-statement-status-select--draft";
+    if (s === "SENT") return "pg-statement-status-select--sent";
+    return "pg-statement-status-select--unpaid";
+  }
+  if (source === "INCOME") {
+    if (s === "RECEIVED") return "pg-statement-status-select--paid";
+    if (s === "CANCELLED") return "pg-statement-status-select--cancelled";
+    return "pg-statement-status-select--due";
+  }
+  if (s === "PAID") return "pg-statement-status-select--paid";
+  if (s === "OVERDUE") return "pg-statement-status-select--overdue";
+  return "pg-statement-status-select--draft";
+}
 
 function monthIdUtc(d: Date): string {
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
@@ -97,18 +237,12 @@ export function WorkspaceStatementTab({
     description: "",
     amount: ""
   }));
-  const [inlineEdit, setInlineEdit] = useState<null | {
-    source: "EXPENSE" | "INCOME";
-    id: string;
-    date: string;
-    description: string;
-    type: string;
-    debit: string;
-    credit: string;
-  }>(null);
-  const [inlineSaving, setInlineSaving] = useState(false);
-  const [statusPick, setStatusPick] = useState<null | { source: "INVOICE" | "INCOME"; id: string; status: string }>(null);
-  const [statusSaving, setStatusSaving] = useState(false);
+  const [editingRowKey, setEditingRowKey] = useState<string | null>(null);
+  const [draftRow, setDraftRow] = useState<StatementDraft | null>(null);
+  const [rowEditError, setRowEditError] = useState("");
+  const [savingRowId, setSavingRowId] = useState<string | null>(null);
+  const [deletingRowId, setDeletingRowId] = useState<string | null>(null);
+  const [statusUpdatingRowId, setStatusUpdatingRowId] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<any>(null);
 
   const monthIds = useMemo(() => {
@@ -246,11 +380,8 @@ export function WorkspaceStatementTab({
     }
   }
 
-  async function saveExpenseEdit() {
-    // Deprecated: inline edit only.
-  }
-
   async function performDeleteExpense(expenseId: string) {
+    setDeletingRowId(expenseId);
     setError("");
     try {
       await deletePropertyExpense(expenseId);
@@ -258,78 +389,165 @@ export function WorkspaceStatementTab({
       await reload();
     } catch (e: any) {
       setError(e?.message ?? "Failed to delete expense.");
+    } finally {
+      setDeletingRowId(null);
     }
   }
 
-  async function saveIncomeEdit() {
-    // Deprecated: inline edit only.
+  function beginRowEdit(r: Record<string, unknown>) {
+    const sourceId = rowSourceId(r);
+    if (!sourceId || !canEditRow(r)) return;
+    const draft = rowToDraft(r);
+    if (editingRowKey && editingRowKey !== draft.rowKey) {
+      cancelRowEdit();
+    }
+    setRowEditError("");
+    setEditingRowKey(draft.rowKey);
+    setDraftRow(draft);
   }
 
-  async function saveInlineEdit() {
-    if (!inlineEdit?.id) return;
-    if (!String(inlineEdit.description ?? "").trim()) {
-      setError("Description is required.");
+  function cancelRowEdit() {
+    setEditingRowKey(null);
+    setDraftRow(null);
+    setRowEditError("");
+  }
+
+  async function saveRowEdit() {
+    if (!draftRow?.id) return;
+    if (!String(draftRow.description ?? "").trim()) {
+      setRowEditError("Description is required.");
       return;
     }
 
-    setInlineSaving(true);
+    const debitNum = Number(String(draftRow.debit ?? "").trim());
+    const creditNum = Number(String(draftRow.credit ?? "").trim());
+    const hasDebit = String(draftRow.debit ?? "").trim() !== "";
+    const hasCredit = String(draftRow.credit ?? "").trim() !== "";
+    if (hasDebit && hasCredit && debitNum > 0 && creditNum > 0) {
+      setRowEditError("Enter either a debit or a credit amount, not both.");
+      return;
+    }
+    if (hasDebit && debitNum < 0) {
+      setRowEditError("Debit cannot be negative.");
+      return;
+    }
+    if (hasCredit && creditNum < 0) {
+      setRowEditError("Credit cannot be negative.");
+      return;
+    }
+
+    setSavingRowId(draftRow.id);
+    setRowEditError("");
     setError("");
     try {
-      if (inlineEdit.source === "EXPENSE") {
-        const amount = Number(String(inlineEdit.debit ?? "").trim());
+      if (draftRow.source === "EXPENSE") {
+        const amount = debitNum;
         if (!Number.isFinite(amount) || amount <= 0) {
-          setError("Enter a valid debit amount.");
+          setRowEditError("Enter a valid debit amount.");
           return;
         }
-        await updatePropertyExpense(String(inlineEdit.id), {
-          description: String(inlineEdit.description).trim(),
+        await updatePropertyExpense(String(draftRow.id), {
+          description: String(draftRow.description).trim(),
           amount,
-          expenseDate: String(inlineEdit.date ?? "").trim() || undefined,
-          category: String(inlineEdit.type ?? "OTHER")
+          expenseDate: String(draftRow.date ?? "").trim() || undefined,
+          category: String(draftRow.type ?? "OTHER")
+        });
+      } else if (draftRow.source === "INCOME") {
+        const amount = hasDebit ? debitNum : creditNum;
+        if (!Number.isFinite(amount) || amount < 0) {
+          setRowEditError("Enter a valid amount.");
+          return;
+        }
+        await updatePropertyIncome(String(draftRow.id), {
+          description: String(draftRow.description).trim(),
+          amount,
+          incomeDate: String(draftRow.date ?? "").trim() || undefined,
+          category: String(draftRow.type ?? "RENT")
         });
       } else {
-        const amount = Number(String(inlineEdit.credit ?? "").trim());
-        if (!Number.isFinite(amount) || amount < 0) {
-          setError("Enter a valid credit amount.");
+        const total = creditNum;
+        if (!Number.isFinite(total) || total <= 0) {
+          setRowEditError("Enter a valid invoice amount.");
           return;
         }
-        await updatePropertyIncome(String(inlineEdit.id), {
-          description: String(inlineEdit.description).trim(),
-          amount,
-          incomeDate: String(inlineEdit.date ?? "").trim() || undefined,
-          category: String(inlineEdit.type ?? "RENT")
+        await updateInvoice(String(draftRow.id), {
+          invoiceDate: String(draftRow.date ?? "").trim() || undefined,
+          notes: String(draftRow.description).trim(),
+          total
         });
       }
-      setInlineEdit(null);
+      cancelRowEdit();
       await reload();
     } catch (e: any) {
-      setError(e?.message ?? "Failed to save line item.");
+      setRowEditError(e?.message ?? "Failed to save line item.");
     } finally {
-      setInlineSaving(false);
+      setSavingRowId(null);
     }
   }
 
-  async function setRowStatus(source: "INVOICE" | "INCOME", id: string, status: string) {
-    setStatusSaving(true);
+  async function applyRowStatus(source: "INVOICE" | "INCOME", id: string, uiStatus: string) {
+    setStatusUpdatingRowId(id);
     setError("");
     try {
       if (source === "INVOICE") {
-        const mapped = status === "UNPAID" ? "SENT" : status;
+        const mapped = invoiceApiStatus(uiStatus);
         if (mapped === "PAID") {
           await markInvoicePaid(String(id));
         } else {
           await updateInvoice(String(id), { status: mapped });
         }
       } else {
-        await updatePropertyIncome(String(id), { status });
+        const mapped = INCOME_STATUS_UI.find((o) => o.value === uiStatus)?.api ?? uiStatus;
+        await updatePropertyIncome(String(id), { status: mapped });
       }
-      setStatusPick(null);
       await reload();
     } catch (e: any) {
       setError(e?.message ?? "Failed to update status.");
+      throw e;
     } finally {
-      setStatusSaving(false);
+      setStatusUpdatingRowId(null);
     }
+  }
+
+  async function openInvoiceForRow(r: Record<string, unknown>) {
+    const sourceId = rowSourceId(r);
+    setError("");
+    try {
+      if (r.source === "INVOICE" && sourceId) {
+        const inv = await getInvoice(sourceId);
+        const invAny = inv as Record<string, unknown>;
+        const invoiceAny = (invAny?.invoice ?? invAny) as Record<string, unknown>;
+        const invoiceId = String(invoiceAny?.id ?? sourceId);
+        const tenantId = String(invoiceAny?.tenantId ?? invoiceAny?.tenant_id ?? invAny?.tenantId ?? invAny?.tenant_id ?? "");
+        if (!tenantId) throw new Error("Tenant id was missing for this invoice.");
+        navigate(`/tenants/${tenantId}/invoices/${invoiceId}`);
+        return;
+      }
+      if (isExpectedRentRow(r)) {
+        const leaseId = String(r.leaseId).trim();
+        const created = await createCurrentInvoiceFromLease(propertyId, leaseId);
+        const invoiceId = String((created as { invoiceId?: string }).invoiceId ?? "");
+        if (!invoiceId) throw new Error("Invoice could not be created.");
+        const inv = await getInvoice(invoiceId);
+        const invAny = inv as Record<string, unknown>;
+        const invoiceAny = (invAny?.invoice ?? invAny) as Record<string, unknown>;
+        const tenantId = String(invoiceAny?.tenantId ?? invoiceAny?.tenant_id ?? invAny?.tenantId ?? invAny?.tenant_id ?? "");
+        if (!tenantId) throw new Error("Invoice created, but tenant id was missing.");
+        navigate(`/tenants/${tenantId}/invoices/${invoiceId}`);
+        return;
+      }
+      throw new Error("Invoice is not available for this line.");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Could not open invoice.");
+    }
+  }
+
+  function invoiceActionEnabled(r: Record<string, unknown>): boolean {
+    return (r.source === "INVOICE" && !!rowSourceId(r)) || isExpectedRentRow(r);
+  }
+
+  function deleteActionEnabled(r: Record<string, unknown>): boolean {
+    return !!rowSourceId(r) && (r.source === "EXPENSE" || r.source === "INCOME" || r.source === "INVOICE");
   }
 
   return (
@@ -409,56 +627,74 @@ export function WorkspaceStatementTab({
                 <th className="pg-statement-num">Credit</th>
                 <th>Status</th>
                 <th>Source</th>
-                <th>Actions</th>
+                <th className="pg-statement-table__actions">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {rows.map((r: any) => {
+              {rows.map((r: Record<string, unknown>) => {
                 const creditClass = r.source === "INVOICE" && r.status !== "PAID" ? " pg-statement-credit-unpaid" : "";
-                const sourceId = r.sourceId != null ? String(r.sourceId) : "";
-                const canEditExpense = r.source === "EXPENSE" && sourceId;
-                const canEditIncome = r.source === "INCOME" && sourceId;
-                const canEditInvoice = r.source === "INVOICE" && sourceId;
-                const isEditing = inlineEdit != null && inlineEdit.id === sourceId && inlineEdit.source === r.source;
-                const isExpectedRent =
-                  r.source === "INCOME" &&
-                  String(r.status ?? "").toUpperCase() === "EXPECTED" &&
-                  String(r.incomeCategory ?? "").toUpperCase() === "RENT" &&
-                  String(r.leaseId ?? "").trim() !== "";
+                const sourceId = rowSourceId(r);
+                const rowKey = r.id != null ? String(r.id) : `${String(r.source)}-${String(r.date)}-${String(r.description)}`;
+                const editKey = sourceId ? statementRowKey(String(r.source), sourceId) : "";
+                const isEditing = editingRowKey != null && editingRowKey === editKey && draftRow != null;
+                const draft = isEditing ? draftRow : null;
+                const amountLocked = isAmountLocked(r);
+                const isExpectedIncome =
+                  r.source === "INCOME" && String(r.status ?? "").toUpperCase() === "EXPECTED";
+                const statusUiValue =
+                  r.source === "INVOICE"
+                    ? invoiceUiStatus(String(r.status ?? ""))
+                    : r.source === "INCOME"
+                      ? incomeUiStatus(String(r.status ?? ""))
+                      : String(r.status ?? "");
+                const rowSaving = savingRowId === sourceId;
+                const rowBusy = deletingRowId === sourceId;
+                const rowStatusBusy = statusUpdatingRowId === sourceId;
+
                 return (
-                  <tr key={r.id ?? `${r.source}-${r.date}-${r.description}`}>
+                  <Fragment key={rowKey}>
+                  <tr>
                     <td style={{ verticalAlign: "middle" }}>
-                      {isEditing ? (
+                      {isEditing && draft ? (
                         <Input
                           type="date"
-                          value={inlineEdit?.date ?? ""}
-                          onChange={(e) => setInlineEdit((s) => (s ? { ...s, date: e.target.value } : s))}
+                          value={draft.date}
+                          onChange={(e) => setDraftRow((s) => (s ? { ...s, date: e.target.value } : s))}
                           style={{ height: 34 }}
+                          onClick={stopRowEvent}
                         />
                       ) : (
                         String(r.date ?? "")
                       )}
                     </td>
                     <td style={{ verticalAlign: "middle", minWidth: 180 }}>
-                      {isEditing ? (
+                      {isEditing && draft ? (
                         <Input
-                          value={inlineEdit?.description ?? ""}
-                          onChange={(e) => setInlineEdit((s) => (s ? { ...s, description: e.target.value } : s))}
+                          value={draft.description}
+                          onChange={(e) => setDraftRow((s) => (s ? { ...s, description: e.target.value } : s))}
                           style={{ height: 34 }}
+                          onClick={stopRowEvent}
                         />
                       ) : (
-                        String(r.description ?? "")
+                        <div>
+                          <div>{String(r.description ?? "")}</div>
+                          {r.source === "INVOICE" && r.invoiceNumber ? (
+                            <div className="pg-muted" style={{ fontSize: 11, marginTop: 2 }}>
+                              Ref: {String(r.invoiceNumber)}
+                            </div>
+                          ) : null}
+                        </div>
                       )}
                     </td>
                     <td style={{ verticalAlign: "middle", minWidth: 140 }}>
-                      {isEditing ? (
-                        <select
-                          className="pg-input"
-                          value={String(inlineEdit?.type ?? "")}
-                          onChange={(e) => setInlineEdit((s) => (s ? { ...s, type: e.target.value } : s))}
+                      {isEditing && draft && draft.source !== "INVOICE" ? (
+                        <Select
+                          value={draft.type}
+                          onChange={(e) => setDraftRow((s) => (s ? { ...s, type: e.target.value } : s))}
                           style={{ height: 34 }}
+                          onClick={stopRowEvent}
                         >
-                          {inlineEdit?.source === "EXPENSE" ? (
+                          {draft.source === "EXPENSE" ? (
                             <>
                               <option value="OTHER">Other</option>
                               <option value="MAINTENANCE">Maintenance</option>
@@ -476,21 +712,26 @@ export function WorkspaceStatementTab({
                               <option value="OTHER">Other</option>
                             </>
                           )}
-                        </select>
+                        </Select>
                       ) : (
                         String(r.type ?? "")
                       )}
                     </td>
                     <td className="pg-statement-num" style={{ verticalAlign: "middle" }}>
-                      {isEditing && inlineEdit?.source === "EXPENSE" ? (
-                        <Input
-                          type="number"
-                          step="any"
-                          min={0}
-                          value={inlineEdit?.debit ?? ""}
-                          onChange={(e) => setInlineEdit((s) => (s ? { ...s, debit: e.target.value } : s))}
-                          style={{ height: 34, textAlign: "right" }}
-                        />
+                      {isEditing && draft && (draft.source === "EXPENSE" || (draft.source === "INCOME" && isExpectedIncome)) ? (
+                        amountLocked ? (
+                          <span title="Edit the source record to change this amount.">{fmtZar(r.debit)}</span>
+                        ) : (
+                          <Input
+                            type="number"
+                            step="any"
+                            min={0}
+                            value={draft.debit}
+                            onChange={(e) => setDraftRow((s) => (s ? { ...s, debit: e.target.value, credit: "" } : s))}
+                            style={{ height: 34, textAlign: "right" }}
+                            onClick={stopRowEvent}
+                          />
+                        )
                       ) : r.debit != null ? (
                         fmtZar(r.debit)
                       ) : (
@@ -498,323 +739,190 @@ export function WorkspaceStatementTab({
                       )}
                     </td>
                     <td className={`pg-statement-num${creditClass}`} style={{ verticalAlign: "middle" }}>
-                      {isEditing && inlineEdit?.source === "INCOME" ? (
-                        <Input
-                          type="number"
-                          step="any"
-                          min={0}
-                          value={inlineEdit?.credit ?? ""}
-                          onChange={(e) => setInlineEdit((s) => (s ? { ...s, credit: e.target.value } : s))}
-                          style={{ height: 34, textAlign: "right" }}
-                        />
+                      {isEditing && draft && (draft.source === "INVOICE" || (draft.source === "INCOME" && !isExpectedIncome)) ? (
+                        amountLocked ? (
+                          <span title="Edit the source record to change this amount.">{fmtZar(r.credit)}</span>
+                        ) : (
+                          <Input
+                            type="number"
+                            step="any"
+                            min={0}
+                            value={draft.credit}
+                            onChange={(e) => setDraftRow((s) => (s ? { ...s, credit: e.target.value, debit: "" } : s))}
+                            style={{ height: 34, textAlign: "right" }}
+                            onClick={stopRowEvent}
+                          />
+                        )
                       ) : r.credit != null ? (
                         fmtZar(r.credit)
                       ) : (
                         "—"
                       )}
                     </td>
-                    <td style={{ verticalAlign: "middle" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                        {statusPick && statusPick.id === sourceId && statusPick.source === r.source ? (
-                          <select
-                            className="pg-input"
-                            value={String(statusPick.status ?? "")}
-                            onChange={(e) => {
-                              const v = e.target.value;
-                              setStatusPick((s) => (s ? { ...s, status: v } : s));
-                              void setRowStatus(statusPick.source, sourceId, v);
-                            }}
-                            disabled={statusSaving}
-                            style={{ height: 34 }}
-                          >
-                            {statusPick.source === "INVOICE"
-                              ? INVOICE_STATUS_PICKER_OPTIONS.map((s) => (
-                                  <option key={s} value={s}>
-                                    {s}
-                                  </option>
-                                ))
-                              : INCOME_STATUS_OPTIONS.map((s) => (
-                                  <option key={s} value={s}>
-                                    {s === "EXPECTED" ? "UNPAID" : s === "RECEIVED" ? "PAID" : "CANCELLED"}
-                                  </option>
-                                ))}
-                          </select>
-                        ) : (
-                          <>
-                            <span className={statementStatusBadgeClass(String(r.source ?? ""), String(r.status ?? ""))}>
-                              {String(r.status ?? "")}
-                            </span>
-                          </>
-                        )}
-                        {(canEditInvoice || canEditIncome) && sourceId ? (
-                          <button
-                            type="button"
-                            className="pg-btn pg-btn-ghost"
-                            style={{ padding: 4, width: 26, height: 26, display: "grid", placeItems: "center" }}
-                            onClick={() =>
-                              setStatusPick({
-                                source: canEditInvoice ? "INVOICE" : "INCOME",
-                                id: sourceId,
-                                status: String(r.status ?? "")
-                              })
-                            }
-                            aria-label="Change status"
-                            title="Change status"
-                          >
-                            <ChevronDown size={16} aria-hidden />
-                          </button>
-                        ) : null}
-                      </div>
-                    </td>
-                    <td style={{ verticalAlign: "middle" }}>{String(r.source ?? "")}</td>
-                    <td style={{ verticalAlign: "middle", whiteSpace: "nowrap" }}>
-                      {canEditExpense ? (
-                        <div style={{ display: "flex", gap: 6, justifyContent: "flex-end", flexWrap: "nowrap", alignItems: "center" }}>
-                          {isEditing ? (
-                            <>
-                              <button
-                                type="button"
-                                className="pg-btn pg-btn-ghost"
-                                style={{ padding: 6, width: 32, height: 32, display: "grid", placeItems: "center" }}
-                                onClick={() => void saveInlineEdit()}
-                                aria-label="Save"
-                                title="Save"
-                                disabled={inlineSaving}
-                              >
-                                <Check size={16} aria-hidden />
-                              </button>
-                              <button
-                                type="button"
-                                className="pg-btn pg-btn-ghost"
-                                style={{ padding: 6, width: 32, height: 32, display: "grid", placeItems: "center" }}
-                                onClick={() => setInlineEdit(null)}
-                                aria-label="Cancel"
-                                title="Cancel"
-                                disabled={inlineSaving}
-                              >
-                                <X size={16} aria-hidden />
-                              </button>
-                            </>
-                          ) : (
-                            <button
-                              type="button"
-                              className="pg-btn pg-btn-ghost"
-                              style={{ padding: 6, width: 32, height: 32, display: "grid", placeItems: "center" }}
-                              onClick={() =>
-                                setInlineEdit({
-                                  source: "EXPENSE",
-                                  id: sourceId,
-                                  date: String(r.date ?? "").slice(0, 10),
-                                  description: String(r.description ?? ""),
-                                  type: String(r.expenseCategory ?? "OTHER"),
-                                  debit: String(r.debit ?? ""),
-                                  credit: ""
-                                })
-                              }
-                              aria-label="Edit"
-                              title="Edit"
-                            >
-                              <Pencil size={16} aria-hidden />
-                            </button>
-                          )}
-                          <button
-                            type="button"
-                            className="pg-btn pg-btn-ghost"
-                            style={{
-                              padding: 6,
-                              width: 32,
-                              height: 32,
-                              display: "grid",
-                              placeItems: "center",
-                              color: "var(--danger)"
-                            }}
-                            onClick={() => setConfirmDelete({ kind: "expense", id: sourceId, description: String(r.description ?? "") })}
-                            aria-label="Delete"
-                            title="Delete"
-                          >
-                            <Trash2 size={16} aria-hidden />
-                          </button>
-                        </div>
-                      ) : canEditIncome ? (
-                        <div style={{ display: "flex", gap: 6, justifyContent: "flex-end", flexWrap: "nowrap", alignItems: "center" }}>
-                          {isExpectedRent ? (
-                            <button
-                              type="button"
-                              className="pg-btn pg-btn-secondary"
-                              style={{
-                                padding: 6,
-                                width: 32,
-                                height: 32,
-                                display: "grid",
-                                placeItems: "center",
-                                color: "var(--primary)"
-                              }}
-                              onClick={async () => {
-                                setError("");
-                                try {
-                                  const leaseId = String(r.leaseId).trim();
-                                  const created = await createCurrentInvoiceFromLease(propertyId, leaseId);
-                                  const invoiceId = String(created.invoiceId ?? "");
-                                  if (!invoiceId) throw new Error("Invoice could not be created.");
-                                  const inv = await getInvoice(invoiceId);
-                                  const invAny = inv as any;
-                                  const invoiceAny = (invAny?.invoice ?? invAny) as any;
-                                  const tenantId = String(
-                                    invoiceAny?.tenantId ??
-                                      invoiceAny?.tenant_id ??
-                                      invAny?.tenantId ??
-                                      invAny?.tenant_id ??
-                                      ""
-                                  );
-                                  if (!tenantId) throw new Error("Invoice created, but tenant id was missing.");
-                                  navigate(`/tenants/${tenantId}/invoices/${invoiceId}`);
-                                } catch (e: any) {
-                                  setError(e?.message ?? "Could not generate invoice.");
-                                }
-                              }}
-                              aria-label="Create Invoice"
-                              title="Create Invoice"
-                            >
-                              <BookOpen size={16} aria-hidden />
-                            </button>
-                          ) : null}
-                          {isEditing ? (
-                            <>
-                              <button
-                                type="button"
-                                className="pg-btn pg-btn-ghost"
-                                style={{ padding: 6, width: 32, height: 32, display: "grid", placeItems: "center" }}
-                                onClick={() => void saveInlineEdit()}
-                                aria-label="Save"
-                                title="Save"
-                                disabled={inlineSaving}
-                              >
-                                <Check size={16} aria-hidden />
-                              </button>
-                              <button
-                                type="button"
-                                className="pg-btn pg-btn-ghost"
-                                style={{ padding: 6, width: 32, height: 32, display: "grid", placeItems: "center" }}
-                                onClick={() => setInlineEdit(null)}
-                                aria-label="Cancel"
-                                title="Cancel"
-                                disabled={inlineSaving}
-                              >
-                                <X size={16} aria-hidden />
-                              </button>
-                            </>
-                          ) : (
-                            <button
-                              type="button"
-                              className="pg-btn pg-btn-ghost"
-                              style={{ padding: 6, width: 32, height: 32, display: "grid", placeItems: "center" }}
-                              onClick={() =>
-                                setInlineEdit({
-                                  source: "INCOME",
-                                  id: sourceId,
-                                  date: String(r.date ?? "").slice(0, 10),
-                                  description: String(r.incomeDescriptionPlain ?? r.description ?? ""),
-                                  type: String(r.incomeCategory ?? "RENT"),
-                                  debit: "",
-                                  credit: String(r.credit ?? r.debit ?? "")
-                                })
-                              }
-                              aria-label="Edit"
-                              title="Edit"
-                            >
-                              <Pencil size={16} aria-hidden />
-                            </button>
-                          )}
-                          <button
-                            type="button"
-                            className="pg-btn pg-btn-ghost"
-                            style={{
-                              padding: 6,
-                              width: 32,
-                              height: 32,
-                              display: "grid",
-                              placeItems: "center",
-                              color: "var(--danger)"
-                            }}
-                            onClick={() => setConfirmDelete({ kind: "income", id: sourceId, description: String(r.description ?? "") })}
-                            aria-label="Delete"
-                            title="Delete"
-                          >
-                            <Trash2 size={16} aria-hidden />
-                          </button>
-                        </div>
-                      ) : canEditInvoice ? (
-                        <div style={{ display: "flex", gap: 6, justifyContent: "flex-end", flexWrap: "nowrap", alignItems: "center" }}>
-                          <button
-                            type="button"
-                            className="pg-btn pg-btn-ghost"
-                            style={{ padding: 6, width: 32, height: 32, display: "grid", placeItems: "center", color: "var(--primary)" }}
-                            onClick={async () => {
-                              setError("");
-                              try {
-                                const inv = await getInvoice(sourceId);
-                                const invAny = inv as any;
-                                const invoiceAny = (invAny?.invoice ?? invAny) as any;
-                                const invoiceId = String(invoiceAny?.id ?? sourceId);
-                                const tenantId = String(
-                                  invoiceAny?.tenantId ??
-                                    invoiceAny?.tenant_id ??
-                                    invAny?.tenantId ??
-                                    invAny?.tenant_id ??
-                                    ""
-                                );
-                                if (!tenantId) throw new Error("Tenant id was missing for this invoice.");
-                                navigate(`/tenants/${tenantId}/invoices/${invoiceId}`);
-                              } catch (e: any) {
-                                setError(e?.message ?? "Could not open invoice.");
-                              }
-                            }}
-                            aria-label="Open invoice"
-                            title="Open invoice"
-                          >
-                            <BookOpen size={16} aria-hidden />
-                          </button>
-                          {String(r.status ?? "") !== "PAID" ? (
-                            <button
-                              type="button"
-                              className="pg-btn pg-btn-ghost"
-                              style={{ fontSize: 12, padding: "4px 10px", height: 32 }}
-                              onClick={async () => {
-                                setError("");
-                                try {
-                                  await markInvoicePaid(sourceId);
-                                  // Immediate UI update: the previous reload trigger was a no-op.
-                                  await reload();
-                                } catch (e: any) {
-                                  setError(e?.message ?? "Failed to mark invoice paid.");
-                                }
-                              }}
-                            >
-                              Mark paid
-                            </button>
-                          ) : null}
-                          <button
-                            type="button"
-                            className="pg-btn pg-btn-ghost"
-                            style={{ padding: 6, width: 32, height: 32, display: "grid", placeItems: "center", color: "var(--danger)" }}
-                            onClick={() =>
-                              setConfirmDelete({
-                                kind: "invoice_hard",
-                                id: sourceId,
-                                description: "this invoice line item"
-                              })
-                            }
-                            aria-label="Permanently delete invoice"
-                            title="Permanently delete invoice"
-                          >
-                            <Trash2 size={16} aria-hidden />
-                          </button>
-                        </div>
+                    <td style={{ verticalAlign: "middle" }} onClick={stopRowEvent}>
+                      {r.source === "INVOICE" && sourceId ? (
+                        <Select
+                          className={[
+                            "pg-statement-status-select",
+                            statementStatusSelectClass("INVOICE", statusUiValue)
+                          ].join(" ")}
+                          value={statusUiValue}
+                          disabled={rowStatusBusy || isEditing}
+                          aria-label="Statement line status"
+                          onClick={stopRowEvent}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            void applyRowStatus("INVOICE", sourceId, v).catch(() => undefined);
+                          }}
+                        >
+                          {INVOICE_STATUS_UI.map((opt) => (
+                            <option key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </option>
+                          ))}
+                        </Select>
+                      ) : r.source === "INCOME" && sourceId ? (
+                        <Select
+                          className={[
+                            "pg-statement-status-select",
+                            statementStatusSelectClass("INCOME", statusUiValue)
+                          ].join(" ")}
+                          value={statusUiValue}
+                          disabled={rowStatusBusy || isEditing}
+                          aria-label="Statement line status"
+                          onClick={stopRowEvent}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            void applyRowStatus("INCOME", sourceId, v).catch(() => undefined);
+                          }}
+                        >
+                          {INCOME_STATUS_UI.map((opt) => (
+                            <option key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </option>
+                          ))}
+                        </Select>
                       ) : (
-                        <span className="pg-muted">—</span>
+                        <span className={statementStatusBadgeClass(String(r.source ?? ""), String(r.status ?? ""))}>
+                          {String(r.status ?? "")}
+                        </span>
                       )}
                     </td>
+                    <td style={{ verticalAlign: "middle" }}>{String(r.source ?? "")}</td>
+                    <td className="pg-statement-table__actions" style={{ verticalAlign: "middle" }}>
+                      <div className="pg-statement-row-actions" onClick={stopRowEvent}>
+                      {isEditing ? (
+                            <>
+                              <button
+                                type="button"
+                                className="pg-statement-icon-btn pg-statement-icon-save"
+                                onClick={(e) => {
+                                  stopRowEvent(e);
+                                  void saveRowEdit();
+                                }}
+                                aria-label="Save"
+                                title="Save"
+                                disabled={rowSaving}
+                              >
+                                <Check size={16} aria-hidden />
+                              </button>
+                              <button
+                                type="button"
+                                className="pg-statement-icon-btn pg-statement-icon-discard"
+                                onClick={(e) => {
+                                  stopRowEvent(e);
+                                  cancelRowEdit();
+                                }}
+                                aria-label="Cancel"
+                                title="Cancel"
+                                disabled={rowSaving}
+                              >
+                                <X size={16} aria-hidden />
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              <button
+                                type="button"
+                                className="pg-statement-icon-btn pg-statement-icon-btn--primary"
+                                disabled={!invoiceActionEnabled(r) || rowBusy}
+                                title={
+                                  invoiceActionEnabled(r)
+                                    ? r.source === "INVOICE"
+                                      ? "Open invoice"
+                                      : "Create invoice"
+                                    : "Invoice not available for this line"
+                                }
+                                onClick={(e) => {
+                                  stopRowEvent(e);
+                                  void openInvoiceForRow(r);
+                                }}
+                                aria-label="Create invoice"
+                              >
+                                <BookOpen size={16} aria-hidden />
+                              </button>
+                              <button
+                                type="button"
+                                className="pg-statement-icon-btn"
+                                disabled={!canEditRow(r) || rowSaving || rowBusy}
+                                onClick={(e) => {
+                                  stopRowEvent(e);
+                                  if (editingRowKey && editingRowKey !== editKey) cancelRowEdit();
+                                  beginRowEdit(r);
+                                }}
+                                aria-label="Edit statement line"
+                                title="Edit statement line"
+                              >
+                                <Pencil size={16} aria-hidden />
+                              </button>
+                              <button
+                                type="button"
+                                className="pg-statement-icon-btn pg-statement-icon-btn--danger"
+                                disabled={!deleteActionEnabled(r) || rowBusy}
+                                onClick={(e) => {
+                                  stopRowEvent(e);
+                                  if (r.source === "INVOICE") {
+                                    setConfirmDelete({
+                                      kind: "invoice_hard",
+                                      id: sourceId,
+                                      description: String(r.description ?? "this invoice line item")
+                                    });
+                                    return;
+                                  }
+                                  if (r.source === "INCOME") {
+                                    setConfirmDelete({
+                                      kind: "income",
+                                      id: sourceId,
+                                      description: String(r.description ?? "")
+                                    });
+                                    return;
+                                  }
+                                  setConfirmDelete({
+                                    kind: "expense",
+                                    id: sourceId,
+                                    description: String(r.description ?? "")
+                                  });
+                                }}
+                                aria-label="Delete statement line"
+                                title="Delete statement line"
+                              >
+                                <Trash2 size={16} aria-hidden />
+                              </button>
+                            </>
+                          )}
+                      </div>
+                    </td>
                   </tr>
+                  {isEditing && rowEditError ? (
+                    <tr key={`${rowKey}-error`} className="pg-statement-row-error">
+                      <td colSpan={8}>
+                        <p className="pg-statement-row-error-msg" role="alert">
+                          {rowEditError}
+                        </p>
+                      </td>
+                    </tr>
+                  ) : null}
+                  </Fragment>
                 );
               })}
             </tbody>
@@ -911,26 +1019,34 @@ export function WorkspaceStatementTab({
                       const kind = String(confirmDelete.kind ?? "expense");
                       if (kind === "income") {
                         void (async () => {
+                          const id = String(confirmDelete.id);
+                          setDeletingRowId(id);
                           setError("");
                           try {
-                            await deletePropertyIncome(String(confirmDelete.id));
+                            await deletePropertyIncome(id);
                             setConfirmDelete(null);
                             await reload();
                           } catch (e: any) {
                             setError(e?.message ?? "Failed to delete income.");
+                          } finally {
+                            setDeletingRowId(null);
                           }
                         })();
                         return;
                       }
                       if (kind === "invoice_hard") {
                         void (async () => {
+                          const id = String(confirmDelete.id);
+                          setDeletingRowId(id);
                           setError("");
                           try {
-                            await hardDeleteInvoice(String(confirmDelete.id));
+                            await hardDeleteInvoice(id);
                             setConfirmDelete(null);
                             await reload();
                           } catch (e: any) {
                             setError(e?.message ?? "Failed to delete invoice.");
+                          } finally {
+                            setDeletingRowId(null);
                           }
                         })();
                         return;

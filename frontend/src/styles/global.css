@@ -2389,9 +2389,131 @@ textarea {
 }
 .pg-statement-row-actions {
   display: inline-flex;
-  gap: 10px;
+  gap: 6px;
   align-items: center;
-  flex-wrap: wrap;
+  justify-content: flex-end;
+  flex-wrap: nowrap;
+}
+
+.pg-statement-table th.pg-statement-table__actions,
+.pg-statement-table td.pg-statement-table__actions {
+  position: sticky;
+  right: 0;
+  z-index: 1;
+  background: var(--surface);
+  white-space: nowrap;
+  text-align: right;
+}
+
+.pg-statement-table tbody tr:hover td.pg-statement-table__actions {
+  background: color-mix(in srgb, var(--primary) 4%, var(--surface));
+}
+
+.pg-statement-icon-btn {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid var(--border-soft);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text-secondary);
+  display: inline-grid;
+  place-items: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.pg-statement-icon-btn:hover:not(:disabled) {
+  background: var(--surface-muted);
+  border-color: color-mix(in srgb, var(--primary) 25%, var(--border-soft));
+  color: var(--text-primary);
+}
+
+.pg-statement-icon-btn:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--primary) 55%, transparent);
+  outline-offset: 2px;
+}
+
+.pg-statement-icon-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.pg-statement-icon-btn--primary {
+  color: var(--primary);
+}
+
+.pg-statement-icon-btn--danger {
+  color: var(--danger);
+}
+
+.pg-statement-status-select {
+  min-width: 9.5rem;
+  max-width: 100%;
+  height: 34px;
+  padding: 0 28px 0 10px;
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: 999px;
+  border: 1px solid var(--border-soft);
+  cursor: pointer;
+  appearance: auto;
+  background-position: right 8px center;
+}
+
+.pg-statement-status-select:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
+.pg-statement-status-select--paid {
+  color: var(--success);
+  background-color: var(--success-soft);
+  border-color: color-mix(in srgb, var(--success) 35%, var(--border-soft));
+}
+
+.pg-statement-status-select--sent {
+  color: var(--info);
+  background-color: var(--info-soft);
+  border-color: color-mix(in srgb, var(--info) 35%, var(--border-soft));
+}
+
+.pg-statement-status-select--draft {
+  color: var(--text-secondary);
+  background-color: var(--surface-muted);
+  border-color: var(--border-soft);
+}
+
+.pg-statement-status-select--due,
+.pg-statement-status-select--unpaid,
+.pg-statement-status-select--partial {
+  color: var(--warning);
+  background-color: var(--warning-soft);
+  border-color: color-mix(in srgb, var(--warning) 35%, var(--border-soft));
+}
+
+.pg-statement-status-select--overdue {
+  color: var(--danger);
+  background-color: var(--danger-soft);
+  border-color: color-mix(in srgb, var(--danger) 35%, var(--border-soft));
+}
+
+.pg-statement-status-select--cancelled {
+  color: var(--text-muted);
+  background-color: var(--surface-muted);
+  border-color: var(--border-soft);
+}
+
+.pg-statement-row-error td {
+  padding-top: 0;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.pg-statement-row-error-msg {
+  margin: 0 0 10px;
+  font-size: 12px;
+  color: var(--danger);
 }
 .pg-statement-icon-save,
 .pg-statement-icon-discard {
