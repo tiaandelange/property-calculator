@@ -1,4 +1,4 @@
-import { AppIcon, IconButton } from "../../components/icons";
+import { IconButton } from "../../components/icons";
 import { ProplyticTableWrap } from "../../components/tables";
 import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
@@ -172,7 +172,7 @@ export function InvoiceLineItemsEditor({ lineItems, editable, defaultRent, onCha
                       <IconButton
                         icon="delete"
                         aria-label={`Delete line ${idx + 1}`}
-                        variant="outline"
+                        variant="danger-outline"
                         size="sm"
                         className="pg-inv-lines__delete-btn"
                         disabled={lineItems.length <= 1}
@@ -202,7 +202,7 @@ export function InvoiceLineItemsEditor({ lineItems, editable, defaultRent, onCha
                   <IconButton
                     icon="delete"
                     aria-label={`Delete line ${idx + 1}`}
-                    variant="outline"
+                    variant="danger-outline"
                     size="sm"
                     className="pg-inv-lines__delete-btn"
                     disabled={lineItems.length <= 1}
@@ -291,8 +291,7 @@ export function InvoiceLineItemsEditor({ lineItems, editable, defaultRent, onCha
 
       {editable ? (
         <div className="pg-inv-lines__add">
-          <Button type="button" variant="ghost" onClick={addLine}>
-            <AppIcon name="add" size="sm" style={{ marginRight: 8 }} />
+          <Button type="button" variant="outline" iconLeft="add" onClick={addLine}>
             Add line item
           </Button>
         </div>

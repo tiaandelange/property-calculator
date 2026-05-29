@@ -1,11 +1,11 @@
 import { FormEvent, useEffect, useState } from "react";
 import { Helmet } from "react-helmet-async";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { Container } from "../components/ui/Container";
 import { Section } from "../components/ui/Section";
 import { Card } from "../components/ui/Card";
 import { Field, Input } from "../components/ui/Input";
-import { Button } from "../components/ui/Button";
+import { Button, ButtonLink } from "../components/ui/Button";
 import { createTenant, getTenant, updateTenant } from "../api/ownedProperties";
 
 export function TenantFormPage() {
@@ -84,9 +84,9 @@ export function TenantFormPage() {
             <h1 className="pg-h2" style={{ margin: 0 }}>
               {isEdit ? "Edit Tenant" : "Add Tenant"}
             </h1>
-            <Link className="pg-btn pg-btn-ghost" to="/tenants">
+            <ButtonLink href="/tenants" variant="ghost">
               Back to tenants
-            </Link>
+            </ButtonLink>
           </div>
           <p className="pg-muted" style={{ marginTop: 8, marginBottom: 0, fontSize: 13 }}>
             Tenants are global contact records. Link a tenant to a property and unit by creating a lease.

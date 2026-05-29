@@ -3,9 +3,9 @@ import { Helmet } from "react-helmet-async";
 import { Container } from "../components/ui/Container";
 import { Section } from "../components/ui/Section";
 import { Card } from "../components/ui/Card";
-import { Button } from "../components/ui/Button";
+import { Button, ButtonLink } from "../components/ui/Button";
 import { Field, Input } from "../components/ui/Input";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { getSupabase, isSupabaseConfigured } from "../lib/supabaseClient";
 import { getConfirmEmailRedirectUrl } from "../lib/authRedirect";
 import { formatAuthError } from "../utils/authErrors";
@@ -145,9 +145,9 @@ export function LoginPage() {
               <Button variant="secondary" onClick={() => void submit("register")} loading={loading === "register"}>
                 Create Account
               </Button>
-              <Link className="pg-btn pg-btn-ghost" to="/subscription">
+              <ButtonLink href="/subscription" variant="ghost">
                 Pricing
-              </Link>
+              </ButtonLink>
             </div>
 
             {message ? (

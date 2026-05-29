@@ -161,9 +161,9 @@ export function OwnedEquityMetricsPage() {
                       </td>
                       <td align="right">{equity == null ? <span className="pg-muted">Missing</span> : `R ${equity.toLocaleString()}`}</td>
                       <td align="right">
-                        <button className="pg-btn pg-btn-secondary" type="button" onClick={() => void saveRow(r.id)} disabled={saving}>
+                        <Button variant="soft" type="button" onClick={() => void saveRow(r.id)} disabled={saving} loading={saving}>
                           Save
-                        </button>
+                        </Button>
                       </td>
                     </tr>
                   );

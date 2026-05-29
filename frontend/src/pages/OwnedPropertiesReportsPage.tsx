@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { Helmet } from "react-helmet-async";
-import { Link } from "react-router-dom";
 import { IconButton } from "../components/icons";
 import {
   ProplyticTable,
@@ -17,7 +16,7 @@ import {
 import { Container } from "../components/ui/Container";
 import { Section } from "../components/ui/Section";
 import { Card } from "../components/ui/Card";
-import { Button } from "../components/ui/Button";
+import { Button, ButtonLink } from "../components/ui/Button";
 import { ModalOverlay, ModalPanel } from "../components/ui/Modal";
 import { deleteStoredReport, getStoredReportSignedUrl, listPropertyStoredReports, type PropertyStoredReportRow } from "../services/storedReportsSupabase";
 
@@ -54,11 +53,11 @@ export function OwnedPropertiesReportsPage() {
                 Property reports generated from the Properties workspace.
               </div>
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                <Link className="pg-btn pg-btn-ghost" to="/owned-properties/reports">Generate Portfolio Report</Link>
-                <Link className="pg-btn pg-btn-ghost" to="/dashboard">My Reports</Link>
-                <button className="pg-btn pg-btn-secondary" type="button" onClick={() => void load()} disabled={loading}>
+                <ButtonLink href="/owned-properties/reports" variant="ghost">Generate Portfolio Report</ButtonLink>
+                <ButtonLink href="/dashboard" variant="ghost">My Reports</ButtonLink>
+                <Button variant="soft" type="button" onClick={() => void load()} disabled={loading}>
                   Refresh
-                </button>
+                </Button>
               </div>
             </div>
           </Card>
@@ -152,11 +151,11 @@ export function OwnedPropertiesReportsPage() {
                     This removes the PDF from Storage and deletes the report record.
                   </div>
                   <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
-                    <button className="pg-btn pg-btn-ghost" type="button" onClick={() => setPendingDelete(null)}>
+                    <Button variant="ghost" type="button" onClick={() => setPendingDelete(null)}>
                       Cancel
-                    </button>
-                    <button
-                      className="pg-btn pg-btn-danger"
+                    </Button>
+                    <Button
+                      variant="danger"
                       type="button"
                       onClick={async () => {
                         const id = pendingDelete.id;
@@ -170,7 +169,7 @@ export function OwnedPropertiesReportsPage() {
                       }}
                     >
                       Delete
-                    </button>
+                    </Button>
                   </div>
                 </div>
               </ModalPanel>

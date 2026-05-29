@@ -1,28 +1,56 @@
 import React from "react";
+import { AppIcon } from "../icons/AppIcon";
+import type { IconName } from "../icons/iconRegistry";
+import type { IconSize } from "../icons/iconSizes";
+import { buttonClassName, type ButtonSize, type ButtonVariant } from "./buttonStyles";
 
-type Variant = "primary" | "secondary" | "ghost";
+export type { ButtonSize, ButtonVariant };
+
+const ICON_SIZE: Record<ButtonSize, IconSize> = {
+  xs: "xs",
+  sm: "sm",
+  md: "sm",
+  lg: "sm",
+  xl: "md"
+};
 
 export function Button({
   children,
   variant = "primary",
+  size = "md",
+  fullWidth,
   loading,
+  iconLeft,
+  iconRight,
   className,
+  disabled,
   ...props
-}: React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant; loading?: boolean }) {
-  const cls =
-    variant === "primary"
-      ? "pg-btn pg-btn-primary"
-      : variant === "secondary"
-        ? "pg-btn pg-btn-secondary"
-        : "pg-btn pg-btn-ghost";
+}: React.ButtonHTMLAttributes<HTMLButtonElement> & {
+  variant?: ButtonVariant;
+  size?: ButtonSize;
+  fullWidth?: boolean;
+  loading?: boolean;
+  iconLeft?: IconName;
+  iconRight?: IconName;
+}) {
+  const iconSize = ICON_SIZE[size];
+  const isDisabled = disabled || loading;
+
   return (
     <button
-      className={[cls, className].filter(Boolean).join(" ")}
+      className={buttonClassName({ variant, size, fullWidth, loading, className })}
       {...props}
-      disabled={props.disabled || loading}
+      disabled={isDisabled}
+      aria-busy={loading || undefined}
     >
       {loading ? <span className="pg-spinner" aria-hidden="true" /> : null}
-      {children}
+      {!loading && iconLeft ? (
+        <AppIcon name={iconLeft} size={iconSize} className="pg-btn__icon" aria-hidden="true" />
+      ) : null}
+      {children ? <span className="pg-btn__label">{children}</span> : null}
+      {!loading && iconRight ? (
+        <AppIcon name={iconRight} size={iconSize} className="pg-btn__icon" aria-hidden="true" />
+      ) : null}
     </button>
   );
 }
@@ -30,19 +58,44 @@ export function Button({
 export function ButtonLink({
   children,
   variant = "primary",
+  size = "md",
+  fullWidth,
+  iconLeft,
+  iconRight,
   className,
+  disabled,
   ...props
-}: React.AnchorHTMLAttributes<HTMLAnchorElement> & { variant?: Variant }) {
-  const cls =
-    variant === "primary"
-      ? "pg-btn pg-btn-primary"
-      : variant === "secondary"
-        ? "pg-btn pg-btn-secondary"
-        : "pg-btn pg-btn-ghost";
+}: React.AnchorHTMLAttributes<HTMLAnchorElement> & {
+  variant?: ButtonVariant;
+  size?: ButtonSize;
+  fullWidth?: boolean;
+  iconLeft?: IconName;
+  iconRight?: IconName;
+  disabled?: boolean;
+}) {
+  const iconSize = ICON_SIZE[size];
+
   return (
-    <a className={[cls, className].filter(Boolean).join(" ")} {...props}>
-      {children}
+    <a
+      className={buttonClassName({ variant, size, fullWidth, className })}
+      aria-disabled={disabled || undefined}
+      tabIndex={disabled ? -1 : undefined}
+      {...props}
+      onClick={(e) => {
+        if (disabled) {
+          e.preventDefault();
+          return;
+        }
+        props.onClick?.(e);
+      }}
+    >
+      {iconLeft ? (
+        <AppIcon name={iconLeft} size={iconSize} className="pg-btn__icon" aria-hidden="true" />
+      ) : null}
+      {children ? <span className="pg-btn__label">{children}</span> : null}
+      {iconRight ? (
+        <AppIcon name={iconRight} size={iconSize} className="pg-btn__icon" aria-hidden="true" />
+      ) : null}
     </a>
   );
 }
-

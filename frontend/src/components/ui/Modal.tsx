@@ -1,4 +1,5 @@
 import type React from "react";
+import { Button } from "./Button";
 
 export function ModalOverlay({
   open,
@@ -52,9 +53,9 @@ export function ModalPanel({
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             {actions}
             {onClose ? (
-              <button type="button" className="pg-btn pg-btn-ghost" onClick={onClose} aria-label="Close">
+              <Button type="button" variant="ghost" size="sm" onClick={onClose} aria-label="Close">
                 ✕
-              </button>
+              </Button>
             ) : null}
           </div>
         </div>
@@ -97,9 +98,9 @@ export function SheetPanel({
               <span />
             )}
             {onClose ? (
-              <button type="button" className="pg-btn pg-btn-ghost" onClick={onClose} aria-label="Close">
+              <Button type="button" variant="ghost" size="sm" onClick={onClose} aria-label="Close">
                 ✕
-              </button>
+              </Button>
             ) : null}
           </div>
         ) : null}

@@ -25,7 +25,7 @@ import { Container } from "../components/ui/Container";
 import { Section } from "../components/ui/Section";
 import { Card } from "../components/ui/Card";
 import { Field, Input } from "../components/ui/Input";
-import { Button } from "../components/ui/Button";
+import { Button, ButtonLink } from "../components/ui/Button";
 import { getOrCreateUserSettings } from "../services/settingsSupabase";
 
 type RentDueMode = "first" | "last" | "custom";
@@ -420,9 +420,9 @@ export function LeaseFormPage() {
             <h1 className="pg-h2" style={{ margin: 0 }}>
               {pageTitle}
             </h1>
-            <Link className="pg-btn pg-btn-ghost" to={backHref}>
+            <ButtonLink href={backHref} variant="ghost">
               {isEdit ? "Back to property" : "Back to Leases"}
-            </Link>
+            </ButtonLink>
           </div>
           <p className="pg-muted" style={{ fontSize: 13, margin: 0 }}>
             {isEdit
@@ -643,9 +643,9 @@ export function LeaseFormPage() {
                           return (
                             <li key={id} className="pg-workspace-inset" style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
                               <span>{t ? `${t.firstName} ${t.lastName}` : id}</span>
-                              <button type="button" className="pg-btn pg-btn-ghost" onClick={() => removeAdditionalTenant(id)}>
+                              <Button type="button" variant="ghost" size="sm" onClick={() => removeAdditionalTenant(id)}>
                                 Remove
-                              </button>
+                              </Button>
                             </li>
                           );
                         })}
@@ -726,9 +726,9 @@ export function LeaseFormPage() {
                 <Button type="submit" loading={saving}>
                   {submitLabel}
                 </Button>
-                <Link className="pg-btn pg-btn-ghost" to={backHref}>
+                <ButtonLink href={backHref} variant="ghost">
                   Cancel
-                </Link>
+                </ButtonLink>
               </div>
             </form>
           </Card>

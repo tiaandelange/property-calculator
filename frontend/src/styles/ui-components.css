@@ -89,56 +89,7 @@ html[data-theme="light"] .pg-property-card:hover {
   color: var(--text-primary);
 }
 
-/* --- Buttons --- */
-.pg-btn {
-  height: var(--ui-control-height);
-  min-height: var(--ui-control-height);
-  padding: 0 18px;
-  border-radius: var(--ui-control-radius);
-  font-weight: 700;
-  font-size: 14px;
-}
-
-.pg-btn-primary {
-  background: var(--primary);
-  color: var(--primary-text);
-  border-color: transparent;
-  box-shadow: 0 4px 14px color-mix(in srgb, var(--primary) 28%, transparent);
-}
-
-.pg-btn-primary:hover {
-  background: var(--primary-hover);
-  box-shadow: 0 5px 16px color-mix(in srgb, var(--primary) 26%, transparent);
-  filter: brightness(1.03);
-}
-
-.pg-btn-primary:active {
-  filter: brightness(0.98);
-  box-shadow: 0 2px 8px color-mix(in srgb, var(--primary) 20%, transparent);
-}
-
-.pg-btn-secondary {
-  background: transparent;
-  color: var(--text-primary);
-  border: 1px solid var(--border);
-}
-
-.pg-btn-secondary:hover {
-  background: var(--surface-muted);
-  border-color: color-mix(in srgb, var(--text-primary) 18%, var(--border));
-}
-
-.pg-btn-ghost {
-  background: transparent;
-  color: var(--text-secondary);
-  border: 1px solid transparent;
-}
-
-.pg-btn-ghost:hover {
-  background: var(--surface-muted);
-  color: var(--text-primary);
-  border-color: var(--border-soft);
-}
+/* Button styles: proplytic-buttons.css */
 
 /* --- Inputs & selects --- */
 .pg-input,

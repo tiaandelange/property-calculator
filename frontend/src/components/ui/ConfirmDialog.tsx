@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { Button } from "./Button";
 import { ModalOverlay, ModalPanel } from "./Modal";
 
 export function ConfirmDialog({
@@ -24,8 +25,6 @@ export function ConfirmDialog({
 }) {
   if (!open) return null;
 
-  const confirmClass = confirmVariant === "danger" ? "pg-btn pg-btn-danger" : "pg-btn pg-btn-primary";
-
   return (
     <>
       <ModalOverlay open onClose={onClose} />
@@ -46,12 +45,17 @@ export function ConfirmDialog({
             onClose={onClose}
             actions={
               <>
-                <button type="button" className="pg-btn pg-btn-ghost" onClick={onClose} disabled={loading}>
+                <Button type="button" variant="ghost" onClick={onClose} disabled={loading}>
                   {cancelLabel}
-                </button>
-                <button type="button" className={confirmClass} onClick={onConfirm} disabled={loading}>
-                  {loading ? "Please wait…" : confirmLabel}
-                </button>
+                </Button>
+                <Button
+                  type="button"
+                  variant={confirmVariant === "danger" ? "danger" : "primary"}
+                  onClick={onConfirm}
+                  loading={loading}
+                >
+                  {confirmLabel}
+                </Button>
               </>
             }
           >

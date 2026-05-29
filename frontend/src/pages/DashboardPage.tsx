@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
 import { Helmet } from "react-helmet-async";
-import { Link } from "react-router-dom";
 import { fetchPdfBlob, triggerPdfFileDownload } from "../api/pdfBlob";
 import { deleteUserReport, listUserReports } from "../services/profileSupabase";
 import { generateReportViaVercel } from "../services/reportsVercel";
@@ -8,7 +7,7 @@ import { Card } from "../components/ui/Card";
 import { Container } from "../components/ui/Container";
 import { Grid } from "../components/ui/Grid";
 import { Section } from "../components/ui/Section";
-import { Button } from "../components/ui/Button";
+import { Button, ButtonLink } from "../components/ui/Button";
 
 type Report = {
   id: string | number;
@@ -112,9 +111,9 @@ export function DashboardPage() {
             <Button onClick={load} loading={loading}>
               Refresh
             </Button>
-            <Link className="pg-btn pg-btn-secondary" to="/calculators/cash-on-cash-return">
+            <ButtonLink href="/calculators/cash-on-cash-return" variant="soft">
               New calculation
-            </Link>
+            </ButtonLink>
           </div>
         </div>
 
@@ -131,12 +130,12 @@ export function DashboardPage() {
               Run a calculator while logged in and your results will show up here automatically.
             </p>
             <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-              <Link className="pg-btn pg-btn-primary" to="/calculators/noi">
+              <ButtonLink href="/calculators/noi" variant="primary">
                 Start with NOI
-              </Link>
-              <Link className="pg-btn pg-btn-ghost" to="/calculators/cash-flow">
+              </ButtonLink>
+              <ButtonLink href="/calculators/cash-flow" variant="ghost">
                 Explore cash flow
-              </Link>
+              </ButtonLink>
             </div>
           </Card>
         ) : null}
@@ -165,9 +164,9 @@ export function DashboardPage() {
                     )}
 
                     <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                      <Link className="pg-btn pg-btn-ghost" to={`/calculators/${r.type}`}>
+                      <ButtonLink href={`/calculators/${r.type}`} variant="ghost">
                         View
-                      </Link>
+                      </ButtonLink>
                       {r.downloadUrl ? (
                         <Button
                           variant="secondary"

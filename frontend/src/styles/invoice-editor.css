@@ -112,16 +112,6 @@
   min-height: 44px;
 }
 
-.pg-inv-editor__btn-outline {
-  border: 1px solid var(--primary-border);
-  color: var(--primary);
-  background: var(--surface);
-}
-
-.pg-inv-editor__btn-outline:hover:not(:disabled) {
-  background: var(--primary-soft);
-}
-
 /* More menu */
 .pg-inv-editor__more-wrap {
   position: relative;

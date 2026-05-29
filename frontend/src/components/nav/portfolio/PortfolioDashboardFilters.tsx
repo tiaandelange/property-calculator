@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { SlidersHorizontal } from "lucide-react";
+import { Button } from "../../ui/Button";
 import { useLocation, useNavigate } from "react-router-dom";
 import { getProperties } from "../../../api/ownedProperties";
 
@@ -208,9 +209,9 @@ export function PortfolioDashboardFilters({ className, buttonClassName }: Props)
                   ))}
                 </select>
               </div>
-              <button type="button" className="pg-btn pg-btn-ghost" onClick={resetFilters}>
+              <Button type="button" variant="ghost" onClick={resetFilters}>
                 Reset filters
-              </button>
+              </Button>
             </div>
           </div>
         </div>

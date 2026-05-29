@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Helmet } from "react-helmet-async";
-import { Link, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import {
   generateInvoicePdf,
   getInvoicesDirectory,
@@ -22,7 +22,7 @@ import {
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
 import { Container } from "../components/ui/Container";
 import { Section } from "../components/ui/Section";
-import { Button } from "../components/ui/Button";
+import { Button, ButtonLink } from "../components/ui/Button";
 
 const EMPTY_METRICS: InvoiceDirectoryMetrics = {
   totalOutstanding: 0,
@@ -157,9 +157,9 @@ export function InvoicesListPage() {
                   ? "Invoices from active leases are generated automatically, or create one from a property lease."
                   : "Try adjusting your search or filters."}
               </p>
-              <Link className="pg-btn pg-btn-primary" to="/leases">
+              <ButtonLink href="/leases" variant="primary">
                 View leases
-              </Link>
+              </ButtonLink>
             </section>
           ) : (
             <>

@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { Helmet } from "react-helmet-async";
-import { Link, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { ExternalLink, List } from "lucide-react";
 import { Container } from "../components/ui/Container";
 import { Section } from "../components/ui/Section";
 import { Card } from "../components/ui/Card";
-import { Button } from "../components/ui/Button";
+import { Button, ButtonLink } from "../components/ui/Button";
 import { generateReportViaVercel } from "../services/reportsVercel";
 
 export function PropertyReportPage() {
@@ -72,18 +72,15 @@ export function PropertyReportPage() {
               <ExternalLink size={16} style={{ marginRight: 6 }} aria-hidden />
               View / Download
             </Button>
-            <Link
-              className={`pg-btn pg-btn-primary${downloadUrl ? "" : " pg-btn-disabled"}`}
-              to={downloadUrl ? "/owned-properties/reports" : "#"}
-              aria-disabled={!downloadUrl}
-              onClick={(e) => {
-                if (!downloadUrl) e.preventDefault();
-              }}
+            <ButtonLink
+              href="/owned-properties/reports"
+              variant="primary"
+              disabled={!downloadUrl}
               title={reportId ? `Report id: ${reportId}` : undefined}
             >
               <List size={16} style={{ marginRight: 6 }} aria-hidden />
               Open Reports
-            </Link>
+            </ButtonLink>
           </div>
         </div>
 

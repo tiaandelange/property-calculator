@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { ButtonLink } from "../ui/Button";
 import { Container } from "../ui/Container";
 import { Section } from "../ui/Section";
 
@@ -41,12 +41,12 @@ export function HomeFinalCtaSection() {
               </p>
             </div>
             <div className="pg-home-final-cta-actions">
-              <Link to="/calculators" className="pg-btn pg-btn-primary">
+              <ButtonLink href="/calculators" variant="primary">
                 Open calculators
-              </Link>
-              <Link to="/contact" className="pg-btn pg-btn-ghost">
+              </ButtonLink>
+              <ButtonLink href="/contact" variant="ghost">
                 Contact us
-              </Link>
+              </ButtonLink>
             </div>
           </div>
         </div>

@@ -1,5 +1,6 @@
 import { FormEvent } from "react";
 import { Card } from "../../../components/ui/Card";
+import { Button } from "../../../components/ui/Button";
 import { Field, Input } from "../../../components/ui/Input";
 
 export const ADDITIONAL_BOND_TERM_YEAR_OPTIONS = [5, 10, 15, 20, 25, 30] as const;
@@ -172,17 +173,17 @@ export function AdditionalBondModal({
               />
             </Field>
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-              <button type="submit" className="pg-btn pg-btn-primary" disabled={busy}>
-                {saving ? "Saving…" : mode === "add" ? "Add bond" : "Save changes"}
-              </button>
+              <Button type="submit" variant="primary" disabled={busy} loading={saving}>
+                {mode === "add" ? "Add bond" : "Save changes"}
+              </Button>
               {mode === "edit" && onDelete ? (
-                <button type="button" className="pg-btn pg-btn-danger" disabled={busy} onClick={onDelete}>
-                  {deleting ? "Removing…" : "Remove bond"}
-                </button>
+                <Button type="button" variant="danger" disabled={busy} loading={deleting} onClick={onDelete}>
+                  Remove bond
+                </Button>
               ) : null}
-              <button type="button" className="pg-btn pg-btn-ghost" disabled={busy} onClick={onClose}>
+              <Button type="button" variant="ghost" disabled={busy} onClick={onClose}>
                 Cancel
-              </button>
+              </Button>
             </div>
           </form>
         </Card>

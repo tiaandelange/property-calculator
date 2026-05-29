@@ -1,5 +1,6 @@
 import { Receipt, Shield, Droplets, Wrench, Trees } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { Button } from "../../../components/ui/Button";
 import { IconButton } from "../../../components/icons";
 import {
   ProplyticAmountCell,
@@ -75,9 +76,9 @@ export function RecurringExpensesSection({
           <h2 className="pg-pfin-section__title">Recurring Expenses</h2>
           <p className="pg-pfin-section__desc">Monthly schedules posted automatically to your property ledger.</p>
         </div>
-        <button type="button" className="pg-btn pg-btn-primary pg-pfin-add-btn" onClick={onAdd}>
+        <Button type="button" variant="primary" className="pg-pfin-add-btn" onClick={onAdd}>
           Add Expense
-        </button>
+        </Button>
       </header>
 
       {loading ? <ProplyticTableSkeleton rows={4} /> : null}
@@ -87,9 +88,9 @@ export function RecurringExpensesSection({
           title="No recurring expenses yet"
           description="Add recurring expenses to improve monthly cash-flow forecasting."
           action={
-            <button type="button" className="pg-btn pg-btn-secondary" onClick={onAdd}>
+            <Button type="button" variant="soft" onClick={onAdd}>
               Add Expense
-            </button>
+            </Button>
           }
         />
       ) : null}

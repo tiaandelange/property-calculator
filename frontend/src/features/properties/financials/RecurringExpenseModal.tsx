@@ -1,5 +1,6 @@
 import { FormEvent } from "react";
 import { Card } from "../../../components/ui/Card";
+import { Button } from "../../../components/ui/Button";
 import { Field, Input } from "../../../components/ui/Input";
 
 export type RecurringExpenseFormState = {
@@ -162,12 +163,12 @@ export function RecurringExpenseModal({
               />
             </Field>
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-              <button type="submit" className="pg-btn pg-btn-primary" disabled={saving}>
-                {saving ? "Saving…" : mode === "add" ? "Add recurring expense" : "Save changes"}
-              </button>
-              <button type="button" className="pg-btn pg-btn-ghost" disabled={saving} onClick={onClose}>
+              <Button type="submit" variant="primary" disabled={saving} loading={saving}>
+                {mode === "add" ? "Add recurring expense" : "Save changes"}
+              </Button>
+              <Button type="button" variant="ghost" disabled={saving} onClick={onClose}>
                 Cancel
-              </button>
+              </Button>
             </div>
           </form>
         </Card>

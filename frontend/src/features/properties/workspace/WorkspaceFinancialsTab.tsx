@@ -43,6 +43,7 @@ import {
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 import { Card } from "../../../components/ui/Card";
+import { Button, ButtonLink } from "../../../components/ui/Button";
 import { Field, Input } from "../../../components/ui/Input";
 import { ModalOverlay, ModalPanel } from "../../../components/ui/Modal";
 import { fetchPdfBlob, isAbsoluteHttpUrl, openPdfBlobInNewTab } from "../../../api/pdfBlob";
@@ -1151,15 +1152,16 @@ export function WorkspaceFinancialsTab({
           {isMobile ? <ExpenseCategoriesCard overview={financialOverview} /> : null}
 
           <div className="pg-pfin-sticky-save">
-            <button
+            <Button
               type="submit"
               form="pfin-details-form"
-              className="pg-btn pg-btn-primary"
-              style={{ width: "100%", justifyContent: "center" }}
+              fullWidth
+              style={{ justifyContent: "center" }}
+              loading={financialDetailsSaving}
               disabled={financialDetailsSaving}
             >
-              {financialDetailsSaving ? "Saving…" : "Save Changes"}
-            </button>
+              Save Changes
+            </Button>
           </div>
 
           {false ? (
@@ -1182,14 +1184,9 @@ export function WorkspaceFinancialsTab({
           ) : null}
           {isSupabaseConfigured ? (
             <div style={{ marginBottom: 12, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-              <button
-                type="button"
-                className="pg-btn pg-btn-secondary"
-                disabled={summaryPdfBusy}
-                onClick={() => void downloadPropertySummaryPdf()}
-              >
-                {summaryPdfBusy ? "Generating…" : "Property summary PDF"}
-              </button>
+              <Button type="button" variant="soft" loading={summaryPdfBusy} disabled={summaryPdfBusy} onClick={() => void downloadPropertySummaryPdf()}>
+                Property summary PDF
+              </Button>
               <span className="pg-muted" style={{ fontSize: 12 }}>
                 Current UTC month via serverless PDF (Supabase Storage).
               </span>
@@ -1384,30 +1381,31 @@ export function WorkspaceFinancialsTab({
                             ) : (
                               <>
                                 {invoiceViewId ? (
-                                  <Link
-                                    className="pg-btn pg-btn-ghost"
-                                    style={{ fontSize: 12, padding: "4px 10px", display: "inline-flex", alignItems: "center", gap: 4 }}
-                                    to={invoiceDetailPath(invoiceViewId)}
+                                  <ButtonLink
+                                    href={invoiceDetailPath(invoiceViewId)}
+                                    variant="ghost"
+                                    size="xs"
+                                    style={{ display: "inline-flex", alignItems: "center", gap: 4 }}
                                   >
                                     View
-                                  </Link>
+                                  </ButtonLink>
                                 ) : null}
                                 {canEditStatementRow(r) ? (
-                                  <button type="button" className="pg-btn pg-btn-ghost" style={{ fontSize: 12, padding: "4px 10px" }} onClick={() => beginStatementEdit(r)}>
+                                  <Button type="button" variant="ghost" size="xs" onClick={() => beginStatementEdit(r)}>
                                     Edit
-                                  </button>
+                                  </Button>
                                 ) : null}
-                                <button
+                                <Button
                                   type="button"
-                                  className="pg-btn pg-btn-ghost"
-                                  style={{ fontSize: 12, padding: "4px 10px" }}
+                                  variant="ghost"
+                                  size="xs"
                                   onClick={() => {
                                     setStatementFeedback(null);
                                     setStatementConfirm({ kind: "delete", row: r });
                                   }}
                                 >
                                   Delete
-                                </button>
+                                </Button>
                               </>
                             )}
                           </div>
@@ -1456,9 +1454,9 @@ export function WorkspaceFinancialsTab({
                         </div>
                       </div>
                       {!inv ? (
-                        <button className="pg-btn pg-btn-primary" type="button" onClick={() => void createInvoiceForLease(String(lease.id))}>
+                        <Button type="button" onClick={() => void createInvoiceForLease(String(lease.id))}>
                           Generate invoice
-                        </button>
+                        </Button>
                       ) : (
                         <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
                           <span className="pg-muted">{inv.invoiceNumber}</span>
@@ -1466,19 +1464,18 @@ export function WorkspaceFinancialsTab({
                             {inv.status}
                           </span>
                           <span>{fmt(inv.total)}</span>
-                          <button
-                            className="pg-btn pg-btn-secondary"
+                          <Button
                             type="button"
+                            variant="soft"
+                            loading={invoicePdfBusyId === inv.id || invoicePdfBusyId === String(inv.id)}
                             disabled={invoicePdfBusyId === inv.id || invoicePdfBusyId === String(inv.id)}
                             onClick={() => void viewInvoicePdf(String(inv.id))}
                           >
-                            {invoicePdfBusyId === inv.id || invoicePdfBusyId === String(inv.id)
-                              ? "Working…"
-                              : "View Invoice"}
-                          </button>
-                          <button className="pg-btn pg-btn-ghost" type="button" disabled title="Coming soon">
+                            View Invoice
+                          </Button>
+                          <Button type="button" variant="ghost" disabled title="Coming soon">
                             Send Invoice
-                          </button>
+                          </Button>
                         </div>
                       )}
                     </div>
@@ -1488,12 +1485,12 @@ export function WorkspaceFinancialsTab({
             </div>
           )}
           <div style={{ marginTop: 14, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-            <Link className="pg-btn pg-btn-ghost" to="/financials">
+            <ButtonLink href="/financials" variant="ghost">
               Create custom invoice
-            </Link>
-            <button className="pg-btn pg-btn-ghost" type="button" onClick={() => setSub("expenses")}>
+            </ButtonLink>
+            <Button type="button" variant="ghost" onClick={() => setSub("expenses")}>
               Expenses
-            </button>
+            </Button>
           </div>
         </Card>
             </details>
@@ -1560,18 +1557,18 @@ export function WorkspaceFinancialsTab({
               />
             </Field>
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-              <button className="pg-btn pg-btn-primary" type="submit" disabled={expenseSaving}>
-                {expenseSaving ? "Saving…" : "Add to statement"}
-              </button>
-              <button className="pg-btn pg-btn-ghost" type="button" onClick={() => setSub("statement")}>
+              <Button type="submit" loading={expenseSaving} disabled={expenseSaving}>
+                Add to statement
+              </Button>
+              <Button type="button" variant="ghost" onClick={() => setSub("statement")}>
                 View statement
-              </button>
-              <button className="pg-btn pg-btn-ghost" type="button" onClick={() => setSub("recurring")}>
+              </Button>
+              <Button type="button" variant="ghost" onClick={() => setSub("recurring")}>
                 Recurring charges
-              </button>
-              <button className="pg-btn pg-btn-ghost" type="button" onClick={() => setSub("invoice")}>
+              </Button>
+              <Button type="button" variant="ghost" onClick={() => setSub("invoice")}>
                 Lease invoices
-              </button>
+              </Button>
             </div>
           </form>
         </Card>
@@ -1608,9 +1605,9 @@ export function WorkspaceFinancialsTab({
                         </div>
                       ) : null}
                     </div>
-                    <button
+                    <Button
                       type="button"
-                      className="pg-btn pg-btn-secondary"
+                      variant="soft"
                       onClick={() =>
                         setDepositModal({
                           leaseId: d.leaseId,
@@ -1621,7 +1618,7 @@ export function WorkspaceFinancialsTab({
                       }
                     >
                       Update deposit
-                    </button>
+                    </Button>
                   </div>
                 </div>
               );
@@ -1709,9 +1706,9 @@ export function WorkspaceFinancialsTab({
                 onChange={(e) => setFutureExpenseForm({ ...futureExpenseForm, amount: e.target.value })}
               />
             </Field>
-            <button type="submit" className="pg-btn pg-btn-primary" disabled={futureExpenseSaving}>
-              {futureExpenseSaving ? "Saving…" : "Save future expense"}
-            </button>
+            <Button type="submit" loading={futureExpenseSaving} disabled={futureExpenseSaving}>
+              Save future expense
+            </Button>
           </form>
           {(futureChargesLandlord?.length ?? 0) === 0 ? (
             <div className="pg-muted">No scheduled one-off charges after today yet.</div>
@@ -1875,15 +1872,15 @@ export function WorkspaceFinancialsTab({
               />
             </Field>
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-              <button className="pg-btn pg-btn-primary" type="submit" disabled={recurringScheduleSaving}>
-                {recurringScheduleSaving ? "Saving…" : "Save monthly schedule"}
-              </button>
-              <button className="pg-btn pg-btn-ghost" type="button" onClick={() => setSub("statement")}>
+              <Button type="submit" loading={recurringScheduleSaving} disabled={recurringScheduleSaving}>
+                Save monthly schedule
+              </Button>
+              <Button type="button" variant="ghost" onClick={() => setSub("statement")}>
                 View statement
-              </button>
-              <button className="pg-btn pg-btn-ghost" type="button" onClick={() => setSub("expenses")}>
+              </Button>
+              <Button type="button" variant="ghost" onClick={() => setSub("expenses")}>
                 One-off expenses
-              </button>
+              </Button>
             </div>
           </form>
 
@@ -1935,20 +1932,15 @@ export function WorkspaceFinancialsTab({
                         ) : null}
                       </div>
                       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
-                        <button
-                          type="button"
-                          className="pg-btn pg-btn-ghost"
-                          disabled={uiLocked}
-                          onClick={() => openScheduleEditor(rc)}
-                        >
+                        <Button type="button" variant="ghost" disabled={uiLocked} onClick={() => openScheduleEditor(rc)}>
                           Edit
-                        </button>
-                        <button type="button" className="pg-btn pg-btn-ghost" disabled={uiLocked} onClick={() => requestArchiveSchedule(rc)}>
+                        </Button>
+                        <Button type="button" variant="ghost" disabled={uiLocked} onClick={() => requestArchiveSchedule(rc)}>
                           Stop
-                        </button>
-                        <button type="button" className="pg-btn pg-btn-ghost" disabled={uiLocked} onClick={() => requestHardDeleteSchedule(rc)}>
+                        </Button>
+                        <Button type="button" variant="ghost" disabled={uiLocked} onClick={() => requestHardDeleteSchedule(rc)}>
                           Delete…
-                        </button>
+                        </Button>
                       </div>
                     </>
                   ) : (
@@ -2060,12 +2052,12 @@ export function WorkspaceFinancialsTab({
                           </Field>
                         ) : null}
                         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                          <button type="submit" className="pg-btn pg-btn-primary" disabled={rowBusy}>
-                            {rowBusy ? "Saving…" : "Save changes"}
-                          </button>
-                          <button type="button" className="pg-btn pg-btn-ghost" disabled={rowBusy} onClick={closeScheduleEditor}>
+                          <Button type="submit" loading={rowBusy} disabled={rowBusy}>
+                            Save changes
+                          </Button>
+                          <Button type="button" variant="ghost" disabled={rowBusy} onClick={closeScheduleEditor}>
                             Cancel
-                          </button>
+                          </Button>
                         </div>
                       </form>
                     )
@@ -2169,23 +2161,24 @@ export function WorkspaceFinancialsTab({
               }
               actions={
                 scheduleConfirm.kind === "delete" ? (
-                  <button
+                  <Button
                     type="button"
-                    className="pg-btn pg-btn-danger"
+                    variant="danger"
+                    loading={scheduleConfirmBusy}
                     disabled={scheduleConfirmBusy}
                     onClick={() => void confirmScheduleAction()}
                   >
-                    {scheduleConfirmBusy ? "Deleting…" : "Delete permanently"}
-                  </button>
+                    Delete permanently
+                  </Button>
                 ) : (
-                  <button
+                  <Button
                     type="button"
-                    className="pg-btn pg-btn-primary"
+                    loading={scheduleConfirmBusy}
                     disabled={scheduleConfirmBusy}
                     onClick={() => void confirmScheduleAction()}
                   >
-                    {scheduleConfirmBusy ? "Stopping…" : "Stop schedule"}
-                  </button>
+                    Stop schedule
+                  </Button>
                 )
               }
               className="pg-modal-panel"
@@ -2201,14 +2194,9 @@ export function WorkspaceFinancialsTab({
                 </div>
                 {scheduleConfirmError ? <div className="pg-alert pg-alert-error">{scheduleConfirmError}</div> : null}
                 <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                  <button
-                    type="button"
-                    className="pg-btn pg-btn-ghost"
-                    disabled={scheduleConfirmBusy}
-                    onClick={() => setScheduleConfirm(null)}
-                  >
+                  <Button type="button" variant="ghost" disabled={scheduleConfirmBusy} onClick={() => setScheduleConfirm(null)}>
                     Cancel
-                  </button>
+                  </Button>
                 </div>
               </div>
             </ModalPanel>
@@ -2241,12 +2229,12 @@ export function WorkspaceFinancialsTab({
                 : "Are you sure you want to delete this line item? One-off rows are removed; bond / recurring charges posted automatically are archived so they do not reappear when you reopen the statement."}
             </p>
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-              <button type="button" className="pg-btn pg-btn-primary" disabled={statementConfirmBusy} onClick={() => void runStatementConfirm()}>
-                {statementConfirmBusy ? "Working…" : "Yes"}
-              </button>
-              <button type="button" className="pg-btn pg-btn-ghost" disabled={statementConfirmBusy} onClick={() => setStatementConfirm(null)}>
+              <Button type="button" loading={statementConfirmBusy} disabled={statementConfirmBusy} onClick={() => void runStatementConfirm()}>
+                Yes
+              </Button>
+              <Button type="button" variant="ghost" disabled={statementConfirmBusy} onClick={() => setStatementConfirm(null)}>
                 No
-              </button>
+              </Button>
             </div>
           </Card>
         </div>
@@ -2307,12 +2295,12 @@ export function WorkspaceFinancialsTab({
                 ) : null}
               </div>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                <button className="pg-btn pg-btn-primary" type="submit" disabled={depositSaving}>
-                  {depositSaving ? "Saving…" : "Save"}
-                </button>
-                <button className="pg-btn pg-btn-ghost" type="button" onClick={() => setDepositModal(null)}>
+                <Button type="submit" loading={depositSaving} disabled={depositSaving}>
+                  Save
+                </Button>
+                <Button type="button" variant="ghost" onClick={() => setDepositModal(null)}>
                   Cancel
-                </button>
+                </Button>
               </div>
             </form>
           </Card>

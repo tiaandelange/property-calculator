@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { Line, Doughnut } from "react-chartjs-2";
 import { Card } from "../../../components/ui/Card";
+import { Button } from "../../../components/ui/Button";
 import { MetricCard } from "../../../components/ui/DashboardKit";
 import { getChartCategoryPalette, getChartSemanticColors } from "../../../theme/cssTokens";
 
@@ -300,9 +301,9 @@ export function WorkspaceOverviewTab({ data, statement, perf, propertyId, naviga
             <div style={{ display: "grid", gap: 8 }}>
               <div>Contractual rent roll: <strong>R {combinedContractRent.toLocaleString()}</strong>/mo</div>
               <div className="pg-muted">{currentLeases.length} active lease</div>
-              <button type="button" className="pg-btn pg-btn-ghost" onClick={() => navigate(`/owned-properties/${propertyId}?tab=leases`)}>
+              <Button type="button" variant="ghost" onClick={() => navigate(`/owned-properties/${propertyId}?tab=leases`)}>
                 Open leases
-              </button>
+              </Button>
             </div>
           )}
         </Card>
@@ -311,18 +312,18 @@ export function WorkspaceOverviewTab({ data, statement, perf, propertyId, naviga
           {!statement?.currentInvoice ? (
             <div style={{ display: "grid", gap: 8 }}>
               <div className="pg-muted">Create your first invoice for this property.</div>
-              <button type="button" className="pg-btn pg-btn-primary" onClick={() => navigate(`/owned-properties/${propertyId}?tab=financials&fin=invoice`)}>
+              <Button type="button" variant="primary" onClick={() => navigate(`/owned-properties/${propertyId}?tab=financials&fin=invoice`)}>
                 Open invoice workspace
-              </button>
+              </Button>
             </div>
           ) : (
             <div style={{ display: "grid", gap: 6 }}>
               <div><strong>{statement.currentInvoice.invoiceNumber}</strong> ({statement.currentInvoice.status})</div>
               <div>Due: {statement.currentInvoice.dueDate ? new Date(statement.currentInvoice.dueDate).toLocaleDateString() : "—"}</div>
               <div>Total: R {Number(statement.currentInvoice.total ?? 0).toLocaleString()}</div>
-              <button type="button" className="pg-btn pg-btn-ghost" onClick={() => navigate(`/owned-properties/${propertyId}?tab=financials&fin=invoice`)}>
+              <Button type="button" variant="ghost" onClick={() => navigate(`/owned-properties/${propertyId}?tab=financials&fin=invoice`)}>
                 View in financials
-              </button>
+              </Button>
             </div>
           )}
         </Card>

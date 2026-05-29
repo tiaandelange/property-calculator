@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { Helmet } from "react-helmet-async";
-import { Link } from "react-router-dom";
 import { Container } from "../components/ui/Container";
 import { Section } from "../components/ui/Section";
-import { Button } from "../components/ui/Button";
+import { Button, ButtonLink } from "../components/ui/Button";
 import { getProperties, getTenantsDirectory } from "../api/ownedProperties";
 import { PROPERTY_DATA_INVALIDATION } from "../features/properties/invalidate";
 import { TenantMetricCards } from "../features/tenants/TenantMetricCards";
@@ -134,9 +133,9 @@ export function TenantsListPage() {
                   ? "Add your first tenant to start tracking leases and rent."
                   : "Try adjusting your search or filters."}
               </p>
-              <Link className="pg-btn pg-btn-primary" to="/tenants/new">
+              <ButtonLink href="/tenants/new" variant="primary">
                 Add Tenant
-              </Link>
+              </ButtonLink>
             </section>
           ) : (
             <>

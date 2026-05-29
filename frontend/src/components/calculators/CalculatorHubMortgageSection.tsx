@@ -1,5 +1,6 @@
 import { useId, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { Button, ButtonLink } from "../ui/Button";
 import { calculatorRouteForSlug } from "../../data/homepageCalculators";
 import { HomeHeroImage } from "../home/HomeHeroImage";
 import { Container } from "../ui/Container";
@@ -341,15 +342,17 @@ export function CalculatorHubMortgageSection() {
                 </div>
 
                 <div className="pg-calc-hub-actions pg-calc-hub-actions--panel-footer">
-                  <Link
-                    to={calculatorRouteForSlug("monthly-payment")}
-                    className="pg-btn pg-btn-primary pg-calc-hub-primary-btn"
+                  <ButtonLink
+                    href={calculatorRouteForSlug("monthly-payment")}
+                    variant="primary"
+                    className="pg-calc-hub-primary-btn"
                   >
                     Open full bond calculator
-                  </Link>
-                  <button
+                  </ButtonLink>
+                  <Button
                     type="button"
-                    className="pg-btn pg-btn-secondary pg-calc-hub-reset"
+                    variant="soft"
+                    className="pg-calc-hub-reset"
                     onClick={() => {
                       setPropertyPrice(DEFAULT_PRICE);
                       setDepositPercent(DEFAULT_DEPOSIT_PERCENT);
@@ -360,7 +363,7 @@ export function CalculatorHubMortgageSection() {
                     }}
                   >
                     Reset
-                  </button>
+                  </Button>
                 </div>
               </div>
             </div>

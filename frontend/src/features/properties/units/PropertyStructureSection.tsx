@@ -4,6 +4,7 @@ import {
   mapStructureTypeToDbFields,
   PROPERTY_TYPE_CONFIGS
 } from "../../../config/propertyTypes";
+import { Button } from "../../../components/ui/Button";
 import { PropertyFormField } from "../form/PropertyFormField";
 import { PropertyFormSection } from "../form/PropertyFormSection";
 import type { PropertyFormMode, PropertyFormValues } from "../form/propertyFormConstants";
@@ -101,15 +102,15 @@ export function PropertyStructureSection({
             Changing property type may regenerate unit rows. Saved units are kept when possible. Continue?
           </p>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <button type="button" className="pg-btn pg-btn-primary" onClick={() => applyStructureType(typeChangeConfirm, true)}>
+            <Button type="button" variant="primary" onClick={() => applyStructureType(typeChangeConfirm, true)}>
               Regenerate units
-            </button>
-            <button type="button" className="pg-btn pg-btn-secondary" onClick={() => applyStructureType(typeChangeConfirm, false)}>
+            </Button>
+            <Button type="button" variant="soft" onClick={() => applyStructureType(typeChangeConfirm, false)}>
               Keep current units
-            </button>
-            <button type="button" className="pg-btn pg-btn-ghost" onClick={() => setTypeChangeConfirm(null)}>
+            </Button>
+            <Button type="button" variant="ghost" onClick={() => setTypeChangeConfirm(null)}>
               Cancel
-            </button>
+            </Button>
           </div>
         </div>
       ) : null}
@@ -225,9 +226,9 @@ export function PropertyStructureSection({
             />
           </PropertyFormField>
           <PropertyFormField label=" ">
-            <button type="button" className="pg-btn pg-btn-secondary" onClick={regenerateUnits}>
+            <Button type="button" variant="soft" onClick={regenerateUnits}>
               Apply count to unit rows
-            </button>
+            </Button>
           </PropertyFormField>
         </div>
       ) : null}

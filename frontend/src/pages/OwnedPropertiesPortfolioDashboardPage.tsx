@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { Helmet } from "react-helmet-async";
-import { Link, useLocation } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import { Container } from "../components/ui/Container";
 import { Section } from "../components/ui/Section";
-import { Button } from "../components/ui/Button";
+import { Button, ButtonLink } from "../components/ui/Button";
 import { EmptyState } from "../components/ui/DashboardKit";
 import { getPortfolioDashboardSummary, getProperties, getTenants } from "../api/ownedProperties";
 import { PROPERTY_DATA_INVALIDATION } from "../features/properties/invalidate";
@@ -407,15 +407,15 @@ export function OwnedPropertiesPortfolioDashboardPage() {
               <Button onClick={() => load()} loading={loading}>
                 Refresh
               </Button>
-              <Link className="pg-btn pg-btn-secondary" to="/owned-properties/new">
+              <ButtonLink href="/owned-properties/new" variant="soft">
                 Add Property
-              </Link>
-              <Link className="pg-btn pg-btn-ghost" to="/financials">
+              </ButtonLink>
+              <ButtonLink href="/financials" variant="ghost">
                 Add income/expense
-              </Link>
-              <Link className="pg-btn pg-btn-ghost" to="/dashboard">
+              </ButtonLink>
+              <ButtonLink href="/dashboard" variant="ghost">
                 My reports
-              </Link>
+              </ButtonLink>
             </div>
           </div>
 
@@ -427,12 +427,12 @@ export function OwnedPropertiesPortfolioDashboardPage() {
               body="Track equity, cash flow, tenants, leases and reports across your portfolio."
               actions={
                 <>
-                  <Link className="pg-btn pg-btn-primary" to="/owned-properties/new">
+                  <ButtonLink href="/owned-properties/new" variant="primary">
                     Add Property
-                  </Link>
-                  <Link className="pg-btn pg-btn-ghost" to="/calculators/cash-on-cash-return">
+                  </ButtonLink>
+                  <ButtonLink href="/calculators/cash-on-cash-return" variant="ghost">
                     Open Calculators
-                  </Link>
+                  </ButtonLink>
                 </>
               }
             />

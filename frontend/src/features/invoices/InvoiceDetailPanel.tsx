@@ -16,6 +16,7 @@ import { fetchMe } from "../../api/user";
 import { invalidatePropertyWorkspace } from "../properties/invalidate";
 import { openInvoicePdfExport, invoicePdfWasStored } from "./invoicePdfExport";
 import { Button } from "../../components/ui/Button";
+import { SplitButton, type SplitButtonMenuItem } from "../../components/ui/SplitButton";
 import { Input } from "../../components/ui/Input";
 import { ConfirmDialog } from "../../components/ui/ConfirmDialog";
 import {
@@ -504,6 +505,25 @@ export function InvoiceDetailPanel({
     );
   };
 
+  const sendMenuItems: SplitButtonMenuItem[] = [
+    {
+      label: "Preview",
+      icon: "view",
+      disabled: pdfBusy,
+      onClick: () => void exportPdf()
+    },
+    ...(activeId
+      ? [
+          {
+            label: "Download PDF",
+            icon: "download",
+            disabled: pdfBusy,
+            onClick: () => void downloadPdf()
+          } satisfies SplitButtonMenuItem
+        ]
+      : [])
+  ];
+
   const renderMoreMenu = () => (
     <div className="pg-inv-editor__more-wrap" ref={moreRef}>
       <IconButton
@@ -602,21 +622,24 @@ export function InvoiceDetailPanel({
             <p className="pg-inv-editor__subtitle">Create and send professional invoices to your tenants.</p>
           </div>
           <div className="pg-inv-editor__actions pg-inv-editor__actions--desktop">
-            <Button type="button" variant="secondary" loading={pdfBusy} onClick={() => void exportPdf()}>
-              <AppIcon name="view" size="sm" style={{ marginRight: 8 }} />
+            <Button type="button" variant="outline" loading={pdfBusy} iconLeft="view" onClick={() => void exportPdf()}>
               Preview
             </Button>
             {editable ? (
-              <Button type="submit" variant="secondary" loading={saving} className="pg-inv-editor__btn-outline">
-                <AppIcon name="save" size="sm" style={{ marginRight: 8 }} />
+              <Button type="submit" variant="soft" loading={saving} iconLeft="save">
                 Save Draft
               </Button>
             ) : null}
             {editable && canMarkInvoiceSent(status) ? (
-              <Button type="button" loading={sendBusy} onClick={() => setConfirmSend(true)}>
-                <AppIcon name="send" size="sm" style={{ marginRight: 8 }} />
-                {invoiceSendButtonLabel()}
-              </Button>
+              <SplitButton
+                mainLabel={invoiceSendButtonLabel()}
+                mainIcon="send"
+                loading={sendBusy}
+                disabled={sendBusy}
+                mobileLarge={false}
+                onMainClick={() => setConfirmSend(true)}
+                menuItems={sendMenuItems}
+              />
             ) : null}
             {renderMoreMenu()}
           </div>
@@ -781,22 +804,25 @@ export function InvoiceDetailPanel({
 
         <div className="pg-inv-editor__mobile-bar">
           {editable ? (
-            <Button type="submit" variant="secondary" loading={saving} className="pg-inv-editor__btn-outline">
-              <AppIcon name="save" size="sm" style={{ marginRight: 8 }} />
+            <Button type="submit" variant="soft" loading={saving} iconLeft="save">
               Save Draft
             </Button>
           ) : (
-            <Button type="button" variant="secondary" loading={pdfBusy} onClick={() => void exportPdf()}>
-              <AppIcon name="view" size="sm" style={{ marginRight: 8 }} />
+            <Button type="button" variant="outline" loading={pdfBusy} iconLeft="view" onClick={() => void exportPdf()}>
               Preview
             </Button>
           )}
           {editable && canMarkInvoiceSent(status) ? (
-            <Button type="button" loading={sendBusy} onClick={() => setConfirmSend(true)}>
-              {invoiceSendButtonLabel()}
-            </Button>
+            <SplitButton
+              mainLabel={invoiceSendButtonLabel()}
+              mainIcon="send"
+              loading={sendBusy}
+              disabled={sendBusy}
+              onMainClick={() => setConfirmSend(true)}
+              menuItems={sendMenuItems}
+            />
           ) : locked ? (
-            <Button type="button" variant="secondary" loading={pdfBusy} onClick={() => void exportPdf()}>
+            <Button type="button" variant="outline" loading={pdfBusy} iconLeft="pdf" onClick={() => void exportPdf()}>
               Export PDF
             </Button>
           ) : null}

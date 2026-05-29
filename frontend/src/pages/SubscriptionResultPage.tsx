@@ -1,5 +1,5 @@
 import { Helmet } from "react-helmet-async";
-import { Link } from "react-router-dom";
+import { ButtonLink } from "../components/ui/Button";
 import { Container } from "../components/ui/Container";
 import { Section } from "../components/ui/Section";
 import { Card } from "../components/ui/Card";
@@ -25,12 +25,12 @@ export function SubscriptionResultPage({ mode }: { mode: "success" | "cancel" })
                 : "No worries — you can subscribe any time when you're ready."}
             </p>
             <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-              <Link className="pg-btn pg-btn-primary" to="/">
+              <ButtonLink href="/" variant="primary">
                 Back to home
-              </Link>
-              <Link className="pg-btn pg-btn-ghost" to="/dashboard">
+              </ButtonLink>
+              <ButtonLink href="/dashboard" variant="ghost">
                 My Reports
-              </Link>
+              </ButtonLink>
             </div>
           </Card>
         </div>

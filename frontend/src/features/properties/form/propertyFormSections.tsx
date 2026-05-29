@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Link } from "react-router-dom";
+import { ButtonLink } from "../../../components/ui/Button";
 import { Input } from "../../../components/ui/Input";
 import { propertyFinancialsStatementUrl } from "../../financials/financialDirectoryUtils";
 import { PropertyFormField } from "./PropertyFormField";
@@ -173,18 +173,18 @@ export function PropertyFormSections({
       >
         {mode === "edit" && propertyId ? (
           <div className="pg-prop-related-actions">
-            <Link to={`/owned-properties/${propertyId}?tab=overview`} className="pg-btn pg-btn-secondary">
+            <ButtonLink href={`/owned-properties/${propertyId}?tab=overview`} variant="soft">
               View Property
-            </Link>
-            <Link to={propertyFinancialsStatementUrl(propertyId, "statement")} className="pg-btn pg-btn-secondary">
+            </ButtonLink>
+            <ButtonLink href={propertyFinancialsStatementUrl(propertyId, "statement")} variant="soft">
               Manage Income
-            </Link>
-            <Link to={propertyFinancialsStatementUrl(propertyId, "expenses")} className="pg-btn pg-btn-secondary">
+            </ButtonLink>
+            <ButtonLink href={propertyFinancialsStatementUrl(propertyId, "expenses")} variant="soft">
               Manage Expenses
-            </Link>
-            <Link to={`/financials?propertyId=${propertyId}`} className="pg-btn pg-btn-ghost">
+            </ButtonLink>
+            <ButtonLink href={`/financials?propertyId=${propertyId}`} variant="ghost">
               Open Financials Page
-            </Link>
+            </ButtonLink>
           </div>
         ) : null}
 

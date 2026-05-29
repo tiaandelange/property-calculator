@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { Helmet } from "react-helmet-async";
-import { Link, useLocation } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import { Container } from "../components/ui/Container";
 import { Section } from "../components/ui/Section";
 import { Grid } from "../components/ui/Grid";
 import { Card } from "../components/ui/Card";
-import { Button } from "../components/ui/Button";
+import { Button, ButtonLink } from "../components/ui/Button";
 import { getProperties } from "../api/ownedProperties";
 import { usePropertyWorkspaceRefresh } from "../features/properties/usePropertyWorkspaceRefresh";
 import { StatusPill } from "../components/ui/DashboardKit";
@@ -122,7 +122,7 @@ export function OwnedPropertiesMyPropertiesPage() {
         <div style={{ display: "flex", justifyContent: "flex-end", gap: 12, flexWrap: "wrap", alignItems: "center", marginTop: 8 }}>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             <Button onClick={load} loading={loading}>Refresh</Button>
-            <Link className="pg-btn pg-btn-primary" to="/owned-properties/new">Add Property</Link>
+            <ButtonLink href="/owned-properties/new" variant="primary">Add Property</ButtonLink>
           </div>
         </div>
 
@@ -166,9 +166,9 @@ export function OwnedPropertiesMyPropertiesPage() {
               No properties were returned for your account. If you recently reset the database or ran migrations that recreate tables, your portfolio data may have been cleared—restore from a backup if you need it. Otherwise try{" "}
               <strong>logging out and logging in again</strong> so your session matches the current user record.
             </p>
-            <Link className="pg-btn pg-btn-primary" to="/owned-properties/new" style={{ marginTop: 12, display: "inline-block" }}>
+            <ButtonLink href="/owned-properties/new" variant="primary" style={{ marginTop: 12, display: "inline-block" }}>
               Add a property
-            </Link>
+            </ButtonLink>
           </Card>
         ) : view === "list" ? (
           <Card title="Properties">
@@ -209,10 +209,10 @@ export function OwnedPropertiesMyPropertiesPage() {
                           <div>Monthly cash flow: <strong style={{ color: cash >= 0 ? "var(--success)" : "var(--danger)" }}>R {cash.toLocaleString()}</strong></div>
                         </div>
                         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                          <Link className="pg-btn pg-btn-ghost" to={`/owned-properties/${p.id}`}>View</Link>
-                          <Link className="pg-btn pg-btn-ghost" to={`/owned-properties/${p.id}?tab=financials`}>Financials</Link>
-                          <Link className="pg-btn pg-btn-ghost" to={`/owned-properties/${p.id}?tab=leases`}>Leases</Link>
-                          <Link className="pg-btn pg-btn-ghost" to={`/owned-properties/${p.id}?tab=documents`}>Documents</Link>
+                          <ButtonLink href={`/owned-properties/${p.id}`} variant="ghost">View</ButtonLink>
+                          <ButtonLink href={`/owned-properties/${p.id}?tab=financials`} variant="ghost">Financials</ButtonLink>
+                          <ButtonLink href={`/owned-properties/${p.id}?tab=leases`} variant="ghost">Leases</ButtonLink>
+                          <ButtonLink href={`/owned-properties/${p.id}?tab=documents`} variant="ghost">Documents</ButtonLink>
                         </div>
                       </div>
                       {(p.rentOverdue || p.leaseExpiringSoon || p.leaseMonthToMonth) ? (
@@ -276,10 +276,10 @@ export function OwnedPropertiesMyPropertiesPage() {
                     </div>
                   ) : null}
                   <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
-                    <Link className="pg-btn pg-btn-ghost" to={`/owned-properties/${p.id}`}>View</Link>
-                    <Link className="pg-btn pg-btn-ghost" to={`/owned-properties/${p.id}?tab=financials`}>Financials</Link>
-                    <Link className="pg-btn pg-btn-ghost" to={`/owned-properties/${p.id}?tab=leases`}>Leases</Link>
-                    <Link className="pg-btn pg-btn-ghost" to={`/owned-properties/${p.id}?tab=documents`}>Documents</Link>
+                    <ButtonLink href={`/owned-properties/${p.id}`} variant="ghost">View</ButtonLink>
+                    <ButtonLink href={`/owned-properties/${p.id}?tab=financials`} variant="ghost">Financials</ButtonLink>
+                    <ButtonLink href={`/owned-properties/${p.id}?tab=leases`} variant="ghost">Leases</ButtonLink>
+                    <ButtonLink href={`/owned-properties/${p.id}?tab=documents`} variant="ghost">Documents</ButtonLink>
                   </div>
                 </div>
               );

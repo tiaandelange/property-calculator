@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import { Helmet } from "react-helmet-async";
-import { Link } from "react-router-dom";
 import { cancelLease as cancelLeaseApi, hardDeleteLease, getLeasesDirectory, getProperties, propertyApiErrorMessage } from "../api/ownedProperties";
 import { PROPERTY_DATA_INVALIDATION, invalidatePropertyWorkspace } from "../features/properties/invalidate";
 import { LeaseControlsBar } from "../features/leases/LeaseControlsBar";
@@ -12,7 +11,7 @@ import type { LeaseDirectoryMetrics, LeaseFilters, LeaseListItem } from "../feat
 import { paginate } from "../features/leases/leaseDirectoryUtils";
 import { Container } from "../components/ui/Container";
 import { Section } from "../components/ui/Section";
-import { Button } from "../components/ui/Button";
+import { Button, ButtonLink } from "../components/ui/Button";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
 import { CancelLeaseDialog } from "../features/properties/workspace/CancelLeaseDialog";
 
@@ -177,9 +176,9 @@ export function LeasesListPage() {
                   ? "Create your first lease to link a tenant to a property."
                   : "Try adjusting your search or filters."}
               </p>
-              <Link className="pg-btn pg-btn-primary" to="/leases/new">
+              <ButtonLink href="/leases/new" variant="primary">
                 Add Lease
-              </Link>
+              </ButtonLink>
             </section>
           ) : (
             <>

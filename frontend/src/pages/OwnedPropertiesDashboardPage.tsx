@@ -6,7 +6,7 @@ import { Chart as ChartJS, ArcElement, BarElement, CategoryScale, Legend, Linear
 import { Container } from "../components/ui/Container";
 import { Section } from "../components/ui/Section";
 import { Grid } from "../components/ui/Grid";
-import { Button } from "../components/ui/Button";
+import { Button, ButtonLink } from "../components/ui/Button";
 import { getProperties, getProperty } from "../api/ownedProperties";
 import { PROPERTY_DATA_INVALIDATION } from "../features/properties/invalidate";
 import { AlertBanner, DashboardCard, EmptyState, MetricCard, SkeletonGrid, StatCard, StatusPill } from "../components/ui/DashboardKit";
@@ -178,9 +178,9 @@ export function OwnedPropertiesDashboardPage() {
           </div>
           <div style={{ display: "flex", gap: 10 }}>
             <Button onClick={load} loading={loading}>Refresh</Button>
-            <Link className="pg-btn pg-btn-secondary" to="/owned-properties/new">Add Property</Link>
-            <Link className="pg-btn pg-btn-ghost" to="/financials">Add Income/Expense</Link>
-            <Link className="pg-btn pg-btn-ghost" to="/owned-properties/reports">Generate Portfolio Report</Link>
+            <ButtonLink href="/owned-properties/new" variant="soft">Add Property</ButtonLink>
+            <ButtonLink href="/financials" variant="ghost">Add Income/Expense</ButtonLink>
+            <ButtonLink href="/owned-properties/reports" variant="ghost">Generate Portfolio Report</ButtonLink>
           </div>
         </div>
         {error ? <div className="pg-alert pg-alert-error" style={{ marginTop: 12 }}>{error}</div> : null}
@@ -192,8 +192,8 @@ export function OwnedPropertiesDashboardPage() {
             body="Add your first property to track rent, expenses, leases, documents and portfolio equity."
             actions={
               <>
-                <Link className="pg-btn pg-btn-primary" to="/owned-properties/new">Add Property</Link>
-                <Link className="pg-btn pg-btn-ghost" to="/calculators/cash-on-cash-return">Try Investment Calculator</Link>
+                <ButtonLink href="/owned-properties/new" variant="primary">Add Property</ButtonLink>
+                <ButtonLink href="/calculators/cash-on-cash-return" variant="ghost">Try Investment Calculator</ButtonLink>
               </>
             }
           />
@@ -277,13 +277,13 @@ export function OwnedPropertiesDashboardPage() {
             </Grid>
             <DashboardCard title="Alerts & Actions">
               <div className="pg-workspace-inset-list">
-                {stats.monthToMonth > 0 ? <AlertBanner tone="warning" title="Month-to-month leases" message={`${stats.monthToMonth} leases are month-to-month.`} action={<Link className="pg-btn pg-btn-ghost" to="/leases">Review</Link>} /> : null}
-                {stats.expiringSoon > 0 ? <AlertBanner tone="warning" title="Lease expiring within 90 days" message={`${stats.expiringSoon} leases need renewal soon.`} action={<Link className="pg-btn pg-btn-ghost" to="/leases">Renew</Link>} /> : null}
-                {stats.overdueRentCount > 0 ? <AlertBanner tone="danger" title="Rent overdue" message={`${stats.overdueRentCount} tenants are overdue.`} action={<Link className="pg-btn pg-btn-ghost" to="/invoices">Collect</Link>} /> : null}
-                {stats.dueSoonRentCount > 0 ? <AlertBanner tone="warning" title="Rent due within 7 days" message={`${stats.dueSoonRentCount} rent payments due soon.`} action={<Link className="pg-btn pg-btn-ghost" to="/invoices">Prepare</Link>} /> : null}
-                {stats.missingValuation > 0 ? <AlertBanner tone="accent" title="Missing valuation" message={`Add current value for ${stats.missingValuation} properties to calculate equity.`} action={<Link className="pg-btn pg-btn-ghost" to="/owned-properties">Update</Link>} /> : null}
-                {stats.missingBond > 0 ? <AlertBanner tone="accent" title="Missing bond balance" message={`Add bond balances for ${stats.missingBond} properties to improve net worth accuracy.`} action={<Link className="pg-btn pg-btn-ghost" to="/owned-properties">Add bond balance</Link>} /> : null}
-                {stats.noLeaseDocument > 0 ? <AlertBanner tone="accent" title="No lease uploaded" message={`${stats.noLeaseDocument} active properties have no lease document.`} action={<Link className="pg-btn pg-btn-ghost" to="/documents">Upload</Link>} /> : null}
+                {stats.monthToMonth > 0 ? <AlertBanner tone="warning" title="Month-to-month leases" message={`${stats.monthToMonth} leases are month-to-month.`} action={<ButtonLink href="/leases" variant="ghost">Review</ButtonLink>} /> : null}
+                {stats.expiringSoon > 0 ? <AlertBanner tone="warning" title="Lease expiring within 90 days" message={`${stats.expiringSoon} leases need renewal soon.`} action={<ButtonLink href="/leases" variant="ghost">Renew</ButtonLink>} /> : null}
+                {stats.overdueRentCount > 0 ? <AlertBanner tone="danger" title="Rent overdue" message={`${stats.overdueRentCount} tenants are overdue.`} action={<ButtonLink href="/invoices" variant="ghost">Collect</ButtonLink>} /> : null}
+                {stats.dueSoonRentCount > 0 ? <AlertBanner tone="warning" title="Rent due within 7 days" message={`${stats.dueSoonRentCount} rent payments due soon.`} action={<ButtonLink href="/invoices" variant="ghost">Prepare</ButtonLink>} /> : null}
+                {stats.missingValuation > 0 ? <AlertBanner tone="accent" title="Missing valuation" message={`Add current value for ${stats.missingValuation} properties to calculate equity.`} action={<ButtonLink href="/owned-properties" variant="ghost">Update</ButtonLink>} /> : null}
+                {stats.missingBond > 0 ? <AlertBanner tone="accent" title="Missing bond balance" message={`Add bond balances for ${stats.missingBond} properties to improve net worth accuracy.`} action={<ButtonLink href="/owned-properties" variant="ghost">Add bond balance</ButtonLink>} /> : null}
+                {stats.noLeaseDocument > 0 ? <AlertBanner tone="accent" title="No lease uploaded" message={`${stats.noLeaseDocument} active properties have no lease document.`} action={<ButtonLink href="/documents" variant="ghost">Upload</ButtonLink>} /> : null}
               </div>
             </DashboardCard>
             <Grid cols={2}>
@@ -349,10 +349,10 @@ export function OwnedPropertiesDashboardPage() {
                       </div>
                     </div>
                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
-                      <Link className="pg-btn pg-btn-ghost" to={`/owned-properties/${p.id}`}>View</Link>
-                      <Link className="pg-btn pg-btn-ghost" to={`/owned-properties/${p.id}?tab=financials`}>Financials</Link>
-                      <Link className="pg-btn pg-btn-ghost" to={`/invoices?propertyId=${encodeURIComponent(String(p.id))}`}>Invoices</Link>
-                      <Link className="pg-btn pg-btn-ghost" to={`/owned-properties/${p.id}?tab=documents`}>Documents</Link>
+                      <ButtonLink href={`/owned-properties/${p.id}`} variant="ghost">View</ButtonLink>
+                      <ButtonLink href={`/owned-properties/${p.id}?tab=financials`} variant="ghost">Financials</ButtonLink>
+                      <ButtonLink href={`/invoices?propertyId=${encodeURIComponent(String(p.id))}`} variant="ghost">Invoices</ButtonLink>
+                      <ButtonLink href={`/owned-properties/${p.id}?tab=documents`} variant="ghost">Documents</ButtonLink>
                     </div>
                   </div>
                 );

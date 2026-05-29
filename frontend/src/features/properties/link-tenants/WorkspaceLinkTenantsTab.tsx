@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { ButtonLink } from "../../../components/ui/Button";
 import { useMediaQuery } from "../../../hooks/useMediaQuery";
 import { listActiveLeaseOccupancyForProperty, type ActiveLeaseOccupancy } from "../../../services/leasesSupabase";
 import { listPropertyUnits } from "../../../services/propertyUnitsSupabase";
@@ -196,9 +197,9 @@ export function WorkspaceLinkTenantsTab({
           </header>
           <div className="pg-pfin-empty">
             <p>Use Financials to manage short-term rental income and costs.</p>
-            <Link className="pg-btn pg-btn-secondary" to={`/owned-properties/${propertyId}?tab=financials`}>
+            <ButtonLink href={`/owned-properties/${propertyId}?tab=financials`} variant="soft">
               Go to Financials
-            </Link>
+            </ButtonLink>
           </div>
         </section>
       </div>
@@ -235,9 +236,9 @@ export function WorkspaceLinkTenantsTab({
           <div className="pg-pfin-empty">
             <p>No units found for this property.</p>
             <p className="pg-muted">Add units in Property Structure before creating leases.</p>
-            <Link className="pg-btn pg-btn-secondary" to={`/owned-properties/${propertyId}/edit`}>
+            <ButtonLink href={`/owned-properties/${propertyId}/edit`} variant="soft">
               Edit Property Structure
-            </Link>
+            </ButtonLink>
           </div>
         </section>
       ) : null}
@@ -270,9 +271,9 @@ export function WorkspaceLinkTenantsTab({
         <section className="pg-pfin-section">
           <div className="pg-pfin-empty">
             <p>No active leases on this property yet.</p>
-            <Link className="pg-btn pg-btn-primary" to={`/leases/new?propertyId=${propertyId}`}>
+            <ButtonLink href={`/leases/new?propertyId=${propertyId}`} variant="primary">
               Add Lease
-            </Link>
+            </ButtonLink>
           </div>
         </section>
       ) : null}

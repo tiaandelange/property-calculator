@@ -1,5 +1,5 @@
 import { Plus, Search } from "lucide-react";
-import { Link } from "react-router-dom";
+import { ButtonLink } from "../../components/ui/Button";
 
 export type TenantFilters = {
   q: string;
@@ -91,10 +91,10 @@ export function TenantControlsBar({
         <div className="pg-tenants-controls-filters">
           <FilterSelects filters={filters} onChange={onChange} properties={properties} pill />
         </div>
-        <Link className="pg-btn pg-btn-primary pg-tenants-add-btn" to="/tenants/new">
+        <ButtonLink href="/tenants/new" variant="primary" className="pg-tenants-add-btn">
           <Plus size={18} aria-hidden />
           <span className="pg-tenants-add-btn-label">Add Tenant</span>
-        </Link>
+        </ButtonLink>
       </div>
     </div>
   );

@@ -358,9 +358,10 @@ export function TenantStatementTabContent({
                         <td>{fmtZar(row.balance)}</td>
                         <td>
                           {showInvoiceView ? (
-                            <button
+                            <Button
                               type="button"
-                              className="pg-btn pg-btn-ghost pg-btn-sm"
+                              variant="ghost"
+                              size="sm"
                               style={{ display: "inline-flex", alignItems: "center", gap: 4 }}
                               onClick={() =>
                                 navigate(invoiceDetailPath(invoiceIdFromStatementRow(raw)))
@@ -370,7 +371,7 @@ export function TenantStatementTabContent({
                             >
                               <ExternalLink size={14} aria-hidden />
                               View
-                            </button>
+                            </Button>
                           ) : (
                             "—"
                           )}
@@ -400,15 +401,16 @@ export function TenantStatementTabContent({
                     <span className="pg-muted">Bal {fmtZar(row.balance)}</span>
                   </div>
                   {showInvoiceView ? (
-                    <button
+                    <Button
                       type="button"
-                      className="pg-btn pg-btn-ghost pg-btn-sm"
+                      variant="ghost"
+                      size="sm"
                       style={{ display: "inline-flex", alignItems: "center", gap: 4, marginTop: 8 }}
                       onClick={() => navigate(invoiceDetailPath(invoiceIdFromStatementRow(raw)))}
                     >
                       <ExternalLink size={14} aria-hidden />
                       View
-                    </button>
+                    </Button>
                   ) : null}
                 </div>
               );
@@ -607,9 +609,10 @@ export function TenantLedgerPanel({
                   <td>{fmtZar(row.balance)}</td>
                   <td>
                     {showInvoiceView ? (
-                      <button
+                      <Button
                         type="button"
-                        className="pg-btn pg-btn-ghost pg-btn-sm"
+                        variant="ghost"
+                        size="sm"
                         style={{ display: "inline-flex", alignItems: "center", gap: 4 }}
                         onClick={() =>
                           navigate(invoiceDetailPath(invoiceIdFromStatementRow(raw)))
@@ -619,7 +622,7 @@ export function TenantLedgerPanel({
                       >
                         <ExternalLink size={14} aria-hidden />
                         View
-                      </button>
+                      </Button>
                     ) : (
                       "—"
                     )}

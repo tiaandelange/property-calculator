@@ -1,0 +1,312 @@
+/* Universal Proplytic button system — theme tokens only */
+
+.pg-btn {
+  --pg-btn-height: 40px;
+  height: var(--pg-btn-height);
+  min-height: var(--pg-btn-height);
+  padding: 0 16px;
+  border-radius: var(--ui-control-radius, 10px);
+  border: 1px solid transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 14px;
+  line-height: 1;
+  letter-spacing: 0.01em;
+  text-decoration: none;
+  user-select: none;
+  white-space: nowrap;
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease,
+    box-shadow 0.18s ease,
+    transform 0.12s ease,
+    opacity 0.18s ease;
+}
+
+.pg-btn--xs {
+  --pg-btn-height: 28px;
+  padding: 0 10px;
+  font-size: 12px;
+  gap: 6px;
+}
+
+.pg-btn--sm {
+  --pg-btn-height: 34px;
+  padding: 0 12px;
+  font-size: 13px;
+}
+
+.pg-btn--md {
+  --pg-btn-height: 40px;
+}
+
+.pg-btn--lg {
+  --pg-btn-height: 44px;
+  padding: 0 18px;
+}
+
+.pg-btn--xl {
+  --pg-btn-height: 48px;
+  padding: 0 20px;
+  font-size: 15px;
+}
+
+.pg-btn--full {
+  width: 100%;
+}
+
+.pg-btn:focus-visible {
+  outline: 2px solid var(--primary-border);
+  outline-offset: 2px;
+}
+
+.pg-btn:active:not(:disabled):not(.pg-btn--loading) {
+  transform: scale(0.98);
+}
+
+.pg-btn[disabled],
+.pg-btn--loading,
+.pg-btn[aria-disabled="true"] {
+  opacity: 0.55;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.pg-btn--loading .pg-btn__label {
+  opacity: 0.85;
+}
+
+.pg-btn__icon {
+  flex-shrink: 0;
+  display: inline-flex;
+}
+
+/* --- Primary --- */
+.pg-btn-primary {
+  background: var(--primary);
+  color: var(--primary-text, #fff);
+  border-color: transparent;
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--primary) 24%, transparent);
+}
+
+.pg-btn-primary:hover:not(:disabled):not(.pg-btn--loading) {
+  background: var(--primary-hover);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--primary) 28%, transparent);
+}
+
+.pg-btn-primary:active:not(:disabled):not(.pg-btn--loading) {
+  background: color-mix(in srgb, var(--primary-hover) 92%, #000);
+  box-shadow: inset 0 1px 3px color-mix(in srgb, #000 18%, transparent);
+}
+
+/* --- Soft / secondary (light grey) --- */
+.pg-btn-soft,
+.pg-btn-secondary {
+  background: var(--surface-muted);
+  color: var(--text-primary);
+  border-color: var(--border-soft);
+}
+
+.pg-btn-soft:hover:not(:disabled):not(.pg-btn--loading),
+.pg-btn-secondary:hover:not(:disabled):not(.pg-btn--loading) {
+  background: color-mix(in srgb, var(--surface-muted) 82%, var(--text-primary));
+  border-color: color-mix(in srgb, var(--text-primary) 12%, var(--border-soft));
+}
+
+.pg-btn-soft:active:not(:disabled):not(.pg-btn--loading),
+.pg-btn-secondary:active:not(:disabled):not(.pg-btn--loading) {
+  background: color-mix(in srgb, var(--surface-muted) 72%, var(--text-primary));
+  box-shadow: inset 0 1px 2px color-mix(in srgb, #000 8%, transparent);
+}
+
+/* --- Outline --- */
+.pg-btn-outline {
+  background: var(--surface);
+  color: var(--text-primary);
+  border-color: var(--border);
+}
+
+.pg-btn-outline:hover:not(:disabled):not(.pg-btn--loading) {
+  background: var(--surface-muted);
+  border-color: color-mix(in srgb, var(--text-primary) 14%, var(--border));
+}
+
+.pg-btn-outline:active:not(:disabled):not(.pg-btn--loading) {
+  background: color-mix(in srgb, var(--surface-muted) 88%, var(--text-primary));
+}
+
+/* --- Ghost --- */
+.pg-btn-ghost {
+  background: transparent;
+  color: var(--text-secondary);
+  border-color: transparent;
+}
+
+.pg-btn-ghost:hover:not(:disabled):not(.pg-btn--loading) {
+  background: var(--surface-muted);
+  color: var(--text-primary);
+}
+
+.pg-btn-ghost:active:not(:disabled):not(.pg-btn--loading) {
+  background: color-mix(in srgb, var(--surface-muted) 88%, var(--text-primary));
+}
+
+/* --- Danger --- */
+.pg-btn-danger {
+  background: var(--danger);
+  color: #fff;
+  border-color: transparent;
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--danger) 22%, transparent);
+}
+
+.pg-btn-danger:hover:not(:disabled):not(.pg-btn--loading) {
+  background: color-mix(in srgb, var(--danger) 88%, #000);
+}
+
+.pg-btn-danger:active:not(:disabled):not(.pg-btn--loading) {
+  background: color-mix(in srgb, var(--danger) 78%, #000);
+  box-shadow: inset 0 1px 3px color-mix(in srgb, #000 16%, transparent);
+}
+
+.pg-btn-danger:focus-visible {
+  outline-color: color-mix(in srgb, var(--danger) 55%, transparent);
+}
+
+/* --- Danger outline --- */
+.pg-btn-danger-outline {
+  background: transparent;
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+.pg-btn-danger-outline:hover:not(:disabled):not(.pg-btn--loading) {
+  background: var(--danger-soft);
+}
+
+.pg-btn-danger-outline:active:not(:disabled):not(.pg-btn--loading) {
+  background: color-mix(in srgb, var(--danger-soft) 75%, var(--danger));
+}
+
+.pg-btn-danger-outline:focus-visible {
+  outline-color: color-mix(in srgb, var(--danger) 55%, transparent);
+}
+
+/* --- Split button --- */
+.pg-split-btn {
+  display: inline-flex;
+  align-items: stretch;
+  border-radius: var(--ui-control-radius, 10px);
+  position: relative;
+}
+
+.pg-split-btn--full {
+  width: 100%;
+}
+
+.pg-split-btn__main {
+  flex: 1 1 80%;
+  min-width: 0;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+  border-right: none;
+}
+
+.pg-split-btn__trigger {
+  flex: 0 0 auto;
+  width: 36px;
+  min-width: 36px;
+  padding: 0;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  border-left: 1px solid color-mix(in srgb, currentColor 12%, transparent);
+}
+
+.pg-split-btn--primary .pg-split-btn__trigger {
+  border-left-color: color-mix(in srgb, #fff 22%, transparent);
+}
+
+.pg-split-btn--soft .pg-split-btn__trigger,
+.pg-split-btn--secondary .pg-split-btn__trigger,
+.pg-split-btn--outline .pg-split-btn__trigger {
+  border-left-color: var(--border-soft);
+}
+
+.pg-split-btn--danger .pg-split-btn__trigger {
+  border-left-color: color-mix(in srgb, #fff 22%, transparent);
+}
+
+.pg-split-btn__menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: max(180px, 100%);
+  z-index: 50;
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  border-radius: var(--ui-control-radius, 10px);
+  border: 1px solid var(--border-soft);
+  background: var(--surface-elevated, var(--surface));
+  box-shadow: 0 8px 24px color-mix(in srgb, #000 18%, transparent);
+}
+
+.pg-split-btn__menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.pg-split-btn__menu-item:hover,
+.pg-split-btn__menu-item:focus-visible {
+  background: var(--surface-muted);
+  outline: none;
+}
+
+.pg-split-btn__menu-item--danger {
+  color: var(--danger);
+}
+
+.pg-split-btn__menu-item--danger:hover,
+.pg-split-btn__menu-item--danger:focus-visible {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+@media (max-width: 640px) {
+  .pg-split-btn--mobile-lg .pg-btn {
+    --pg-btn-height: 44px;
+  }
+}
+
+/* Icon button danger-outline variant */
+.pg-icon-btn--danger-outline {
+  border-color: color-mix(in srgb, var(--danger) 45%, var(--border-soft));
+  background: transparent;
+  color: var(--danger);
+}
+
+.pg-icon-btn--danger-outline:hover:not(:disabled):not([aria-disabled="true"]) {
+  background: var(--danger-soft);
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.pg-icon-btn--danger-outline:focus-visible {
+  outline-color: color-mix(in srgb, var(--danger) 55%, transparent);
+}

@@ -1,5 +1,5 @@
 import { Plus, Search } from "lucide-react";
-import { Link } from "react-router-dom";
+import { ButtonLink } from "../../components/ui/Button";
 import type { LeaseFilters } from "./leaseDirectoryTypes";
 
 function FilterSelects({
@@ -82,10 +82,10 @@ export function LeaseControlsBar({
         <div className="pg-leases-controls-filters">
           <FilterSelects filters={filters} onChange={onChange} properties={properties} pill />
         </div>
-        <Link className="pg-btn pg-btn-primary pg-leases-add-btn" to="/leases/new">
+        <ButtonLink href="/leases/new" variant="primary" className="pg-leases-add-btn">
           <Plus size={18} aria-hidden />
           <span className="pg-leases-add-btn-label">Add Lease</span>
-        </Link>
+        </ButtonLink>
       </div>
     </div>
   );

@@ -1,3 +1,4 @@
+import { Button } from "../../components/ui/Button";
 import { FINANCIALS_PAGE_SIZE } from "./financialDirectoryUtils";
 
 export function FinancialPagination({
@@ -14,20 +15,20 @@ export function FinancialPagination({
 
   return (
     <div className="pg-fins-pagination">
-      <button type="button" className="pg-btn pg-btn-ghost" disabled={page <= 1} onClick={() => onPageChange(page - 1)}>
+      <Button type="button" variant="ghost" disabled={page <= 1} onClick={() => onPageChange(page - 1)}>
         Previous
-      </button>
+      </Button>
       <span className="pg-muted">
         Page {page} of {totalPages} · {totalItems.toLocaleString()} entries
       </span>
-      <button
+      <Button
         type="button"
-        className="pg-btn pg-btn-ghost"
+        variant="ghost"
         disabled={page >= totalPages}
         onClick={() => onPageChange(page + 1)}
       >
         Next
-      </button>
+      </Button>
     </div>
   );
 }

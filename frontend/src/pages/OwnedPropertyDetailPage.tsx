@@ -6,6 +6,7 @@ import { Container } from "../components/ui/Container";
 import { Section } from "../components/ui/Section";
 import { Card } from "../components/ui/Card";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
+import { ButtonLink } from "../components/ui/Button";
 import {
   cancelLease,
   createPropertyIncome,
@@ -303,9 +304,9 @@ export function OwnedPropertyDetailPage() {
                 extraQueryForTab={{ financials: `fin=${encodeURIComponent(finSub)}` }}
                 style={{ marginBottom: 0 }}
               />
-              <Link className="pg-btn pg-btn-secondary" to={`/owned-properties/${id}/edit`}>
+              <ButtonLink href={`/owned-properties/${id}/edit`} variant="soft">
                 Edit Property
-              </Link>
+              </ButtonLink>
             </div>
 
             <div className="pg-workspace-panel">
@@ -422,9 +423,9 @@ export function OwnedPropertyDetailPage() {
               {tab === "documents" ? (
                 <div className="pg-workspace-inset-list">
                   <div className="pg-muted">{data.documents?.length ?? 0} documents.</div>
-                  <Link className="pg-btn pg-btn-ghost" to={`/documents`}>
+                  <ButtonLink href="/documents" variant="ghost">
                     Open documents
-                  </Link>
+                  </ButtonLink>
                 </div>
               ) : null}
 
@@ -446,16 +447,16 @@ export function OwnedPropertyDetailPage() {
                             </div>
                             <div style={{ marginTop: 10 }}>
                               {r.href ? (
-                                <Link className="pg-btn pg-btn-primary" to={r.href}>
+                                <ButtonLink href={r.href} variant="primary">
                                   Open
-                                </Link>
+                                </ButtonLink>
                               ) : (
-                                <Link
-                                  className="pg-btn pg-btn-primary"
-                                  to={`/owned-properties/${id}?tab=${r.tab}${r.tab === "financials" ? "&fin=statement" : ""}`}
+                                <ButtonLink
+                                  href={`/owned-properties/${id}?tab=${r.tab}${r.tab === "financials" ? "&fin=statement" : ""}`}
+                                  variant="primary"
                                 >
                                   Go to workspace
-                                </Link>
+                                </ButtonLink>
                               )}
                             </div>
                           </li>

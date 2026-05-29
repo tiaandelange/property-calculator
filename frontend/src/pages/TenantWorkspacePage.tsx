@@ -4,7 +4,7 @@ import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom"
 import { ArrowLeft, Download, MoreVertical, Plus } from "lucide-react";
 import { Container } from "../components/ui/Container";
 import { Section } from "../components/ui/Section";
-import { Button } from "../components/ui/Button";
+import { Button, ButtonLink } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { cancelLease, deleteTenant, getTenant } from "../api/ownedProperties";
 import { fetchPdfBlob, isAbsoluteHttpUrl, openPdfBlobInNewTab } from "../api/pdfBlob";
@@ -156,18 +156,18 @@ export function TenantWorkspacePage() {
       <Container>
         <div className="pg-tstmt pg-workspace-page">
           <header className="pg-tstmt-mobile-header">
-            <button
+            <Button
               type="button"
-              className="pg-btn pg-btn-ghost"
+              variant="ghost"
               aria-label="Go back"
               onClick={() => navigate(-1)}
             >
               <ArrowLeft size={20} />
-            </button>
+            </Button>
             <h1>Tenant Statement</h1>
-            <button type="button" className="pg-btn pg-btn-ghost" aria-label="More options">
+            <Button type="button" variant="ghost" aria-label="More options">
               <MoreVertical size={20} />
-            </button>
+            </Button>
           </header>
 
           <div className="pg-tstmt-page-head">
@@ -266,9 +266,9 @@ export function TenantWorkspacePage() {
               <p className="pg-muted">
                 Banking details shown on tenant invoices are managed in your account profile.
               </p>
-              <Link className="pg-btn pg-btn-primary" to="/account" style={{ marginTop: 12, display: "inline-flex" }}>
+              <ButtonLink href="/account" variant="primary" style={{ marginTop: 12, display: "inline-flex" }}>
                 Edit invoice settings
-              </Link>
+              </ButtonLink>
             </Card>
           ) : null}
         </div>
@@ -279,9 +279,9 @@ export function TenantWorkspacePage() {
           <div className="pg-tstmt-overlay-panel">
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
               <h2 style={{ margin: 0 }}>Create Invoice</h2>
-              <button type="button" className="pg-btn pg-btn-ghost" onClick={() => setInvoiceOverlay(false)}>
+              <Button type="button" variant="ghost" onClick={() => setInvoiceOverlay(false)}>
                 Close
-              </button>
+              </Button>
             </div>
             <TenantInvoiceEditorForm
               propertyId={ctx.propertyId}
@@ -362,7 +362,7 @@ function TenantOverviewPanel({
         </div>
         <div style={{ marginTop: 12, display: "flex", gap: 8, flexWrap: "wrap" }}>
           <Button onClick={onReload}>Refresh</Button>
-          {id ? <Link className="pg-btn pg-btn-secondary" to={`/tenants/${id}/edit`}>Edit Tenant</Link> : null}
+          {id ? <ButtonLink href={`/tenants/${id}/edit`} variant="soft">Edit Tenant</ButtonLink> : null}
         </div>
       </Card>
       <Card title="Linked property">
@@ -379,17 +379,17 @@ function TenantOverviewPanel({
           <div style={{ display: "grid", gap: 6 }}>
             <div>Status: {String(currentLease.displayStatus ?? currentLease.status)}</div>
             <div>Monthly rent: R {Number(currentLease.monthlyRent ?? 0).toLocaleString()}</div>
-            <button className="pg-btn pg-btn-secondary" type="button" onClick={() => void onCancelLease()}>
+            <Button variant="soft" type="button" onClick={() => void onCancelLease()}>
               Cancel Lease
-            </button>
+            </Button>
           </div>
         ) : (
           <div className="pg-muted">No current lease.</div>
         )}
       </Card>
-      <button className="pg-btn pg-btn-ghost" type="button" onClick={() => void onDelete()}>
+      <Button variant="ghost" type="button" onClick={() => void onDelete()}>
         Delete tenant
-      </button>
+      </Button>
     </>
   );
 }

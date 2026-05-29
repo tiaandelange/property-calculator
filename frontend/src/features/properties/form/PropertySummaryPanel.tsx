@@ -1,5 +1,5 @@
+import { ButtonLink } from "../../../components/ui/Button";
 import { Check, Circle, Home, Lightbulb } from "lucide-react";
-import { Link } from "react-router-dom";
 import { propertyFinancialsStatementUrl } from "../../financials/financialDirectoryUtils";
 import { getPropertyTypeConfig } from "../../../config/propertyTypes";
 import type { PropertyUnitDraft } from "../units/propertyUnitTypes";
@@ -95,21 +95,23 @@ export function PropertySummaryPanel({
 
         {mode === "edit" && propertyId ? (
           <div className="pg-prop-summary__actions">
-            <Link to={`/owned-properties/${propertyId}?tab=overview`} className="pg-btn pg-btn-secondary pg-prop-summary__action-btn">
+            <ButtonLink href={`/owned-properties/${propertyId}?tab=overview`} variant="soft" className="pg-prop-summary__action-btn">
               View Property
-            </Link>
-            <Link
-              to={propertyFinancialsStatementUrl(propertyId, "statement")}
-              className="pg-btn pg-btn-secondary pg-prop-summary__action-btn"
+            </ButtonLink>
+            <ButtonLink
+              href={propertyFinancialsStatementUrl(propertyId, "statement")}
+              variant="soft"
+              className="pg-prop-summary__action-btn"
             >
               Manage Income
-            </Link>
-            <Link
-              to={propertyFinancialsStatementUrl(propertyId, "expenses")}
-              className="pg-btn pg-btn-secondary pg-prop-summary__action-btn"
+            </ButtonLink>
+            <ButtonLink
+              href={propertyFinancialsStatementUrl(propertyId, "expenses")}
+              variant="soft"
+              className="pg-prop-summary__action-btn"
             >
               Manage Expenses
-            </Link>
+            </ButtonLink>
           </div>
         ) : null}
 

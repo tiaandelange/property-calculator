@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ConfirmDialog } from "../../components/ui/ConfirmDialog";
+import { Button } from "../../components/ui/Button";
 import { ModalOverlay, ModalPanel } from "../../components/ui/Modal";
 import { Input } from "../../components/ui/Input";
 import { Select } from "../../components/ui/Select";
@@ -158,12 +159,12 @@ export function ManualGenerateLeaseInvoiceFlow({
                 onClose={handleClose}
                 actions={
                   <>
-                    <button type="button" className="pg-btn pg-btn-ghost" onClick={handleClose} disabled={loading}>
+                    <Button type="button" variant="ghost" onClick={handleClose} disabled={loading}>
                       Cancel
-                    </button>
-                    <button type="button" className="pg-btn pg-btn-primary" onClick={() => void submitForm()} disabled={loading}>
-                      {loading ? "Generating…" : "Confirm Generate Invoice"}
-                    </button>
+                    </Button>
+                    <Button type="button" loading={loading} onClick={() => void submitForm()}>
+                      Confirm Generate Invoice
+                    </Button>
                   </>
                 }
               >

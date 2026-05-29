@@ -1,6 +1,7 @@
 import { Helmet } from "react-helmet-async";
 import { Link, useLocation } from "react-router-dom";
 import { useEffect, useMemo } from "react";
+import { ButtonLink } from "../components/ui/Button";
 import { getHomepagePopularCalculatorCards } from "../data/homepageCalculators";
 import { Container } from "../components/ui/Container";
 import { Section } from "../components/ui/Section";
@@ -54,12 +55,12 @@ export function HomePage() {
                   Powerful calculators and clear insights to help you buy, sell and invest with confidence.
                 </p>
                 <div className="pg-home-hero-actions">
-                  <Link to="/calculators" className="pg-btn pg-btn-primary" aria-label="Explore calculators">
+                  <ButtonLink href="/calculators" variant="primary" aria-label="Explore calculators">
                     Explore calculators
-                  </Link>
-                  <Link to="/#how-it-works" className="pg-btn pg-btn-ghost" aria-label="See how it works">
+                  </ButtonLink>
+                  <ButtonLink href="/#how-it-works" variant="ghost" aria-label="See how it works">
                     See how it works
-                  </Link>
+                  </ButtonLink>
                 </div>
               </div>
             </div>

@@ -1,4 +1,5 @@
 import { Pencil, Plus, Trash2 } from "lucide-react";
+import { Button } from "../../../components/ui/Button";
 import { fmtZar } from "./propertyFinancialsAdapter";
 import type { BondPaymentDisplayItem } from "./propertyBondAdapter";
 
@@ -99,9 +100,9 @@ export function BondPaymentSection({
           <p className="pg-muted">
             Add outstanding balance, interest rate, and term on the property form to calculate monthly payments.
           </p>
-          <button type="button" className="pg-btn pg-btn-secondary" onClick={onSetupPropertyBond}>
+          <Button type="button" variant="soft" onClick={onSetupPropertyBond}>
             Set up property bond
-          </button>
+          </Button>
         </div>
       ) : null}
 

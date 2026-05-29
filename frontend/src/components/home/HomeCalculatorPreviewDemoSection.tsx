@@ -4,6 +4,7 @@
  */
 import { useId } from "react";
 import { Link } from "react-router-dom";
+import { ButtonLink } from "../ui/Button";
 import { calculatorRouteForSlug } from "../../data/homepageCalculators";
 import { Container } from "../ui/Container";
 import { Section } from "../ui/Section";
@@ -103,10 +104,10 @@ export function HomeCalculatorPreviewDemoSection() {
               Whether you are buying your first home or building a property portfolio, our tools help you understand
               the numbers before you take the next step.
             </p>
-            <Link to="/login" className="pg-btn pg-btn-primary pg-home-calc-demo-primary-cta">
+            <ButtonLink href="/login" variant="primary" className="pg-home-calc-demo-primary-cta">
               Get started free
               <CtaArrowIcon />
-            </Link>
+            </ButtonLink>
           </div>
 
           <div className="pg-home-calc-demo-panel" aria-label="Sample mortgage calculator interface (preview only)">

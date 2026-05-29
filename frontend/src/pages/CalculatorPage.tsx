@@ -1,6 +1,6 @@
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Helmet } from "react-helmet-async";
-import { Link, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { Bar, Doughnut, Line } from "react-chartjs-2";
 import { Chart as ChartJS, ArcElement, BarElement, CategoryScale, Legend, LinearScale, LineElement, PointElement, Tooltip } from "chart.js";
 import { calculators, type FieldDef } from "../data/calculators";
@@ -20,7 +20,7 @@ import { Section } from "../components/ui/Section";
 import { Grid } from "../components/ui/Grid";
 import { Card } from "../components/ui/Card";
 import { Field, Input } from "../components/ui/Input";
-import { Button } from "../components/ui/Button";
+import { Button, ButtonLink } from "../components/ui/Button";
 
 ChartJS.register(ArcElement, BarElement, CategoryScale, LinearScale, Legend, Tooltip, PointElement, LineElement);
 
@@ -815,9 +815,9 @@ export function CalculatorPage() {
                 />
                 Live update
               </label>
-              <Link className="pg-btn pg-btn-ghost" to="/dashboard">
+              <ButtonLink href="/dashboard" variant="ghost">
                 My Reports
-              </Link>
+              </ButtonLink>
               {savedId ? (
                 <Button type="button" variant="ghost" onClick={generateAndDownloadPdf} loading={pdfBusy}>
                   PDF
@@ -852,9 +852,9 @@ export function CalculatorPage() {
               <div className="pg-alert pg-alert-error">
                 {error}{" "}
                 {error.includes("Subscribe") ? (
-                  <Link className="pg-btn pg-btn-secondary" to="/subscription">
+                  <ButtonLink href="/subscription" variant="soft">
                     View subscription
-                  </Link>
+                  </ButtonLink>
                 ) : null}
               </div>
             ) : null}
@@ -1017,15 +1017,15 @@ export function CalculatorPage() {
           {relatedLinks.length ? (
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
               {relatedLinks.map((c) => (
-                <Link key={c.slug} className="pg-btn pg-btn-ghost" to={`/calculators/${c.slug}`}>
+                <ButtonLink key={c.slug} href={`/calculators/${c.slug}`} variant="ghost">
                   {c.name}
-                </Link>
+                </ButtonLink>
               ))}
             </div>
           ) : (
-            <Link className="pg-btn pg-btn-ghost" to="/calculators">
+            <ButtonLink href="/calculators" variant="ghost">
               Browse all calculators
-            </Link>
+            </ButtonLink>
           )}
         </Card>
       </Grid>

@@ -2,7 +2,7 @@ import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { AppIcon, type IconName } from "../../components/icons";
 import { fetchMe } from "../../api/user";
-import { Button } from "../../components/ui/Button";
+import { Button, ButtonLink } from "../../components/ui/Button";
 import { Field, Input } from "../../components/ui/Input";
 import { ModalOverlay, ModalPanel } from "../../components/ui/Modal";
 import { useAuth } from "../../contexts/AuthContext";
@@ -171,7 +171,7 @@ function ChangePasswordModal({ open, onClose }: { open: boolean; onClose: () => 
                 <Button type="submit" loading={saving}>
                   Update password
                 </Button>
-                <Button type="button" variant="ghost" onClick={onClose}>
+                <Button type="button" variant="soft" onClick={onClose}>
                   Cancel
                 </Button>
               </div>
@@ -249,7 +249,7 @@ function EditProfileModal({
               <Button type="submit" loading={saving}>
                 Save
               </Button>
-              <Button type="button" variant="ghost" onClick={onClose}>
+              <Button type="button" variant="soft" onClick={onClose}>
                 Cancel
               </Button>
             </div>
@@ -381,7 +381,7 @@ export function SettingsDashboard() {
 
   const footer = (
     <>
-      <Button variant="ghost" onClick={cancel} disabled={!dirty || saving}>
+      <Button variant="soft" onClick={cancel} disabled={!dirty || saving}>
         Cancel
       </Button>
       <Button onClick={() => void save()} loading={saving} disabled={!dirty}>
@@ -418,12 +418,12 @@ export function SettingsDashboard() {
             <Button variant="secondary" onClick={() => setEditProfileOpen(true)}>
               Edit profile
             </Button>
-            <Button variant="secondary" onClick={() => setChangePasswordOpen(true)}>
+            <Button variant="outline" onClick={() => setChangePasswordOpen(true)}>
               Change password
             </Button>
-            <Link className="pg-btn pg-btn-ghost" to="/account">
+            <ButtonLink href="/account" variant="ghost">
               Banking details
-            </Link>
+            </ButtonLink>
           </div>
         </SettingsCard>
 
@@ -490,9 +490,9 @@ export function SettingsDashboard() {
             </div>
           </div>
           <div className="pg-settings-actions" style={{ marginTop: 12 }}>
-            <Link className="pg-btn pg-btn-secondary" to="/subscription">
+            <ButtonLink href="/subscription" variant="outline">
               Manage subscription
-            </Link>
+            </ButtonLink>
             <span className="pg-settings-coming-soon">Billing history — coming soon</span>
           </div>
         </SettingsCard>

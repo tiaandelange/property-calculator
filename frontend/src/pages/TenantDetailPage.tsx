@@ -4,7 +4,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { Container } from "../components/ui/Container";
 import { Section } from "../components/ui/Section";
 import { Card } from "../components/ui/Card";
-import { Button } from "../components/ui/Button";
+import { Button, ButtonLink } from "../components/ui/Button";
 import { cancelLease, deleteTenant, getTenant } from "../api/ownedProperties";
 
 export function TenantDetailPage() {
@@ -60,8 +60,8 @@ export function TenantDetailPage() {
           <h1 className="pg-h2" style={{ margin: 0 }}>{tenant ? `${tenant.firstName} ${tenant.lastName}` : "Tenant"}</h1>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             <Button onClick={load} loading={loading}>Refresh</Button>
-            {id ? <Link className="pg-btn pg-btn-secondary" to={`/tenants/${id}/edit`}>Edit Tenant</Link> : null}
-            <Link className="pg-btn pg-btn-ghost" to="/tenants">Back</Link>
+            {id ? <ButtonLink href={`/tenants/${id}/edit`} variant="soft">Edit Tenant</ButtonLink> : null}
+            <ButtonLink href="/tenants" variant="ghost">Back</ButtonLink>
           </div>
         </div>
         {error ? <div className="pg-alert pg-alert-error" style={{ marginTop: 12 }}>{error}</div> : null}
@@ -98,10 +98,10 @@ export function TenantDetailPage() {
                   <div>Deposit: R {Number(currentLease.depositAmount ?? 0).toLocaleString()}</div>
                   <div>Rent due day: {currentLease.rentDueDay}</div>
                   <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
-                    <button className="pg-btn pg-btn-secondary" type="button" onClick={() => void onCancelLease()}>
+                    <Button variant="soft" type="button" onClick={() => void onCancelLease()}>
                       Cancel Lease
-                    </button>
-                    <Link className="pg-btn pg-btn-ghost" to="/leases">Manage Leases</Link>
+                    </Button>
+                    <ButtonLink href="/leases" variant="ghost">Manage Leases</ButtonLink>
                   </div>
                 </div>
               ) : (
@@ -119,7 +119,7 @@ export function TenantDetailPage() {
               </div>
             </Card>
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-              <button className="pg-btn pg-btn-ghost" type="button" onClick={() => void onDelete()}>Delete / Mark Past</button>
+              <Button variant="ghost" type="button" onClick={() => void onDelete()}>Delete / Mark Past</Button>
             </div>
           </>
         ) : null}

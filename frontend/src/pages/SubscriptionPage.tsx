@@ -2,10 +2,9 @@ import { Helmet } from "react-helmet-async";
 import { Container } from "../components/ui/Container";
 import { Section } from "../components/ui/Section";
 import { Card } from "../components/ui/Card";
-import { Button } from "../components/ui/Button";
+import { Button, ButtonLink } from "../components/ui/Button";
 import { useState } from "react";
 import { startSubscriptionCheckout } from "../services/subscriptionVercel";
-import { Link } from "react-router-dom";
 import { PageBrandMark } from "../components/brand/PageBrandMark";
 
 export function SubscriptionPage() {
@@ -48,9 +47,9 @@ export function SubscriptionPage() {
               <Button onClick={checkout} loading={loading}>
                 Start subscription
               </Button>
-              <Link className="pg-btn pg-btn-ghost" to="/login">
+              <ButtonLink href="/login" variant="ghost">
                 Sign in first
-              </Link>
+              </ButtonLink>
             </div>
 
             {message ? <div className="pg-alert" style={{ marginTop: 16 }}>{message}</div> : null}

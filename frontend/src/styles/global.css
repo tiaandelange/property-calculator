@@ -1,5 +1,6 @@
 @import "./themes/proplytic.tokens.css";
 @import "./ui-components.css";
+@import "./proplytic-buttons.css";
 @import "./proplytic-table.css";
 @import "./dashboard-shell.css";
 @import "./portfolio-dashboard.css";
@@ -499,68 +500,7 @@ textarea {
   margin: 0 0 var(--s-3);
 }
 
-.pg-btn {
-  height: 44px;
-  padding: 0 16px;
-  border-radius: 12px;
-  border: 1px solid transparent;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  cursor: pointer;
-  transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease, opacity 0.2s ease;
-  user-select: none;
-  text-decoration: none;
-  font-weight: 700;
-  letter-spacing: 0.2px;
-}
-.pg-btn:active {
-  transform: translateY(1px);
-}
-.pg-btn:focus-visible {
-  outline: 2px solid var(--focus);
-  outline-offset: 2px;
-}
-.pg-btn[disabled] {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
-.pg-btn-primary {
-  background: var(--primary);
-  color: var(--primary-text);
-}
-.pg-btn-primary:hover {
-  background: var(--primary-hover);
-  text-decoration: none;
-}
-.pg-btn-secondary {
-  background: var(--btn-secondary-bg);
-  color: var(--text);
-  border-color: var(--btn-secondary-border);
-}
-.pg-btn-secondary:hover {
-  background: var(--btn-secondary-bg-hover);
-  text-decoration: none;
-}
-.pg-btn-danger {
-  background: var(--danger);
-  color: #fff;
-  border-color: color-mix(in srgb, var(--danger) 80%, transparent);
-}
-.pg-btn-danger:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--danger) 88%, #000);
-  text-decoration: none;
-}
-.pg-btn-ghost {
-  background: transparent;
-  color: var(--text);
-  border-color: var(--btn-ghost-border);
-}
-.pg-btn-ghost:hover {
-  background: color-mix(in srgb, var(--text-primary) 5%, transparent);
-  text-decoration: none;
-}
+/* Base button styles: proplytic-buttons.css */
 
 .pg-field {
   display: grid;

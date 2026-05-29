@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { Helmet } from "react-helmet-async";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Container } from "../components/ui/Container";
 import { Section } from "../components/ui/Section";
 import { Card } from "../components/ui/Card";
+import { ButtonLink } from "../components/ui/Button";
 import { getSupabase, isSupabaseConfigured } from "../lib/supabaseClient";
 import { formatAuthError } from "../utils/authErrors";
 import type { EmailOtpType } from "@supabase/supabase-js";
@@ -105,16 +106,16 @@ export function ConfirmEmailPage() {
             ) : null}
             {!loading && message?.kind === "ok" ? (
               <div style={{ marginTop: 16 }}>
-                <Link className="pg-btn pg-btn-primary" to="/owned-properties/dashboard">
+                <ButtonLink href="/owned-properties/dashboard" variant="primary">
                   Go to dashboard now
-                </Link>
+                </ButtonLink>
               </div>
             ) : null}
             {!loading && message?.kind === "error" ? (
               <div style={{ marginTop: 16 }}>
-                <Link className="pg-btn pg-btn-ghost" to="/login">
+                <ButtonLink href="/login" variant="ghost">
                   Back to login
-                </Link>
+                </ButtonLink>
               </div>
             ) : null}
           </Card>

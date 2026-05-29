@@ -7,7 +7,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { UiColorSchemeSwitch } from "../components/ui/UiColorSchemeSwitch";
 import { AdminInvoiceAutomationPanel } from "../features/invoices/AdminInvoiceAutomationPanel";
 import { applyUiColorScheme, normalizeUiColorScheme, type UiColorScheme } from "../theme/uiColorScheme";
-import { Button } from "../components/ui/Button";
+import { Button, ButtonLink } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { Container } from "../components/ui/Container";
 import { Field, Input } from "../components/ui/Input";
@@ -112,9 +112,9 @@ export function AdminPanelPage() {
         <Container>
           <h1 className="pg-h2">Admin panel</h1>
           <p className="pg-muted">You need an administrator account to view this page.</p>
-          <Link className="pg-btn pg-btn-secondary" to="/settings" style={{ marginTop: 12, display: "inline-block" }}>
+          <ButtonLink href="/settings" variant="soft" style={{ marginTop: 12, display: "inline-block" }}>
             Back to settings
-          </Link>
+          </ButtonLink>
         </Container>
       </Section>
     );

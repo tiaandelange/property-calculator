@@ -2,6 +2,7 @@ import { Copy, Plus, Trash2 } from "lucide-react";
 import { useMediaQuery } from "../../../hooks/useMediaQuery";
 import { ProplyticTableWrap } from "../../../components/tables";
 import { Input } from "../../../components/ui/Input";
+import { Button } from "../../../components/ui/Button";
 import { getPropertyTypeConfig } from "../../../config/propertyTypes";
 import { UNIT_USE_TYPE_OPTIONS, type PropertyUnitDraft } from "./propertyUnitTypes";
 import { newClientId } from "./unitSetupUtils";
@@ -77,10 +78,10 @@ export function UnitSetupTable({
           </div>
         ))}
         {!rowsLocked ? (
-          <button type="button" className="pg-btn pg-btn-secondary pg-prop-units-add" onClick={onAdd}>
+          <Button type="button" variant="soft" className="pg-prop-units-add" onClick={onAdd}>
             <Plus size={16} aria-hidden style={{ marginRight: 6 }} />
             Add {label}
-          </button>
+          </Button>
         ) : null}
       </div>
     );
@@ -201,10 +202,10 @@ export function UnitSetupTable({
         </tbody>
       </table>
       {!rowsLocked ? (
-        <button type="button" className="pg-btn pg-btn-secondary" style={{ marginTop: 10 }} onClick={onAdd}>
+        <Button type="button" variant="soft" style={{ marginTop: 10 }} onClick={onAdd}>
           <Plus size={16} aria-hidden style={{ marginRight: 6 }} />
           Add {label}
-        </button>
+        </Button>
       ) : null}
     </ProplyticTableWrap>
   );

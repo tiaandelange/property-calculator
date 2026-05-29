@@ -4,7 +4,7 @@ import { AppIcon } from "./AppIcon";
 import type { IconName } from "./iconRegistry";
 import type { IconSize } from "./iconSizes";
 
-export type IconButtonVariant = "ghost" | "outline" | "primary" | "danger" | "subtle";
+export type IconButtonVariant = "ghost" | "outline" | "primary" | "danger" | "danger-outline" | "subtle";
 
 export type IconButtonProps = {
   icon: IconName;
@@ -25,6 +25,7 @@ const VARIANT_CLASS: Record<IconButtonVariant, string> = {
   outline: "pg-icon-btn--outline",
   primary: "pg-icon-btn--primary",
   danger: "pg-icon-btn--danger",
+  "danger-outline": "pg-icon-btn--danger-outline",
   subtle: "pg-icon-btn--subtle"
 };
 

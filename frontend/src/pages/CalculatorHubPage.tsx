@@ -1,5 +1,6 @@
 import { Helmet } from "react-helmet-async";
 import { Link } from "react-router-dom";
+import { ButtonLink } from "../components/ui/Button";
 import { calculators } from "../data/calculators";
 import { groupCalculators } from "../data/calculatorHubGroups";
 import { getHomepagePopularCalculatorCards } from "../data/homepageCalculators";
@@ -79,9 +80,9 @@ export function CalculatorHubPage() {
 
           <div className="pg-calc-hub-cta-strip">
             <p className="pg-calc-hub-cta-text">Ready to run more scenarios?</p>
-            <a href="#all-calculators" className="pg-btn pg-btn-primary">
+            <ButtonLink href="#all-calculators" variant="primary">
               Browse all calculators
-            </a>
+            </ButtonLink>
           </div>
 
           <div id="all-calculators" className="pg-calc-hub-all">

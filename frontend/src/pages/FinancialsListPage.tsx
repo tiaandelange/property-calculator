@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Helmet } from "react-helmet-async";
-import { Link, useLocation, useSearchParams } from "react-router-dom";
+import { useLocation, useSearchParams } from "react-router-dom";
 import { getFinancialsDirectory, propertyApiErrorMessage } from "../api/ownedProperties";
 import { PROPERTY_DATA_INVALIDATION } from "../features/properties/invalidate";
 import { FinancialControlsBar } from "../features/financials/FinancialControlsBar";
@@ -16,7 +16,7 @@ import {
 } from "../features/financials/financialDirectoryUtils";
 import { Container } from "../components/ui/Container";
 import { Section } from "../components/ui/Section";
-import { Button } from "../components/ui/Button";
+import { Button, ButtonLink } from "../components/ui/Button";
 
 function parsePropertyIdFromSearch(search: string): string {
   const raw = new URLSearchParams(search).get("propertyId");
@@ -162,13 +162,13 @@ export function FinancialsListPage() {
                     : "Try another month, property, or search term."}
                 </p>
                 {properties[0] ? (
-                  <Link className="pg-btn pg-btn-primary" to={`/owned-properties/${properties[0].id}?tab=financials&fin=statement`}>
+                  <ButtonLink href={`/owned-properties/${properties[0].id}?tab=financials&fin=statement`} variant="primary">
                     Open property financials
-                  </Link>
+                  </ButtonLink>
                 ) : (
-                  <Link className="pg-btn pg-btn-primary" to="/owned-properties/new">
+                  <ButtonLink href="/owned-properties/new" variant="primary">
                     Add property
-                  </Link>
+                  </ButtonLink>
                 )}
               </div>
             ) : (

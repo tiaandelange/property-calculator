@@ -16,6 +16,7 @@ import { Card } from "../../../components/ui/Card";
 import { Input } from "../../../components/ui/Input";
 import { Select } from "../../../components/ui/Select";
 import { ModalOverlay, ModalPanel } from "../../../components/ui/Modal";
+import { Button } from "../../../components/ui/Button";
 import {
   createPropertyExpense,
   createCurrentInvoiceFromLease,
@@ -666,25 +667,24 @@ export function WorkspaceStatementTab({
                   })}
                 </select>
               ) : null}
-              <button
+              <Button
                 type="button"
-                className="pg-btn pg-btn-primary"
+                iconLeft="add"
                 style={{ minWidth: 152, justifyContent: "center", whiteSpace: "nowrap" }}
                 onClick={() => setShowAddOnceOff(true)}
               >
-                <AppIcon name="add" size="sm" style={{ marginRight: 6 }} />
                 Add Expense
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
-                className="pg-btn pg-btn-secondary"
+                variant="soft"
+                iconLeft="pdf"
                 style={{ minWidth: 140, justifyContent: "center", whiteSpace: "nowrap" }}
                 disabled
                 title="Coming next: Statement PDF export"
               >
-                <AppIcon name="pdf" size="sm" style={{ marginRight: 6 }} />
                 Export PDF
-              </button>
+              </Button>
             </div>
           </header>
           <div className="pg-ptable-wrap pg-ptable-wrap--responsive">
@@ -996,9 +996,9 @@ export function WorkspaceStatementTab({
               title="Add once-off expense"
               onClose={() => (!onceOffSaving ? setShowAddOnceOff(false) : null)}
               actions={
-                <button className="pg-btn pg-btn-primary" type="button" disabled={onceOffSaving} onClick={() => void addOnceOffExpense()}>
-                  {onceOffSaving ? "Saving…" : "Add"}
-                </button>
+                <Button type="button" loading={onceOffSaving} disabled={onceOffSaving} onClick={() => void addOnceOffExpense()}>
+                  Add
+                </Button>
               }
             >
               <div style={{ padding: 14, display: "grid", gap: 10 }}>
@@ -1051,12 +1051,12 @@ export function WorkspaceStatementTab({
                   )}
                 </div>
                 <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
-                  <button className="pg-btn pg-btn-ghost" type="button" onClick={() => setConfirmDelete(null)}>
+                  <Button type="button" variant="ghost" onClick={() => setConfirmDelete(null)}>
                     Cancel
-                  </button>
-                  <button
-                    className="pg-btn pg-btn-danger"
+                  </Button>
+                  <Button
                     type="button"
+                    variant="danger"
                     onClick={() => {
                       const kind = String(confirmDelete.kind ?? "expense");
                       if (kind === "income") {
@@ -1097,7 +1097,7 @@ export function WorkspaceStatementTab({
                     }}
                   >
                     Delete
-                  </button>
+                  </Button>
                 </div>
               </div>
             </ModalPanel>
