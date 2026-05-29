@@ -249,6 +249,26 @@ describe("leasesSupabase", () => {
     expect((merged.currentTenant as { firstName: string }).firstName).toBe("J");
   });
 
+  it("mergeLeaseBundleIntoPropertyDetail marks duplex with one lease as partially rented", () => {
+    const base = {
+      propertyType: "DUPLEX",
+      investmentType: "LONG_TERM_RENTAL",
+      structureTypeId: "duplex"
+    };
+    const bundle = {
+      leases: [{ id: "l1", monthlyRent: 100, displayStatus: "ACTIVE" }],
+      currentLeases: [{ id: "l1", monthlyRent: 100, displayStatus: "ACTIVE" }],
+      currentLease: { id: "l1", monthlyRent: 100, displayStatus: "ACTIVE" },
+      historicalLeases: [],
+      historicalLeaseSummaries: []
+    };
+    const merged = mergeLeaseBundleIntoPropertyDetail(base as Record<string, unknown>, bundle as any, {
+      activeUnitCount: 2
+    });
+    expect(merged.occupancyStatus).toBe("PARTIALLY_OCCUPIED");
+    expect(merged.tenantStatus).toBe("Partially rented");
+  });
+
   it("dbToLease maps tenant embed", () => {
     const l = dbToLease(leaseRowSnake as unknown as Record<string, unknown>);
     expect(l.tenant).toBeTruthy();

@@ -37,6 +37,8 @@ export type PropertyTypeConfig = {
   dbPropertyType: string;
   /** Suggested `investment_type` when user has not chosen one */
   suggestedInvestmentType?: string;
+  /** When true, unit count is fixed to `defaultUnitCount` (no add/remove in structure UI). */
+  lockUnitCount?: boolean;
   requiredFields: string[];
   optionalFields: string[];
 };
@@ -67,9 +69,11 @@ export const PROPERTY_TYPE_CONFIGS: PropertyTypeConfig[] = [
   {
     id: "duplex",
     label: "Duplex",
-    description: "Two side-by-side or stacked units — Unit 1 and Unit 2 are created by default.",
+    description:
+      "Exactly two units (Unit 1 and Unit 2). To track more units, change the property type to Multi-family.",
     unitMode: "fixed_units",
     defaultUnitCount: 2,
+    lockUnitCount: true,
     askUnitCount: false,
     unitLabel: "Unit",
     supportsTenants: true,

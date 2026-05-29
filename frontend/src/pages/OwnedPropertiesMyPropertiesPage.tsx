@@ -10,6 +10,25 @@ import { getProperties } from "../api/ownedProperties";
 import { usePropertyWorkspaceRefresh } from "../features/properties/usePropertyWorkspaceRefresh";
 import { StatusPill } from "../components/ui/DashboardKit";
 
+function occupancyDisplay(p: {
+  occupancyStatus?: string;
+  tenantStatus?: string;
+  investmentType?: string;
+  propertyType?: string;
+}): { label: string; tone: "success" | "warning" | "info" | "accent" } {
+  const typeKey = p.investmentType ?? p.propertyType;
+  if (typeKey === "VACANT_LAND") return { label: "Land / no tenant required", tone: "accent" };
+  if (typeKey === "SHORT_TERM_RENTAL") return { label: "Short-term rental", tone: "accent" };
+  if (p.tenantStatus) {
+    const tone =
+      p.occupancyStatus === "OCCUPIED" ? "success" : p.occupancyStatus === "PARTIALLY_OCCUPIED" ? "info" : "warning";
+    return { label: p.tenantStatus, tone };
+  }
+  if (p.occupancyStatus === "PARTIALLY_OCCUPIED") return { label: "Partially rented", tone: "info" };
+  if (p.occupancyStatus === "OCCUPIED") return { label: "Occupied", tone: "success" };
+  return { label: "Vacant", tone: "warning" };
+}
+
 function displayType(t: string | null | undefined) {
   const map: Record<string, string> = {
     LONG_TERM_RENTAL: "Long-Term Rental",
@@ -66,6 +85,7 @@ export function OwnedPropertiesMyPropertiesPage() {
     if (status !== "ALL") {
       next = next.filter((p) => {
         if (status === "OCCUPIED") return p.occupancyStatus === "OCCUPIED";
+        if (status === "PARTIALLY_OCCUPIED") return p.occupancyStatus === "PARTIALLY_OCCUPIED";
         if (status === "VACANT") return p.occupancyStatus === "VACANT" && (p.investmentType ?? p.propertyType) !== "VACANT_LAND";
         if (status === "LAND") return (p.investmentType ?? p.propertyType) === "VACANT_LAND";
         if (status === "STR") return (p.investmentType ?? p.propertyType) === "SHORT_TERM_RENTAL";
@@ -119,6 +139,7 @@ export function OwnedPropertiesMyPropertiesPage() {
             <select className="pg-input" value={status} onChange={(e) => setStatus(e.target.value)}>
               <option value="ALL">All statuses</option>
               <option value="OCCUPIED">Occupied</option>
+              <option value="PARTIALLY_OCCUPIED">Partially rented</option>
               <option value="VACANT">Vacant</option>
               <option value="LAND">Land / No Tenant Required</option>
               <option value="STR">Short-Term Rental</option>
@@ -159,10 +180,7 @@ export function OwnedPropertiesMyPropertiesPage() {
               <div className="pg-workspace-inset-list">
                 {filtered.map((p) => {
                   const typeKey = p.investmentType ?? p.propertyType;
-                  const isLand = typeKey === "VACANT_LAND";
-                  const isStr = typeKey === "SHORT_TERM_RENTAL";
-                  const statusLabel = isLand ? "Land / no tenant required" : isStr ? "Short-term rental" : p.occupancyStatus === "OCCUPIED" ? "Occupied" : "Vacant";
-                  const tone = isLand ? "accent" : isStr ? "accent" : p.occupancyStatus === "OCCUPIED" ? "success" : "warning";
+                  const { label: statusLabel, tone } = occupancyDisplay(p);
                   const v = p.currentEstimatedValue;
                   const b = p.outstandingBondBalance;
                   const equity = v != null && b != null ? Number(v) - Number(b) : null;
@@ -223,8 +241,7 @@ export function OwnedPropertiesMyPropertiesPage() {
               const typeKey = p.investmentType ?? p.propertyType;
               const isLand = typeKey === "VACANT_LAND";
               const isStr = typeKey === "SHORT_TERM_RENTAL";
-              const statusLabel = isLand ? "Land / no tenant required" : isStr ? "Short-term rental" : p.occupancyStatus === "OCCUPIED" ? "Occupied" : "Vacant";
-              const tone = isLand ? "accent" : isStr ? "accent" : p.occupancyStatus === "OCCUPIED" ? "success" : "warning";
+              const { label: statusLabel, tone } = occupancyDisplay(p);
               const v = p.currentEstimatedValue;
               const b = p.outstandingBondBalance;
               const equity = v != null && b != null ? Number(v) - Number(b) : null;

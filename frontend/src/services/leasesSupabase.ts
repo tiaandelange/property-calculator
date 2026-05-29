@@ -3,6 +3,12 @@ import { getSupabase } from "../lib/supabaseClient";
 import { snakeRowToCamel } from "../api/propertyRowMapping";
 import { dbToLease } from "../api/leaseRowMapping";
 import { isCurrentLeaseStatus } from "../utils/leaseDisplay";
+import {
+  derivePropertyOccupancy,
+  effectiveActiveUnitCount,
+  occupancyCodeToTenantStatus,
+  structureTypeIdFromProperty
+} from "../utils/propertyOccupancy";
 
 function toError(e: PostgrestError | Error): Error {
   if ("code" in e && "message" in e) {
@@ -323,7 +329,8 @@ export async function cancelLease(id: string | number, payload: Record<string, u
 /** Merges `listLeasesForProperty` output into a property detail record from `propertiesSupabase.getProperty`. */
 export function mergeLeaseBundleIntoPropertyDetail(
   base: Record<string, unknown>,
-  bundle: PropertyLeasesBundle
+  bundle: PropertyLeasesBundle,
+  opts?: { activeUnitCount?: number }
 ): Record<string, unknown> {
   const meta = (base.aggregateMeta as Record<string, unknown> | undefined) ?? {};
   const counts = (meta.counts as Record<string, unknown> | undefined) ?? {};
@@ -342,6 +349,15 @@ export function mergeLeaseBundleIntoPropertyDetail(
         }
       : null;
 
+  const structureTypeId = structureTypeIdFromProperty(base);
+  const totalUnitCount = effectiveActiveUnitCount(structureTypeId, opts?.activeUnitCount);
+  const occupancy = derivePropertyOccupancy({
+    structureTypeId,
+    investmentType: base.investmentType as string | undefined,
+    activeLeaseCount: bundle.currentLeases.length,
+    totalUnitCount
+  });
+
   return {
     ...base,
     leases: bundle.leases,
@@ -349,7 +365,10 @@ export function mergeLeaseBundleIntoPropertyDetail(
     currentLeases: bundle.currentLeases,
     leaseDisplayStatus,
     combinedMonthlyRentFromLeases: combined,
-    occupancyStatus: bundle.currentLeases.length > 0 ? "OCCUPIED" : "VACANT",
+    occupancyStatus: occupancy.code,
+    tenantStatus: occupancyCodeToTenantStatus(occupancy.code),
+    activeUnitCount: totalUnitCount,
+    leasedUnitCount: occupancy.activeLeaseCount,
     currentTenant,
     aggregateMeta: {
       ...meta,

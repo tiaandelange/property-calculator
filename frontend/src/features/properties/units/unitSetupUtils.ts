@@ -87,8 +87,7 @@ export function unitsForStructureType(
   }
 
   if (cfg.unitMode === "fixed_units") {
-    const n = unitCount > 0 ? unitCount : cfg.defaultUnitCount;
-    return buildSuggestedUnits(cfg, n, opts);
+    return buildSuggestedUnits(cfg, cfg.defaultUnitCount, opts);
   }
 
   if (cfg.askUnitCount) {
@@ -130,15 +129,10 @@ export function estimateAirbnbMonthlyIncome(form: Record<string, unknown>): numb
 
 export function resolvePropertyExpectedMonthlyIncome(
   form: Record<string, unknown>,
-  units: PropertyUnitDraft[],
+  _units: PropertyUnitDraft[],
   structureTypeId: string
 ): number | null {
   const cfg = getPropertyTypeConfig(structureTypeId);
-  const activeUnits = units.filter((u) => u.isActive);
-  if (activeUnits.length > 0) {
-    const sum = sumUnitsExpectedRentMonthly(activeUnits);
-    return sum > 0 ? sum : null;
-  }
   if (cfg.supportsShortTermRentalCosts) {
     const est = estimateAirbnbMonthlyIncome(form);
     return est > 0 ? est : null;

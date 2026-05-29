@@ -10,7 +10,7 @@ import type { PropertyFormMode, PropertyFormValues } from "../form/propertyFormC
 import { INVESTMENT_TYPE_OPTIONS } from "../form/propertyFormConstants";
 import { UnitSetupTable, duplicateUnitRow } from "./UnitSetupTable";
 import type { PropertyUnitDraft } from "./propertyUnitTypes";
-import { buildSuggestedUnits, sumUnitsExpectedRentMonthly, unitsForStructureType } from "./unitSetupUtils";
+import { buildSuggestedUnits, unitsForStructureType } from "./unitSetupUtils";
 
 type SetForm = (patch: PropertyFormValues | ((prev: PropertyFormValues) => PropertyFormValues)) => void;
 
@@ -32,7 +32,10 @@ export function PropertyStructureSection({
   const structureTypeId = String(form.structureTypeId ?? "single_family_house");
   const cfg = getPropertyTypeConfig(structureTypeId);
   const units = unitsFromForm(form);
-  const unitCount = Number(form.unitCount ?? cfg.defaultUnitCount) || cfg.defaultUnitCount;
+  const lockUnitCount = Boolean(cfg.lockUnitCount);
+  const unitCount = lockUnitCount
+    ? cfg.defaultUnitCount
+    : Number(form.unitCount ?? cfg.defaultUnitCount) || cfg.defaultUnitCount;
   const hasMultipleUnits = Boolean(form.hasMultipleUnits);
   const rentBasis = (form.rentBasis === "bed" ? "bed" : "room") as "room" | "bed";
   const [typeChangeConfirm, setTypeChangeConfirm] = useState<string | null>(null);
@@ -46,8 +49,6 @@ export function PropertyStructureSection({
   const showResidentialFields =
     cfg.supportsRooms || ["single_family_house", "duplex", "townhouse", "apartment_flat", "multi_family"].includes(cfg.id);
   const showUseType = cfg.supportsCommercialLeases || cfg.id === "mixed_use";
-
-  const totalExpectedRent = sumUnitsExpectedRentMonthly(units);
 
   const applyStructureType = (nextId: string, regenerate: boolean) => {
     const nextCfg = getPropertyTypeConfig(nextId);
@@ -63,10 +64,9 @@ export function PropertyStructureSection({
       structureTypeId: nextId,
       propertyType: mapped.propertyType,
       investmentType: mapped.investmentType,
-      unitCount: nextCfg.defaultUnitCount || unitCount,
+      unitCount: nextCfg.lockUnitCount ? nextCfg.defaultUnitCount : nextCfg.defaultUnitCount || unitCount,
       hasMultipleUnits: nextCfg.unitMode === "custom" ? hasMultipleUnits : nextCfg.defaultUnitCount > 1,
-      units: nextUnits,
-      expectedMonthlyIncome: sumUnitsExpectedRentMonthly(nextUnits) || form.expectedMonthlyIncome
+      units: nextUnits
     });
     setTypeChangeConfirm(null);
   };
@@ -85,7 +85,7 @@ export function PropertyStructureSection({
       rentBasis: cfg.unitMode === "rooms_or_beds" ? rentBasis : undefined,
       existing: units
     });
-    patch({ units: next, expectedMonthlyIncome: sumUnitsExpectedRentMonthly(next) || form.expectedMonthlyIncome });
+    patch({ units: next });
   };
 
   return (
@@ -257,24 +257,22 @@ export function PropertyStructureSection({
         </div>
       ) : null}
 
+      {lockUnitCount ? (
+        <p className="pg-muted" style={{ fontSize: 13, margin: "0 0 8px" }}>
+          This property type has a fixed number of units. Occupancy (vacant / rented) is set automatically when you link an
+          active lease.
+        </p>
+      ) : null}
+
       {showUnitTable ? (
         <>
-          {totalExpectedRent > 0 ? (
-            <p className="pg-muted" style={{ fontSize: 13, marginBottom: 8 }}>
-              Total expected rent (monthly equivalent): <strong>R {Math.round(totalExpectedRent).toLocaleString()}</strong>
-            </p>
-          ) : null}
           <UnitSetupTable
             units={units}
             structureTypeId={structureTypeId}
             showResidentialFields={showResidentialFields}
             showUseType={showUseType}
-            onChange={(next) =>
-              patch({
-                units: next,
-                expectedMonthlyIncome: sumUnitsExpectedRentMonthly(next) || form.expectedMonthlyIncome
-              })
-            }
+            lockUnitCount={lockUnitCount}
+            onChange={(next) => patch({ units: next })}
             onAdd={() => {
               const next = [
                 ...units,
@@ -290,7 +288,7 @@ export function PropertyStructureSection({
                 if (!window.confirm("Remove this unit from the property setup? It will be archived if already saved.")) return;
               }
               const next = units.filter((_, j) => j !== i).map((u, j) => ({ ...u, sortOrder: j }));
-              patch({ units: next, unitCount: next.length, expectedMonthlyIncome: sumUnitsExpectedRentMonthly(next) });
+              patch({ units: next, unitCount: next.length });
             }}
           />
         </>

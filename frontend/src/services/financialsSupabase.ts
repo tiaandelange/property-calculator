@@ -11,6 +11,7 @@ import {
 import { listRecurringIncomeRulesForProperty } from "./recurringRulesSupabase";
 import { utcCalendarMonthBounds } from "../utils/financialMonthBounds";
 import { leaseDisplayStatus } from "../utils/leaseDisplay";
+import { derivePropertyOccupancy, effectiveActiveUnitCount, structureTypeIdFromProperty } from "../utils/propertyOccupancy";
 import { getProperty } from "./propertiesSupabase";
 
 function toError(e: PostgrestError | Error): Error {
@@ -103,7 +104,7 @@ export function buildFinancialSummaryFromLedger(
   const estimatedEquity = currentEstimatedValue != null ? currentEstimatedValue - outstandingLoanAmount : null;
 
   const leases = (property.leases as Record<string, unknown>[] | undefined) ?? [];
-  const hasActiveLease = leases.some((l) =>
+  const activeLeases = leases.filter((l) =>
     ["ACTIVE", "MONTH_TO_MONTH"].includes(
       leaseDisplayStatus({
         status: String(l.status ?? ""),
@@ -111,7 +112,23 @@ export function buildFinancialSummaryFromLedger(
       })
     )
   );
-  const occupancyStatus = hasActiveLease ? "Occupied" : "Vacant";
+  const structureTypeId = structureTypeIdFromProperty(property);
+  const totalUnitCount = effectiveActiveUnitCount(
+    structureTypeId,
+    Number(property.activeUnitCount ?? property.leasedUnitCount) || undefined
+  );
+  const occupancy = derivePropertyOccupancy({
+    structureTypeId,
+    investmentType: property.investmentType as string | undefined,
+    activeLeaseCount: activeLeases.length,
+    totalUnitCount
+  });
+  const occupancyStatus =
+    occupancy.code === "PARTIALLY_OCCUPIED"
+      ? "Partially rented"
+      : occupancy.code === "OCCUPIED"
+        ? "Occupied"
+        : "Vacant";
 
   return {
     monthly: {

@@ -2,12 +2,7 @@ import { Copy, Plus, Trash2 } from "lucide-react";
 import { useMediaQuery } from "../../../hooks/useMediaQuery";
 import { Input } from "../../../components/ui/Input";
 import { getPropertyTypeConfig } from "../../../config/propertyTypes";
-import {
-  UNIT_OCCUPANCY_OPTIONS,
-  UNIT_RENT_FREQUENCY_OPTIONS,
-  UNIT_USE_TYPE_OPTIONS,
-  type PropertyUnitDraft
-} from "./propertyUnitTypes";
+import { UNIT_USE_TYPE_OPTIONS, type PropertyUnitDraft } from "./propertyUnitTypes";
 import { newClientId } from "./unitSetupUtils";
 
 function numVal(v: number | null | undefined): string {
@@ -20,6 +15,7 @@ export function UnitSetupTable({
   structureTypeId,
   showResidentialFields,
   showUseType,
+  lockUnitCount,
   onChange,
   onAdd,
   onDuplicate,
@@ -30,6 +26,8 @@ export function UnitSetupTable({
   structureTypeId: string;
   showResidentialFields: boolean;
   showUseType: boolean;
+  /** Duplex and other fixed-count types — no add/remove/duplicate. */
+  lockUnitCount?: boolean;
   onChange: (units: PropertyUnitDraft[]) => void;
   onAdd: () => void;
   onDuplicate: (index: number) => void;
@@ -39,6 +37,7 @@ export function UnitSetupTable({
   const isMobile = useMediaQuery("(max-width: 767px)");
   const cfg = getPropertyTypeConfig(structureTypeId);
   const label = cfg.unitLabel;
+  const rowsLocked = lockUnitCount || readOnly;
 
   const patchUnit = (index: number, patch: Partial<PropertyUnitDraft>) => {
     onChange(units.map((u, i) => (i === index ? { ...u, ...patch } : u)));
@@ -51,7 +50,7 @@ export function UnitSetupTable({
           <div key={u.clientId} className="pg-prop-unit-card">
             <div className="pg-prop-unit-card__head">
               <strong>{u.unitName || `${label} ${i + 1}`}</strong>
-              {!readOnly ? (
+              {!rowsLocked ? (
                 <div className="pg-pfin-row-actions">
                   <button type="button" className="pg-pfin-icon-btn" aria-label="Duplicate unit" onClick={() => onDuplicate(i)}>
                     <Copy size={16} />
@@ -76,7 +75,7 @@ export function UnitSetupTable({
             />
           </div>
         ))}
-        {!readOnly ? (
+        {!rowsLocked ? (
           <button type="button" className="pg-btn pg-btn-secondary pg-prop-units-add" onClick={onAdd}>
             <Plus size={16} aria-hidden style={{ marginRight: 6 }} />
             Add {label}
@@ -101,10 +100,7 @@ export function UnitSetupTable({
               </>
             ) : null}
             <th>Size m²</th>
-            <th>Expected rent</th>
-            <th>Frequency</th>
-            <th>Status</th>
-            {!readOnly ? <th>Actions</th> : null}
+            {!rowsLocked ? <th>Actions</th> : null}
           </tr>
         </thead>
         <tbody>
@@ -182,51 +178,7 @@ export function UnitSetupTable({
                   style={{ height: 34, width: 80 }}
                 />
               </td>
-              <td>
-                <Input
-                  type="number"
-                  min={0}
-                  value={numVal(u.expectedRent)}
-                  onChange={(e) =>
-                    patchUnit(i, { expectedRent: e.target.value === "" ? null : Number(e.target.value) })
-                  }
-                  disabled={readOnly}
-                  style={{ height: 34, width: 100, textAlign: "right" }}
-                />
-              </td>
-              <td>
-                <select
-                  className="pg-input"
-                  value={u.rentFrequency}
-                  onChange={(e) => patchUnit(i, { rentFrequency: e.target.value as PropertyUnitDraft["rentFrequency"] })}
-                  disabled={readOnly}
-                  style={{ height: 34 }}
-                >
-                  {UNIT_RENT_FREQUENCY_OPTIONS.map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {o.label}
-                    </option>
-                  ))}
-                </select>
-              </td>
-              <td>
-                <select
-                  className="pg-input"
-                  value={u.occupancyStatus}
-                  onChange={(e) =>
-                    patchUnit(i, { occupancyStatus: e.target.value as PropertyUnitDraft["occupancyStatus"] })
-                  }
-                  disabled={readOnly}
-                  style={{ height: 34 }}
-                >
-                  {UNIT_OCCUPANCY_OPTIONS.map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {o.label}
-                    </option>
-                  ))}
-                </select>
-              </td>
-              {!readOnly ? (
+              {!rowsLocked ? (
                 <td>
                   <div className="pg-pfin-row-actions">
                     <button type="button" className="pg-pfin-icon-btn" aria-label="Duplicate unit" onClick={() => onDuplicate(i)}>
@@ -247,7 +199,7 @@ export function UnitSetupTable({
           ))}
         </tbody>
       </table>
-      {!readOnly ? (
+      {!rowsLocked ? (
         <button type="button" className="pg-btn pg-btn-secondary" style={{ marginTop: 10 }} onClick={onAdd}>
           <Plus size={16} aria-hidden style={{ marginRight: 6 }} />
           Add {label}
@@ -294,29 +246,12 @@ function UnitFieldsMobile({
         </label>
       ) : null}
       <label className="pg-muted" style={{ fontSize: 12 }}>
-        Expected rent
+        Description
         <Input
-          type="number"
-          min={0}
-          value={numVal(unit.expectedRent)}
-          onChange={(e) => onPatch({ expectedRent: e.target.value === "" ? null : Number(e.target.value) })}
+          value={unit.description ?? ""}
+          onChange={(e) => onPatch({ description: e.target.value })}
           disabled={disabled}
         />
-      </label>
-      <label className="pg-muted" style={{ fontSize: 12 }}>
-        Status
-        <select
-          className="pg-input"
-          value={unit.occupancyStatus}
-          onChange={(e) => onPatch({ occupancyStatus: e.target.value as PropertyUnitDraft["occupancyStatus"] })}
-          disabled={disabled}
-        >
-          {UNIT_OCCUPANCY_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
       </label>
       {showResidentialFields ? (
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
@@ -342,6 +277,16 @@ function UnitFieldsMobile({
           </label>
         </div>
       ) : null}
+      <label className="pg-muted" style={{ fontSize: 12 }}>
+        Size m²
+        <Input
+          type="number"
+          min={0}
+          value={numVal(unit.sizeSqm)}
+          onChange={(e) => onPatch({ sizeSqm: e.target.value === "" ? null : Number(e.target.value) })}
+          disabled={disabled}
+        />
+      </label>
     </div>
   );
 }
@@ -349,7 +294,6 @@ function UnitFieldsMobile({
 export function duplicateUnitRow(units: PropertyUnitDraft[], index: number, structureTypeId: string): PropertyUnitDraft[] {
   const src = units[index];
   if (!src) return units;
-  const cfg = getPropertyTypeConfig(structureTypeId);
   const copy: PropertyUnitDraft = {
     ...src,
     clientId: newClientId(),

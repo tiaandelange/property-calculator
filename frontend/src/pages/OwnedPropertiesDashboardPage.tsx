@@ -311,7 +311,13 @@ export function OwnedPropertiesDashboardPage() {
                 const monthlyExpenses = Number(p.financialSummary?.monthly?.totalExpenses ?? 0);
                 const cash = Number(p.financialSummary?.monthly?.netMonthlyCashFlow ?? monthlyIncome - monthlyExpenses);
                 const overdue = (p.invoices ?? []).some((i: any) => !["PAID", "CANCELLED"].includes(i.status) && new Date(i.dueDate) < new Date());
-                const status = overdue ? "Rent Overdue" : p.occupancyStatus === "OCCUPIED" ? "Occupied" : "Vacant";
+                const status = overdue
+                  ? "Rent Overdue"
+                  : p.occupancyStatus === "PARTIALLY_OCCUPIED"
+                    ? "Partially rented"
+                    : p.occupancyStatus === "OCCUPIED"
+                      ? "Occupied"
+                      : "Vacant";
                 const tone = overdue ? "danger" : activeLease ? "success" : "warning";
                 return (
                   <div key={p.id} className="pg-property-card">

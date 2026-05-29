@@ -3,7 +3,6 @@ import { Link } from "react-router-dom";
 import { propertyFinancialsStatementUrl } from "../../financials/financialDirectoryUtils";
 import { getPropertyTypeConfig } from "../../../config/propertyTypes";
 import type { PropertyUnitDraft } from "../units/propertyUnitTypes";
-import { sumUnitsExpectedRentMonthly } from "../units/unitSetupUtils";
 import { INVESTMENT_TYPE_LABELS, type PropertyFormMode, type PropertyFormValues } from "./propertyFormConstants";
 import { PROPERTY_FORM_SECTIONS, isPropertyFormSectionComplete, propertyFormProgress } from "./propertyFormProgress";
 
@@ -37,7 +36,6 @@ export function PropertySummaryPanel({
   const structureTypeId = String(form.structureTypeId ?? "single_family_house");
   const structureCfg = getPropertyTypeConfig(structureTypeId);
   const units = Array.isArray(form.units) ? (form.units as PropertyUnitDraft[]) : [];
-  const unitRentTotal = sumUnitsExpectedRentMonthly(units);
   const status = String(form.status ?? "").trim() || "Draft";
 
   return (
@@ -62,7 +60,7 @@ export function PropertySummaryPanel({
           </div>
           <div>
             <dt>Expected rent</dt>
-            <dd>{formatRent(unitRentTotal > 0 ? unitRentTotal : form.expectedMonthlyIncome)}</dd>
+            <dd>{formatRent(form.expectedMonthlyIncome)}</dd>
           </div>
           <div>
             <dt>Tenants in setup</dt>

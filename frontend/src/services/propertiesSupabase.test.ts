@@ -104,12 +104,25 @@ describe("propertiesSupabase", () => {
 
   it("listProperties queries properties scoped to user_id", async () => {
     getUser.mockResolvedValue({ data: { user: { id: userId } }, error: null });
-    from.mockReturnValue({
-      select: vi.fn(() => ({
-        eq: vi.fn(() => ({
-          order: vi.fn(() => Promise.resolve({ data: [mockRow], error: null }))
-        }))
-      }))
+    const emptyInQuery = {
+      eq: vi.fn(function eqChain() {
+        return { eq: eqChain, in: vi.fn(() => Promise.resolve({ data: [], error: null })) };
+      })
+    };
+    from.mockImplementation((table: string) => {
+      if (table === "properties") {
+        return {
+          select: vi.fn(() => ({
+            eq: vi.fn(() => ({
+              order: vi.fn(() => Promise.resolve({ data: [mockRow], error: null }))
+            }))
+          }))
+        };
+      }
+      if (table === "leases" || table === "property_units") {
+        return { select: vi.fn(() => emptyInQuery) };
+      }
+      return { select: vi.fn(() => emptyInQuery) };
     });
 
     const rows = await listProperties();
@@ -117,6 +130,7 @@ describe("propertiesSupabase", () => {
     expect(rows).toHaveLength(1);
     expect(rows[0].id).toBe(propertyId);
     expect(rows[0]).toHaveProperty("tenantStatus");
+    expect(rows[0].occupancyStatus).toBe("VACANT");
   });
 
   it("getProperty throws when row missing", async () => {

@@ -12,7 +12,13 @@ export function PropertyFinancialMetricCards({
 }) {
   const cashAccent = overview.netCashFlow >= 0 ? ("success" as const) : ("danger" as const);
   const statusAccent =
-    overview.occupancyStatus === "Occupied" ? ("success" as const) : overview.occupancyStatus === "Vacant" ? ("warning" as const) : ("info" as const);
+    overview.occupancyStatus === "Occupied"
+      ? ("success" as const)
+      : overview.occupancyStatus === "Partially rented"
+        ? ("info" as const)
+        : overview.occupancyStatus === "Vacant"
+          ? ("warning" as const)
+          : ("info" as const);
 
   const cards = [
     {

@@ -1,4 +1,10 @@
 import { fmtZar } from "../../financials/financialDirectoryUtils";
+import {
+  derivePropertyOccupancy,
+  effectiveActiveUnitCount,
+  occupancyCodeToTenantStatus,
+  structureTypeIdFromProperty
+} from "../../../utils/propertyOccupancy";
 
 export type RecurringExpenseDisplayItem = {
   id: string | number;
@@ -140,12 +146,23 @@ export function buildPropertyFinancialOverview({
   const annualYieldPercent =
     purchase > 0 && monthlyIncome > 0 ? Number((((monthlyIncome * 12) / purchase) * 100).toFixed(2)) : null;
 
-  let occupancyStatus = "Vacant";
-  let occupancyHelper = "No active lease";
+  const structureTypeId = structureTypeIdFromProperty(pf);
+  const totalUnitCount = effectiveActiveUnitCount(structureTypeId, Number(pf.activeUnitCount) || undefined);
+  const derived = derivePropertyOccupancy({
+    structureTypeId,
+    investmentType: pf.investmentType as string | undefined,
+    activeLeaseCount: active.length,
+    totalUnitCount
+  });
+  let occupancyStatus = occupancyCodeToTenantStatus(derived.code);
+  let occupancyHelper =
+    derived.code === "PARTIALLY_OCCUPIED"
+      ? `${derived.activeLeaseCount} of ${derived.totalUnitCount} units have an active lease`
+      : derived.code === "OCCUPIED"
+        ? "Active lease in place"
+        : "No active lease";
   let leaseStatus = "Vacant";
   if (active.length > 0) {
-    occupancyStatus = "Occupied";
-    occupancyHelper = "Active lease in place";
     leaseStatus = "Active";
     const end = active[0].endDate ? String(active[0].endDate).slice(0, 10) : null;
     if (end) {

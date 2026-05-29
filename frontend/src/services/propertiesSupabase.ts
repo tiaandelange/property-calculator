@@ -10,6 +10,14 @@ import {
 } from "../api/propertyRowMapping";
 import * as leasesSupabase from "./leasesSupabase";
 import * as invoicesSupabase from "./invoicesSupabase";
+import * as propertyUnitsSupabase from "./propertyUnitsSupabase";
+import {
+  countCurrentLeasesByProperty,
+  derivePropertyOccupancy,
+  effectiveActiveUnitCount,
+  occupancyCodeToTenantStatus,
+  structureTypeIdFromProperty
+} from "../utils/propertyOccupancy";
 
 function toError(e: PostgrestError | Error): Error {
   if ("code" in e && "message" in e) {
@@ -45,6 +53,55 @@ export function propertyToDb(payload: Record<string, unknown>): Record<string, u
 /** Lists properties for the signed-in user (RLS + `user_id` filter). `month` is ignored until dashboard-summary migrates. */
 export type PropertyListItem = Record<string, unknown> & { id: string };
 
+async function enrichListWithLeaseOccupancy(
+  uid: string,
+  items: PropertyListItem[]
+): Promise<PropertyListItem[]> {
+  if (items.length === 0) return items;
+  const sb = getSupabase();
+  const ids = items.map((p) => String(p.id));
+
+  const { data: leaseRows, error: leaseErr } = await sb
+    .from("leases")
+    .select("property_id, status, fixed_term_end_date")
+    .eq("user_id", uid)
+    .in("property_id", ids);
+  if (leaseErr) throw toError(leaseErr);
+  const leaseCounts = countCurrentLeasesByProperty(leaseRows ?? []);
+
+  const unitCounts = new Map<string, number>();
+  const { data: unitRows, error: unitErr } = await sb
+    .from("property_units")
+    .select("property_id")
+    .eq("user_id", uid)
+    .eq("is_active", true)
+    .in("property_id", ids);
+  if (!unitErr && unitRows) {
+    for (const row of unitRows) {
+      const pid = String((row as { property_id: string }).property_id);
+      unitCounts.set(pid, (unitCounts.get(pid) ?? 0) + 1);
+    }
+  }
+
+  return items.map((p) => {
+    const structureTypeId = structureTypeIdFromProperty(p);
+    const totalUnitCount = effectiveActiveUnitCount(structureTypeId, unitCounts.get(String(p.id)));
+    const occupancy = derivePropertyOccupancy({
+      structureTypeId,
+      investmentType: p.investmentType as string | undefined,
+      activeLeaseCount: leaseCounts.get(String(p.id)) ?? 0,
+      totalUnitCount
+    });
+    return {
+      ...p,
+      occupancyStatus: occupancy.code,
+      tenantStatus: occupancyCodeToTenantStatus(occupancy.code),
+      leasedUnitCount: occupancy.activeLeaseCount,
+      activeUnitCount: totalUnitCount
+    };
+  });
+}
+
 export async function listProperties(_params?: { month?: string }): Promise<PropertyListItem[]> {
   const uid = await requireUserId();
   const sb = getSupabase();
@@ -54,7 +111,8 @@ export async function listProperties(_params?: { month?: string }): Promise<Prop
     .eq("user_id", uid)
     .order("created_at", { ascending: false });
   if (error) throw toError(error);
-  return (data ?? []).map((row) => dbToProperty(row as Record<string, unknown>, "list") as PropertyListItem);
+  const list = (data ?? []).map((row) => dbToProperty(row as Record<string, unknown>, "list") as PropertyListItem);
+  return enrichListWithLeaseOccupancy(uid, list);
 }
 
 /** Fetches one property by id for the signed-in user. */
@@ -75,8 +133,16 @@ export async function getProperty(
     throw new Error("Property not found");
   }
   const base = dbToProperty(data as Record<string, unknown>, "detail");
+  let activeUnitCount: number | undefined;
+  try {
+    const units = await propertyUnitsSupabase.listPropertyUnits(String(id));
+    const n = units.filter((u) => u.isActive !== false).length;
+    if (n > 0) activeUnitCount = n;
+  } catch {
+    /* property_units table may not exist yet */
+  }
   const leaseBundle = await leasesSupabase.listLeasesForProperty(String(id));
-  const merged = leasesSupabase.mergeLeaseBundleIntoPropertyDetail(base, leaseBundle);
+  const merged = leasesSupabase.mergeLeaseBundleIntoPropertyDetail(base, leaseBundle, { activeUnitCount });
   const invoices = await invoicesSupabase.listInvoices(String(id));
   return { ...merged, invoices };
 }
