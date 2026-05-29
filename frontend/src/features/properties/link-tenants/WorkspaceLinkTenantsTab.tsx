@@ -54,7 +54,8 @@ function LeaseOccupancyTable({
                     ) : null}
                   </div>
                   <div className="pg-muted" style={{ fontSize: 12 }}>
-                    {roleLabel(t.role)} · {lease.displayStatus} · {fmtZar(lease.monthlyRent)}/mo
+                    {roleLabel(t.role)} · {lease.displayStatus} ·{" "}
+                    {t.rentShareAmount != null ? fmtZar(t.rentShareAmount) : fmtZar(lease.monthlyRent)}/mo
                   </div>
                 </div>
               </div>
@@ -97,7 +98,12 @@ function LeaseOccupancyTable({
                     Lease #{lease.leaseId.slice(0, 8)}
                   </div>
                 </td>
-                <td>{fmtZar(lease.monthlyRent)}/mo</td>
+                <td>
+                  {t.rentShareAmount != null ? fmtZar(t.rentShareAmount) : fmtZar(lease.monthlyRent)}/mo
+                  {lease.tenants.length > 1 && t.rentShareAmount != null ? (
+                    <div className="pg-muted" style={{ fontSize: 11 }}>Split share</div>
+                  ) : null}
+                </td>
               </tr>
             ))
           )}
@@ -205,20 +211,16 @@ export function WorkspaceLinkTenantsTab({
       <section className="pg-pfin-section">
         <header className="pg-pfin-section__head pg-pfin-section__head--row">
           <div>
-            <h2 className="pg-pfin-section__title">Tenants linked through active leases</h2>
+            <h2 className="pg-pfin-section__title">Link Tenants</h2>
             <p className="pg-pfin-section__desc">
-              Occupancy is derived from active leases. Create a lease to connect tenants to a property and unit.
+              Tenants listed here come from active leases only. Add a lease to connect tenants to a unit — no manual
+              linking.
             </p>
           </div>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <Link className="pg-btn pg-btn-primary" to={`/leases/new?propertyId=${propertyId}`}>
-              <Plus size={16} aria-hidden style={{ marginRight: 6 }} />
-              Create Lease
-            </Link>
-            <Link className="pg-btn pg-btn-ghost" to="/tenants/new">
-              Create Tenant
-            </Link>
-          </div>
+          <Link className="pg-btn pg-btn-primary" to={`/leases/new?propertyId=${propertyId}`}>
+            <Plus size={16} aria-hidden style={{ marginRight: 6 }} />
+            Add Lease
+          </Link>
         </header>
       </section>
 
@@ -269,7 +271,7 @@ export function WorkspaceLinkTenantsTab({
           <div className="pg-pfin-empty">
             <p>No active leases on this property yet.</p>
             <Link className="pg-btn pg-btn-primary" to={`/leases/new?propertyId=${propertyId}`}>
-              Create Lease
+              Add Lease
             </Link>
           </div>
         </section>

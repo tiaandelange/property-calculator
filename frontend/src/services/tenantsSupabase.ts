@@ -219,6 +219,12 @@ export async function listTenantsEligibleForProperty(
     .map((row) => dbToTenant(row as Record<string, unknown>));
 }
 
+/** Active global tenants available for a new lease on this property. */
+export async function listActiveTenantsForLease(propertyId: string | number): Promise<Record<string, unknown>[]> {
+  const eligible = await listTenantsEligibleForProperty(propertyId);
+  return eligible.filter((t) => String(t.status ?? "ACTIVE").toUpperCase() === "ACTIVE");
+}
+
 /** `GET /tenants/:id` shape: `{ tenant, currentLease }`. */
 export async function getTenant(
   id: string | number

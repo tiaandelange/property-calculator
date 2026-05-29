@@ -44,6 +44,7 @@ const LEASE_SELECT = `
     tenant_id,
     role,
     is_primary,
+    rent_share_amount,
     tenants ( id, first_name, last_name, email, phone, status )
   )
 `;
@@ -200,6 +201,7 @@ export type ActiveLeaseOccupancy = {
     email?: string | null;
     role: string;
     isPrimary: boolean;
+    rentShareAmount?: number | null;
   }>;
 };
 
@@ -227,7 +229,8 @@ export async function listActiveLeaseOccupancyForProperty(propertyId: string | n
           lastName: String(t.lastName ?? ""),
           email: t.email != null ? String(t.email) : null,
           role: String(lt.role ?? "occupant"),
-          isPrimary: lt.isPrimary === true
+          isPrimary: lt.isPrimary === true,
+          rentShareAmount: lt.rentShareAmount != null ? Number(lt.rentShareAmount) : null
         };
       });
       if (!tenants.length && l.tenant && typeof l.tenant === "object") {
@@ -238,7 +241,8 @@ export async function listActiveLeaseOccupancyForProperty(propertyId: string | n
           lastName: String(t.lastName ?? ""),
           email: t.email != null ? String(t.email) : null,
           role: "primary_tenant",
-          isPrimary: true
+          isPrimary: true,
+          rentShareAmount: null
         });
       }
       return {
