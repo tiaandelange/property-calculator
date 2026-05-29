@@ -1,6 +1,6 @@
 import { Download, ExternalLink, Pencil, Trash2 } from "lucide-react";
 import { Link } from "react-router-dom";
-import { tenantInvoiceEditorPath } from "./invoiceRoutes";
+import { invoiceDetailPath } from "./invoiceRoutes";
 import { InvoiceStatusBadge } from "./InvoiceStatusBadge";
 import type { InvoiceDirectoryRow } from "./invoiceDirectoryTypes";
 import { fmtZar, formatDateShort, invoiceCanHardDelete, invoiceCanVoid } from "./invoiceDirectoryUtils";
@@ -53,7 +53,7 @@ export function InvoiceDesktopTable({
         </thead>
         <tbody>
           {items.map((row) => {
-            const viewHref = tenantInvoiceEditorPath(row.tenantId, row.id, row.propertyId);
+            const viewHref = invoiceDetailPath(row.id);
             const rowBusy = busyId === row.id;
 
             return (

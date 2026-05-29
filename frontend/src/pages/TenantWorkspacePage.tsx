@@ -20,6 +20,7 @@ import {
   TenantSummaryCard
 } from "../features/tenants/workspace/TenantStatementPanels";
 import { useTenantWorkspaceData } from "../features/tenants/workspace/useTenantWorkspaceData";
+import { invoiceCreatePath, invoiceDetailPath } from "../features/invoices/invoiceRoutes";
 import type { TenantStatementPeriodKey } from "../features/tenants/statement/tenantStatementTypes";
 
 function useFinTab() {
@@ -128,7 +129,11 @@ export function TenantWorkspacePage() {
       window.alert("Link this tenant to a property before creating an invoice.");
       return;
     }
-    const url = `${window.location.origin}/tenants/${id}/invoices/new?propertyId=${encodeURIComponent(propertyId)}`;
+    const url = `${window.location.origin}${invoiceCreatePath({
+      tenantId: id,
+      propertyId,
+      leaseId: ctx?.currentLease?.id != null ? String(ctx.currentLease.id) : null
+    })}`;
     if (isMobile) {
       setOverlayInvoiceId(undefined);
       setInvoiceOverlay(true);
@@ -301,7 +306,10 @@ export function TenantWorkspacePage() {
               profileName={ctx.profileName}
               invoicePaymentDetails={ctx.invoicePaymentDetails}
               defaultRent={defaultRent}
-              onInvoiceCreated={(newId) => setOverlayInvoiceId(newId)}
+              onInvoiceCreated={(newId) => {
+                setOverlayInvoiceId(newId);
+                navigate(invoiceDetailPath(newId));
+              }}
               onSaved={() => void reload()}
               onCancel={() => {
                 setInvoiceOverlay(false);

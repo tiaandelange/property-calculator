@@ -10,7 +10,7 @@ import {
 import { Link, useNavigate } from "react-router-dom";
 import { IconContainer } from "../../../components/ui/IconContainer";
 import { Button } from "../../../components/ui/Button";
-import { tenantInvoiceEditorPath } from "../../invoices/invoiceRoutes";
+import { invoiceDetailPath } from "../../invoices/invoiceRoutes";
 import {
   invoiceIdFromStatementRow,
   invoiceStatementCreditClass,
@@ -349,13 +349,7 @@ export function TenantStatementTabContent({
                               className="pg-btn pg-btn-ghost pg-btn-sm"
                               style={{ display: "inline-flex", alignItems: "center", gap: 4 }}
                               onClick={() =>
-                                navigate(
-                                  tenantInvoiceEditorPath(
-                                    summary.tenantId,
-                                    invoiceIdFromStatementRow(raw),
-                                    summary.propertyId
-                                  )
-                                )
+                                navigate(invoiceDetailPath(invoiceIdFromStatementRow(raw)))
                               }
                               aria-label="View invoice"
                               title="View invoice"
@@ -466,18 +460,9 @@ export function TenantInvoicesTable({
                       Edit
                     </button>
                   ) : (
-                    <a
-                      className="pg-link"
-                      href={
-                        propertyId
-                          ? `/tenants/${tenantId}/invoices/${inv.id}?propertyId=${encodeURIComponent(propertyId)}`
-                          : `/tenants/${tenantId}/invoices/${inv.id}`
-                      }
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      Edit
-                    </a>
+                    <Link className="pg-link" to={invoiceDetailPath(inv.id)}>
+                      View
+                    </Link>
                   )}
                 </td>
               </tr>
@@ -600,13 +585,7 @@ export function TenantLedgerPanel({
                         className="pg-btn pg-btn-ghost pg-btn-sm"
                         style={{ display: "inline-flex", alignItems: "center", gap: 4 }}
                         onClick={() =>
-                          navigate(
-                            tenantInvoiceEditorPath(
-                              tenantId,
-                              invoiceIdFromStatementRow(raw),
-                              propertyId
-                            )
-                          )
+                          navigate(invoiceDetailPath(invoiceIdFromStatementRow(raw)))
                         }
                         aria-label="View invoice"
                         title="View invoice"

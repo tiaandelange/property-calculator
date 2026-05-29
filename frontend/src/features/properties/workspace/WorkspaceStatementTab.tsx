@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useMemo, useState, type MouseEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { BookOpen, Check, ChevronDown, ExternalLink, Pencil, Plus, Trash2, X } from "lucide-react";
-import { tenantInvoiceEditorPath } from "../../invoices/invoiceRoutes";
+import { invoiceDetailPath } from "../../invoices/invoiceRoutes";
 import {
   invoiceIdFromStatementRow,
   invoiceStatementCreditClass,
@@ -597,7 +597,7 @@ export function WorkspaceStatementTab({
         const invoiceId = invoiceIdFromStatementRow(r);
         const tenantId = tenantIdFromStatementRow(r);
         if (tenantId) {
-          navigate(tenantInvoiceEditorPath(tenantId, invoiceId, propertyId));
+          navigate(invoiceDetailPath(invoiceId));
           return;
         }
         const inv = await getInvoice(sourceId);
@@ -608,7 +608,7 @@ export function WorkspaceStatementTab({
           invoiceAny?.tenantId ?? invoiceAny?.tenant_id ?? invAny?.tenantId ?? invAny?.tenant_id ?? ""
         );
         if (!resolvedTenantId) throw new Error("Tenant id was missing for this invoice.");
-        navigate(tenantInvoiceEditorPath(resolvedTenantId, resolvedInvoiceId, propertyId));
+        navigate(invoiceDetailPath(resolvedInvoiceId));
         return;
       }
       if (isExpectedRentRow(r)) {
@@ -621,7 +621,7 @@ export function WorkspaceStatementTab({
         const invoiceAny = (invAny?.invoice ?? invAny) as Record<string, unknown>;
         const tenantId = String(invoiceAny?.tenantId ?? invoiceAny?.tenant_id ?? invAny?.tenantId ?? invAny?.tenant_id ?? "");
         if (!tenantId) throw new Error("Invoice created, but tenant id was missing.");
-        navigate(tenantInvoiceEditorPath(tenantId, invoiceId, propertyId));
+        navigate(invoiceDetailPath(invoiceId));
         return;
       }
       throw new Error("Invoice is not available for this line.");

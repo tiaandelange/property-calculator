@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { ExternalLink, Pencil } from "lucide-react";
 import { invoiceStatementCreditClass } from "../invoices/invoiceStatementUtils";
-import { tenantInvoiceEditorPath } from "../invoices/invoiceRoutes";
+import { invoiceDetailPath } from "../invoices/invoiceRoutes";
 import type { FinancialStatementRow } from "./financialDirectoryTypes";
 import { fmtZar, propertyFinancialsStatementUrl } from "./financialDirectoryUtils";
 
@@ -54,9 +54,7 @@ export function FinancialStatementTable({
               r.source === "INVOICE" ? invoiceStatementCreditClass(r.status) : "";
             const manageUrl = propertyFinancialsStatementUrl(r.propertyId, finSubForSource(r.source));
             const invoiceViewUrl =
-              r.source === "INVOICE" && r.invoiceId && r.tenantId
-                ? tenantInvoiceEditorPath(r.tenantId, r.invoiceId, r.propertyId)
-                : null;
+              r.source === "INVOICE" && r.invoiceId ? invoiceDetailPath(r.invoiceId) : null;
 
             return (
               <tr key={r.id}>

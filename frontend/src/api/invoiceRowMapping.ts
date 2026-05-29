@@ -95,6 +95,22 @@ function nestedTenant(row: Record<string, unknown>): Record<string, unknown> | n
   return snakeRowToCamel(t as Record<string, unknown>) as Record<string, unknown>;
 }
 
+function nestedEmbed(row: Record<string, unknown>, keys: string[]): Record<string, unknown> | null {
+  for (const key of keys) {
+    const raw = row[key];
+    if (!raw || typeof raw !== "object") continue;
+    if (Array.isArray(raw)) {
+      const first = raw[0];
+      if (first && typeof first === "object") {
+        return snakeRowToCamel(first as Record<string, unknown>) as Record<string, unknown>;
+      }
+      continue;
+    }
+    return snakeRowToCamel(raw as Record<string, unknown>) as Record<string, unknown>;
+  }
+  return null;
+}
+
 function stripInvoiceNestedKeys(row: Record<string, unknown>): Record<string, unknown> {
   const omit = new Set([
     "invoice_line_items",
@@ -102,7 +118,13 @@ function stripInvoiceNestedKeys(row: Record<string, unknown>): Record<string, un
     "line_items",
     "lineItems",
     "tenants",
-    "tenant"
+    "tenant",
+    "properties",
+    "property",
+    "property_units",
+    "propertyUnits",
+    "leases",
+    "lease"
   ]);
   return Object.fromEntries(Object.entries(row).filter(([k]) => !omit.has(k)));
 }
@@ -115,9 +137,15 @@ export function dbInvoiceBundleToClient(row: Record<string, unknown>): Record<st
   const rawLines = nestedLineItems(row);
   const lineItems = rawLines?.map((x) => mapLineItem(x as Record<string, unknown>)) ?? [];
   const tenant = nestedTenant(row);
+  const property = nestedEmbed(row, ["properties", "property"]);
+  const unit = nestedEmbed(row, ["property_units", "propertyUnits"]);
+  const lease = nestedEmbed(row, ["leases", "lease"]);
   const base = dbInvoiceToClient(stripInvoiceNestedKeys(row));
   const out: Record<string, unknown> = { ...base, lineItems };
   if (tenant) out.tenant = tenant;
+  if (property) out.property = property;
+  if (unit) out.unit = unit;
+  if (lease) out.lease = lease;
   return out;
 }
 

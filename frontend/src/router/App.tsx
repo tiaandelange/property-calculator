@@ -33,7 +33,7 @@ import { OwnedPropertiesReportsPage } from "../pages/OwnedPropertiesReportsPage"
 import { TenantsListPage } from "../pages/TenantsListPage";
 import { TenantFormPage } from "../pages/TenantFormPage";
 import { TenantWorkspacePage } from "../pages/TenantWorkspacePage";
-import { TenantInvoiceEditorPage } from "../pages/TenantInvoiceEditorPage";
+import { InvoiceDetailPage, LegacyTenantInvoiceRedirect } from "../pages/InvoiceDetailPage";
 import { OwnedValuationsMetricsPage } from "../pages/OwnedValuationsMetricsPage";
 import { OwnedBondsMetricsPage } from "../pages/OwnedBondsMetricsPage";
 import { OwnedReturnsMetricsPage } from "../pages/OwnedReturnsMetricsPage";
@@ -197,12 +197,14 @@ export function App() {
         <Route path="/leases/:id" element={<RequireAuth><LeaseAgreementPage /></RequireAuth>} />
         <Route path="/financials" element={<RequireAuth><FinancialsListPage /></RequireAuth>} />
         <Route path="/invoices" element={<RequireAuth><InvoicesListPage /></RequireAuth>} />
+        <Route path="/invoices/new" element={<RequireAuth><InvoiceDetailPage /></RequireAuth>} />
+        <Route path="/invoices/:invoiceId" element={<RequireAuth><InvoiceDetailPage /></RequireAuth>} />
         <Route path="/invoices/legacy" element={<RequireAuth><OwnedInvoicesPage /></RequireAuth>} />
         <Route path="/documents" element={<RequireAuth><OwnedDocumentsPage /></RequireAuth>} />
         <Route path="/tenants" element={<RequireAuth><TenantsListPage /></RequireAuth>} />
         <Route path="/tenants/new" element={<RequireAuth><TenantFormPage /></RequireAuth>} />
-        <Route path="/tenants/:id/invoices/new" element={<RequireAuth><TenantInvoiceEditorPage /></RequireAuth>} />
-        <Route path="/tenants/:id/invoices/:invoiceId" element={<RequireAuth><TenantInvoiceEditorPage /></RequireAuth>} />
+        <Route path="/tenants/:id/invoices/new" element={<RequireAuth><LegacyTenantInvoiceRedirect /></RequireAuth>} />
+        <Route path="/tenants/:id/invoices/:invoiceId" element={<RequireAuth><LegacyTenantInvoiceRedirect /></RequireAuth>} />
         <Route path="/tenants/:id" element={<RequireAuth><TenantWorkspacePage /></RequireAuth>} />
         <Route path="/tenants/:id/edit" element={<RequireAuth><TenantFormPage /></RequireAuth>} />
         <Route path="/account" element={<RequireAuth><AccountPage /></RequireAuth>} />

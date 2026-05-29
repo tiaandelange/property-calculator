@@ -84,7 +84,10 @@ const INVOICE_LIST_SELECT = `
 const INVOICE_DETAIL_SELECT = `
   *,
   invoice_line_items (*),
-  tenants ( id, first_name, last_name, email, phone )
+  tenants ( id, first_name, last_name, email, phone ),
+  properties ( id, name ),
+  property_units ( id, unit_label, unit_number ),
+  leases ( id, start_date, fixed_term_end_date, status )
 `;
 
 const INVOICE_DIRECTORY_SELECT = `

@@ -4,7 +4,7 @@ import { ConfirmDialog } from "../../components/ui/ConfirmDialog";
 import { ModalOverlay, ModalPanel } from "../../components/ui/Modal";
 import { Input } from "../../components/ui/Input";
 import { Select } from "../../components/ui/Select";
-import { tenantInvoiceEditorPath } from "../invoices/invoiceRoutes";
+import { invoiceDetailPath } from "../invoices/invoiceRoutes";
 import {
   billingPeriodOptions,
   defaultBillingPeriod,
@@ -112,7 +112,7 @@ export function ManualGenerateLeaseInvoiceFlow({
       }
       onCreated?.(result.invoiceId);
       handleClose();
-      navigate(tenantInvoiceEditorPath(result.tenantId ?? tenantId, result.invoiceId, propertyId));
+      navigate(invoiceDetailPath(result.invoiceId));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not generate invoice.");
     } finally {
@@ -228,7 +228,7 @@ export function ManualGenerateLeaseInvoiceFlow({
         onConfirm={() => {
           if (!duplicateInvoiceId) return;
           handleClose();
-          navigate(tenantInvoiceEditorPath(tenantId, duplicateInvoiceId, propertyId));
+          navigate(invoiceDetailPath(duplicateInvoiceId));
         }}
       >
         <p className="pg-muted" style={{ margin: 0 }}>
