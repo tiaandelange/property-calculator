@@ -38,10 +38,12 @@ export function BondPaymentSection({
             Monthly home-loan instalment from your property bond profile — same fields as Add / Edit property.
           </p>
         </div>
-        <button type="button" className="pg-btn pg-btn-primary pg-pfin-add-btn" onClick={onSetup}>
-          <Landmark size={18} aria-hidden />
-          {items.length > 0 ? "Edit bond" : "Set up bond"}
-        </button>
+        {items.length > 0 ? (
+          <button type="button" className="pg-btn pg-btn-primary pg-pfin-add-btn" onClick={onEdit}>
+            <Landmark size={18} aria-hidden />
+            Edit bond
+          </button>
+        ) : null}
       </header>
 
       {loading ? <div className="pg-muted">Loading bond profile…</div> : null}
