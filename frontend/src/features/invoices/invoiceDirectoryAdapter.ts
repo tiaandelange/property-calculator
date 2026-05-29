@@ -32,6 +32,13 @@ function leaseLabelFrom(lease: Record<string, unknown> | null): string | null {
   return "Lease";
 }
 
+function leaseReferenceFrom(lease: Record<string, unknown> | null): string | null {
+  if (!lease) return null;
+  const ref = lease.leaseReference ?? lease.lease_reference;
+  const trimmed = ref != null ? String(ref).trim() : "";
+  return trimmed || null;
+}
+
 export function mapInvoiceDirectoryRow(raw: Record<string, unknown>): InvoiceDirectoryRow {
   const tenant = nestedOne(raw, "tenants") ?? nestedOne(raw, "tenant");
   const property = nestedOne(raw, "properties") ?? nestedOne(raw, "property");
@@ -46,6 +53,7 @@ export function mapInvoiceDirectoryRow(raw: Record<string, unknown>): InvoiceDir
   return {
     id: String(base.id ?? ""),
     invoiceNumber: String(base.invoiceNumber ?? base.id ?? ""),
+    leaseReference: leaseReferenceFrom(lease),
     tenantId: String(base.tenantId ?? base.primaryTenantId ?? tenant?.id ?? ""),
     tenantName: tenantNameFrom(raw, tenant),
     propertyId: String(base.propertyId ?? property?.id ?? ""),

@@ -5,6 +5,7 @@ import {
   createPropertyInvoice,
   generateInvoicePdf,
   getInvoice,
+  getPropertyTenants,
   hardDeleteInvoice,
   markInvoiceSent,
   updateInvoice,
@@ -25,14 +26,19 @@ import {
 import { InvoiceStatusBadge } from "./InvoiceStatusBadge";
 import { isInvoiceEditable } from "./invoiceFoundation";
 import { InvoiceLineItemsEditor } from "./InvoiceLineItemsEditor";
+import { getInvoiceAutomationSettings } from "../../services/invoiceAutomationSupabase";
 import {
   calcInvoiceSubtotal,
+  calcInvoiceTaxAmount,
+  calcInvoiceTotal,
   emptyInvoiceLine,
   invoiceLineItemsForSave,
   mapDbLineItem,
+  patchInvoiceLineItem,
   sortInvoiceLineItems,
   type InvoiceLineItemDraft
 } from "./invoiceLineItemUtils";
+import { dueDateFromIssueDate, mapPropertyTenantRow, type PropertyTenantOption } from "./invoiceEditorUtils";
 import { invoiceStatementPath } from "./invoiceRoutes";
 import {
   INVOICE_SEND_EMAIL_COMING_SOON,
@@ -112,6 +118,9 @@ export function InvoiceDetailPanel({
   const [toName, setToName] = useState(bootstrapTenantName ?? "Tenant");
   const [issueDate, setIssueDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [dueDate, setDueDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [gracePeriodDays, setGracePeriodDays] = useState(7);
+  const [leaseReference, setLeaseReference] = useState<string | null>(null);
+  const [propertyTenants, setPropertyTenants] = useState<PropertyTenantOption[]>([]);
   const [notes, setNotes] = useState("");
   const [lineItems, setLineItems] = useState<InvoiceLineItemDraft[]>([emptyInvoiceLine(defaultRent)]);
   const [paymentDetails, setPaymentDetails] = useState<unknown>(invoicePaymentDetails);
@@ -156,6 +165,32 @@ export function InvoiceDetailPanel({
     return () => document.removeEventListener("mousedown", close);
   }, [moreOpen]);
 
+  useEffect(() => {
+    void (async () => {
+      try {
+        const settings = await getInvoiceAutomationSettings();
+        setGracePeriodDays(settings.rentInvoiceGracePeriodDays);
+      } catch {
+        /* use default grace period */
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
+    if (!propertyId) {
+      setPropertyTenants([]);
+      return;
+    }
+    void (async () => {
+      try {
+        const rows = await getPropertyTenants(propertyId);
+        setPropertyTenants(rows.map((row) => mapPropertyTenantRow(row as Record<string, unknown>)));
+      } catch {
+        setPropertyTenants([]);
+      }
+    })();
+  }, [propertyId]);
+
   const [hasPdf, setHasPdf] = useState(false);
 
   const loadInvoice = useCallback(async (id: string) => {
@@ -182,6 +217,10 @@ export function InvoiceDetailPanel({
         setToName(`${String(tenant.firstName ?? "")} ${String(tenant.lastName ?? "")}`.trim() || "Tenant");
         setTenantEmail(tenant.email != null ? String(tenant.email) : null);
       }
+
+      const lease = inv.lease as Record<string, unknown> | undefined;
+      const refRaw = lease?.leaseReference ?? lease?.lease_reference;
+      setLeaseReference(refRaw != null && String(refRaw).trim() ? String(refRaw).trim() : null);
 
       const lines = (inv.lineItems as Array<Record<string, unknown>> | undefined) ?? [];
       if (lines.length) {
@@ -220,9 +259,35 @@ export function InvoiceDetailPanel({
   ]);
 
   const subtotal = useMemo(() => calcInvoiceSubtotal(lineItems), [lineItems]);
-  const total = subtotal;
-  const taxAmount = 0;
+  const taxAmount = useMemo(() => calcInvoiceTaxAmount(lineItems), [lineItems]);
+  const total = useMemo(() => calcInvoiceTotal(lineItems), [lineItems]);
 
+  useEffect(() => {
+    if (!editable) return;
+    setDueDate(dueDateFromIssueDate(issueDate, gracePeriodDays));
+  }, [issueDate, gracePeriodDays, editable]);
+
+  const handleTenantChange = (nextTenantId: string) => {
+    if (!editable) return;
+    const tenant = propertyTenants.find((t) => t.id === nextTenantId);
+    if (!tenant) return;
+    setTenantId(nextTenantId);
+    setToName(tenant.fullName);
+    setTenantEmail(tenant.email);
+    setLeaseId(tenant.leaseId);
+    setLeaseReference(tenant.leaseReference);
+    if (tenant.monthlyRent != null && Number.isFinite(tenant.monthlyRent)) {
+      setLineItems((items) =>
+        items.map((row) =>
+          String(row.category).toUpperCase() === "RENT" && row.description.trim().toLowerCase().includes("rent")
+            ? patchInvoiceLineItem(row, { unitPrice: tenant.monthlyRent! })
+            : row
+        )
+      );
+    }
+  };
+
+  const displayBalanceDue = activeId && !editable ? balanceDue : total;
   const bankLines = bankingLines(paymentDetails);
 
   const buildPayload = () => ({
@@ -370,7 +435,13 @@ export function InvoiceDetailPanel({
     }
   }
 
-  const renderDateField = (id: string, label: string, value: string, onChange: (v: string) => void) => (
+  const renderDateField = (
+    id: string,
+    label: string,
+    value: string,
+    onChange: (v: string) => void,
+    readOnlyAlways = false
+  ) => (
     <div className="pg-inv-editor__field pg-inv-editor__field--date">
       <label className="pg-inv-editor__label" htmlFor={id}>
         {label}
@@ -383,13 +454,55 @@ export function InvoiceDetailPanel({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           required
-          readOnly={!editable}
-          disabled={!editable}
+          readOnly={readOnlyAlways || !editable}
+          disabled={readOnlyAlways || !editable}
           aria-label={label}
         />
       </div>
     </div>
   );
+
+  const renderTenantField = (showLabel = true) => {
+    const canSelect = editable && propertyTenants.length > 0;
+    const control = (
+      <div
+        className={`pg-inv-editor__tenant-select${canSelect ? " pg-inv-editor__tenant-select--editable" : ""}`}
+      >
+        <span className="pg-inv-editor__tenant-avatar" aria-hidden>
+          <AppIcon name="tenant" size="sm" />
+        </span>
+        {canSelect ? (
+          <select
+            id={showLabel ? "inv-tenant" : undefined}
+            className="pg-inv-editor__tenant-native-select"
+            value={tenantId}
+            onChange={(e) => handleTenantChange(e.target.value)}
+            aria-label="Tenant / Contact"
+          >
+            {propertyTenants.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.fullName}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <span className="pg-inv-editor__tenant-name">{toName}</span>
+        )}
+        {canSelect ? <AppIcon name="chevronDown" size="md" className="pg-inv-editor__input-icon" aria-hidden /> : null}
+      </div>
+    );
+
+    if (!showLabel) return control;
+
+    return (
+      <div className="pg-inv-editor__field pg-inv-editor__field--tenant">
+        <label className="pg-inv-editor__label" htmlFor="inv-tenant">
+          Tenant / Contact
+        </label>
+        {control}
+      </div>
+    );
+  };
 
   const renderMoreMenu = () => (
     <div className="pg-inv-editor__more-wrap" ref={moreRef}>
@@ -513,7 +626,10 @@ export function InvoiceDetailPanel({
           <Link className="pg-inv-editor__back" to="/invoices" aria-label="Back to invoices">
             <AppIcon name="back" size="md" />
           </Link>
-          <h1 className="pg-inv-editor__mobile-title">{pageTitle}</h1>
+          <div className="pg-inv-editor__mobile-title-wrap">
+            <h1 className="pg-inv-editor__mobile-title">{pageTitle}</h1>
+            <InvoiceStatusBadge status={status} />
+          </div>
           {renderMoreMenu()}
         </header>
 
@@ -536,19 +652,10 @@ export function InvoiceDetailPanel({
           ) : null}
 
           <div className="pg-inv-editor__fields pg-inv-editor__fields--desktop">
-            <div className="pg-inv-editor__field pg-inv-editor__field--tenant">
-              <span className="pg-inv-editor__label">Tenant / Contact</span>
-              <div className="pg-inv-editor__tenant-select" aria-label="Tenant">
-                <span className="pg-inv-editor__tenant-avatar" aria-hidden>
-                  <AppIcon name="tenant" size="sm" />
-                </span>
-                <span className="pg-inv-editor__tenant-name">{toName}</span>
-                <AppIcon name="chevronDown" size="md" className="pg-inv-editor__input-icon" />
-              </div>
-            </div>
+            {renderTenantField()}
 
             {renderDateField("inv-issue-date", "Issue Date", issueDate, setIssueDate)}
-            {renderDateField("inv-due-date", "Due Date", dueDate, setDueDate)}
+            {renderDateField("inv-due-date", "Due Date", dueDate, () => undefined, true)}
 
             <div className="pg-inv-editor__field pg-inv-editor__field--number">
               <label className="pg-inv-editor__label" htmlFor="inv-number">
@@ -560,10 +667,18 @@ export function InvoiceDetailPanel({
               </div>
             </div>
 
-            <div className="pg-inv-editor__field pg-inv-editor__field--status">
-              <span className="pg-inv-editor__label">Status</span>
-              <div className="pg-inv-editor__status-wrap">
-                <InvoiceStatusBadge status={status} />
+            <div className="pg-inv-editor__field pg-inv-editor__field--reference">
+              <label className="pg-inv-editor__label" htmlFor="inv-reference">
+                Reference
+              </label>
+              <div className="pg-inv-editor__input-wrap">
+                <Input
+                  id="inv-reference"
+                  value={leaseReference ?? "—"}
+                  readOnly
+                  disabled
+                  aria-label="Lease reference"
+                />
               </div>
             </div>
 
@@ -577,20 +692,9 @@ export function InvoiceDetailPanel({
           </div>
 
           <div className="pg-inv-editor__mobile-fields">
-            <div className="pg-inv-editor__mobile-card pg-inv-editor__mobile-card--status">
-              <span className="pg-inv-editor__label">Status</span>
-              <InvoiceStatusBadge status={status} />
-            </div>
-
             <div className="pg-inv-editor__mobile-card">
               <span className="pg-inv-editor__label">Tenant / Contact</span>
-              <div className="pg-inv-editor__tenant-select" style={{ marginTop: 8 }}>
-                <span className="pg-inv-editor__tenant-avatar" aria-hidden>
-                  <AppIcon name="tenant" size="sm" />
-                </span>
-                <span className="pg-inv-editor__tenant-name">{toName}</span>
-                <AppIcon name="chevronDown" size="md" className="pg-inv-editor__input-icon" />
-              </div>
+              <div style={{ marginTop: 8 }}>{renderTenantField(false)}</div>
             </div>
 
             <div className="pg-inv-editor__mobile-card">
@@ -612,22 +716,15 @@ export function InvoiceDetailPanel({
                 </div>
                 <div className="pg-inv-editor__mobile-detail-row">
                   <dt>Due Date</dt>
-                  <dd>
-                    <Input
-                      type="date"
-                      value={dueDate}
-                      onChange={(e) => setDueDate(e.target.value)}
-                      required
-                      readOnly={!editable}
-                      disabled={!editable}
-                      aria-label="Due Date"
-                      style={{ border: "none", background: "transparent", textAlign: "right", padding: 0, minHeight: 0 }}
-                    />
-                  </dd>
+                  <dd>{dueDate}</dd>
                 </div>
                 <div className="pg-inv-editor__mobile-detail-row">
                   <dt>Invoice Number</dt>
                   <dd>{displayNumber}</dd>
+                </div>
+                <div className="pg-inv-editor__mobile-detail-row">
+                  <dt>Reference</dt>
+                  <dd>{leaseReference ?? "—"}</dd>
                 </div>
               </dl>
             </div>
@@ -659,19 +756,13 @@ export function InvoiceDetailPanel({
                 <span>Subtotal</span>
                 <strong>{fmtZar(subtotal)}</strong>
               </div>
-              {taxAmount > 0 ? (
-                <div className="pg-inv-editor__totals-row">
-                  <span>Tax</span>
-                  <strong>{fmtZar(taxAmount)}</strong>
-                </div>
-              ) : null}
-              <div className="pg-inv-editor__totals-row pg-inv-editor__totals-total">
-                <span>Total</span>
-                <strong>{fmtZar(total)}</strong>
+              <div className="pg-inv-editor__totals-row">
+                <span>VAT</span>
+                <strong>{fmtZar(taxAmount)}</strong>
               </div>
               <div className="pg-inv-editor__totals-row pg-inv-editor__totals-balance">
                 <span>Balance Due</span>
-                <strong>{fmtZar(activeId ? balanceDue : total)}</strong>
+                <strong>{fmtZar(displayBalanceDue)}</strong>
               </div>
             </aside>
           </div>

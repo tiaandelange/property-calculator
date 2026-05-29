@@ -5,6 +5,7 @@ import { computeInvoiceMetrics, isInvoiceOverdue, matchesInvoiceFilters } from "
 const baseRow = (patch: Partial<InvoiceDirectoryRow>): InvoiceDirectoryRow => ({
   id: "1",
   invoiceNumber: "INV-001",
+  leaseReference: "LSE-26-0001",
   tenantId: "t1",
   tenantName: "Jane Doe",
   propertyId: "p1",
@@ -32,22 +33,13 @@ describe("invoiceDirectoryUtils", () => {
     expect(isInvoiceOverdue(baseRow({ status: "PAID" }), today)).toBe(false);
   });
 
-  it("filters by search and overdue", () => {
+  it("filters by search query", () => {
     const rows = [
       baseRow({ id: "1", invoiceNumber: "INV-100", tenantName: "Jane Doe" }),
       baseRow({ id: "2", invoiceNumber: "INV-200", tenantName: "John Smith", status: "PAID", balanceDue: 0 })
     ];
-    expect(matchesInvoiceFilters(rows[0], { q: "jane", propertyId: "ALL", status: "ALL", dateFrom: "", dateTo: "", overdueOnly: false })).toBe(true);
-    expect(
-      matchesInvoiceFilters(rows[1], {
-        q: "",
-        propertyId: "ALL",
-        status: "ALL",
-        dateFrom: "",
-        dateTo: "",
-        overdueOnly: true
-      })
-    ).toBe(false);
+    expect(matchesInvoiceFilters(rows[0], { q: "jane", propertyId: "ALL", status: "ALL", dateFrom: "", dateTo: "" })).toBe(true);
+    expect(matchesInvoiceFilters(rows[0], { q: "nomatch", propertyId: "ALL", status: "ALL", dateFrom: "", dateTo: "" })).toBe(false);
   });
 
   it("computes portfolio metrics", () => {

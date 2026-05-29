@@ -30,6 +30,13 @@ export function isInvoiceEditable(status: unknown): boolean {
   return INVOICE_EDITABLE_STATUSES.has(normalizeInvoiceStatus(status));
 }
 
+/** User-facing status label (GENERATED displays as Draft). */
+export function invoiceStatusLabel(status: unknown): string {
+  const s = normalizeInvoiceStatus(status);
+  if (s === "GENERATED") return "Draft";
+  return s.replace(/_/g, " ").toLowerCase().replace(/^\w/, (c) => c.toUpperCase());
+}
+
 export function isInvoiceTerminal(status: unknown): boolean {
   return ["CANCELLED", "VOID"].includes(normalizeInvoiceStatus(status));
 }

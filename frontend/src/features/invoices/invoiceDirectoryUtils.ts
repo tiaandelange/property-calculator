@@ -71,11 +71,9 @@ export function matchesInvoiceFilters(row: InvoiceDirectoryRow, filters: Invoice
   if (q) {
     const hay = [
       row.invoiceNumber,
+      row.leaseReference ?? "",
       row.tenantName,
       row.propertyName,
-      row.unitLabel ?? "",
-      row.leaseLabel ?? "",
-      row.invoicePeriod ?? "",
       row.status
     ]
       .join(" ")
@@ -85,7 +83,6 @@ export function matchesInvoiceFilters(row: InvoiceDirectoryRow, filters: Invoice
 
   if (filters.propertyId !== "ALL" && row.propertyId !== filters.propertyId) return false;
   if (filters.status !== "ALL" && row.status !== filters.status) return false;
-  if (filters.overdueOnly && !isInvoiceOverdue(row)) return false;
 
   const due = ymd(row.dueDate);
   if (filters.dateFrom && due && due < filters.dateFrom) return false;
@@ -105,9 +102,8 @@ export function paginate<T>(items: T[], page: number, pageSize = INVOICE_PAGE_SI
   };
 }
 
-export function invoiceCanHardDelete(status: string): boolean {
-  const s = String(status).toUpperCase();
-  return s === "DRAFT" || s === "GENERATED";
+export function invoiceCanHardDelete(_status: string): boolean {
+  return true;
 }
 
 export function invoiceCanVoid(status: string): boolean {

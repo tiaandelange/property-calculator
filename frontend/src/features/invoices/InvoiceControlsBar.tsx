@@ -1,5 +1,5 @@
 import { Search } from "lucide-react";
-import { INVOICE_STATUS_FILTER_OPTIONS } from "./InvoiceStatusBadge";
+import { INVOICE_STATUS_FILTER_OPTIONS, invoiceStatusFilterLabel } from "./InvoiceStatusBadge";
 import type { InvoiceDirectoryFilters } from "./invoiceDirectoryTypes";
 
 export function InvoiceControlsBar({
@@ -19,7 +19,7 @@ export function InvoiceControlsBar({
           <input
             type="search"
             className="pg-invoices-search-input"
-            placeholder="Search invoice #, tenant, property…"
+            placeholder="Search invoice #, reference, tenant…"
             value={filters.q}
             onChange={(e) => onChange({ q: e.target.value })}
             aria-label="Search invoices"
@@ -47,7 +47,7 @@ export function InvoiceControlsBar({
           >
             {INVOICE_STATUS_FILTER_OPTIONS.map((s) => (
               <option key={s} value={s}>
-                {s === "ALL" ? "All statuses" : s.replace(/_/g, " ")}
+                {invoiceStatusFilterLabel(s)}
               </option>
             ))}
           </select>
@@ -65,14 +65,6 @@ export function InvoiceControlsBar({
             onChange={(e) => onChange({ dateTo: e.target.value })}
             aria-label="Due date to"
           />
-          <label className="pg-invoices-overdue-toggle">
-            <input
-              type="checkbox"
-              checked={filters.overdueOnly}
-              onChange={(e) => onChange({ overdueOnly: e.target.checked })}
-            />
-            Overdue only
-          </label>
         </div>
       </div>
     </div>

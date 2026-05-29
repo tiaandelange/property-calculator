@@ -5,8 +5,7 @@ import {
   generateInvoicePdf,
   getInvoicesDirectory,
   hardDeleteInvoice,
-  propertyApiErrorMessage,
-  voidInvoice
+  propertyApiErrorMessage
 } from "../api/ownedProperties";
 import { openInvoicePdfExport } from "../features/invoices/invoicePdfExport";
 import { PROPERTY_DATA_INVALIDATION } from "../features/properties/invalidate";
@@ -41,14 +40,13 @@ export function InvoicesListPage() {
   const [error, setError] = useState("");
   const [page, setPage] = useState(1);
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [confirmAction, setConfirmAction] = useState<{ kind: "delete" | "void"; row: InvoiceDirectoryRow } | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<InvoiceDirectoryRow | null>(null);
   const [filters, setFilters] = useState<InvoiceDirectoryFilters>(() => ({
     q: "",
     propertyId: searchParams.get("propertyId")?.trim() || "ALL",
     status: "ALL",
     dateFrom: "",
-    dateTo: "",
-    overdueOnly: searchParams.get("overdue") === "1"
+    dateTo: ""
   }));
 
   const load = useCallback(async () => {
@@ -80,7 +78,7 @@ export function InvoicesListPage() {
 
   useEffect(() => {
     setPage(1);
-  }, [filters.q, filters.propertyId, filters.status, filters.dateFrom, filters.dateTo, filters.overdueOnly]);
+  }, [filters.q, filters.propertyId, filters.status, filters.dateFrom, filters.dateTo]);
 
   const filtered = useMemo(() => items.filter((row) => matchesInvoiceFilters(row, filters)), [items, filters]);
   const filteredMetrics = useMemo(() => computeInvoiceMetrics(filtered), [filtered]);
@@ -102,15 +100,13 @@ export function InvoicesListPage() {
     }
   }
 
-  async function confirmInvoiceAction() {
-    if (!confirmAction) return;
-    const { kind, row } = confirmAction;
-    setBusyId(row.id);
+  async function confirmInvoiceDelete() {
+    if (!confirmDelete) return;
+    setBusyId(confirmDelete.id);
     setError("");
     try {
-      if (kind === "delete") await hardDeleteInvoice(row.id);
-      else await voidInvoice(row.id);
-      setConfirmAction(null);
+      await hardDeleteInvoice(confirmDelete.id);
+      setConfirmDelete(null);
       await load();
     } catch (e: unknown) {
       setError(propertyApiErrorMessage(e));
@@ -118,6 +114,13 @@ export function InvoicesListPage() {
       setBusyId(null);
     }
   }
+
+  const hasActiveFilters =
+    filters.q.trim() !== "" ||
+    filters.propertyId !== "ALL" ||
+    filters.status !== "ALL" ||
+    filters.dateFrom !== "" ||
+    filters.dateTo !== "";
 
   return (
     <Section>
@@ -142,7 +145,7 @@ export function InvoicesListPage() {
 
           {error ? <div className="pg-alert pg-alert-error">{error}</div> : null}
 
-          <InvoiceMetricCards metrics={filters.propertyId === "ALL" && !filters.q && !filters.overdueOnly ? metrics : filteredMetrics} loading={loading && !items.length} />
+          <InvoiceMetricCards metrics={!hasActiveFilters ? metrics : filteredMetrics} loading={loading && !items.length} />
 
           <InvoiceControlsBar filters={filters} onChange={(next) => setFilters((prev) => ({ ...prev, ...next }))} properties={properties} />
 
@@ -165,8 +168,7 @@ export function InvoicesListPage() {
                 loading={loading}
                 busyId={busyId}
                 onExportPdf={(row) => void exportPdf(row)}
-                onDelete={(row) => setConfirmAction({ kind: "delete", row })}
-                onVoid={(row) => setConfirmAction({ kind: "void", row })}
+                onDelete={(row) => setConfirmDelete(row)}
               />
               <InvoicePagination page={page} totalItems={filtered.length} onPageChange={setPage} />
             </>
@@ -175,19 +177,21 @@ export function InvoicesListPage() {
       </Container>
 
       <ConfirmDialog
-        open={confirmAction != null}
-        title={confirmAction?.kind === "void" ? "Void invoice" : "Delete invoice"}
-        confirmLabel={confirmAction?.kind === "void" ? "Void invoice" : "Delete invoice"}
+        open={confirmDelete != null}
+        title="Delete invoice"
+        confirmLabel="Delete permanently"
         confirmVariant="danger"
         loading={busyId != null}
-        onClose={() => setConfirmAction(null)}
-        onConfirm={() => void confirmInvoiceAction()}
+        onClose={() => setConfirmDelete(null)}
+        onConfirm={() => void confirmInvoiceDelete()}
       >
-        {confirmAction ? (
+        {confirmDelete ? (
           <p className="pg-muted" style={{ margin: 0 }}>
-            {confirmAction.kind === "void"
-              ? `Void invoice ${confirmAction.row.invoiceNumber}? It will remain in history but no longer count toward balances.`
-              : `Permanently delete draft invoice ${confirmAction.row.invoiceNumber}? This cannot be undone.`}
+            Permanently delete invoice {confirmDelete.invoiceNumber}
+            {confirmDelete.leaseReference ? ` (${confirmDelete.leaseReference})` : ""}? This cannot be undone.
+            {["SENT", "DUE", "OVERDUE", "PARTIALLY_PAID", "PAID"].includes(String(confirmDelete.status).toUpperCase())
+              ? " Any payment history linked to this invoice will be removed."
+              : null}
           </p>
         ) : null}
       </ConfirmDialog>

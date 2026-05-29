@@ -7,6 +7,8 @@ export type InvoiceLineItemDraft = {
   unitPrice: number;
   total: number;
   sortOrder: number;
+  /** VAT rate as a percentage (0–100). Rent is always 0. */
+  taxRate: number;
 };
 
 /** Maps user-facing labels to `app_property_income_category` enum values (tenant recoveries = income). */
@@ -46,8 +48,55 @@ export function lineItemAmount(quantity: number, unitPrice: number): number {
   return Math.round(qty * up * 100) / 100;
 }
 
+export const INVOICE_TAX_OPTIONS = [
+  { value: 0, label: "No VAT" },
+  { value: 15, label: "VAT 15%" }
+] as const;
+
+export function effectiveLineTaxRate(category: string, taxRate: number): number {
+  if (String(category).toUpperCase() === "RENT") return 0;
+  const rate = Number(taxRate);
+  return Number.isFinite(rate) && rate > 0 ? rate : 0;
+}
+
+export function lineItemExVatAmount(quantity: number, unitPrice: number): number {
+  return lineItemAmount(quantity, unitPrice);
+}
+
+export function lineItemVatAmount(quantity: number, unitPrice: number, category: string, taxRate: number): number {
+  const exVat = lineItemExVatAmount(quantity, unitPrice);
+  const rate = effectiveLineTaxRate(category, taxRate);
+  if (rate <= 0) return 0;
+  return Math.round(exVat * (rate / 100) * 100) / 100;
+}
+
+export function lineItemIncVatAmount(
+  quantity: number,
+  unitPrice: number,
+  category: string,
+  taxRate: number
+): number {
+  const exVat = lineItemExVatAmount(quantity, unitPrice);
+  return Math.round((exVat + lineItemVatAmount(quantity, unitPrice, category, taxRate)) * 100) / 100;
+}
+
 export function calcInvoiceSubtotal(items: InvoiceLineItemDraft[]): number {
-  return items.reduce((sum, li) => sum + lineItemAmount(li.quantity, li.unitPrice), 0);
+  return items.reduce((sum, li) => sum + lineItemExVatAmount(li.quantity, li.unitPrice), 0);
+}
+
+export function calcInvoiceTaxAmount(items: InvoiceLineItemDraft[]): number {
+  return items.reduce(
+    (sum, li) => sum + lineItemVatAmount(li.quantity, li.unitPrice, li.category, li.taxRate),
+    0
+  );
+}
+
+export function calcInvoiceTotal(items: InvoiceLineItemDraft[]): number {
+  return Math.round((calcInvoiceSubtotal(items) + calcInvoiceTaxAmount(items)) * 100) / 100;
+}
+
+export function defaultTaxRateForCategory(category: string): number {
+  return String(category).toUpperCase() === "RENT" ? 0 : 15;
 }
 
 export function emptyInvoiceLine(defaultRent?: number, sortOrder = 1): InvoiceLineItemDraft {
@@ -58,7 +107,8 @@ export function emptyInvoiceLine(defaultRent?: number, sortOrder = 1): InvoiceLi
     quantity: 1,
     unitPrice: amt,
     total: amt,
-    sortOrder
+    sortOrder,
+    taxRate: 0
   };
 }
 
@@ -85,12 +135,24 @@ export function resolveCategoryFromOption(optionValue: string): { category: stri
   return { category, defaultDescription: opt.defaultDescription };
 }
 
+export function resolveCategoryFromOptionWithTax(optionValue: string): {
+  category: string;
+  defaultDescription?: string;
+  taxRate: number;
+} {
+  const base = resolveCategoryFromOption(optionValue);
+  return { ...base, taxRate: defaultTaxRateForCategory(base.category) };
+}
+
 export function patchInvoiceLineItem(
   row: InvoiceLineItemDraft,
   patch: Partial<InvoiceLineItemDraft>
 ): InvoiceLineItemDraft {
   const next = { ...row, ...patch };
-  next.total = lineItemAmount(next.quantity, next.unitPrice);
+  if (patch.category != null || patch.taxRate != null) {
+    next.taxRate = effectiveLineTaxRate(next.category, next.taxRate);
+  }
+  next.total = lineItemIncVatAmount(next.quantity, next.unitPrice, next.category, next.taxRate);
   return next;
 }
 
@@ -103,7 +165,8 @@ export function mapDbLineItem(row: Record<string, unknown>, index: number): Invo
     quantity: Number(row.quantity ?? 1),
     unitPrice: Number(row.unitPrice ?? row.unit_price ?? 0),
     total: Number(row.total ?? row.amount ?? 0),
-    sortOrder: Number(row.sortOrder ?? row.sort_order ?? index + 1)
+    sortOrder: Number(row.sortOrder ?? row.sort_order ?? index + 1),
+    taxRate: effectiveLineTaxRate(category, Number(row.taxRate ?? row.tax_rate ?? 0))
   };
 }
 

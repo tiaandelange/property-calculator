@@ -43,7 +43,7 @@ describe("invoiceLineItemUtils", () => {
 
   it("builds RPC payload with category and sort order", () => {
     const payload = invoiceLineItemsForSave([
-      { description: "Water Recovery", category: "UTILITIES_RECOVERY", quantity: 1, unitPrice: 250, total: 250, sortOrder: 1 }
+      { description: "Water Recovery", category: "UTILITIES_RECOVERY", quantity: 1, unitPrice: 250, total: 250, sortOrder: 1, taxRate: 15 }
     ]);
     expect(payload[0]).toMatchObject({
       description: "Water Recovery",

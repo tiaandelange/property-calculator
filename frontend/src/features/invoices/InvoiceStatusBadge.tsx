@@ -1,4 +1,4 @@
-import { INVOICE_STATUSES } from "./invoiceFoundation";
+import { INVOICE_STATUSES, invoiceStatusLabel } from "./invoiceFoundation";
 
 export function InvoiceStatusBadge({ status }: { status: string }) {
   const s = String(status).toUpperCase();
@@ -11,8 +11,12 @@ export function InvoiceStatusBadge({ status }: { status: string }) {
   else if (s === "DRAFT") cls += " pg-invoices-badge--neutral";
   else cls += " pg-invoices-badge--warning";
 
-  const label = s.replace(/_/g, " ").toLowerCase().replace(/^\w/, (c) => c.toUpperCase());
-  return <span className={cls}>{label}</span>;
+  return <span className={cls}>{invoiceStatusLabel(status)}</span>;
 }
 
 export const INVOICE_STATUS_FILTER_OPTIONS = ["ALL", ...INVOICE_STATUSES] as const;
+
+export function invoiceStatusFilterLabel(status: string): string {
+  if (status === "ALL") return "All statuses";
+  return invoiceStatusLabel(status);
+}

@@ -5,12 +5,14 @@ import { Select } from "../../components/ui/Select";
 import { fmtZar } from "./invoiceDirectoryUtils";
 import {
   INVOICE_LINE_CATEGORY_OPTIONS,
+  INVOICE_TAX_OPTIONS,
   categoryOptionLabel,
   categoryOptionValue,
+  effectiveLineTaxRate,
   emptyInvoiceLine,
-  lineItemAmount,
+  lineItemIncVatAmount,
   patchInvoiceLineItem,
-  resolveCategoryFromOption,
+  resolveCategoryFromOptionWithTax,
   type InvoiceLineItemDraft
 } from "./invoiceLineItemUtils";
 
@@ -29,13 +31,13 @@ export function InvoiceLineItemsEditor({ lineItems, editable, defaultRent, onCha
 
   const setCategoryOption = (idx: number, optionValue: string) => {
     if (!editable) return;
-    const { category, defaultDescription } = resolveCategoryFromOption(optionValue);
+    const { category, defaultDescription, taxRate } = resolveCategoryFromOptionWithTax(optionValue);
     const row = lineItems[idx];
     const description =
       !row.description.trim() || row.description === categoryOptionLabel(categoryOptionValue(row.category, row.description))
         ? (defaultDescription ?? row.description)
         : row.description;
-    patchLine(idx, { category, description });
+    patchLine(idx, { category, description, taxRate });
   };
 
   const removeLine = (idx: number) => {
@@ -81,8 +83,10 @@ export function InvoiceLineItemsEditor({ lineItems, editable, defaultRent, onCha
           </thead>
           <tbody>
             {lineItems.map((li, idx) => {
-              const amount = lineItemAmount(li.quantity, li.unitPrice);
+              const amount = lineItemIncVatAmount(li.quantity, li.unitPrice, li.category, li.taxRate);
               const optionValue = categoryOptionValue(li.category, li.description);
+              const isRent = String(li.category).toUpperCase() === "RENT";
+              const taxRate = effectiveLineTaxRate(li.category, li.taxRate);
               return (
                 <tr key={`${idx}-${li.sortOrder}`}>
                   <td>
@@ -141,7 +145,25 @@ export function InvoiceLineItemsEditor({ lineItems, editable, defaultRent, onCha
                       fmtZar(li.unitPrice)
                     )}
                   </td>
-                  <td className="pg-inv-lines__num pg-inv-lines__tax-muted">—</td>
+                  <td className="pg-inv-lines__num">
+                    {editable && !isRent ? (
+                      <Select
+                        value={String(taxRate)}
+                        onChange={(e) => patchLine(idx, { taxRate: Number(e.target.value) })}
+                        aria-label={`Tax row ${idx + 1}`}
+                      >
+                        {INVOICE_TAX_OPTIONS.map((opt) => (
+                          <option key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </option>
+                        ))}
+                      </Select>
+                    ) : taxRate > 0 ? (
+                      `VAT ${taxRate}%`
+                    ) : (
+                      <span className="pg-inv-lines__tax-muted">No VAT</span>
+                    )}
+                  </td>
                   <td className="pg-inv-lines__num pg-inv-lines__amount">{fmtZar(amount)}</td>
                   {editable ? (
                     <td>
@@ -165,8 +187,10 @@ export function InvoiceLineItemsEditor({ lineItems, editable, defaultRent, onCha
 
       <div className="pg-inv-lines__mobile">
         {lineItems.map((li, idx) => {
-          const amount = lineItemAmount(li.quantity, li.unitPrice);
+          const amount = lineItemIncVatAmount(li.quantity, li.unitPrice, li.category, li.taxRate);
           const optionValue = categoryOptionValue(li.category, li.description);
+          const isRent = String(li.category).toUpperCase() === "RENT";
+          const taxRate = effectiveLineTaxRate(li.category, li.taxRate);
           return (
             <article key={`m-${idx}-${li.sortOrder}`} className="pg-inv-lines__mobile-card">
               <div className="pg-inv-lines__mobile-card-head">
@@ -207,6 +231,22 @@ export function InvoiceLineItemsEditor({ lineItems, editable, defaultRent, onCha
                       aria-label={`Description row ${idx + 1}`}
                     />
                   </div>
+                  {editable && !isRent ? (
+                    <div>
+                      <div className="pg-inv-lines__mobile-label">Tax</div>
+                      <Select
+                        value={String(taxRate)}
+                        onChange={(e) => patchLine(idx, { taxRate: Number(e.target.value) })}
+                        aria-label={`Tax row ${idx + 1}`}
+                      >
+                        {INVOICE_TAX_OPTIONS.map((opt) => (
+                          <option key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </option>
+                        ))}
+                      </Select>
+                    </div>
+                  ) : null}
                   <div className="pg-inv-lines__mobile-row">
                     <div>
                       <div className="pg-inv-lines__mobile-label">Qty</div>

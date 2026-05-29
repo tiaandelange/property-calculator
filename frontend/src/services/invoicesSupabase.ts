@@ -88,7 +88,7 @@ const INVOICE_DETAIL_SELECT = `
   tenants ( id, first_name, last_name, email, phone ),
   properties ( id, name ),
   property_units ( id, unit_name ),
-  leases ( id, start_date, fixed_term_end_date, status )
+  leases ( id, start_date, fixed_term_end_date, status, lease_reference )
 `;
 
 const INVOICE_DIRECTORY_SELECT = `
@@ -115,7 +115,7 @@ const INVOICE_DIRECTORY_SELECT = `
   tenants ( id, first_name, last_name ),
   properties ( id, name ),
   property_units ( id, unit_name ),
-  leases ( id, start_date, fixed_term_end_date, status )
+  leases ( id, start_date, fixed_term_end_date, status, lease_reference )
 `;
 
 export async function listInvoicesDirectory(): Promise<Record<string, unknown>[]> {

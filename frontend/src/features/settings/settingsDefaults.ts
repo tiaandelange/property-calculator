@@ -11,7 +11,7 @@ export const DEFAULT_USER_SETTINGS: UserSettings = {
   recurringExpenseDefaultCategory: "maintenance",
   autoGenerateInvoices: true,
   invoiceGenerateDaysBeforeDue: 10,
-  invoiceNumberFormat: "INV-YYYY-{####}",
+  invoiceNumberFormat: "INV-YY-{####}",
   pdfBrandingEnabled: true,
   paymentReminderDaysBeforeDue: 3,
   overdueAlertsEnabled: true,

@@ -3,6 +3,7 @@ import type { InvoiceStatus } from "./invoiceFoundation";
 export type InvoiceDirectoryRow = {
   id: string;
   invoiceNumber: string;
+  leaseReference: string | null;
   tenantId: string;
   tenantName: string;
   propertyId: string;
@@ -35,7 +36,6 @@ export type InvoiceDirectoryFilters = {
   status: string;
   dateFrom: string;
   dateTo: string;
-  overdueOnly: boolean;
 };
 
 export type InvoicesDirectoryResult = {
