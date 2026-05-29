@@ -33,6 +33,7 @@ const EMPTY_METRICS: InvoiceDirectoryMetrics = {
 };
 
 export function InvoicesListPage() {
+  const [searchParams] = useSearchParams();
   const [items, setItems] = useState<InvoiceDirectoryRow[]>([]);
   const [metrics, setMetrics] = useState<InvoiceDirectoryMetrics>(EMPTY_METRICS);
   const [properties, setProperties] = useState<Array<{ id: string; name: string }>>([]);
@@ -41,14 +42,14 @@ export function InvoicesListPage() {
   const [page, setPage] = useState(1);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [confirmAction, setConfirmAction] = useState<{ kind: "delete" | "void"; row: InvoiceDirectoryRow } | null>(null);
-  const [filters, setFilters] = useState<InvoiceDirectoryFilters>({
+  const [filters, setFilters] = useState<InvoiceDirectoryFilters>(() => ({
     q: "",
-    propertyId: "ALL",
+    propertyId: searchParams.get("propertyId")?.trim() || "ALL",
     status: "ALL",
     dateFrom: "",
     dateTo: "",
-    overdueOnly: false
-  });
+    overdueOnly: searchParams.get("overdue") === "1"
+  }));
 
   const load = useCallback(async () => {
     setLoading(true);
