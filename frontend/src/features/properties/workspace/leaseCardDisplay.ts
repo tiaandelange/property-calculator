@@ -1,6 +1,6 @@
 import { deriveLeaseStatus } from "../../tenants/tenantDirectoryAdapter";
 import { isCurrentLeaseStatus } from "../../../utils/leaseDisplay";
-import { isLeaseEndExpired } from "../../../utils/leaseTermUtils";
+import { isLeaseEndExpired, termMonthsFromStartAndEnd } from "../../../utils/leaseTermUtils";
 
 export type LeaseCardTag = { label: string; badgeClass: string };
 
@@ -68,12 +68,12 @@ export function leaseTermTypeLabel(lease: LeaseCardLeaseInput): string {
     return "Month-to-month";
   }
 
-  const start = parseLocalDate(lease.startDate);
-  const end = parseLocalDate(lease.fixedTermEndDate);
-  if (!end) return "Month-to-month";
-  if (!start) return "Fixed term";
+  const startYmd = lease.startDate != null ? String(lease.startDate).slice(0, 10) : "";
+  const endYmd = lease.fixedTermEndDate != null ? String(lease.fixedTermEndDate).slice(0, 10) : "";
+  if (!endYmd) return "Month-to-month";
+  if (!startYmd) return "Fixed term";
 
-  const months = calendarMonthsBetween(start, end);
+  const months = termMonthsFromStartAndEnd(startYmd, endYmd);
   if (months === 6) return "6 months";
   if (months === 12) return "12 months";
   if (months === 24) return "24 months";

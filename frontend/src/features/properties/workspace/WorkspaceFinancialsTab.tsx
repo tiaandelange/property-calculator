@@ -13,6 +13,8 @@ import {
   type FinancialDetailsFormState
 } from "../financials/PropertyFinancialDetailsForm";
 import { RecurringExpensesSection } from "../financials/RecurringExpensesSection";
+import { BondPaymentSection } from "../financials/BondPaymentSection";
+import { mapPropertyBondPayment } from "../financials/propertyBondAdapter";
 import { PropertyFinancialSummaryPanel } from "../financials/PropertyFinancialSummaryPanel";
 import { ExpenseCategoriesCard } from "../financials/ExpenseCategoriesCard";
 import { RecurringExpenseModal } from "../financials/RecurringExpenseModal";
@@ -584,6 +586,8 @@ export function WorkspaceFinancialsTab({
     [recurringChargesLandlord]
   );
 
+  const openPropertyBondEdit = () => navigate(`/owned-properties/${propertyId}/edit`);
+
   async function saveFinancialDetails(state: FinancialDetailsFormState) {
     setFinancialDetailsSaving(true);
     try {
@@ -1089,6 +1093,10 @@ export function WorkspaceFinancialsTab({
   }, [rows]);
 
   const propertyDisplayName = String((propertyDetail as Record<string, unknown> | null)?.name ?? financialOverview.propertyName);
+  const bondDisplayItems = useMemo(
+    () => mapPropertyBondPayment(propertyDetail as Record<string, unknown> | null, propertyDisplayName),
+    [propertyDetail, propertyDisplayName]
+  );
   const unitLabel = financialOverview.unitLabel;
   const combinedMonthlyRent = (currentLeases as any[]).reduce((a, l) => a + Number(l.monthlyRent ?? 0), 0);
   const combinedDepositHeld = (currentLeases as any[]).reduce((a, l) => a + Number(l.depositAmount ?? 0), 0);
@@ -1153,6 +1161,14 @@ export function WorkspaceFinancialsTab({
             onEdit={handleRecurringEdit}
             onStop={(item) => requestArchiveSchedule(item.raw)}
             onDelete={(item) => requestHardDeleteSchedule(item.raw)}
+          />
+
+          <BondPaymentSection
+            items={bondDisplayItems}
+            loading={loading}
+            isMobile={isMobile}
+            onEdit={openPropertyBondEdit}
+            onSetup={openPropertyBondEdit}
           />
 
           {isMobile ? <ExpenseCategoriesCard overview={financialOverview} /> : null}

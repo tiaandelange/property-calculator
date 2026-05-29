@@ -24,7 +24,7 @@ describe("leaseCardDisplay", () => {
         leaseType: "FIXED_TERM",
         status: "ACTIVE",
         startDate: "2025-01-01",
-        fixedTermEndDate: "2026-01-01"
+        fixedTermEndDate: "2025-12-31"
       })
     ).toBe("12 months");
     expect(
