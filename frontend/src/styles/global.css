@@ -6,7 +6,7 @@
 @import "./leases-dashboard.css";
 @import "./financials-dashboard.css";
 @import "./invoices-dashboard.css";
-@import "./invoice-editor.css";
+@import "./proplytic-logo.css";
 @import "./workspace-cards.css";
 @import "./property-form.css";
 @import "./property-financials.css";
@@ -4467,11 +4467,8 @@ html[data-theme="light"] .pg-color-scheme-switch[data-on="false"] .pg-color-sche
 }
 
 .pg-home-footer-brand-name {
-  font-family: var(--font-display);
-  font-size: clamp(18px, 2vw, 22px);
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  color: var(--home-footer-brand);
+  display: inline-flex;
+  align-items: center;
   text-decoration: none;
   width: fit-content;
 }
@@ -5094,7 +5091,7 @@ html[data-theme="light"] .pg-color-scheme-switch[data-on="false"] .pg-color-sche
 .pg-home-site-drawer-top {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: space-between;
   gap: 10px;
 }
 

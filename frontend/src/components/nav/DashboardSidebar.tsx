@@ -1,5 +1,6 @@
-import { Home, LogOut } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { LogOut } from "lucide-react";
+import { ProplyticLogo } from "../brand/ProplyticLogo";
 import { useAuth } from "../../contexts/AuthContext";
 import { isWorkspaceNavActive, WORKSPACE_SIDEBAR_NAV } from "../../nav/workspaceNavConfig";
 
@@ -16,11 +17,8 @@ export function DashboardSidebar() {
   return (
     <aside className="pg-dashboard-sidebar" aria-label="Dashboard sidebar">
       <div className="pg-dashboard-sidebar-brand">
-        <Link to="/owned-properties/dashboard" className="pg-dashboard-sidebar-logo">
-          <span className="pg-dashboard-sidebar-logo-icon" aria-hidden>
-            <Home size={20} strokeWidth={2.25} />
-          </span>
-          <span className="pg-dashboard-sidebar-logo-text">PropLytic</span>
+        <Link to="/owned-properties/dashboard" className="pg-dashboard-sidebar-logo" aria-label="Proplytic — Dashboard">
+          <ProplyticLogo mode="compact" title="Proplytic" />
         </Link>
       </div>
 

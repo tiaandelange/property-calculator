@@ -1,6 +1,6 @@
 import React from "react";
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { AppChrome } from "./AppChrome";
 import { AuthProvider } from "../contexts/AuthContext";
@@ -96,7 +96,7 @@ describe("AppChrome", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByRole("link", { name: /The Property Guy — Home/i })).toBeInTheDocument();
+      expect(within(screen.getByRole("banner")).getByRole("link", { name: /Proplytic — Home/i })).toBeInTheDocument();
     });
     expect(screen.queryByRole("navigation", { name: /primary workspace/i })).not.toBeInTheDocument();
   });
@@ -115,7 +115,7 @@ describe("AppChrome", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByRole("link", { name: /The Property Guy — Home/i })).toBeInTheDocument();
+      expect(within(screen.getByRole("banner")).getByRole("link", { name: /Proplytic — Home/i })).toBeInTheDocument();
     });
     expect(screen.getByRole("navigation", { name: /^Primary$/i })).toBeInTheDocument();
   });

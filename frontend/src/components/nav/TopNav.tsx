@@ -5,6 +5,7 @@ import { HamburgerButton } from "./HamburgerButton";
 import { useEffect, useRef, useState } from "react";
 import { calculators } from "../../data/calculators";
 import { useAuth } from "../../contexts/AuthContext";
+import { ProplyticLogo } from "../brand/ProplyticLogo";
 
 export function TopNav({
   onMenu,
@@ -47,8 +48,8 @@ export function TopNav({
           <div className="pg-brand">
             <HamburgerButton onClick={onMenu} />
             <div>
-              <NavLink to="/" end className={({ isActive }) => `pg-logo${isActive ? " pg-logo-active" : ""}`}>
-                The Property Guy
+              <NavLink to="/" end className="pg-topbar-brand-link" aria-label="Proplytic — Home">
+                <ProplyticLogo mode="compact" title="Proplytic" />
               </NavLink>
               <div className="pg-logo-tagline">Property calculators & portfolio tools</div>
             </div>

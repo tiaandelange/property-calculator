@@ -6,6 +6,7 @@ import { Button } from "../components/ui/Button";
 import { useState } from "react";
 import { startSubscriptionCheckout } from "../services/subscriptionVercel";
 import { Link } from "react-router-dom";
+import { PageBrandMark } from "../components/brand/PageBrandMark";
 
 export function SubscriptionPage() {
   const [loading, setLoading] = useState(false);
@@ -32,6 +33,7 @@ export function SubscriptionPage() {
       </Helmet>
       <Container>
         <div style={{ maxWidth: 860, margin: "0 auto" }}>
+          <PageBrandMark linkToHome />
           <Card>
             <h1 className="pg-h2" style={{ marginTop: 0 }}>
               Subscription

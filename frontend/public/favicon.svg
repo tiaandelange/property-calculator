@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Proplytic">
+  <defs>
+    <linearGradient id="g" x1="16" y1="4" x2="16" y2="28" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#6C4CFF"/>
+      <stop offset="55%" stop-color="#8B5CF6"/>
+      <stop offset="100%" stop-color="#A78BFA"/>
+    </linearGradient>
+  </defs>
+  <rect width="32" height="32" rx="7" fill="#ffffff"/>
+  <path d="M7.5 15 16 8.5 24.5 15V26H7.5V15Z" fill="none" stroke="url(#g)" stroke-width="2.2" stroke-linejoin="round"/>
+  <path d="M7.5 26H24.5" fill="none" stroke="url(#g)" stroke-width="2.2" stroke-linecap="round"/>
+  <rect x="9.8" y="17.2" width="2.2" height="2.2" rx="0.35" fill="url(#g)"/>
+  <rect x="12.4" y="17.2" width="2.2" height="2.2" rx="0.35" fill="url(#g)"/>
+  <rect x="9.8" y="19.8" width="2.2" height="2.2" rx="0.35" fill="url(#g)"/>
+  <rect x="12.4" y="19.8" width="2.2" height="2.2" rx="0.35" fill="url(#g)"/>
+  <rect x="18.5" y="20.5" width="2" height="3.8" rx="0.65" fill="url(#g)"/>
+  <rect x="21.2" y="19" width="2" height="5.3" rx="0.65" fill="url(#g)"/>
+  <rect x="23.9" y="17.5" width="2" height="6.8" rx="0.65" fill="url(#g)"/>
+</svg>

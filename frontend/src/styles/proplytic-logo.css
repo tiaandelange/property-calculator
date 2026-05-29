@@ -1,0 +1,107 @@
+.proplytic-logo {
+  display: inline-flex;
+  align-items: center;
+  line-height: 1;
+}
+
+.proplytic-logo-wordmark {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-primary, #111827);
+}
+
+.proplytic-logo-wordmark--compact {
+  gap: 8px;
+}
+
+.proplytic-logo-wordmark__icon {
+  flex-shrink: 0;
+}
+
+.proplytic-logo-wordmark__text {
+  font-family: Inter, "Inter Tight", system-ui, -apple-system, sans-serif;
+  font-weight: 700;
+  font-size: 1.35rem;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.proplytic-logo-wordmark--compact .proplytic-logo-wordmark__text {
+  font-size: 1.125rem;
+}
+
+.proplytic-logo-wordmark__i {
+  position: relative;
+  display: inline-block;
+  margin: 0 0.02em;
+}
+
+.proplytic-logo-wordmark__i-stem {
+  font-style: normal;
+  color: inherit;
+}
+
+.proplytic-logo-wordmark__i-dot {
+  position: absolute;
+  top: -0.08em;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0.34em;
+  height: 0.34em;
+  border-radius: 999px;
+  background: #6c4cff;
+}
+
+[data-theme="dark"] .proplytic-logo-wordmark__text {
+  color: var(--text-primary);
+}
+
+.pg-dashboard-sidebar-logo .proplytic-logo-wordmark__text,
+.pg-dashboard-mobile-menu-brand .proplytic-logo-wordmark__text {
+  font-size: 1.125rem;
+}
+
+.pg-auth-logo-wrap {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.pg-auth-logo-wrap a {
+  display: inline-flex;
+  text-decoration: none;
+  color: inherit;
+}
+
+.pg-topbar-brand-link,
+.pg-sidebar-brand-link {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+  color: inherit;
+}
+
+.pg-home-site-drawer-logo {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+  color: inherit;
+}
+
+.pg-home-footer-brand-name .proplytic-logo-wordmark__text {
+  font-size: clamp(1.05rem, 2vw, 1.25rem);
+}
+
+.pg-dashboard-mobile-brand-link {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+  color: inherit;
+}
+
+.pg-home-site-header-logo .proplytic-logo-wordmark__text {
+  font-size: clamp(1.15rem, 2vw, 1.35rem);
+}

@@ -1,10 +1,6 @@
 /** Base URL for static homepage WebP assets (Vite public/). Content images only — UI icons use Lucide. */
 export const HOMEPAGE_ASSET_BASE = "/assets/homepage";
 
-export const homepageBrand = {
-  wordmark: `${HOMEPAGE_ASSET_BASE}/brand/brand-wordmark.webp`
-} as const;
-
 export const homepageHero = {
   property: `${HOMEPAGE_ASSET_BASE}/hero/hero-property.webp`,
   calculatorPreview: `${HOMEPAGE_ASSET_BASE}/hero/hero-calculator-preview.webp`

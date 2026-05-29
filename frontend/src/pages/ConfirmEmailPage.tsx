@@ -7,6 +7,7 @@ import { Card } from "../components/ui/Card";
 import { getSupabase, isSupabaseConfigured } from "../lib/supabaseClient";
 import { formatAuthError } from "../utils/authErrors";
 import type { EmailOtpType } from "@supabase/supabase-js";
+import { PageBrandMark } from "../components/brand/PageBrandMark";
 
 /** Supabase email confirmation (`token_hash` + `type` query params). */
 export function ConfirmEmailPage() {
@@ -85,6 +86,7 @@ export function ConfirmEmailPage() {
       </Helmet>
       <Container>
         <div style={{ maxWidth: 620, margin: "0 auto" }}>
+          <PageBrandMark linkToHome />
           <Card>
             <h1 className="pg-h2" style={{ marginTop: 0 }}>
               Confirm your email

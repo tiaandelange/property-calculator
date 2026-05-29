@@ -1,0 +1,23 @@
+{
+  "name": "Proplytic",
+  "short_name": "Proplytic",
+  "description": "South Africa property investment calculators, reports, and portfolio tools.",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/apple-touch-icon.svg",
+      "sizes": "180x180",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "theme_color": "#6C4CFF",
+  "background_color": "#ffffff",
+  "display": "standalone",
+  "start_url": "/"
+}

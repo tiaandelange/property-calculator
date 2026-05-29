@@ -10,6 +10,7 @@ import { getSupabase, isSupabaseConfigured } from "../lib/supabaseClient";
 import { getConfirmEmailRedirectUrl } from "../lib/authRedirect";
 import { formatAuthError } from "../utils/authErrors";
 import { useAuth } from "../contexts/AuthContext";
+import { PageBrandMark } from "../components/brand/PageBrandMark";
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -107,6 +108,7 @@ export function LoginPage() {
       </Helmet>
       <Container>
         <div className="pg-auth-layout">
+          <PageBrandMark linkToHome />
           <div className="pg-auth-marketing">
             <h2 className="pg-h2" style={{ marginTop: 0 }}>
               Track deals. Save reports. Manage your portfolio.

@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { Container } from "../ui/Container";
+import { ProplyticLogo } from "../brand/ProplyticLogo";
 import {
   HOMEPAGE_BRAND_LEGAL_NAME,
   marketingFooterBrandTagline,
@@ -40,8 +41,8 @@ export function HomePublicFooter() {
       <Container className="pg-container--marketing-wide">
         <div className="pg-home-footer-grid">
           <div className="pg-home-footer-brand">
-            <Link to="/" className="pg-home-footer-brand-name">
-              {HOMEPAGE_BRAND_LEGAL_NAME}
+            <Link to="/" className="pg-home-footer-brand-name" aria-label="Proplytic — Home">
+              <ProplyticLogo mode="compact" title="Proplytic" />
             </Link>
             <p className="pg-home-footer-tagline">{marketingFooterBrandTagline}</p>
           </div>

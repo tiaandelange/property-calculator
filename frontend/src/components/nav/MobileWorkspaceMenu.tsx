@@ -1,6 +1,7 @@
 import { LogOut, X } from "lucide-react";
 import { useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { ProplyticLogo } from "../brand/ProplyticLogo";
 import { useAuth } from "../../contexts/AuthContext";
 import { isWorkspaceNavActive, WORKSPACE_SIDEBAR_NAV } from "../../nav/workspaceNavConfig";
 
@@ -45,7 +46,7 @@ export function MobileWorkspaceMenu({ open, onClose }: Props) {
       <button type="button" className="pg-dashboard-mobile-menu-backdrop" aria-label="Close menu" onClick={onClose} />
       <div className="pg-dashboard-mobile-menu-panel">
         <div className="pg-dashboard-mobile-menu-head">
-          <span className="pg-dashboard-mobile-menu-brand">PropLytic</span>
+          <ProplyticLogo mode="compact" title="Proplytic" className="pg-dashboard-mobile-menu-brand" />
           <button type="button" className="pg-dashboard-shell-icon-btn" aria-label="Close menu" onClick={onClose}>
             <X size={22} aria-hidden />
           </button>

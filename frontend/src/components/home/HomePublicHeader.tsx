@@ -195,7 +195,7 @@ export function HomePublicHeader() {
       >
         <div className="pg-container pg-container--marketing-wide pg-home-site-header-inner">
           <div className="pg-home-site-header-brand">
-            <Link to="/" className="pg-home-site-header-logo" aria-label="The Property Guy — Home">
+            <Link to="/" className="pg-home-site-header-logo" aria-label="Proplytic — Home">
               <HomeBrandWordmark alt="" />
             </Link>
           </div>
@@ -327,6 +327,9 @@ export function HomePublicHeader() {
         aria-labelledby={titleId}
       >
         <div className="pg-home-site-drawer-top">
+          <Link to="/" className="pg-home-site-drawer-logo" onClick={closeDrawer} aria-label="Proplytic — Home">
+            <HomeBrandWordmark alt="" />
+          </Link>
           <button ref={closeBtnRef} type="button" className="pg-home-site-drawer-close" onClick={closeDrawer}>
             Close
           </button>

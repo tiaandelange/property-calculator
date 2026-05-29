@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Container } from "../components/ui/Container";
 import { Section } from "../components/ui/Section";
 import { Card } from "../components/ui/Card";
+import { PageBrandMark } from "../components/brand/PageBrandMark";
 
 export function SubscriptionResultPage({ mode }: { mode: "success" | "cancel" }) {
   return (
@@ -13,6 +14,7 @@ export function SubscriptionResultPage({ mode }: { mode: "success" | "cancel" })
       </Helmet>
       <Container>
         <div style={{ maxWidth: 820, margin: "0 auto" }}>
+          <PageBrandMark linkToHome />
           <Card>
             <h1 className="pg-h2" style={{ marginTop: 0 }}>
               {mode === "success" ? "Subscription successful" : "Subscription cancelled"}

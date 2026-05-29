@@ -1,7 +1,8 @@
-import { NavLink, useLocation } from "react-router-dom";
+import { Link, NavLink, useLocation } from "react-router-dom";
 import { calculators } from "../../data/calculators";
 import { Button } from "../ui/Button";
 import { useMemo, useState } from "react";
+import { ProplyticLogo } from "../brand/ProplyticLogo";
 
 export function Sidebar({
   open,
@@ -25,7 +26,9 @@ export function Sidebar({
       <div className="pg-overlay" data-open={open ? "true" : "false"} onClick={onClose} />
       <aside className="pg-sidebar" data-open={open ? "true" : "false"} aria-hidden={!open}>
         <div className="pg-sidebar-header">
-          <div className="pg-logo">The Property Guy</div>
+          <Link to="/" className="pg-sidebar-brand-link" onClick={onClose} aria-label="Proplytic — Home">
+            <ProplyticLogo mode="compact" title="Proplytic" />
+          </Link>
           <Button variant="ghost" onClick={onClose}>
             Close
           </Button>
