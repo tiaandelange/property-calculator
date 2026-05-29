@@ -28,7 +28,6 @@ import { fetchPdfBlob, isAbsoluteHttpUrl, openPdfBlobInNewTab } from "../../../a
 import { isSupabaseConfigured } from "../../../lib/supabaseClient";
 import { generateReportViaVercel } from "../../../services/reportsVercel";
 import {
-  backfillBondStatementRows,
   createCurrentInvoiceFromLease,
   generateInvoicePdf,
   createPropertyExpense,
@@ -36,7 +35,6 @@ import {
   hardDeleteInvoice,
   hardDeletePropertyExpense,
   hardDeletePropertyIncome,
-  postBondStatementRow,
   propertyApiErrorMessage,
   updateInvoice,
   updateLease,
@@ -68,8 +66,6 @@ const RECURRING_SCHEDULE_CATEGORY_OPTIONS = [
 function normalizeExpenseCategoryForApi(uiValue: string): string {
   return uiValue === "WIFI" ? "OTHER" : uiValue;
 }
-
-const BOND_TERM_YEAR_OPTIONS = [5, 10, 15, 20, 25, 30] as const;
 
 type ScheduleEditorState = {
   id: string;
@@ -237,22 +233,6 @@ export function WorkspaceFinancialsTab({
     amount: ""
   });
   const [recurringScheduleSaving, setRecurringScheduleSaving] = useState(false);
-  const [bondSaving, setBondSaving] = useState(false);
-  const [bondSaveToStatement, setBondSaveToStatement] = useState(false);
-  const [bondStatementDueDate, setBondStatementDueDate] = useState(() => new Date().toISOString().slice(0, 10));
-  const [bondBackfillOpen, setBondBackfillOpen] = useState(false);
-  const [bondBackfillStart, setBondBackfillStart] = useState("");
-  const [bondBackfillEnd, setBondBackfillEnd] = useState(() => new Date().toISOString().slice(0, 10));
-  const [bondBackfillBusy, setBondBackfillBusy] = useState(false);
-  const [bondForm, setBondForm] = useState({
-    outstandingBondBalance: "",
-    monthlyBondPayment: "",
-    bondAnnualInterestRatePercent: "",
-    bondTermYears: "",
-    bondStartDate: "",
-    bondInterestPortionOverride: "",
-    bondPrincipalPortionOverride: ""
-  });
   const [scheduleEditor, setScheduleEditor] = useState<ScheduleEditorState | null>(null);
   const [scheduleBusyId, setScheduleBusyId] = useState<string | null>(null);
   const [scheduleConfirm, setScheduleConfirm] = useState<null | { kind: "archive" | "delete"; rc: any }>(null);
@@ -289,7 +269,7 @@ export function WorkspaceFinancialsTab({
       deposits: "pf-tools-deposits",
       future: "pf-tools-future",
       recurring: "pf-tools-recurring",
-      bond: "pf-tools-bond"
+      bond: "pfin-bond-payment"
     };
     const el = document.getElementById(idMap[finSub]);
     if (el && el.tagName === "DETAILS") {
@@ -297,24 +277,6 @@ export function WorkspaceFinancialsTab({
       el.scrollIntoView({ behavior: "smooth", block: "start" });
     }
   }, [finSub]);
-
-  useEffect(() => {
-    if (!propertyDetail) return;
-    const pf = propertyDetail as Record<string, unknown>;
-    const pvs = (v: unknown) => (v == null || v === "" ? "" : String(v));
-    setBondForm({
-      outstandingBondBalance: pvs(pf.outstandingBondBalance),
-      monthlyBondPayment: pvs(pf.monthlyBondPayment),
-      bondAnnualInterestRatePercent: pvs(pf.bondAnnualInterestRatePercent),
-      bondTermYears: pvs(pf.bondTermYears),
-      bondStartDate:
-        pf.bondStartDate != null && String(pf.bondStartDate).trim() !== ""
-          ? String(pf.bondStartDate).slice(0, 10)
-          : "",
-      bondInterestPortionOverride: pvs(pf.bondInterestPortionOverride),
-      bondPrincipalPortionOverride: pvs(pf.bondPrincipalPortionOverride)
-    });
-  }, [propertyDetail]);
 
   const depositProjectedNextStep = useMemo(() => {
     if (!depositModal) return null;
@@ -586,7 +548,7 @@ export function WorkspaceFinancialsTab({
     [recurringChargesLandlord]
   );
 
-  const openPropertyBondEdit = () => navigate(`/owned-properties/${propertyId}/edit`);
+  const openPropertyBondEdit = () => navigate(`/owned-properties/${propertyId}/edit#property-bond`);
 
   async function saveFinancialDetails(state: FinancialDetailsFormState) {
     setFinancialDetailsSaving(true);
@@ -655,108 +617,6 @@ export function WorkspaceFinancialsTab({
   const fmt = (n: number | null | undefined) =>
     n == null || Number.isNaN(Number(n)) ? "—" : `R ${Number(n).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
 
-  async function saveBondFields(ev: FormEvent) {
-    ev.preventDefault();
-    setBondSaving(true);
-    try {
-      const parseOpt = (s: string) => {
-        const t = String(s ?? "").trim();
-        if (t === "") return null;
-        const n = Number(t);
-        return Number.isFinite(n) ? n : null;
-      };
-      const tyRaw = String(bondForm.bondTermYears ?? "").trim();
-      const allowedYears = BOND_TERM_YEAR_OPTIONS as unknown as number[];
-      const bondTermYears = tyRaw === "" ? null : allowedYears.includes(Number(tyRaw)) ? Number(tyRaw) : null;
-      if (tyRaw !== "" && bondTermYears == null) {
-        window.alert("Bond duration must be 5, 10, 15, 20, 25, or 30 years.");
-        setBondSaving(false);
-        return;
-      }
-      const sdRaw = String(bondForm.bondStartDate ?? "").trim();
-      const bondStartDate = /^\d{4}-\d{2}-\d{2}$/.test(sdRaw) ? sdRaw : null;
-
-      const payload: Record<string, unknown> = {
-        outstandingBondBalance: parseOpt(bondForm.outstandingBondBalance),
-        monthlyBondPayment: parseOpt(bondForm.monthlyBondPayment),
-        bondAnnualInterestRatePercent: parseOpt(bondForm.bondAnnualInterestRatePercent),
-        bondTermYears,
-        bondStartDate,
-        bondInterestPortionOverride: parseOpt(bondForm.bondInterestPortionOverride),
-        bondPrincipalPortionOverride: parseOpt(bondForm.bondPrincipalPortionOverride)
-      };
-      if (bondTermYears != null && bondStartDate != null) {
-        payload.bondRemainingTermMonths = null;
-      }
-      await updateProperty(propertyId, payload);
-      if (bondSaveToStatement) {
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(bondStatementDueDate)) {
-          window.alert("Choose a valid statement debit date.");
-          await onReload();
-          return;
-        }
-        try {
-          await postBondStatementRow(propertyId, bondStatementDueDate);
-        } catch (postErr: any) {
-          const st = postErr?.response?.status;
-          const msg = postErr?.response?.data?.message;
-          if (st === 409) {
-            window.alert(
-              msg ??
-                "Bond profile was saved. This calendar month already has a bond payment on the statement — open the Statement tab and edit it there."
-            );
-          } else {
-            window.alert(
-              typeof msg === "string"
-                ? `Bond profile was saved, but the statement row was not added: ${msg}`
-                : postErr?.message ?? "Bond profile was saved, but the statement row could not be added."
-            );
-          }
-          await onReload();
-          return;
-        }
-      }
-      await onReload();
-    } catch (err: unknown) {
-      window.alert(propertyApiErrorMessage(err) || "Could not save bond details.");
-    } finally {
-      setBondSaving(false);
-    }
-  }
-
-  function openBondBackfillModal() {
-    const pf = propertyDetail as Record<string, unknown> | undefined;
-    const bd =
-      pf?.bondStartDate != null && String(pf.bondStartDate).trim() !== ""
-        ? String(pf.bondStartDate).slice(0, 10)
-        : `${new Date().getFullYear()}-01-01`;
-    setBondBackfillStart(bd);
-    setBondBackfillEnd(new Date().toISOString().slice(0, 10));
-    setBondBackfillOpen(true);
-  }
-
-  async function submitBondBackfill(e: FormEvent) {
-    e.preventDefault();
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(bondBackfillStart) || !/^\d{4}-\d{2}-\d{2}$/.test(bondBackfillEnd)) {
-      window.alert("Use valid start and end dates (YYYY-MM-DD).");
-      return;
-    }
-    setBondBackfillBusy(true);
-    try {
-      const res = await backfillBondStatementRows(propertyId, bondBackfillStart, bondBackfillEnd);
-      const skippedDup = res.skipped.filter((s) => s.reason === "already_has_bond_expense").length;
-      const skippedAmt = res.skipped.filter((s) => s.reason === "no_derivable_amount").length;
-      window.alert(
-        `Created ${res.createdCount} bond payment${res.createdCount === 1 ? "" : "s"}. Skipped ${res.skipped.length} month(s): ${skippedDup} already on the statement, ${skippedAmt} could not derive an amount from the bond profile (check balance, rate, and term). Historical rows use today’s outstanding balance — update the balance over time if you need tighter accuracy.`
-      );
-      setBondBackfillOpen(false);
-      await onReload();
-    } catch (err: any) {
-      window.alert(err?.response?.data?.message ?? err?.message ?? "Backfill failed.");
-    } finally {
-      setBondBackfillBusy(false);
-    }
-  }
 
   function closeScheduleEditor() {
     setScheduleEditor(null);
@@ -1094,8 +954,11 @@ export function WorkspaceFinancialsTab({
 
   const propertyDisplayName = String((propertyDetail as Record<string, unknown> | null)?.name ?? financialOverview.propertyName);
   const bondDisplayItems = useMemo(
-    () => mapPropertyBondPayment(propertyDetail as Record<string, unknown> | null, propertyDisplayName),
-    [propertyDetail, propertyDisplayName]
+    () =>
+      mapPropertyBondPayment(propertyDetail as Record<string, unknown> | null, propertyDisplayName, {
+        statementBondFinance: (statement?.bondFinance as Record<string, unknown> | undefined) ?? null
+      }),
+    [propertyDetail, propertyDisplayName, statement?.bondFinance]
   );
   const unitLabel = financialOverview.unitLabel;
   const combinedMonthlyRent = (currentLeases as any[]).reduce((a, l) => a + Number(l.monthlyRent ?? 0), 0);
@@ -2117,176 +1980,6 @@ export function WorkspaceFinancialsTab({
         </Card>
             </details>
 
-            <details id="pf-tools-bond" open={finSub === "bond"}>
-              <summary>Bond payment profile</summary>
-        <Card title="Bond payment">
-          <div className="pg-muted" style={{ marginBottom: 16 }}>
-            Linked to this property&apos;s bond fields (same as Add / Edit property). Home-loan schedules are kept here —{" "}
-            <strong>not</strong> under Recurring charges. Update your outstanding balance periodically so interest estimates stay realistic.
-          </div>
-
-          {!propertyDetail ? (
-            <div className="pg-muted">Loading property…</div>
-          ) : (
-            <form onSubmit={(ev) => void saveBondFields(ev)} style={{ display: "grid", gap: 12, maxWidth: 520 }}>
-              <Field label="Outstanding bond balance (principal now)" help="Update when your bond statement shows a new balance.">
-                <Input
-                  type="number"
-                  step="any"
-                  min={0}
-                  value={bondForm.outstandingBondBalance}
-                  onChange={(e) => setBondForm({ ...bondForm, outstandingBondBalance: e.target.value })}
-                />
-              </Field>
-              <Field
-                label="Bond interest rate (% p.a.)"
-                help="Nominal annual rate on the loan — used with remaining months to estimate payment and interest portion."
-              >
-                <Input
-                  type="number"
-                  step="any"
-                  min={0}
-                  value={bondForm.bondAnnualInterestRatePercent}
-                  onChange={(e) => setBondForm({ ...bondForm, bondAnnualInterestRatePercent: e.target.value })}
-                />
-              </Field>
-              <Field label="Bond duration (years)" help="Original registered term (5-year steps up to 30 years). ">
-                <select
-                  className="pg-input"
-                  value={bondForm.bondTermYears}
-                  onChange={(e) => setBondForm({ ...bondForm, bondTermYears: e.target.value })}
-                >
-                  <option value="">Not specified</option>
-                  {BOND_TERM_YEAR_OPTIONS.map((y) => (
-                    <option key={y} value={y}>
-                      {y} years
-                    </option>
-                  ))}
-                </select>
-              </Field>
-              <Field label="Bond start date" help="Registration / bond start — together with duration, remaining months are calculated automatically.">
-                <Input type="date" value={bondForm.bondStartDate} onChange={(e) => setBondForm({ ...bondForm, bondStartDate: e.target.value })} />
-              </Field>
-              <Field
-                label="Monthly bond payment (actual debit)"
-                help="Optional if you rely on the calculated figure — enter what the bank deducts when it differs."
-              >
-                <Input
-                  type="number"
-                  step="any"
-                  min={0}
-                  value={bondForm.monthlyBondPayment}
-                  onChange={(e) => setBondForm({ ...bondForm, monthlyBondPayment: e.target.value })}
-                />
-              </Field>
-              <Field
-                label="Interest portion override"
-                help="When the bank’s interest differs from the estimate — leave blank to use calculated interest."
-              >
-                <Input
-                  type="number"
-                  step="any"
-                  min={0}
-                  value={bondForm.bondInterestPortionOverride}
-                  onChange={(e) => setBondForm({ ...bondForm, bondInterestPortionOverride: e.target.value })}
-                />
-              </Field>
-              <Field label="Principal portion override" help="Optional — paired with overrides above when splits don’t tie out.">
-                <Input
-                  type="number"
-                  step="any"
-                  min={0}
-                  value={bondForm.bondPrincipalPortionOverride}
-                  onChange={(e) => setBondForm({ ...bondForm, bondPrincipalPortionOverride: e.target.value })}
-                />
-              </Field>
-
-              {statement?.bondFinance ? (
-                <div className="pg-workspace-inset" style={{ marginTop: 4, display: "grid", gap: 10, maxWidth: 560 }}>
-                  <div className="pg-card-title" style={{ margin: 0 }}>
-                    Calculated this period (from profile)
-                  </div>
-                  <div style={{ display: "grid", gap: 6, fontSize: 14 }}>
-                    {statement.bondFinance.remainingFromSchedule &&
-                    statement.bondFinance.bondTermYears != null &&
-                    statement.bondFinance.bondStartDate ? (
-                      <div className="pg-muted" style={{ fontSize: 13 }}>
-                        {statement.bondFinance.bondTermYears}-year bond · started{" "}
-                        {formatIsoDateShort(String(statement.bondFinance.bondStartDate))} ·{" "}
-                        {statement.bondFinance.monthsElapsedOnBond ?? 0} months elapsed →{" "}
-                        <strong>{statement.bondFinance.remainingTermMonths ?? 0}</strong> months left
-                      </div>
-                    ) : statement.bondFinance.remainingTermMonths != null ? (
-                      <div className="pg-muted" style={{ fontSize: 13 }}>
-                        <strong>{statement.bondFinance.remainingTermMonths}</strong> months remaining (manual / legacy profile)
-                      </div>
-                    ) : (
-                      <div className="pg-muted" style={{ fontSize: 13 }}>
-                        Set bond duration and start date above to derive months remaining automatically.
-                      </div>
-                    )}
-                    <div>
-                      <span className="pg-muted">Monthly debit (profile) </span>
-                      <strong>{fmt(statement.bondFinance.paymentThisMonth)}</strong>
-                    </div>
-                    {statement.bondFinance.calculatedMonthlyPayment != null &&
-                    Number(statement.bondFinance.calculatedMonthlyPayment) > 0 ? (
-                      <div className="pg-muted" style={{ fontSize: 13 }}>
-                        Formula amortisation {fmt(statement.bondFinance.calculatedMonthlyPayment)}
-                        {statement.bondFinance.monthlyBondPaymentStored != null &&
-                        Number(statement.bondFinance.monthlyBondPaymentStored) > 0 &&
-                        Math.round(Number(statement.bondFinance.calculatedMonthlyPayment) * 100) !==
-                          Math.round(Number(statement.bondFinance.monthlyBondPaymentStored) * 100) ? (
-                          <span> — differs from profile debit above</span>
-                        ) : null}
-                      </div>
-                    ) : null}
-                    <div>
-                      <span className="pg-muted">Interest (estimated) </span>
-                      <strong>{fmt(statement.bondFinance.interestThisMonth)}</strong>
-                      <span className="pg-muted" style={{ marginLeft: 8 }}>
-                        · Principal <strong>{fmt(statement.bondFinance.principalThisMonth)}</strong>
-                      </span>
-                    </div>
-                    <div className="pg-muted" style={{ fontSize: 13 }}>
-                      Balance after principal (not applied to ledger automatically):{" "}
-                      {fmt(statement.bondFinance.projectedBalanceAfterPayment)}
-                    </div>
-                  </div>
-                </div>
-              ) : null}
-
-              <label style={{ display: "flex", gap: 10, alignItems: "flex-start", cursor: "pointer", fontSize: 14 }}>
-                <input
-                  type="checkbox"
-                  checked={bondSaveToStatement}
-                  onChange={(e) => setBondSaveToStatement(e.target.checked)}
-                  style={{ marginTop: 3 }}
-                />
-                <span>
-                  <strong>Save to statement</strong>
-                  <span className="pg-muted" style={{ display: "block", fontSize: 13, marginTop: 4 }}>
-                    After saving the bond profile, add one bond payment line for the calendar month of the debit date below (skipped if that month already has a bond payment).
-                  </span>
-                </span>
-              </label>
-              {bondSaveToStatement ? (
-                <Field label="Statement debit date" help="Appears on the ledger for that month; remaining term follows bond start vs this date.">
-                  <Input type="date" value={bondStatementDueDate} onChange={(e) => setBondStatementDueDate(e.target.value)} />
-                </Field>
-              ) : null}
-              <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-                <button type="submit" className="pg-btn pg-btn-primary" disabled={bondSaving}>
-                  {bondSaving ? "Saving…" : "Save bond profile"}
-                </button>
-                <button type="button" className="pg-btn pg-btn-ghost" disabled={bondSaving || bondBackfillBusy} onClick={() => openBondBackfillModal()}>
-                  Add multiple payments
-                </button>
-              </div>
-            </form>
-          )}
-        </Card>
-            </details>
             </div>
           ) : null}
         </div>
@@ -2410,49 +2103,6 @@ export function WorkspaceFinancialsTab({
         </>
       ) : null}
 
-      {bondBackfillOpen ? (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0,0,0,.55)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 88,
-            padding: 16
-          }}
-          role="presentation"
-          onMouseDown={(ev) => {
-            if (!bondBackfillBusy && ev.target === ev.currentTarget) setBondBackfillOpen(false);
-          }}
-        >
-          <Card title="Add multiple bond payments">
-            <p className="pg-muted" style={{ marginTop: 0, fontSize: 14 }}>
-              Creates one bond payment per calendar month in the range, only where the statement doesn&apos;t already have a bond line for that month.
-              Each month uses the same <strong>day-of-month</strong> as your start date (short months are clamped). Amounts follow your bond profile and
-              remaining term as of each date; the outstanding balance on the property is shared across months — update the balance over time if you need
-              historical accuracy.
-            </p>
-            <form onSubmit={(e) => void submitBondBackfill(e)} style={{ display: "grid", gap: 12, maxWidth: 400 }}>
-              <Field label="From (first month includes this date)">
-                <Input type="date" value={bondBackfillStart} onChange={(e) => setBondBackfillStart(e.target.value)} required />
-              </Field>
-              <Field label="Through (last month includes this date)">
-                <Input type="date" value={bondBackfillEnd} onChange={(e) => setBondBackfillEnd(e.target.value)} required />
-              </Field>
-              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                <button type="submit" className="pg-btn pg-btn-primary" disabled={bondBackfillBusy}>
-                  {bondBackfillBusy ? "Working…" : "Create missing rows"}
-                </button>
-                <button type="button" className="pg-btn pg-btn-ghost" disabled={bondBackfillBusy} onClick={() => setBondBackfillOpen(false)}>
-                  Cancel
-                </button>
-              </div>
-            </form>
-          </Card>
-        </div>
-      ) : null}
 
       {statementConfirm ? (
         <div

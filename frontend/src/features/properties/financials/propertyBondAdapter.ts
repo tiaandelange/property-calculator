@@ -12,17 +12,106 @@ export type BondPaymentDisplayItem = {
   statusLabel: string;
 };
 
-function bondPropertyInput(property: Record<string, unknown>) {
+export type NormalizedPropertyBondFields = {
+  outstandingBondBalance: number | null;
+  monthlyBondPayment: number | null;
+  bondAnnualInterestRatePercent: number | null;
+  bondTermYears: number | null;
+  bondStartDate: string | Date | null;
+  bondRemainingTermMonths: number | null;
+  bondInterestPortionOverride: number | null;
+  bondPrincipalPortionOverride: number | null;
+};
+
+export type MapPropertyBondPaymentOptions = {
+  asOf?: Date;
+  statementBondFinance?: Record<string, unknown> | null;
+};
+
+function pickNum(source: Record<string, unknown>, ...keys: string[]): number | null {
+  for (const key of keys) {
+    const raw = source[key];
+    if (raw === "" || raw == null) continue;
+    const n = Number(raw);
+    if (Number.isFinite(n)) return n;
+  }
+  return null;
+}
+
+function pickDate(source: Record<string, unknown>, ...keys: string[]): string | Date | null {
+  for (const key of keys) {
+    const raw = source[key];
+    if (raw == null || raw === "") continue;
+    return raw as string | Date;
+  }
+  return null;
+}
+
+/** Reads bond profile fields from camelCase or snake_case property rows. */
+export function normalizePropertyBondFields(source: Record<string, unknown> | null): NormalizedPropertyBondFields {
+  const s = source ?? {};
   return {
-    outstandingBondBalance: property.outstandingBondBalance as number | null | undefined,
-    monthlyBondPayment: property.monthlyBondPayment as number | null | undefined,
-    bondAnnualInterestRatePercent: property.bondAnnualInterestRatePercent as number | null | undefined,
-    bondTermYears: property.bondTermYears as number | null | undefined,
-    bondStartDate: property.bondStartDate as string | Date | null | undefined,
-    bondRemainingTermMonths: property.bondRemainingTermMonths as number | null | undefined,
-    bondInterestPortionOverride: property.bondInterestPortionOverride as number | null | undefined,
-    bondPrincipalPortionOverride: property.bondPrincipalPortionOverride as number | null | undefined
+    outstandingBondBalance: pickNum(s, "outstandingBondBalance", "outstanding_bond_balance"),
+    monthlyBondPayment: pickNum(s, "monthlyBondPayment", "monthly_bond_payment"),
+    bondAnnualInterestRatePercent: pickNum(s, "bondAnnualInterestRatePercent", "bond_annual_interest_rate_percent"),
+    bondTermYears: pickNum(s, "bondTermYears", "bond_term_years"),
+    bondStartDate: pickDate(s, "bondStartDate", "bond_start_date"),
+    bondRemainingTermMonths: pickNum(s, "bondRemainingTermMonths", "bond_remaining_term_months"),
+    bondInterestPortionOverride: pickNum(s, "bondInterestPortionOverride", "bond_interest_portion_override"),
+    bondPrincipalPortionOverride: pickNum(s, "bondPrincipalPortionOverride", "bond_principal_portion_override")
   };
+}
+
+/** True when any bond profile field is set on the property (same signals as Add / Edit property). */
+export function propertyHasBondProfile(fields: NormalizedPropertyBondFields): boolean {
+  if ((fields.outstandingBondBalance ?? 0) > 0) return true;
+  if ((fields.monthlyBondPayment ?? 0) > 0) return true;
+  if ((fields.bondAnnualInterestRatePercent ?? 0) > 0) return true;
+  if (fields.bondTermYears != null && fields.bondTermYears > 0) return true;
+  if (fields.bondRemainingTermMonths != null && fields.bondRemainingTermMonths > 0) return true;
+  const sd = fields.bondStartDate;
+  return sd != null && String(sd).trim() !== "";
+}
+
+/** Fill gaps from statement RPC bondFinance when the property row is partial. */
+export function mergeBondFieldsFromStatement(
+  fields: NormalizedPropertyBondFields,
+  bondFinance: Record<string, unknown> | null | undefined
+): NormalizedPropertyBondFields {
+  if (!bondFinance) return fields;
+  const next = { ...fields };
+
+  if (!(next.outstandingBondBalance != null && next.outstandingBondBalance > 0)) {
+    const bal = pickNum(bondFinance, "outstandingBalance");
+    if (bal != null && bal > 0) next.outstandingBondBalance = bal;
+  }
+  if (!(next.monthlyBondPayment != null && next.monthlyBondPayment > 0)) {
+    const pmt = pickNum(bondFinance, "monthlyBondPaymentStored", "paymentThisMonth");
+    if (pmt != null && pmt > 0) next.monthlyBondPayment = pmt;
+  }
+  if (!(next.bondAnnualInterestRatePercent != null && next.bondAnnualInterestRatePercent > 0)) {
+    const rate = pickNum(bondFinance, "annualInterestRatePercent");
+    if (rate != null && rate > 0) next.bondAnnualInterestRatePercent = rate;
+  }
+  if (!(next.bondTermYears != null && next.bondTermYears > 0)) {
+    const ty = pickNum(bondFinance, "bondTermYears");
+    if (ty != null && ty > 0) next.bondTermYears = ty;
+  }
+  if (next.bondStartDate == null || String(next.bondStartDate).trim() === "") {
+    const sd = pickDate(bondFinance, "bondStartDate");
+    if (sd != null) next.bondStartDate = sd;
+  }
+  if (!(next.bondRemainingTermMonths != null && next.bondRemainingTermMonths > 0)) {
+    const rem = pickNum(bondFinance, "remainingTermMonths");
+    if (rem != null && rem > 0) next.bondRemainingTermMonths = rem;
+  }
+
+  return next;
+}
+
+function resolveMapOptions(third?: MapPropertyBondPaymentOptions | Date): MapPropertyBondPaymentOptions {
+  if (third instanceof Date) return { asOf: third };
+  return third ?? {};
 }
 
 function termLabelFromFinance(finance: ReturnType<typeof computePropertyBondFinance>): string {
@@ -45,12 +134,16 @@ function termLabelFromFinance(finance: ReturnType<typeof computePropertyBondFina
   return "—";
 }
 
-function bondStatus(finance: ReturnType<typeof computePropertyBondFinance>, balance: number): {
+function bondStatus(
+  finance: ReturnType<typeof computePropertyBondFinance>,
+  balance: number
+): {
   status: BondPaymentDisplayItem["status"];
   statusLabel: string;
 } {
-  if (!(balance > 0)) {
-    return { status: "none", statusLabel: "No bond" };
+  const hasPaymentSignal = finance.paymentThisMonth > 0 || (finance.monthlyBondPaymentStored ?? 0) > 0;
+  if (!(balance > 0) && !hasPaymentSignal) {
+    return { status: "incomplete", statusLabel: "Incomplete" };
   }
   const hasRate = finance.annualInterestRatePercent != null && finance.annualInterestRatePercent > 0;
   const hasTerm = finance.remainingTermMonths != null && finance.remainingTermMonths > 0;
@@ -65,14 +158,17 @@ function bondStatus(finance: ReturnType<typeof computePropertyBondFinance>, bala
 export function mapPropertyBondPayment(
   property: Record<string, unknown> | null,
   propertyName: string,
-  asOf = new Date()
+  options?: MapPropertyBondPaymentOptions | Date
 ): BondPaymentDisplayItem[] {
-  if (!property) return [];
+  const { asOf = new Date(), statementBondFinance = null } = resolveMapOptions(options);
 
-  const balance = Math.max(0, Number(property.outstandingBondBalance ?? 0));
-  if (!(balance > 0)) return [];
+  let fields = normalizePropertyBondFields(property);
+  fields = mergeBondFieldsFromStatement(fields, statementBondFinance);
 
-  const finance = computePropertyBondFinance(bondPropertyInput(property), asOf);
+  if (!propertyHasBondProfile(fields)) return [];
+
+  const finance = computePropertyBondFinance(fields, asOf);
+  const balance = Math.max(0, Number(fields.outstandingBondBalance ?? finance.outstandingBalance ?? 0));
   const { status, statusLabel } = bondStatus(finance, balance);
 
   const rate = finance.annualInterestRatePercent;
@@ -99,7 +195,7 @@ export function mapPropertyBondPayment(
       interestRateLabel,
       monthlyPayment: finance.paymentThisMonth,
       monthlyPaymentHint,
-      outstandingBalance: finance.outstandingBalance,
+      outstandingBalance: balance > 0 ? balance : finance.outstandingBalance,
       status,
       statusLabel
     }

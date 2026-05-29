@@ -226,14 +226,20 @@ export function PropertyFormSections({
               <Input
                 type="number"
                 value={numInputValue(form.outstandingBondBalance)}
-                onChange={(e) => patch({ outstandingBondBalance: Number(e.target.value) })}
+                onChange={(e) =>
+                  patch({
+                    outstandingBondBalance: e.target.value === "" ? null : Number(e.target.value)
+                  })
+                }
               />
               <span className="pg-prop-input-suffix__tag">ZAR</span>
             </div>
           </PropertyFormField>
         </div>
 
-        <h3 className="pg-prop-subheading">Bond</h3>
+        <h3 className="pg-prop-subheading" id="property-bond">
+          Bond
+        </h3>
         <div className="pg-prop-grid pg-prop-grid--2">
           <PropertyFormField
             label="Bond interest rate (% p.a.)"
