@@ -20,9 +20,6 @@
     "frontend/api/reports/pdf-smoke-test.ts": {
       "includeFiles": "frontend/assets/fonts/pdfmake/**"
     },
-    "frontend/api/invoices/pdf-smoke-test.ts": {
-      "includeFiles": "frontend/assets/fonts/pdfmake/**"
-    },
     "frontend/api/invoices/[id]/generate-pdf.ts": {
       "includeFiles": "frontend/assets/fonts/pdfmake/**"
     }

@@ -24,9 +24,6 @@
     "api/reports/pdf-smoke-test.ts": {
       "includeFiles": "assets/fonts/pdfmake/**"
     },
-    "api/invoices/pdf-smoke-test.ts": {
-      "includeFiles": "assets/fonts/pdfmake/**"
-    },
     "api/invoices/[id]/generate-pdf.ts": {
       "includeFiles": "assets/fonts/pdfmake/**"
     }
