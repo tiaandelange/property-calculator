@@ -252,6 +252,43 @@
   white-space: nowrap;
 }
 
+.pg-pfin-bond-add-row td {
+  padding: 0;
+  border-bottom: none;
+}
+
+.pg-pfin-bond-add-row__btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 48px;
+  padding: 12px;
+  border: none;
+  border-radius: 10px;
+  background: var(--surface-muted);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.pg-pfin-bond-add-row__btn:hover {
+  background: color-mix(in srgb, var(--surface-muted) 70%, var(--border-soft));
+  color: var(--text-secondary);
+}
+
+.pg-pfin-bond-add-row__btn--mobile {
+  margin-top: 4px;
+  border-radius: 12px;
+  font-size: 0.875rem;
+}
+
+.pg-pfin-expense-list__right .pg-pfin-row-actions {
+  display: flex;
+  gap: 4px;
+}
+
 .pg-pfin-expense-name {
   display: flex;
   align-items: center;

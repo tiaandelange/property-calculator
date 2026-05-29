@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   mapPropertyBondPayment,
+  mapAdditionalBondPayments,
   mergeBondFieldsFromStatement,
   normalizePropertyBondFields,
   propertyHasBondProfile
@@ -60,8 +61,8 @@ describe("mapPropertyBondPayment", () => {
     expect(rows[0]?.name).toBe("Oak Street bond");
     expect(rows[0]?.interestRateLabel).toBe("11.25% p.a.");
     expect(rows[0]?.monthlyPayment).toBeGreaterThan(0);
-    expect(rows[0]?.termLabel).toMatch(/20 years/);
-    expect(rows[0]?.termLabel).toMatch(/months left/);
+    expect(rows[0]?.termLabel).toBe("20 years");
+    expect(rows[0]?.termHoverLabel).toMatch(/months left/);
     expect(rows[0]?.outstandingBalance).toBe(1_350_000);
   });
 
@@ -97,5 +98,25 @@ describe("mapPropertyBondPayment", () => {
     });
     expect(rows).toHaveLength(1);
     expect(rows[0]?.outstandingBalance).toBe(750_000);
+  });
+
+  it("maps additional bond rows separately from property profile", () => {
+    const rows = mapAdditionalBondPayments([
+      {
+        id: "bond-1",
+        description: "Access bond",
+        outstandingBalance: 120_000,
+        monthlyPayment: 2_400,
+        bondAnnualInterestRatePercent: 12,
+        bondTermYears: 10,
+        bondStartDate: "2023-04-01",
+        bondRemainingTermMonths: null
+      }
+    ]);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.source).toBe("additional");
+    expect(rows[0]?.name).toBe("Access bond");
+    expect(rows[0]?.monthlyPayment).toBe(2_400);
+    expect(rows[0]?.termLabel).toBe("10 years");
   });
 });

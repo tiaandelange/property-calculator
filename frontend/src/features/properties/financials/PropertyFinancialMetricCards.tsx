@@ -33,7 +33,7 @@ export function PropertyFinancialMetricCards({
       key: "expenses",
       label: "Total Recurring Expenses",
       value: fmtZar(overview.totalRecurringExpenses),
-      helper: "Monthly expenses",
+      helper: "Recurring expenses incl. bond",
       icon: Receipt,
       accent: "warning" as const
     },

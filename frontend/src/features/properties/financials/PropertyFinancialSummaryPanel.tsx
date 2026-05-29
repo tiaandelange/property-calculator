@@ -43,6 +43,16 @@ export function PropertyFinancialSummaryPanel({
             <dd className="pg-pfin-summary__pos">{fmtZar(overview.grossRentalIncome)}</dd>
           </div>
           <div>
+            <dt>Bond payment</dt>
+            <dd className="pg-pfin-summary__neg">{fmtZar(overview.monthlyBondPayment)}</dd>
+          </div>
+          {overview.monthlyAdditionalBondPayment > 0 ? (
+            <div>
+              <dt>Additional bonds</dt>
+              <dd className="pg-pfin-summary__neg">{fmtZar(overview.monthlyAdditionalBondPayment)}</dd>
+            </div>
+          ) : null}
+          <div>
             <dt>Total monthly expenses</dt>
             <dd className="pg-pfin-summary__neg">{fmtZar(overview.totalMonthlyExpenses)}</dd>
           </div>

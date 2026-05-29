@@ -2,8 +2,14 @@ import { computePropertyBondFinance } from "../../../../api/lib/bondHelpers";
 
 export type BondPaymentDisplayItem = {
   id: string;
+  /** Property home-loan profile vs separately tracked additional bond. */
+  source: "property" | "additional";
   name: string;
+  /** Original registered term at bond start (e.g. "20 years"). */
   termLabel: string;
+  /** Remaining months — shown on hover via title. */
+  termHoverLabel: string | null;
+  remainingTermMonths: number | null;
   interestRateLabel: string;
   monthlyPayment: number;
   monthlyPaymentHint: string | null;
@@ -114,24 +120,20 @@ function resolveMapOptions(third?: MapPropertyBondPaymentOptions | Date): MapPro
   return third ?? {};
 }
 
-function termLabelFromFinance(finance: ReturnType<typeof computePropertyBondFinance>): string {
-  if (
-    finance.bondTermYears != null &&
-    finance.remainingTermMonths != null &&
-    finance.remainingFromSchedule
-  ) {
-    return `${finance.bondTermYears} years · ${finance.remainingTermMonths} months left`;
-  }
-  if (finance.remainingTermMonths != null && finance.remainingTermMonths > 0) {
-    return `${finance.remainingTermMonths} months remaining`;
-  }
-  if (finance.bondTermYears != null) {
+function originalTermLabelFromFinance(finance: ReturnType<typeof computePropertyBondFinance>): string {
+  if (finance.bondTermYears != null && finance.bondTermYears > 0) {
     return `${finance.bondTermYears} years`;
   }
   if (finance.totalBondTermMonths != null && finance.totalBondTermMonths > 0) {
-    return `${finance.totalBondTermMonths} months total`;
+    return `${finance.totalBondTermMonths} months`;
   }
   return "—";
+}
+
+function remainingTermHoverFromFinance(finance: ReturnType<typeof computePropertyBondFinance>): string | null {
+  const rem = finance.remainingTermMonths;
+  if (rem == null || rem <= 0) return null;
+  return `${rem} month${rem === 1 ? "" : "s"} left`;
 }
 
 function bondStatus(
@@ -174,24 +176,18 @@ export function mapPropertyBondPayment(
   const rate = finance.annualInterestRatePercent;
   const interestRateLabel = rate != null && rate > 0 ? `${rate.toFixed(2)}% p.a.` : "—";
 
-  let monthlyPaymentHint: string | null = null;
-  if (finance.monthlyBondPaymentStored != null && finance.calculatedMonthlyPayment != null) {
-    const stored = Math.round(Number(finance.monthlyBondPaymentStored) * 100);
-    const calc = Math.round(Number(finance.calculatedMonthlyPayment) * 100);
-    if (stored !== calc) {
-      monthlyPaymentHint = `Calculated ${formatZar(finance.calculatedMonthlyPayment)}`;
-    }
-  } else if (finance.monthlyBondPaymentStored == null && finance.calculatedMonthlyPayment != null) {
-    monthlyPaymentHint = "From amortisation";
-  }
+  let monthlyPaymentHint: string | null = monthlyPaymentHintFromFinance(finance);
 
   const label = propertyName.trim() ? `${propertyName.trim()} bond` : "Home loan bond";
 
   return [
     {
       id: "property-bond",
+      source: "property",
       name: label,
-      termLabel: termLabelFromFinance(finance),
+      termLabel: originalTermLabelFromFinance(finance),
+      termHoverLabel: remainingTermHoverFromFinance(finance),
+      remainingTermMonths: finance.remainingTermMonths,
       interestRateLabel,
       monthlyPayment: finance.paymentThisMonth,
       monthlyPaymentHint,
@@ -200,6 +196,80 @@ export function mapPropertyBondPayment(
       statusLabel
     }
   ];
+}
+
+function monthlyPaymentHintFromFinance(finance: ReturnType<typeof computePropertyBondFinance>): string | null {
+  if (finance.monthlyBondPaymentStored != null && finance.calculatedMonthlyPayment != null) {
+    const stored = Math.round(Number(finance.monthlyBondPaymentStored) * 100);
+    const calc = Math.round(Number(finance.calculatedMonthlyPayment) * 100);
+    if (stored !== calc) {
+      return `Calculated ${formatZar(finance.calculatedMonthlyPayment)}`;
+    }
+  } else if (finance.monthlyBondPaymentStored == null && finance.calculatedMonthlyPayment != null) {
+    return "From amortisation";
+  }
+  return null;
+}
+
+/** Display row for an additional bond stored on property_additional_bonds (not the property profile). */
+export function mapAdditionalBondPayment(
+  bond: {
+    id: string;
+    description: string;
+    outstandingBalance: number | null;
+    monthlyPayment: number | null;
+    bondAnnualInterestRatePercent: number | null;
+    bondTermYears: number | null;
+    bondStartDate: string | null;
+    bondRemainingTermMonths: number | null;
+  },
+  asOf = new Date()
+): BondPaymentDisplayItem {
+  const finance = computePropertyBondFinance(
+    {
+      outstandingBondBalance: bond.outstandingBalance,
+      monthlyBondPayment: bond.monthlyPayment,
+      bondAnnualInterestRatePercent: bond.bondAnnualInterestRatePercent,
+      bondTermYears: bond.bondTermYears,
+      bondStartDate: bond.bondStartDate,
+      bondRemainingTermMonths: bond.bondRemainingTermMonths
+    },
+    asOf
+  );
+  const balance = Math.max(0, Number(bond.outstandingBalance ?? finance.outstandingBalance ?? 0));
+  const { status, statusLabel } = bondStatus(finance, balance);
+  const rate = finance.annualInterestRatePercent;
+  const interestRateLabel = rate != null && rate > 0 ? `${rate.toFixed(2)}% p.a.` : "—";
+
+  return {
+    id: bond.id,
+    source: "additional",
+    name: bond.description.trim() || "Additional bond",
+    termLabel: originalTermLabelFromFinance(finance),
+    termHoverLabel: remainingTermHoverFromFinance(finance),
+    remainingTermMonths: finance.remainingTermMonths,
+    interestRateLabel,
+    monthlyPayment: finance.paymentThisMonth,
+    monthlyPaymentHint: monthlyPaymentHintFromFinance(finance),
+    outstandingBalance: balance > 0 ? balance : finance.outstandingBalance,
+    status,
+    statusLabel
+  };
+}
+
+export function mapAdditionalBondPayments(
+  bonds: Array<{
+    id: string;
+    description: string;
+    outstandingBalance: number | null;
+    monthlyPayment: number | null;
+    bondAnnualInterestRatePercent: number | null;
+    bondTermYears: number | null;
+    bondStartDate: string | null;
+    bondRemainingTermMonths: number | null;
+  }>
+): BondPaymentDisplayItem[] {
+  return bonds.map((bond) => mapAdditionalBondPayment(bond));
 }
 
 function formatZar(value: number): string {

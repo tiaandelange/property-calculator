@@ -14,7 +14,21 @@ import {
 } from "../financials/PropertyFinancialDetailsForm";
 import { RecurringExpensesSection } from "../financials/RecurringExpensesSection";
 import { BondPaymentSection } from "../financials/BondPaymentSection";
-import { mapPropertyBondPayment } from "../financials/propertyBondAdapter";
+import { mapPropertyBondPayment, mapAdditionalBondPayments } from "../financials/propertyBondAdapter";
+import {
+  AdditionalBondModal,
+  additionalBondFormFromRecord,
+  emptyAdditionalBondForm,
+  parseAdditionalBondForm,
+  type AdditionalBondFormState
+} from "../financials/AdditionalBondModal";
+import {
+  createPropertyAdditionalBond,
+  deletePropertyAdditionalBond,
+  listPropertyAdditionalBonds,
+  updatePropertyAdditionalBond,
+  type PropertyAdditionalBond
+} from "../../../services/propertyAdditionalBondsSupabase";
 import { PropertyFinancialSummaryPanel } from "../financials/PropertyFinancialSummaryPanel";
 import { ExpenseCategoriesCard } from "../financials/ExpenseCategoriesCard";
 import { RecurringExpenseModal } from "../financials/RecurringExpenseModal";
@@ -250,6 +264,14 @@ export function WorkspaceFinancialsTab({
   const [invoicePdfBanner, setInvoicePdfBanner] = useState<string | null>(null);
   const [financialDetailsSaving, setFinancialDetailsSaving] = useState(false);
   const [showAddRecurring, setShowAddRecurring] = useState(false);
+  const [additionalBondRecords, setAdditionalBondRecords] = useState<PropertyAdditionalBond[]>([]);
+  const [additionalBondsLoading, setAdditionalBondsLoading] = useState(false);
+  const [additionalBondModalOpen, setAdditionalBondModalOpen] = useState(false);
+  const [additionalBondModalMode, setAdditionalBondModalMode] = useState<"add" | "edit">("add");
+  const [additionalBondEditingId, setAdditionalBondEditingId] = useState<string | null>(null);
+  const [additionalBondForm, setAdditionalBondForm] = useState<AdditionalBondFormState>(emptyAdditionalBondForm);
+  const [additionalBondSaving, setAdditionalBondSaving] = useState(false);
+  const [additionalBondDeleting, setAdditionalBondDeleting] = useState(false);
   const isMobile = useMediaQuery("(max-width: 767px)");
 
   useEffect(() => {
@@ -277,6 +299,21 @@ export function WorkspaceFinancialsTab({
       el.scrollIntoView({ behavior: "smooth", block: "start" });
     }
   }, [finSub]);
+
+  async function reloadAdditionalBonds() {
+    setAdditionalBondsLoading(true);
+    try {
+      setAdditionalBondRecords(await listPropertyAdditionalBonds(propertyId));
+    } catch (err: unknown) {
+      window.alert(err instanceof Error ? err.message : "Could not load additional bonds.");
+    } finally {
+      setAdditionalBondsLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    void reloadAdditionalBonds();
+  }, [propertyId]);
 
   const depositProjectedNextStep = useMemo(() => {
     if (!depositModal) return null;
@@ -530,25 +567,86 @@ export function WorkspaceFinancialsTab({
     [deposits]
   );
 
-  const financialOverview = useMemo(
-    () =>
-      buildPropertyFinancialOverview({
-        propertyId,
-        propertyDetail: propertyDetail as Record<string, unknown> | null,
-        currentLeases,
-        recurringChargesLandlord,
-        statement: statement as Record<string, unknown> | null,
-        deposits
-      }),
-    [propertyId, propertyDetail, currentLeases, recurringChargesLandlord, statement, deposits]
-  );
-
   const recurringDisplayItems = useMemo(
     () => mapRecurringCharges(recurringChargesLandlord),
     [recurringChargesLandlord]
   );
 
   const openPropertyBondEdit = () => navigate(`/owned-properties/${propertyId}/edit#property-bond`);
+
+  function openAddAdditionalBondModal() {
+    setAdditionalBondModalMode("add");
+    setAdditionalBondEditingId(null);
+    setAdditionalBondForm(emptyAdditionalBondForm());
+    setAdditionalBondModalOpen(true);
+  }
+
+  function openEditAdditionalBondModal(bondId: string) {
+    const bond = additionalBondRecords.find((b) => b.id === bondId);
+    if (!bond) return;
+    setAdditionalBondModalMode("edit");
+    setAdditionalBondEditingId(bondId);
+    setAdditionalBondForm(additionalBondFormFromRecord(bond));
+    setAdditionalBondModalOpen(true);
+  }
+
+  function closeAdditionalBondModal() {
+    if (additionalBondSaving || additionalBondDeleting) return;
+    setAdditionalBondModalOpen(false);
+    setAdditionalBondEditingId(null);
+    setAdditionalBondForm(emptyAdditionalBondForm());
+  }
+
+  async function submitAdditionalBond(ev: FormEvent) {
+    ev.preventDefault();
+    const parsed = parseAdditionalBondForm(additionalBondForm);
+    if (!parsed.description) {
+      window.alert("Enter a description for this bond.");
+      return;
+    }
+    const tyRaw = String(additionalBondForm.bondTermYears ?? "").trim();
+    if (tyRaw !== "" && parsed.bondTermYears == null) {
+      window.alert("Bond duration must be 5, 10, 15, 20, 25, or 30 years.");
+      return;
+    }
+    setAdditionalBondSaving(true);
+    try {
+      const payload = {
+        description: parsed.description,
+        outstandingBalance: parsed.outstandingBalance,
+        monthlyPayment: parsed.monthlyPayment,
+        bondAnnualInterestRatePercent: parsed.bondAnnualInterestRatePercent,
+        bondTermYears: parsed.bondTermYears,
+        bondStartDate: parsed.bondStartDate,
+        bondRemainingTermMonths: parsed.bondRemainingTermMonths
+      };
+      if (additionalBondModalMode === "add") {
+        await createPropertyAdditionalBond(propertyId, payload);
+      } else if (additionalBondEditingId) {
+        await updatePropertyAdditionalBond(additionalBondEditingId, payload);
+      }
+      await reloadAdditionalBonds();
+      closeAdditionalBondModal();
+    } catch (err: unknown) {
+      window.alert(err instanceof Error ? err.message : "Could not save additional bond.");
+    } finally {
+      setAdditionalBondSaving(false);
+    }
+  }
+
+  async function removeAdditionalBond(bondId: string) {
+    if (!window.confirm("Remove this additional bond from the property?")) return;
+    setAdditionalBondDeleting(true);
+    try {
+      await deletePropertyAdditionalBond(bondId);
+      await reloadAdditionalBonds();
+      closeAdditionalBondModal();
+    } catch (err: unknown) {
+      window.alert(err instanceof Error ? err.message : "Could not remove additional bond.");
+    } finally {
+      setAdditionalBondDeleting(false);
+    }
+  }
 
   async function saveFinancialDetails(state: FinancialDetailsFormState) {
     setFinancialDetailsSaving(true);
@@ -952,13 +1050,46 @@ export function WorkspaceFinancialsTab({
     };
   }, [rows]);
 
-  const propertyDisplayName = String((propertyDetail as Record<string, unknown> | null)?.name ?? financialOverview.propertyName);
-  const bondDisplayItems = useMemo(
+  const propertyDisplayName = String((propertyDetail as Record<string, unknown> | null)?.name ?? "Property");
+  const additionalBondDisplayItems = useMemo(
+    () => mapAdditionalBondPayments(additionalBondRecords),
+    [additionalBondRecords]
+  );
+  const propertyBondDisplayItems = useMemo(
     () =>
       mapPropertyBondPayment(propertyDetail as Record<string, unknown> | null, propertyDisplayName, {
         statementBondFinance: (statement?.bondFinance as Record<string, unknown> | undefined) ?? null
       }),
     [propertyDetail, propertyDisplayName, statement?.bondFinance]
+  );
+  const bondDisplayItems = useMemo(
+    () => [...propertyBondDisplayItems, ...additionalBondDisplayItems],
+    [propertyBondDisplayItems, additionalBondDisplayItems]
+  );
+  const additionalBondMonthlyTotal = useMemo(
+    () => additionalBondDisplayItems.reduce((a, i) => a + i.monthlyPayment, 0),
+    [additionalBondDisplayItems]
+  );
+  const financialOverview = useMemo(
+    () =>
+      buildPropertyFinancialOverview({
+        propertyId,
+        propertyDetail: propertyDetail as Record<string, unknown> | null,
+        currentLeases,
+        recurringChargesLandlord,
+        statement: statement as Record<string, unknown> | null,
+        deposits,
+        additionalBondMonthlyTotal
+      }),
+    [
+      propertyId,
+      propertyDetail,
+      currentLeases,
+      recurringChargesLandlord,
+      statement,
+      deposits,
+      additionalBondMonthlyTotal
+    ]
   );
   const unitLabel = financialOverview.unitLabel;
   const combinedMonthlyRent = (currentLeases as any[]).reduce((a, l) => a + Number(l.monthlyRent ?? 0), 0);
@@ -1028,10 +1159,13 @@ export function WorkspaceFinancialsTab({
 
           <BondPaymentSection
             items={bondDisplayItems}
-            loading={loading}
+            loading={loading || additionalBondsLoading}
             isMobile={isMobile}
-            onEdit={openPropertyBondEdit}
-            onSetup={openPropertyBondEdit}
+            onEditPropertyBond={openPropertyBondEdit}
+            onSetupPropertyBond={openPropertyBondEdit}
+            onAddAdditionalBond={openAddAdditionalBondModal}
+            onEditAdditionalBond={openEditAdditionalBondModal}
+            onDeleteAdditionalBond={(id) => void removeAdditionalBond(id)}
           />
 
           {isMobile ? <ExpenseCategoriesCard overview={financialOverview} /> : null}
@@ -2018,6 +2152,22 @@ export function WorkspaceFinancialsTab({
         onClose={closeRecurringModal}
         saving={recurringModalSaving}
         categoryOptions={RECURRING_SCHEDULE_CATEGORY_OPTIONS}
+      />
+
+      <AdditionalBondModal
+        open={additionalBondModalOpen}
+        mode={additionalBondModalMode}
+        form={additionalBondForm}
+        onPatch={(patch) => setAdditionalBondForm({ ...additionalBondForm, ...patch })}
+        onSubmit={(e) => void submitAdditionalBond(e)}
+        onDelete={
+          additionalBondModalMode === "edit" && additionalBondEditingId
+            ? () => void removeAdditionalBond(additionalBondEditingId)
+            : undefined
+        }
+        onClose={closeAdditionalBondModal}
+        saving={additionalBondSaving}
+        deleting={additionalBondDeleting}
       />
 
       {scheduleConfirm ? (

@@ -26,7 +26,9 @@ export function ExpenseCategoriesCard({ overview }: { overview: PropertyFinancia
     <section className="pg-pfin-section" aria-label="Expense categories">
       <header className="pg-pfin-section__head">
         <h2 className="pg-pfin-section__title">Expense Categories</h2>
-        <p className="pg-pfin-section__desc">Recurring expenses grouped by category (monthly equivalent).</p>
+        <p className="pg-pfin-section__desc">
+          Recurring expenses and bond payment grouped by category (monthly equivalent).
+        </p>
       </header>
 
       {doughnutData ? (

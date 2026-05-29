@@ -1,11 +1,10 @@
-import { Landmark, Pencil } from "lucide-react";
+import { Landmark, Pencil, Plus, Trash2 } from "lucide-react";
 import { fmtZar } from "./propertyFinancialsAdapter";
 import type { BondPaymentDisplayItem } from "./propertyBondAdapter";
 
-function termBadgeClass(termLabel: string): string {
-  if (termLabel.includes("months left") && termLabel.match(/(\d+) months left/)?.[1]) {
-    const left = Number(termLabel.match(/(\d+) months left/)?.[1]);
-    if (Number.isFinite(left) && left <= 24) return "pg-pfin-badge pg-pfin-badge--warning";
+function termBadgeClass(remainingTermMonths: number | null): string {
+  if (remainingTermMonths != null && remainingTermMonths > 0 && remainingTermMonths <= 24) {
+    return "pg-pfin-badge pg-pfin-badge--warning";
   }
   return "pg-pfin-badge pg-pfin-badge--info";
 }
@@ -16,51 +15,97 @@ function statusBadgeClass(status: BondPaymentDisplayItem["status"]): string {
   return "pg-pfin-badge pg-pfin-badge--success";
 }
 
+function BondRowActions({
+  item,
+  onEditPropertyBond,
+  onEditAdditionalBond,
+  onDeleteAdditionalBond
+}: {
+  item: BondPaymentDisplayItem;
+  onEditPropertyBond: () => void;
+  onEditAdditionalBond: (id: string) => void;
+  onDeleteAdditionalBond?: (id: string) => void;
+}) {
+  if (item.source === "property") {
+    return (
+      <button type="button" className="pg-pfin-icon-btn" aria-label="Edit property bond profile" onClick={onEditPropertyBond}>
+        <Pencil size={16} />
+      </button>
+    );
+  }
+  return (
+    <>
+      <button
+        type="button"
+        className="pg-pfin-icon-btn"
+        aria-label="Edit additional bond"
+        onClick={() => onEditAdditionalBond(item.id)}
+      >
+        <Pencil size={16} />
+      </button>
+      {onDeleteAdditionalBond ? (
+        <button
+          type="button"
+          className="pg-pfin-icon-btn"
+          aria-label="Remove additional bond"
+          onClick={() => onDeleteAdditionalBond(item.id)}
+        >
+          <Trash2 size={16} />
+        </button>
+      ) : null}
+    </>
+  );
+}
+
 export function BondPaymentSection({
   items,
   loading,
   isMobile,
-  onEdit,
-  onSetup
+  onEditPropertyBond,
+  onSetupPropertyBond,
+  onAddAdditionalBond,
+  onEditAdditionalBond,
+  onDeleteAdditionalBond
 }: {
   items: BondPaymentDisplayItem[];
   loading?: boolean;
   isMobile?: boolean;
-  onEdit: () => void;
-  onSetup: () => void;
+  onEditPropertyBond: () => void;
+  onSetupPropertyBond: () => void;
+  onAddAdditionalBond: () => void;
+  onEditAdditionalBond: (id: string) => void;
+  onDeleteAdditionalBond?: (id: string) => void;
 }) {
+  const hasPropertyBond = items.some((i) => i.source === "property");
+  const showTable = !loading;
+
   return (
     <section className="pg-pfin-section" id="pfin-bond-payment">
-      <header className="pg-pfin-section__head pg-pfin-section__head--row">
+      <header className="pg-pfin-section__head">
         <div>
           <h2 className="pg-pfin-section__title">Bond Payment</h2>
           <p className="pg-pfin-section__desc">
-            Monthly home-loan instalment from your property bond profile — same fields as Add / Edit property.
+            Primary home-loan from your property profile, plus any additional bonds or credit facilities affecting this
+            property.
           </p>
         </div>
-        {items.length > 0 ? (
-          <button type="button" className="pg-btn pg-btn-primary pg-pfin-add-btn" onClick={onEdit}>
-            <Landmark size={18} aria-hidden />
-            Edit bond
-          </button>
-        ) : null}
       </header>
 
       {loading ? <div className="pg-muted">Loading bond profile…</div> : null}
 
-      {!loading && items.length === 0 ? (
+      {!loading && !hasPropertyBond && items.length === 0 ? (
         <div className="pg-pfin-empty">
           <p>No bond profile yet</p>
           <p className="pg-muted">
             Add outstanding balance, interest rate, and term on the property form to calculate monthly payments.
           </p>
-          <button type="button" className="pg-btn pg-btn-secondary" onClick={onSetup}>
-            Set up bond
+          <button type="button" className="pg-btn pg-btn-secondary" onClick={onSetupPropertyBond}>
+            Set up property bond
           </button>
         </div>
       ) : null}
 
-      {!loading && items.length > 0 && !isMobile ? (
+      {showTable && !isMobile ? (
         <div className="pg-pfin-table-wrap">
           <table className="pg-pfin-table">
             <thead>
@@ -86,7 +131,12 @@ export function BondPaymentSection({
                     </div>
                   </td>
                   <td>
-                    <span className={termBadgeClass(item.termLabel)}>{item.termLabel}</span>
+                    <span
+                      className={termBadgeClass(item.remainingTermMonths)}
+                      title={item.termHoverLabel ?? undefined}
+                    >
+                      {item.termLabel}
+                    </span>
                   </td>
                   <td>{item.interestRateLabel}</td>
                   <td className="pg-pfin-table__amount">
@@ -103,19 +153,34 @@ export function BondPaymentSection({
                   </td>
                   <td>
                     <div className="pg-pfin-row-actions">
-                      <button type="button" className="pg-pfin-icon-btn" aria-label="Edit bond profile" onClick={onEdit}>
-                        <Pencil size={16} />
-                      </button>
+                      <BondRowActions
+                        item={item}
+                        onEditPropertyBond={onEditPropertyBond}
+                        onEditAdditionalBond={onEditAdditionalBond}
+                        onDeleteAdditionalBond={onDeleteAdditionalBond}
+                      />
                     </div>
                   </td>
                 </tr>
               ))}
+              <tr className="pg-pfin-bond-add-row">
+                <td colSpan={7}>
+                  <button
+                    type="button"
+                    className="pg-pfin-bond-add-row__btn"
+                    aria-label="Add additional bond"
+                    onClick={onAddAdditionalBond}
+                  >
+                    <Plus size={22} strokeWidth={1.75} aria-hidden />
+                  </button>
+                </td>
+              </tr>
             </tbody>
           </table>
         </div>
       ) : null}
 
-      {!loading && items.length > 0 && isMobile ? (
+      {showTable && isMobile ? (
         <ul className="pg-pfin-expense-list">
           {items.map((item) => (
             <li key={item.id} className="pg-pfin-expense-list__item">
@@ -125,7 +190,12 @@ export function BondPaymentSection({
                 </span>
                 <div>
                   <div className="pg-pfin-expense-list__title">{item.name}</div>
-                  <span className={termBadgeClass(item.termLabel)}>{item.termLabel}</span>
+                  <span
+                    className={termBadgeClass(item.remainingTermMonths)}
+                    title={item.termHoverLabel ?? undefined}
+                  >
+                    {item.termLabel}
+                  </span>
                   <div className="pg-muted" style={{ fontSize: 12, marginTop: 4 }}>
                     {item.interestRateLabel} · Balance {fmtZar(item.outstandingBalance)}
                   </div>
@@ -133,16 +203,22 @@ export function BondPaymentSection({
               </div>
               <div className="pg-pfin-expense-list__right">
                 <strong>{fmtZar(item.monthlyPayment)}</strong>
-                <button type="button" className="pg-pfin-icon-btn" aria-label="Edit bond profile" onClick={onEdit}>
-                  <Pencil size={16} />
-                </button>
+                <div className="pg-pfin-row-actions">
+                  <BondRowActions
+                    item={item}
+                    onEditPropertyBond={onEditPropertyBond}
+                    onEditAdditionalBond={onEditAdditionalBond}
+                    onDeleteAdditionalBond={onDeleteAdditionalBond}
+                  />
+                </div>
               </div>
             </li>
           ))}
           <li>
-            <a href="#pfin-bond-payment" className="pg-pfin-link-all">
-              View bond details
-            </a>
+            <button type="button" className="pg-pfin-bond-add-row__btn pg-pfin-bond-add-row__btn--mobile" onClick={onAddAdditionalBond}>
+              <Plus size={22} strokeWidth={1.75} aria-hidden />
+              <span>Add additional bond</span>
+            </button>
           </li>
         </ul>
       ) : null}

@@ -1,4 +1,5 @@
 import { fmtZar } from "../../financials/financialDirectoryUtils";
+import { mapPropertyBondPayment } from "./propertyBondAdapter";
 import {
   derivePropertyOccupancy,
   effectiveActiveUnitCount,
@@ -24,6 +25,8 @@ export type PropertyFinancialOverview = {
   unitLabel: string | null;
   addressLine: string | null;
   monthlyIncome: number;
+  monthlyBondPayment: number;
+  monthlyAdditionalBondPayment: number;
   totalRecurringExpenses: number;
   netCashFlow: number;
   occupancyStatus: string;
@@ -119,7 +122,8 @@ export function buildPropertyFinancialOverview({
   currentLeases,
   recurringChargesLandlord,
   statement,
-  deposits
+  deposits,
+  additionalBondMonthlyTotal = 0
 }: {
   propertyId: string;
   propertyDetail: Record<string, unknown> | null;
@@ -127,6 +131,7 @@ export function buildPropertyFinancialOverview({
   recurringChargesLandlord: unknown[];
   statement: Record<string, unknown> | null;
   deposits: unknown[];
+  additionalBondMonthlyTotal?: number;
 }): PropertyFinancialOverview {
   const pf = propertyDetail ?? {};
   const leases = currentLeases as Record<string, unknown>[];
@@ -136,7 +141,16 @@ export function buildPropertyFinancialOverview({
   const monthlyIncome = rentRoll > 0 ? rentRoll : expectedIncome;
 
   const recurringRows = recurringChargesLandlord as Record<string, unknown>[];
-  const totalRecurringExpenses = recurringRows.reduce((a, rc) => a + monthlyAmountFromRecurring(rc), 0);
+  const recurringOnly = recurringRows.reduce((a, rc) => a + monthlyAmountFromRecurring(rc), 0);
+
+  const bondRows = mapPropertyBondPayment(pf as Record<string, unknown>, String(pf.name ?? "Property"), {
+    statementBondFinance: (statement?.bondFinance as Record<string, unknown> | undefined) ?? null
+  });
+  const monthlyBondPayment = bondRows[0]?.monthlyPayment ?? 0;
+  const monthlyAdditionalBondPayment = Math.max(0, n(additionalBondMonthlyTotal));
+  const monthlyBondPaymentTotal = monthlyBondPayment + monthlyAdditionalBondPayment;
+
+  const totalRecurringExpenses = recurringOnly + monthlyBondPaymentTotal;
   const expectedExpenses = n(pf.expectedMonthlyExpenses);
   const totalMonthlyExpenses = totalRecurringExpenses > 0 ? totalRecurringExpenses : expectedExpenses;
 
@@ -182,6 +196,12 @@ export function buildPropertyFinancialOverview({
     const cat = CATEGORY_GROUP_LABELS[String(rc.category ?? "OTHER")] ?? "Other";
     categoryTotals.set(cat, (categoryTotals.get(cat) ?? 0) + monthlyAmountFromRecurring(rc));
   }
+  if (monthlyBondPayment > 0) {
+    categoryTotals.set("Bond Payment", (categoryTotals.get("Bond Payment") ?? 0) + monthlyBondPayment);
+  }
+  if (monthlyAdditionalBondPayment > 0) {
+    categoryTotals.set("Additional bonds", (categoryTotals.get("Additional bonds") ?? 0) + monthlyAdditionalBondPayment);
+  }
   const expenseCategories = [...categoryTotals.entries()]
     .map(([label, amount]) => ({ key: label, label, amount, pct: 0 }))
     .sort((a, b) => b.amount - a.amount);
@@ -202,6 +222,8 @@ export function buildPropertyFinancialOverview({
     unitLabel: pf.erfNumber ? String(pf.erfNumber) : null,
     addressLine: addressLine || null,
     monthlyIncome,
+    monthlyBondPayment,
+    monthlyAdditionalBondPayment,
     totalRecurringExpenses,
     netCashFlow,
     occupancyStatus,
