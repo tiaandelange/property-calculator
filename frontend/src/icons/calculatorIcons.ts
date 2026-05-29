@@ -1,59 +1,45 @@
-import {
-  ArrowLeftRight,
-  Banknote,
-  BarChart3,
-  Building2,
-  Calculator,
-  CircleDollarSign,
-  Coins,
-  Home,
-  Hotel,
-  KeyRound,
-  LineChart,
-  Percent,
-  PieChart,
-  RefreshCw,
-  Ruler,
-  Scale,
-  Target,
-  TrendingUp,
-  Wallet,
-  Wrench,
-  type LucideIcon
-} from "lucide-react";
-import type { IconContainerAccent } from "../components/ui/IconContainer";
+import type { IconContainerAccent } from "../components/icons/IconContainer";
+import { getCalculatorLucideIcon } from "../components/icons/iconRegistry";
+import type { LucideIcon } from "lucide-react";
 
 export type CalculatorIconConfig = {
   icon: LucideIcon;
   accent: IconContainerAccent;
 };
 
-const DEFAULT_CONFIG: CalculatorIconConfig = { icon: Calculator, accent: "primary" };
+const DEFAULT_CONFIG: CalculatorIconConfig = { icon: getCalculatorLucideIcon(""), accent: "primary" };
+
+const CALCULATOR_ACCENTS: Record<string, IconContainerAccent> = {
+  "buy-vs-rent": "primary",
+  "transfer-bond-costs": "info",
+  "monthly-payment": "primary",
+  ltv: "info",
+  "square-footage": "neutral",
+  "cash-flow": "success",
+  noi: "info",
+  "operating-expense-ratio": "warning",
+  "short-term-rental": "warning",
+  "cash-on-cash-return": "success",
+  "cap-rate": "success",
+  irr: "primary",
+  dscr: "warning",
+  dcf: "info",
+  grm: "info",
+  "rent-to-cost-ratio": "warning",
+  brrrr: "primary",
+  "70-rule": "warning",
+  "flip-profit": "success",
+  "wholesale-profit": "info",
+  "rehab-cost": "info"
+};
 
 /** Lucide icon + accent per calculator slug (replaces WebP assets). */
-export const calculatorIconBySlug: Record<string, CalculatorIconConfig> = {
-  "buy-vs-rent": { icon: KeyRound, accent: "primary" },
-  "transfer-bond-costs": { icon: ArrowLeftRight, accent: "info" },
-  "monthly-payment": { icon: Calculator, accent: "primary" },
-  ltv: { icon: Home, accent: "info" },
-  "square-footage": { icon: Ruler, accent: "neutral" },
-  "cash-flow": { icon: Wallet, accent: "success" },
-  noi: { icon: BarChart3, accent: "info" },
-  "operating-expense-ratio": { icon: PieChart, accent: "warning" },
-  "short-term-rental": { icon: Hotel, accent: "warning" },
-  "cash-on-cash-return": { icon: CircleDollarSign, accent: "success" },
-  "cap-rate": { icon: Percent, accent: "success" },
-  irr: { icon: TrendingUp, accent: "primary" },
-  dscr: { icon: Scale, accent: "warning" },
-  dcf: { icon: LineChart, accent: "info" },
-  grm: { icon: Building2, accent: "info" },
-  "rent-to-cost-ratio": { icon: Percent, accent: "warning" },
-  brrrr: { icon: RefreshCw, accent: "primary" },
-  "70-rule": { icon: Target, accent: "warning" },
-  "flip-profit": { icon: Coins, accent: "success" },
-  "wholesale-profit": { icon: Banknote, accent: "info" },
-  "rehab-cost": { icon: Wrench, accent: "info" }
-};
+export const calculatorIconBySlug: Record<string, CalculatorIconConfig> = Object.fromEntries(
+  Object.entries(CALCULATOR_ACCENTS).map(([slug, accent]) => [
+    slug,
+    { icon: getCalculatorLucideIcon(slug), accent }
+  ])
+) as Record<string, CalculatorIconConfig>;
 
 /** Homepage featured calculator keys → slug (for legacy icon key lookups). */
 export const calculatorSlugToIconKey: Record<string, string> = {
@@ -76,7 +62,7 @@ export const calculatorSlugToIconKey: Record<string, string> = {
 };
 
 export function getCalculatorIconConfig(slug: string): CalculatorIconConfig {
-  return calculatorIconBySlug[slug] ?? DEFAULT_CONFIG;
+  return calculatorIconBySlug[slug] ?? { icon: getCalculatorLucideIcon(slug), accent: "primary" };
 }
 
 /** @deprecated WebP paths removed — use getCalculatorIconConfig(slug) with IconContainer. */

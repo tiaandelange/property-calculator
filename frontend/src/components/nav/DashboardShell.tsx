@@ -1,5 +1,5 @@
-import { Menu } from "lucide-react";
 import { useState } from "react";
+import { IconButton } from "../../components/icons";
 import { DashboardSidebar } from "./DashboardSidebar";
 import { MobileBottomNav } from "./MobileBottomNav";
 import { MobileWorkspaceMenu } from "./MobileWorkspaceMenu";
@@ -13,15 +13,16 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       <DashboardSidebar />
       <div className="pg-dashboard-shell-main">
         <div className="pg-dashboard-shell-mobile-bar">
-          <button
-            type="button"
-            className="pg-dashboard-shell-icon-btn"
+          <IconButton
+            icon="menu"
             aria-label="Open menu"
+            variant="ghost"
+            size="lg"
+            tooltip={false}
+            className="pg-dashboard-shell-icon-btn"
             aria-expanded={mobileMenuOpen}
             onClick={() => setMobileMenuOpen(true)}
-          >
-            <Menu size={22} aria-hidden />
-          </button>
+          />
           <WorkspaceShellHeader mobile />
         </div>
         <div className="pg-dashboard-shell-desktop-header">

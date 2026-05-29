@@ -1,5 +1,4 @@
-import { Eye, Mail, Pencil } from "lucide-react";
-import { Link } from "react-router-dom";
+import { IconButton } from "../../components/icons";
 import type { TenantListItem } from "./tenantDirectoryTypes";
 
 export function TenantRowActions({ tenant }: { tenant: TenantListItem }) {
@@ -10,29 +9,18 @@ export function TenantRowActions({ tenant }: { tenant: TenantListItem }) {
 
   return (
     <div className="pg-tenants-actions">
-      <Link
-        to={`/tenants/${tenant.id}`}
-        className="pg-tenants-action-btn"
-        aria-label={`View ${tenant.fullName}`}
-      >
-        <Eye size={16} aria-hidden />
-      </Link>
+      <IconButton icon="view" aria-label={`View ${tenant.fullName}`} href={`/tenants/${tenant.id}`} variant="outline" />
       {mailHref ? (
-        <a href={mailHref} className="pg-tenants-action-btn" aria-label={`Email ${tenant.fullName}`}>
-          <Mail size={16} aria-hidden />
-        </a>
+        <IconButton icon="email" aria-label={`Email ${tenant.fullName}`} href={mailHref} variant="outline" />
       ) : (
-        <button type="button" className="pg-tenants-action-btn" disabled aria-label="No email on file">
-          <Mail size={16} aria-hidden />
-        </button>
+        <IconButton icon="email" aria-label="No email on file" variant="outline" disabled />
       )}
-      <Link
-        to={`/tenants/${tenant.id}/edit`}
-        className="pg-tenants-action-btn"
+      <IconButton
+        icon="edit"
         aria-label={`Edit ${tenant.fullName}`}
-      >
-        <Pencil size={16} aria-hidden />
-      </Link>
+        href={`/tenants/${tenant.id}/edit`}
+        variant="outline"
+      />
     </div>
   );
 }

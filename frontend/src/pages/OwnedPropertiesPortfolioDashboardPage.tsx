@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { Link, useLocation } from "react-router-dom";
-import { Activity, Briefcase, DollarSign, Home, Percent, Receipt, TrendingUp, Users } from "lucide-react";
 import { Container } from "../components/ui/Container";
 import { Section } from "../components/ui/Section";
 import { Button } from "../components/ui/Button";
@@ -218,7 +217,7 @@ export function OwnedPropertiesPortfolioDashboardPage() {
           value={loading && !data ? "…" : fmtZar(portfolioEquity)}
           changeText={equityChange.text}
           changeTone={equityChange.tone}
-          icon={Briefcase}
+          icon="portfolio"
           iconAccent="primary"
           to="/owned-properties/metrics/equity"
         />
@@ -227,7 +226,7 @@ export function OwnedPropertiesPortfolioDashboardPage() {
           value={loading && !data ? "…" : fmtZar(monthlyIncomeFromLeases)}
           changeText={incomeChange.text}
           changeTone={incomeChange.tone}
-          icon={DollarSign}
+          icon="rent"
           iconAccent="success"
           to="/owned-properties/metrics/cash-flow"
         />
@@ -236,7 +235,7 @@ export function OwnedPropertiesPortfolioDashboardPage() {
           value={loading && !data ? "…" : totalPropertyCount.toLocaleString()}
           changeText="— 0% vs last month"
           changeTone="neutral"
-          icon={Home}
+          icon="properties"
           iconAccent="info"
           to="/owned-properties/my-properties"
         />
@@ -251,7 +250,7 @@ export function OwnedPropertiesPortfolioDashboardPage() {
           }
           changeText={cashFlowChange.text}
           changeTone={cashFlowChange.tone}
-          icon={Percent}
+          icon="percent"
           iconAccent="warning"
           to="/owned-properties/metrics/returns"
         />
@@ -271,7 +270,7 @@ export function OwnedPropertiesPortfolioDashboardPage() {
               tenantRequired > 0 ? `${occupiedCount} of ${tenantRequired} occupied` : "No rental units in filter"
             }
             changeTone="neutral"
-            icon={Activity}
+            icon="activity"
             iconAccent="success"
             to="/owned-properties/metrics/leases"
           />
@@ -280,7 +279,7 @@ export function OwnedPropertiesPortfolioDashboardPage() {
             value={loading && !data ? "…" : fmtZar(monthlyLeaseBasisCashFlow)}
             changeText={cashFlowChange.text}
             changeTone={cashFlowTone}
-            icon={TrendingUp}
+            icon="income"
             iconAccent={monthlyLeaseBasisCashFlow >= 0 ? "success" : "danger"}
             to="/owned-properties/metrics/cash-flow"
           />
@@ -289,7 +288,7 @@ export function OwnedPropertiesPortfolioDashboardPage() {
             value={loading && !data ? "…" : fmtZar(monthlyExpensesAllIn)}
             changeText="Operating + bond payments"
             changeTone="neutral"
-            icon={Receipt}
+            icon="expense"
             iconAccent="info"
             to="/owned-properties/metrics/expenses"
           />
@@ -304,7 +303,7 @@ export function OwnedPropertiesPortfolioDashboardPage() {
                   : "All clear"
             }
             changeTone={rentOverdue > 0 ? "down" : rentDueSoon > 0 ? "neutral" : "up"}
-            icon={DollarSign}
+            icon="rent"
             iconAccent={rentOverdue > 0 ? "danger" : "warning"}
             to="/financials"
           />
@@ -327,7 +326,7 @@ export function OwnedPropertiesPortfolioDashboardPage() {
         value={loading && !data ? "…" : fmtZar(portfolioEquity)}
         changeText={equityChange.text}
         changeTone={equityChange.tone}
-        icon={Briefcase}
+        icon="portfolio"
         iconAccent="primary"
         highlighted
       />
@@ -335,21 +334,21 @@ export function OwnedPropertiesPortfolioDashboardPage() {
         <PortfolioMetricCard
           label="Properties"
           value={loading && !data ? "…" : totalPropertyCount.toLocaleString()}
-          icon={Home}
+          icon="properties"
           iconAccent="info"
           compact
         />
         <PortfolioMetricCard
           label="Tenants"
           value={propertiesLoading ? "…" : tenantCount.toLocaleString()}
-          icon={Users}
+          icon="tenants"
           iconAccent="primary"
           compact
         />
         <PortfolioMetricCard
           label="Monthly Income"
           value={loading && !data ? "…" : fmtZar(monthlyIncomeFromLeases)}
-          icon={DollarSign}
+          icon="rent"
           iconAccent="success"
           compact
         />

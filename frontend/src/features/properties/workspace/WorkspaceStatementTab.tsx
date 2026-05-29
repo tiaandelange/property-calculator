@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useMemo, useState, type MouseEvent } from "react";
 import { useNavigate } from "react-router-dom";
-import { BookOpen, Check, ChevronDown, ExternalLink, Pencil, Plus, Trash2, X } from "lucide-react";
+import { ChevronDown } from "lucide-react";
+import { AppIcon, IconButton } from "../../../components/icons";
 import { invoiceDetailPath } from "../../invoices/invoiceRoutes";
 import {
   canEditStatementRow,
@@ -612,10 +613,6 @@ export function WorkspaceStatementTab({
     }
   }
 
-  function invoiceActionEnabled(r: Record<string, unknown>): boolean {
-    return (r.source === "INVOICE" && !!rowSourceId(r)) || isExpectedRentRow(r);
-  }
-
   function deleteActionEnabled(r: Record<string, unknown>): boolean {
     return !!rowSourceId(r) && (r.source === "EXPENSE" || r.source === "INCOME" || r.source === "INVOICE");
   }
@@ -675,7 +672,7 @@ export function WorkspaceStatementTab({
                 style={{ minWidth: 152, justifyContent: "center", whiteSpace: "nowrap" }}
                 onClick={() => setShowAddOnceOff(true)}
               >
-                <Plus size={16} style={{ marginRight: 6 }} aria-hidden />
+                <AppIcon name="add" size="sm" style={{ marginRight: 6 }} />
                 Add Expense
               </button>
               <button
@@ -685,7 +682,7 @@ export function WorkspaceStatementTab({
                 disabled
                 title="Coming next: Statement PDF export"
               >
-                <ExternalLink size={16} style={{ marginRight: 6 }} aria-hidden />
+                <AppIcon name="pdf" size="sm" style={{ marginRight: 6 }} />
                 Export PDF
               </button>
             </div>
@@ -701,7 +698,9 @@ export function WorkspaceStatementTab({
                   <th style={{ textAlign: "right" }}>Credit</th>
                   <th>Status</th>
                   <th>Source</th>
-                  <th style={{ textAlign: "right" }}>Actions</th>
+                  <th className="pg-statement-table__actions">
+                    <span className="pg-fins-sr-only">Actions</span>
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -861,88 +860,69 @@ export function WorkspaceStatementTab({
                       )}
                     </td>
                     <td style={{ verticalAlign: "middle" }}>{String(r.source ?? "")}</td>
-                    <td style={{ verticalAlign: "middle" }}>
-                      <div className="pg-pfin-row-actions" style={{ justifyContent: "flex-end" }} onClick={stopRowEvent}>
+                    <td className="pg-statement-table__actions" style={{ verticalAlign: "middle" }}>
+                      <div className="pg-statement-row-actions" onClick={stopRowEvent}>
                       {isEditing ? (
                             <>
-                              <button
-                                type="button"
-                                className="pg-pfin-icon-btn"
+                              <IconButton
+                                icon="save"
+                                aria-label="Save"
+                                variant="primary"
+                                disabled={rowSaving}
                                 onClick={(e) => {
                                   stopRowEvent(e);
                                   void saveRowEdit();
                                 }}
-                                aria-label="Save"
-                                title="Save"
+                              />
+                              <IconButton
+                                icon="cancel"
+                                aria-label="Cancel"
+                                variant="danger"
                                 disabled={rowSaving}
-                              >
-                                <Check size={16} aria-hidden />
-                              </button>
-                              <button
-                                type="button"
-                                className="pg-pfin-icon-btn pg-pfin-icon-btn--danger"
                                 onClick={(e) => {
                                   stopRowEvent(e);
                                   cancelRowEdit();
                                 }}
-                                aria-label="Cancel"
-                                title="Cancel"
-                                disabled={rowSaving}
-                              >
-                                <X size={16} aria-hidden />
-                              </button>
+                              />
                             </>
                           ) : (
                             <>
-                              <button
-                                type="button"
-                                className="pg-btn pg-btn-ghost pg-btn-sm"
-                                style={{ display: "inline-flex", alignItems: "center", gap: 4 }}
-                                disabled={!invoiceActionEnabled(r) || rowBusy}
-                                title={
-                                  invoiceActionEnabled(r)
-                                    ? r.source === "INVOICE"
-                                      ? "View invoice"
-                                      : "Create invoice"
-                                    : "Invoice not available for this line"
-                                }
-                                onClick={(e) => {
-                                  stopRowEvent(e);
-                                  void openInvoiceForRow(r);
-                                }}
-                                aria-label={r.source === "INVOICE" ? "View invoice" : "Create invoice"}
-                              >
-                                {r.source === "INVOICE" ? (
-                                  <>
-                                    <ExternalLink size={14} aria-hidden />
-                                    View
-                                  </>
-                                ) : (
-                                  <>
-                                    <BookOpen size={14} aria-hidden />
-                                    Create
-                                  </>
-                                )}
-                              </button>
-                              {canEditRow(r) ? (
-                              <button
-                                type="button"
-                                className="pg-pfin-icon-btn"
-                                disabled={rowSaving || rowBusy}
-                                onClick={(e) => {
-                                  stopRowEvent(e);
-                                  if (editingRowKey && editingRowKey !== editKey) cancelRowEdit();
-                                  beginRowEdit(r);
-                                }}
-                                aria-label="Edit statement line"
-                                title="Edit statement line"
-                              >
-                                <Pencil size={16} aria-hidden />
-                              </button>
+                              {isExpectedRentRow(r) ? (
+                                <IconButton
+                                  icon="add"
+                                  aria-label="Create invoice"
+                                  disabled={rowBusy}
+                                  onClick={(e) => {
+                                    stopRowEvent(e);
+                                    void openInvoiceForRow(r);
+                                  }}
+                                />
                               ) : null}
-                              <button
-                                type="button"
-                                className="pg-pfin-icon-btn pg-pfin-icon-btn--danger"
+                              {r.source === "INVOICE" && sourceId ? (
+                                <IconButton
+                                  icon="open"
+                                  aria-label="View invoice"
+                                  disabled={rowBusy}
+                                  href={invoiceDetailPath(invoiceIdFromStatementRow(r))}
+                                  onClick={stopRowEvent}
+                                />
+                              ) : null}
+                              {canEditRow(r) ? (
+                                <IconButton
+                                  icon="edit"
+                                  aria-label="Edit"
+                                  disabled={rowSaving || rowBusy}
+                                  onClick={(e) => {
+                                    stopRowEvent(e);
+                                    if (editingRowKey && editingRowKey !== editKey) cancelRowEdit();
+                                    beginRowEdit(r);
+                                  }}
+                                />
+                              ) : null}
+                              <IconButton
+                                icon="delete"
+                                aria-label="Delete"
+                                variant="danger"
                                 disabled={!deleteActionEnabled(r) || rowBusy}
                                 onClick={(e) => {
                                   stopRowEvent(e);
@@ -968,11 +948,7 @@ export function WorkspaceStatementTab({
                                     description: String(r.description ?? "")
                                   });
                                 }}
-                                aria-label="Delete statement line"
-                                title="Delete statement line"
-                              >
-                                <Trash2 size={16} aria-hidden />
-                              </button>
+                              />
                             </>
                           )}
                       </div>

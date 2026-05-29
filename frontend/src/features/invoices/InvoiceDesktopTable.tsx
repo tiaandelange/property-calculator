@@ -1,5 +1,5 @@
-import { Download, ExternalLink, Pencil, Trash2 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { IconButton } from "../../components/icons";
 import { invoiceDetailPath } from "./invoiceRoutes";
 import { propertyLeasesPath } from "../leases/leaseRoutes";
 import { InvoiceStatusBadge } from "./InvoiceStatusBadge";
@@ -96,47 +96,34 @@ export function InvoiceDesktopTable({
                 </td>
                 <td>
                   <div className="pg-invoices-actions">
-                    <Link className="pg-invoices-action-btn" to={viewHref} title="View invoice" aria-label="View invoice">
-                      <ExternalLink size={16} aria-hidden />
-                    </Link>
+                    <IconButton icon="open" aria-label="View invoice" href={viewHref} variant="outline" />
                     {row.isEditable ? (
-                      <Link className="pg-invoices-action-btn" to={viewHref} title="Edit invoice" aria-label="Edit invoice">
-                        <Pencil size={16} aria-hidden />
-                      </Link>
+                      <IconButton icon="edit" aria-label="Edit invoice" href={viewHref} variant="outline" />
                     ) : null}
-                    <button
-                      type="button"
-                      className="pg-invoices-action-btn"
-                      title="Export PDF"
+                    <IconButton
+                      icon="download"
                       aria-label="Export PDF"
+                      variant="outline"
                       disabled={rowBusy}
                       onClick={() => onExportPdf(row)}
-                    >
-                      <Download size={16} aria-hidden />
-                    </button>
+                    />
                     {invoiceCanHardDelete(row.status) ? (
-                      <button
-                        type="button"
-                        className="pg-invoices-action-btn pg-invoices-action-btn--danger"
-                        title="Delete invoice"
+                      <IconButton
+                        icon="delete"
                         aria-label="Delete invoice"
+                        variant="danger"
                         disabled={rowBusy}
                         onClick={() => onDelete(row)}
-                      >
-                        <Trash2 size={16} aria-hidden />
-                      </button>
+                      />
                     ) : null}
                     {invoiceCanVoid(row.status) ? (
-                      <button
-                        type="button"
-                        className="pg-invoices-action-btn pg-invoices-action-btn--danger"
-                        title="Void invoice"
+                      <IconButton
+                        icon="void"
                         aria-label="Void invoice"
+                        variant="danger"
                         disabled={rowBusy}
                         onClick={() => onVoid(row)}
-                      >
-                        <Trash2 size={16} aria-hidden />
-                      </button>
+                      />
                     ) : null}
                   </div>
                 </td>

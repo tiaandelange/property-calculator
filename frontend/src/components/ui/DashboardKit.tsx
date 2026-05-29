@@ -4,7 +4,7 @@ import {
   inferDashboardStatIconPreset,
   type DashboardStatIconPreset
 } from "../../icons/dashboardStatIcons";
-import { IconBox, IconContainer, type IconContainerAccent } from "./IconContainer";
+import { IconBox, IconContainer, type IconContainerAccent } from "../icons/IconContainer";
 
 export type StatusTone = "default" | "success" | "warning" | "danger" | "accent" | "info" | "primary";
 

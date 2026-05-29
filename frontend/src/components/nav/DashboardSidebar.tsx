@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { LogOut } from "lucide-react";
+import { AppIcon } from "../../components/icons";
 import { ProplyticLogo } from "../brand/ProplyticLogo";
 import { useAuth } from "../../contexts/AuthContext";
 import { isWorkspaceNavActive, WORKSPACE_SIDEBAR_NAV } from "../../nav/workspaceNavConfig";
@@ -26,12 +26,11 @@ export function DashboardSidebar() {
         <ul className="pg-dashboard-sidebar-list">
           {WORKSPACE_SIDEBAR_NAV.map((item) => {
             const active = !item.disabled && isWorkspaceNavActive(pathname, item);
-            const Icon = item.icon;
             if (item.disabled || !item.to) {
               return (
                 <li key={item.id}>
                   <span className="pg-dashboard-sidebar-link pg-dashboard-sidebar-link--disabled" aria-disabled="true">
-                    <Icon size={20} strokeWidth={2} aria-hidden />
+                    <AppIcon name={item.icon} size="lg" strokeWidth={2} />
                     <span>{item.label}</span>
                   </span>
                 </li>
@@ -44,7 +43,7 @@ export function DashboardSidebar() {
                   className={`pg-dashboard-sidebar-link${active ? " pg-dashboard-sidebar-link--active" : ""}`}
                   aria-current={active ? "page" : undefined}
                 >
-                  <Icon size={20} strokeWidth={active ? 2.25 : 2} aria-hidden />
+                  <AppIcon name={item.icon} size="lg" strokeWidth={active ? 2.25 : 2} />
                   <span>{item.label}</span>
                 </Link>
               </li>
@@ -55,7 +54,7 @@ export function DashboardSidebar() {
 
       <div className="pg-dashboard-sidebar-footer">
         <button type="button" className="pg-dashboard-sidebar-link pg-dashboard-sidebar-logout" onClick={() => void logout()}>
-          <LogOut size={20} strokeWidth={2} aria-hidden />
+          <AppIcon name="logout" size="lg" strokeWidth={2} />
           <span>Log out</span>
         </button>
       </div>

@@ -1,4 +1,3 @@
-import { CalendarDays, CreditCard, FileCheck, Users } from "lucide-react";
 import { PortfolioMetricCard } from "../portfolio-dashboard/PortfolioMetricCard";
 import { fmtZar } from "./tenantDirectoryUtils";
 import type { TenantDirectoryMetrics } from "./tenantDirectoryTypes";
@@ -18,7 +17,7 @@ export function TenantMetricCards({
           value={loading ? "…" : metrics.totalTenants.toLocaleString()}
           changeText="Current portfolio"
           changeTone="neutral"
-          icon={Users}
+          icon="tenants"
           iconAccent="primary"
         />
         <PortfolioMetricCard
@@ -26,7 +25,7 @@ export function TenantMetricCards({
           value={loading ? "…" : metrics.activeLeases.toLocaleString()}
           changeText="Active leases"
           changeTone="up"
-          icon={FileCheck}
+          icon="verified"
           iconAccent="success"
           to="/leases"
         />
@@ -39,7 +38,7 @@ export function TenantMetricCards({
               : "All clear"
           }
           changeTone={metrics.pendingPaymentsCount > 0 ? "down" : "up"}
-          icon={CreditCard}
+          icon="payments"
           iconAccent="warning"
           to="/financials"
         />
@@ -48,7 +47,7 @@ export function TenantMetricCards({
           value={loading ? "…" : metrics.renewalsDue.toLocaleString()}
           changeText="Next 30 days"
           changeTone={metrics.renewalsDue > 0 ? "neutral" : "up"}
-          icon={CalendarDays}
+          icon="calendar"
           iconAccent="info"
           to="/leases"
         />
@@ -59,21 +58,21 @@ export function TenantMetricCards({
           value={loading ? "…" : metrics.totalTenants.toLocaleString()}
           changeText="Portfolio"
           changeTone="neutral"
-          icon={Users}
+          icon="tenants"
           iconAccent="primary"
           compact
         />
         <PortfolioMetricCard
           label="Active Leases"
           value={loading ? "…" : metrics.activeLeases.toLocaleString()}
-          icon={FileCheck}
+          icon="verified"
           iconAccent="success"
           compact
         />
         <PortfolioMetricCard
           label="Pending"
           value={loading ? "…" : fmtZar(metrics.pendingPaymentsTotal)}
-          icon={CreditCard}
+          icon="payments"
           iconAccent="warning"
           compact
         />
@@ -82,7 +81,7 @@ export function TenantMetricCards({
           value={loading ? "…" : metrics.renewalsDue.toLocaleString()}
           changeText="30 days"
           changeTone="neutral"
-          icon={CalendarDays}
+          icon="calendar"
           iconAccent="info"
           compact
         />

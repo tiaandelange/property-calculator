@@ -1,19 +1,5 @@
-import {
-  Activity,
-  AlertTriangle,
-  BarChart3,
-  CircleDollarSign,
-  FileText,
-  Home,
-  Mail,
-  Percent,
-  Settings,
-  Users,
-  Wallet,
-  Wrench,
-  type LucideIcon
-} from "lucide-react";
-import type { IconContainerAccent } from "../components/ui/IconContainer";
+import type { IconContainerAccent } from "../components/icons/IconContainer";
+import { getIconComponent, type IconName } from "../components/icons/iconRegistry";
 
 export type DashboardStatIconPreset =
   | "portfolio-value"
@@ -34,27 +20,27 @@ export type DashboardStatIconPreset =
   | "yield";
 
 export type DashboardStatIconConfig = {
-  icon: LucideIcon;
+  icon: IconName;
   accent: IconContainerAccent;
 };
 
 export const dashboardStatIconByPreset: Record<DashboardStatIconPreset, DashboardStatIconConfig> = {
-  "portfolio-value": { icon: Wallet, accent: "primary" },
-  "monthly-income": { icon: CircleDollarSign, accent: "success" },
-  "total-properties": { icon: Home, accent: "info" },
-  occupancy: { icon: Activity, accent: "warning" },
-  tenants: { icon: Users, accent: "success" },
-  leases: { icon: FileText, accent: "primary" },
-  maintenance: { icon: Wrench, accent: "info" },
-  messages: { icon: Mail, accent: "neutral" },
-  reports: { icon: BarChart3, accent: "info" },
-  settings: { icon: Settings, accent: "neutral" },
-  "cash-flow": { icon: CircleDollarSign, accent: "success" },
-  "rent-due": { icon: AlertTriangle, accent: "danger" },
-  vacancy: { icon: Home, accent: "warning" },
-  deposits: { icon: Wallet, accent: "primary" },
-  expenses: { icon: CircleDollarSign, accent: "warning" },
-  yield: { icon: Percent, accent: "info" }
+  "portfolio-value": { icon: "wallet", accent: "primary" },
+  "monthly-income": { icon: "rent", accent: "success" },
+  "total-properties": { icon: "properties", accent: "info" },
+  occupancy: { icon: "activity", accent: "warning" },
+  tenants: { icon: "tenants", accent: "success" },
+  leases: { icon: "leases", accent: "primary" },
+  maintenance: { icon: "maintenance", accent: "info" },
+  messages: { icon: "messages", accent: "neutral" },
+  reports: { icon: "reports", accent: "info" },
+  settings: { icon: "settings", accent: "neutral" },
+  "cash-flow": { icon: "rent", accent: "success" },
+  "rent-due": { icon: "warning", accent: "danger" },
+  vacancy: { icon: "properties", accent: "warning" },
+  deposits: { icon: "wallet", accent: "primary" },
+  expenses: { icon: "rent", accent: "warning" },
+  yield: { icon: "percent", accent: "info" }
 };
 
 /** Infer a preset from common dashboard stat / metric titles. */
@@ -78,8 +64,12 @@ export function inferDashboardStatIconPreset(title: string): DashboardStatIconPr
   return undefined;
 }
 
-export function getDashboardStatIconConfig(
-  preset: DashboardStatIconPreset
-): DashboardStatIconConfig {
+export function getDashboardStatIconConfig(preset: DashboardStatIconPreset): DashboardStatIconConfig {
   return dashboardStatIconByPreset[preset];
+}
+
+/** Resolve preset config to a Lucide component (for legacy callers). */
+export function getDashboardStatLucideIcon(preset: DashboardStatIconPreset) {
+  const { icon } = getDashboardStatIconConfig(preset);
+  return getIconComponent(icon);
 }

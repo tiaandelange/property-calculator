@@ -1,5 +1,5 @@
-import { Pencil, ReceiptText, Trash2, XCircle } from "lucide-react";
 import { Link } from "react-router-dom";
+import { IconButton } from "../../../components/icons";
 import {
   formatLeaseCardDate,
   leaseCardStatusTags,
@@ -117,37 +117,23 @@ export function PropertyLeaseCard({
         {hasActions ? (
           <div className="pg-pfin-row-actions pg-lease-card__actions">
             {showEdit && onEdit ? (
-              <button type="button" className="pg-pfin-icon-btn" aria-label="Edit lease" title="Edit lease" onClick={onEdit}>
-                <Pencil size={16} />
-              </button>
+              <IconButton icon="edit" aria-label="Edit lease" variant="outline" onClick={onEdit} />
             ) : null}
             {showCancel && onCancel ? (
-              <button type="button" className="pg-pfin-icon-btn" aria-label="Cancel lease" title="Cancel lease" onClick={onCancel}>
-                <XCircle size={16} />
-              </button>
+              <IconButton icon="leaseCancel" aria-label="Cancel lease" variant="outline" onClick={onCancel} />
             ) : null}
             {showDelete && onDelete ? (
-              <button
-                type="button"
-                className="pg-pfin-icon-btn pg-pfin-icon-btn--danger"
-                aria-label="Delete lease permanently"
-                title="Delete permanently"
-                onClick={onDelete}
-              >
-                <Trash2 size={16} />
-              </button>
+              <IconButton icon="delete" aria-label="Delete lease permanently" variant="danger" onClick={onDelete} />
             ) : null}
             {onGenerateInvoice ? (
-              <button
-                type="button"
-                className="pg-pfin-icon-btn"
+              <IconButton
+                icon="invoices"
                 aria-label="Generate invoice"
-                title={canGenerateInvoice ? "Generate invoice" : "Only active leases can generate invoices"}
+                variant="outline"
                 disabled={!canGenerateInvoice}
+                tooltip={canGenerateInvoice ? "Generate invoice" : "Only active leases can generate invoices"}
                 onClick={onGenerateInvoice}
-              >
-                <ReceiptText size={16} />
-              </button>
+              />
             ) : null}
           </div>
         ) : null}

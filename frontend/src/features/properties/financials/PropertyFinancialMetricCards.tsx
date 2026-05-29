@@ -1,5 +1,6 @@
-import { BadgeCheck, CircleDollarSign, Receipt, TrendingUp } from "lucide-react";
-import { IconContainer } from "../../../components/ui/IconContainer";
+import { IconContainer } from "../../../components/icons";
+import type { IconContainerAccent } from "../../../components/icons";
+import type { IconName } from "../../../components/icons";
 import { fmtZar } from "./propertyFinancialsAdapter";
 import type { PropertyFinancialOverview } from "./propertyFinancialsAdapter";
 
@@ -20,29 +21,36 @@ export function PropertyFinancialMetricCards({
           ? ("warning" as const)
           : ("info" as const);
 
-  const cards = [
+  const cards: Array<{
+    key: string;
+    label: string;
+    value: string;
+    helper: string;
+    icon: IconName;
+    accent: IconContainerAccent;
+  }> = [
     {
       key: "income",
       label: "Monthly Income",
       value: fmtZar(overview.monthlyIncome),
       helper: "Gross rental income",
-      icon: CircleDollarSign,
-      accent: "success" as const
+      icon: "rent",
+      accent: "success"
     },
     {
       key: "expenses",
       label: "Operating Expenses",
       value: fmtZar(overview.totalRecurringExpenses),
       helper: "Operating expenses excl. debt",
-      icon: Receipt,
-      accent: "warning" as const
+      icon: "expense",
+      accent: "warning"
     },
     {
       key: "cashflow",
       label: "Net Cash Flow",
       value: fmtZar(overview.netCashFlow),
       helper: "Income after operating & debt",
-      icon: TrendingUp,
+      icon: "income",
       accent: cashAccent
     },
     {
@@ -50,7 +58,7 @@ export function PropertyFinancialMetricCards({
       label: "Occupancy / Status",
       value: overview.occupancyStatus,
       helper: overview.occupancyHelper,
-      icon: BadgeCheck,
+      icon: "status",
       accent: statusAccent
     }
   ];

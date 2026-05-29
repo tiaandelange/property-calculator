@@ -2471,6 +2471,37 @@ textarea {
   color: var(--danger);
 }
 
+.pg-icon-action-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.pg-icon-action-tooltip {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  padding: 5px 9px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: rgba(255, 255, 255, 0.92);
+  background: rgba(12, 12, 14, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: var(--shadow-md);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+  z-index: 40;
+}
+
+.pg-icon-action-wrap:hover .pg-icon-action-tooltip,
+.pg-icon-action-wrap:focus-within .pg-icon-action-tooltip {
+  opacity: 1;
+}
+
 .pg-statement-status-select {
   min-width: 9.5rem;
   max-width: 100%;

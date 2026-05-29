@@ -1,6 +1,6 @@
-import { LogOut, X } from "lucide-react";
 import { useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { AppIcon, IconButton } from "../../components/icons";
 import { ProplyticLogo } from "../brand/ProplyticLogo";
 import { useAuth } from "../../contexts/AuthContext";
 import { isWorkspaceNavActive, WORKSPACE_SIDEBAR_NAV } from "../../nav/workspaceNavConfig";
@@ -47,14 +47,11 @@ export function MobileWorkspaceMenu({ open, onClose }: Props) {
       <div className="pg-dashboard-mobile-menu-panel">
         <div className="pg-dashboard-mobile-menu-head">
           <ProplyticLogo mode="compact" title="Proplytic" className="pg-dashboard-mobile-menu-brand" />
-          <button type="button" className="pg-dashboard-shell-icon-btn" aria-label="Close menu" onClick={onClose}>
-            <X size={22} aria-hidden />
-          </button>
+          <IconButton icon="close" aria-label="Close menu" variant="ghost" size="lg" tooltip={false} onClick={onClose} />
         </div>
         <nav aria-label="Mobile workspace">
           <ul className="pg-dashboard-mobile-menu-list">
             {WORKSPACE_SIDEBAR_NAV.map((item) => {
-              const Icon = item.icon;
               const active = !item.disabled && isWorkspaceNavActive(pathname, item);
               if (item.disabled || !item.to) {
                 return (
@@ -70,7 +67,7 @@ export function MobileWorkspaceMenu({ open, onClose }: Props) {
                     className={`pg-dashboard-mobile-menu-link${active ? " pg-dashboard-mobile-menu-link--active" : ""}`}
                     onClick={onClose}
                   >
-                    <Icon size={20} aria-hidden />
+                    <AppIcon name={item.icon} size="lg" />
                     {item.label}
                   </Link>
                 </li>
@@ -78,7 +75,7 @@ export function MobileWorkspaceMenu({ open, onClose }: Props) {
             })}
             <li>
               <button type="button" className="pg-dashboard-mobile-menu-link pg-dashboard-mobile-menu-logout" onClick={() => void logout()}>
-                <LogOut size={20} aria-hidden />
+                <AppIcon name="logout" size="lg" />
                 Log out
               </button>
             </li>

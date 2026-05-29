@@ -1,5 +1,5 @@
-import { Building2, Eye, Trash2, User, XCircle } from "lucide-react";
 import { Link } from "react-router-dom";
+import { IconButton } from "../../components/icons";
 import { propertyLeasesPath } from "./leaseRoutes";
 import type { LeaseListItem } from "./leaseDirectoryTypes";
 
@@ -14,55 +14,43 @@ export function LeaseRowActions({
 }) {
   return (
     <div className="pg-leases-actions">
-      <Link
-        to={`/owned-properties/${lease.propertyId}?tab=leases`}
-        className="pg-leases-action-btn"
+      <IconButton
+        icon="property"
         aria-label={`View property ${lease.propertyName}`}
-      >
-        <Building2 size={16} aria-hidden />
-      </Link>
+        href={`/owned-properties/${lease.propertyId}?tab=leases`}
+        variant="outline"
+      />
       {lease.tenantId ? (
-        <Link
-          to={`/tenants/${lease.tenantId}`}
-          className="pg-leases-action-btn"
+        <IconButton
+          icon="tenant"
           aria-label={`View tenant ${lease.tenantName}`}
-        >
-          <User size={16} aria-hidden />
-        </Link>
+          href={`/tenants/${lease.tenantId}`}
+          variant="outline"
+        />
       ) : (
-        <button type="button" className="pg-leases-action-btn" disabled aria-label="No tenant linked">
-          <User size={16} aria-hidden />
-        </button>
+        <IconButton icon="tenant" aria-label="No tenant linked" variant="outline" disabled />
       )}
-      <Link
-        to={propertyLeasesPath(lease.propertyId, lease.id)}
-        className="pg-leases-action-btn"
+      <IconButton
+        icon="view"
         aria-label={`View lease for ${lease.tenantName} at ${lease.propertyName}`}
-        title="View lease on property"
-      >
-        <Eye size={16} aria-hidden />
-      </Link>
+        href={propertyLeasesPath(lease.propertyId, lease.id)}
+        variant="outline"
+      />
       {lease.isCancellable && onCancel ? (
-        <button
-          type="button"
-          className="pg-leases-action-btn"
+        <IconButton
+          icon="leaseCancel"
           aria-label={`Cancel lease for ${lease.tenantName}`}
-          title="Cancel lease (keeps history)"
+          variant="outline"
           onClick={() => onCancel(lease.id)}
-        >
-          <XCircle size={16} aria-hidden />
-        </button>
+        />
       ) : null}
       {onDelete ? (
-        <button
-          type="button"
-          className="pg-leases-action-btn pg-leases-action-btn--danger"
+        <IconButton
+          icon="delete"
           aria-label={`Permanently delete lease for ${lease.tenantName}`}
-          title="Delete permanently"
+          variant="danger"
           onClick={() => onDelete(lease.id)}
-        >
-          <Trash2 size={16} aria-hidden />
-        </button>
+        />
       ) : null}
     </div>
   );

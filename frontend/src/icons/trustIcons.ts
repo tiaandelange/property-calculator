@@ -1,16 +1,16 @@
-import { Activity, LayoutGrid, Percent, Shield, Star, type LucideIcon } from "lucide-react";
-import type { IconContainerAccent } from "../components/ui/IconContainer";
+import type { IconContainerAccent } from "../components/icons/IconContainer";
+import type { IconName } from "../components/icons/iconRegistry";
 
 export type HomepageTrustStatIcon = "activity" | "tools" | "star" | "percent" | "shield";
 
-type TrustIconConfig = { icon: LucideIcon; accent: IconContainerAccent };
+type TrustIconConfig = { icon: IconName; accent: IconContainerAccent };
 
 export const trustIconByVariant: Record<HomepageTrustStatIcon, TrustIconConfig> = {
-  activity: { icon: Activity, accent: "primary" },
-  tools: { icon: LayoutGrid, accent: "info" },
-  star: { icon: Star, accent: "warning" },
-  percent: { icon: Percent, accent: "success" },
-  shield: { icon: Shield, accent: "info" }
+  activity: { icon: "activity", accent: "primary" },
+  tools: { icon: "tools", accent: "info" },
+  star: { icon: "star", accent: "warning" },
+  percent: { icon: "percent", accent: "success" },
+  shield: { icon: "shield", accent: "info" }
 };
 
 export function getTrustIconConfig(variant: HomepageTrustStatIcon): TrustIconConfig {

@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { ExternalLink, Pencil } from "lucide-react";
+import { IconButton } from "../../components/icons";
 import { invoiceStatementCreditClass, invoiceStatementDisplayType } from "../invoices/invoiceStatementUtils";
 import { invoiceDetailPath } from "../invoices/invoiceRoutes";
 import type { FinancialStatementRow } from "./financialDirectoryTypes";
@@ -86,25 +86,15 @@ export function FinancialStatementTable({
                 <td style={{ whiteSpace: "nowrap" }}>
                   <div className="pg-fins-row-actions">
                     {r.source !== "INVOICE" ? (
-                      <Link
-                        className="pg-fins-action-btn"
-                        to={manageUrl}
-                        title="Edit on property financials"
+                      <IconButton
+                        icon="edit"
                         aria-label={`Edit on ${r.propertyName} financials`}
-                      >
-                        <Pencil size={16} aria-hidden />
-                      </Link>
+                        href={manageUrl}
+                        variant="outline"
+                      />
                     ) : null}
                     {invoiceViewUrl ? (
-                      <Link
-                        className="pg-fins-action-btn"
-                        to={invoiceViewUrl}
-                        title="View invoice"
-                        aria-label="View invoice"
-                      >
-                        <ExternalLink size={16} aria-hidden />
-                        View
-                      </Link>
+                      <IconButton icon="open" aria-label="View invoice" href={invoiceViewUrl} variant="outline" />
                     ) : null}
                   </div>
                 </td>

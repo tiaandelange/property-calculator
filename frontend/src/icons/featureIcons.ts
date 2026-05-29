@@ -1,15 +1,15 @@
-import { CheckCircle2, GitBranch, Shield, Zap, type LucideIcon } from "lucide-react";
-import type { IconContainerAccent } from "../components/ui/IconContainer";
+import type { IconContainerAccent } from "../components/icons/IconContainer";
+import type { IconName } from "../components/icons/iconRegistry";
 
 export type HomepageFeatureIconKey = "accurate" | "fast" | "scenarios" | "secure";
 
-type FeatureIconConfig = { icon: LucideIcon; accent: IconContainerAccent };
+type FeatureIconConfig = { icon: IconName; accent: IconContainerAccent };
 
 export const featureIconByKey: Record<HomepageFeatureIconKey, FeatureIconConfig> = {
-  accurate: { icon: CheckCircle2, accent: "success" },
-  fast: { icon: Zap, accent: "warning" },
-  scenarios: { icon: GitBranch, accent: "info" },
-  secure: { icon: Shield, accent: "info" }
+  accurate: { icon: "accurate", accent: "success" },
+  fast: { icon: "fast", accent: "warning" },
+  scenarios: { icon: "scenarios", accent: "info" },
+  secure: { icon: "secure", accent: "info" }
 };
 
 export function getFeatureIconConfig(key: HomepageFeatureIconKey): FeatureIconConfig {

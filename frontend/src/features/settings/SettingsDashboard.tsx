@@ -1,18 +1,6 @@
-import {
-  Bell,
-  CreditCard,
-  ExternalLink,
-  HelpCircle,
-  Palette,
-  Plug,
-  Receipt,
-  Shield,
-  Sliders,
-  User,
-  type LucideIcon
-} from "lucide-react";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { AppIcon, type IconName } from "../../components/icons";
 import { fetchMe } from "../../api/user";
 import { Button } from "../../components/ui/Button";
 import { Field, Input } from "../../components/ui/Input";
@@ -69,13 +57,13 @@ function SettingsToggle({
 }
 
 function SettingsCard({
-  icon: Icon,
+  icon,
   title,
   description,
   children,
   fullWidth
 }: {
-  icon: LucideIcon;
+  icon: IconName;
   title: string;
   description?: string;
   children: React.ReactNode;
@@ -85,7 +73,7 @@ function SettingsCard({
     <section className={`pg-settings-card${fullWidth ? " pg-settings-card--full" : ""}`}>
       <div className="pg-settings-card-head">
         <div className="pg-settings-card-icon">
-          <Icon size={18} />
+          <AppIcon name={icon} size="md" />
         </div>
         <div>
           <h2 className="pg-settings-card-title">{title}</h2>
@@ -415,7 +403,7 @@ export function SettingsDashboard() {
       {success ? <div className="pg-alert" style={{ marginBottom: 16 }}>Settings saved.</div> : null}
 
       <div className="pg-settings-grid">
-        <SettingsCard icon={User} title="Account & Profile" description="Your identity and workspace role.">
+        <SettingsCard icon="profile" title="Account & Profile" description="Your identity and workspace role.">
           <div className="pg-settings-profile">
             <div className="pg-settings-avatar" aria-hidden>
               {initials(fullName, email)}
@@ -439,7 +427,7 @@ export function SettingsDashboard() {
           </div>
         </SettingsCard>
 
-        <SettingsCard icon={Palette} title="Appearance" description="Theme, accent colour, and density.">
+        <SettingsCard icon="palette" title="Appearance" description="Theme, accent colour, and density.">
           <div className="pg-settings-field">
             <label>Theme</label>
             <div className="pg-settings-theme-options">
@@ -487,7 +475,7 @@ export function SettingsDashboard() {
           </div>
         </SettingsCard>
 
-        <SettingsCard icon={CreditCard} title="Subscription & Billing" description="Plan and payment details.">
+        <SettingsCard icon="payments" title="Subscription & Billing" description="Plan and payment details.">
           <div className="pg-settings-row">
             <div>
               <div className="pg-settings-row-label">Current plan</div>
@@ -509,7 +497,7 @@ export function SettingsDashboard() {
           </div>
         </SettingsCard>
 
-        <SettingsCard icon={Sliders} title="Property Defaults" description="Defaults for new properties and leases.">
+        <SettingsCard icon="sliders" title="Property Defaults" description="Defaults for new properties and leases.">
           <div className="pg-settings-field">
             <label htmlFor="settings-currency">Default currency</label>
             <select
@@ -578,7 +566,7 @@ export function SettingsDashboard() {
           </div>
         </SettingsCard>
 
-        <SettingsCard icon={Receipt} title="Invoices & Statements" description="Automation and PDF preferences.">
+        <SettingsCard icon="invoices" title="Invoices & Statements" description="Automation and PDF preferences.">
           <div className="pg-settings-field">
             <label htmlFor="settings-inv-format">Invoice number format</label>
             <input
@@ -648,7 +636,7 @@ export function SettingsDashboard() {
           </div>
         </SettingsCard>
 
-        <SettingsCard icon={Bell} title="Notifications" description="Email and alert preferences.">
+        <SettingsCard icon="bell" title="Notifications" description="Email and alert preferences.">
           <div className="pg-settings-row">
             <div>
               <div className="pg-settings-row-label">Email reminders</div>
@@ -695,7 +683,7 @@ export function SettingsDashboard() {
           <p className="pg-settings-field-hint">Email delivery is not yet configured; preferences are saved for when it is.</p>
         </SettingsCard>
 
-        <SettingsCard icon={Shield} title="Security" description="Protect your account.">
+        <SettingsCard icon="shield" title="Security" description="Protect your account.">
           <div className="pg-settings-row">
             <div>
               <div className="pg-settings-row-label">Two-factor authentication</div>
@@ -724,7 +712,7 @@ export function SettingsDashboard() {
           </div>
         </SettingsCard>
 
-        <SettingsCard icon={Plug} title="Integrations & Data" description="Connections and exports.">
+        <SettingsCard icon="plug" title="Integrations & Data" description="Connections and exports.">
           <div className="pg-settings-row">
             <div>
               <div className="pg-settings-row-label">Supabase connection</div>
@@ -737,7 +725,7 @@ export function SettingsDashboard() {
               <div className="pg-settings-row-label">Report generation</div>
               <div className="pg-settings-row-desc">Portfolio reports and PDF exports</div>
             </div>
-            <ExternalLink size={16} aria-hidden />
+            <AppIcon name="open" size="sm" />
           </Link>
           <div className="pg-settings-row">
             <div>
@@ -753,26 +741,26 @@ export function SettingsDashboard() {
           </div>
         </SettingsCard>
 
-        <SettingsCard icon={HelpCircle} title="Support & Legal" description="Help, policies, and privacy." fullWidth>
+        <SettingsCard icon="help" title="Support & Legal" description="Help, policies, and privacy." fullWidth>
           <Link className="pg-settings-link-row" to="/faq">
             <div className="pg-settings-row-label">Browse guides and FAQs</div>
-            <ExternalLink size={16} aria-hidden />
+            <AppIcon name="open" size="sm" />
           </Link>
           <Link className="pg-settings-link-row" to="/help">
             <div className="pg-settings-row-label">Help & support</div>
-            <ExternalLink size={16} aria-hidden />
+            <AppIcon name="open" size="sm" />
           </Link>
           <a className="pg-settings-link-row" href="/terms" rel="noopener noreferrer">
             <div className="pg-settings-row-label">Terms of service</div>
-            <ExternalLink size={16} aria-hidden />
+            <AppIcon name="open" size="sm" />
           </a>
           <a className="pg-settings-link-row" href="/privacy" rel="noopener noreferrer">
             <div className="pg-settings-row-label">Privacy policy</div>
-            <ExternalLink size={16} aria-hidden />
+            <AppIcon name="open" size="sm" />
           </a>
           <Link className="pg-settings-link-row" to="/privacy">
             <div className="pg-settings-row-label">Learn how we protect your data</div>
-            <ExternalLink size={16} aria-hidden />
+            <AppIcon name="open" size="sm" />
           </Link>
         </SettingsCard>
       </div>

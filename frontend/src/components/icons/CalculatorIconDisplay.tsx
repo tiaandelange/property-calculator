@@ -1,8 +1,9 @@
 import { getCalculatorIconConfig } from "../../icons/calculatorIcons";
-import { IconContainer, type IconContainerSize } from "../ui/IconContainer";
+import type { IconContainerSize } from "./iconSizes";
+import { IconContainer } from "./IconContainer";
 
 /**
- * Calculator slug → Lucide icon in a coloured container (replaces WebP calculator icons).
+ * Calculator slug → semantic icon in a coloured container (replaces WebP calculator icons).
  */
 export function CalculatorIconDisplay({
   slug,
@@ -18,7 +19,7 @@ export function CalculatorIconDisplay({
 }) {
   const { icon: Icon, accent } = getCalculatorIconConfig(slug);
   if (!contained) {
-    return <Icon className={className} size={size === "sm" ? 18 : size === "md" ? 20 : 22} aria-hidden />;
+    return <Icon size={size === "sm" ? 18 : size === "md" ? 20 : 22} className={className} aria-hidden />;
   }
   return <IconContainer icon={Icon} accent={accent} size={size} className={className} />;
 }

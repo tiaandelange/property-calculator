@@ -1,14 +1,13 @@
-import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { IconContainer, type IconContainerAccent } from "../../components/ui/IconContainer";
+import { IconContainer, type IconContainerAccent, type IconName } from "../../components/icons";
 
 export function PortfolioMetricCard({
   label,
   value,
   changeText,
   changeTone = "neutral",
-  icon: Icon,
+  icon,
   iconAccent = "primary",
   highlighted,
   compact,
@@ -19,7 +18,7 @@ export function PortfolioMetricCard({
   value: ReactNode;
   changeText?: string;
   changeTone?: "up" | "down" | "neutral";
-  icon: LucideIcon;
+  icon: IconName;
   iconAccent?: IconContainerAccent;
   highlighted?: boolean;
   compact?: boolean;
@@ -46,7 +45,7 @@ export function PortfolioMetricCard({
             <div className={`pg-pdash-metric-change pg-pdash-metric-change--${changeTone}`}>{changeText}</div>
           ) : null}
         </div>
-        <IconContainer icon={Icon} accent={iconAccent} size="md" className="pg-pdash-metric-icon-wrap" />
+        <IconContainer icon={icon} accent={iconAccent} size="md" className="pg-pdash-metric-icon-wrap" />
       </div>
     </>
   );

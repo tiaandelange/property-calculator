@@ -1,22 +1,9 @@
-import type { LucideIcon } from "lucide-react";
-import {
-  BarChart3,
-  Calculator,
-  CreditCard,
-  File,
-  FileText,
-  Home,
-  LayoutDashboard,
-  MessageSquare,
-  ReceiptText,
-  Settings,
-  Users,
-} from "lucide-react";
+import type { IconName } from "../components/icons/iconRegistry";
 
 export type WorkspaceNavItem = {
   id: string;
   label: string;
-  icon: LucideIcon;
+  icon: IconName;
   to?: string;
   disabled?: boolean;
   /** When true, item appears in mobile bottom nav */
@@ -24,17 +11,17 @@ export type WorkspaceNavItem = {
 };
 
 export const WORKSPACE_SIDEBAR_NAV: WorkspaceNavItem[] = [
-  { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, to: "/owned-properties/dashboard", bottomNav: true },
-  { id: "properties", label: "Properties", icon: Home, to: "/owned-properties/my-properties", bottomNav: true },
-  { id: "tenants", label: "Tenants", icon: Users, to: "/tenants", bottomNav: true },
-  { id: "leases", label: "Leases", icon: FileText, to: "/leases", bottomNav: true },
-  { id: "invoices", label: "Invoices", icon: ReceiptText, to: "/invoices" },
-  { id: "financials", label: "Financials", icon: CreditCard, to: "/financials" },
-  { id: "documents", label: "Documents", icon: File, to: "/documents" },
-  { id: "reports", label: "Reports", icon: BarChart3, to: "/owned-properties/reports" },
-  { id: "messages", label: "Messages", icon: MessageSquare, disabled: true },
-  { id: "settings", label: "Settings", icon: Settings, to: "/settings", bottomNav: true },
-  { id: "calculators", label: "Calculators", icon: Calculator, disabled: true }
+  { id: "dashboard", label: "Dashboard", icon: "dashboard", to: "/owned-properties/dashboard", bottomNav: true },
+  { id: "properties", label: "Properties", icon: "properties", to: "/owned-properties/my-properties", bottomNav: true },
+  { id: "tenants", label: "Tenants", icon: "tenants", to: "/tenants", bottomNav: true },
+  { id: "leases", label: "Leases", icon: "leases", to: "/leases", bottomNav: true },
+  { id: "invoices", label: "Invoices", icon: "invoices", to: "/invoices" },
+  { id: "financials", label: "Financials", icon: "financials", to: "/financials" },
+  { id: "documents", label: "Documents", icon: "documents", to: "/documents" },
+  { id: "reports", label: "Reports", icon: "reports", to: "/owned-properties/reports" },
+  { id: "messages", label: "Messages", icon: "messages", disabled: true },
+  { id: "settings", label: "Settings", icon: "settings", to: "/settings", bottomNav: true },
+  { id: "calculators", label: "Calculators", icon: "calculators", disabled: true }
 ];
 
 export const WORKSPACE_MOBILE_BOTTOM_NAV = WORKSPACE_SIDEBAR_NAV.filter((item) => item.bottomNav && item.to);
