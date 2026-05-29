@@ -300,7 +300,7 @@ export function OwnedPropertyDetailPage() {
                   { key: "overview", label: "Overview" },
                   { key: "financials", label: "Financials" },
                   { key: "statement", label: "Statement" },
-                  { key: "tenants", label: "Link Tenants" },
+                  { key: "tenants", label: "Tenants" },
                   { key: "leases", label: "Leases" },
                   { key: "documents", label: "Documents" },
                   {

@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Plus } from "lucide-react";
 import { useMediaQuery } from "../../../hooks/useMediaQuery";
 import { listActiveLeaseOccupancyForProperty, type ActiveLeaseOccupancy } from "../../../services/leasesSupabase";
 import { listPropertyUnits } from "../../../services/propertyUnitsSupabase";
@@ -198,7 +197,7 @@ export function WorkspaceLinkTenantsTab({
         <section className="pg-pfin-section">
           <header className="pg-pfin-section__head">
             <div>
-              <h2 className="pg-pfin-section__title">Link Tenants</h2>
+              <h2 className="pg-pfin-section__title">Tenants</h2>
               <p className="pg-pfin-section__desc">No tenant links are required for this property type.</p>
             </div>
           </header>
@@ -209,22 +208,6 @@ export function WorkspaceLinkTenantsTab({
 
   return (
     <div className="pg-pfin-page">
-      <section className="pg-pfin-section">
-        <header className="pg-pfin-section__head pg-pfin-section__head--row">
-          <div>
-            <h2 className="pg-pfin-section__title">Link Tenants</h2>
-            <p className="pg-pfin-section__desc">
-              Tenants listed here come from active leases only. Add a lease to connect tenants to a unit — no manual
-              linking.
-            </p>
-          </div>
-          <Link className="pg-btn pg-btn-primary" to={`/leases/new?propertyId=${propertyId}`}>
-            <Plus size={16} aria-hidden style={{ marginRight: 6 }} />
-            Add Lease
-          </Link>
-        </header>
-      </section>
-
       {error ? (
         <div className="pg-alert pg-alert-error" role="alert" style={{ marginBottom: 12 }}>
           {error}
