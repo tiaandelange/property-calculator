@@ -12,7 +12,8 @@ import {
   displayUnitsForLinking,
   isSingleUnitProperty,
   shouldShowTenantLinking,
-  structureTypeIdFromPropertyRow
+  structureTypeIdFromPropertyRow,
+  unitDisplayLabel
 } from "./unitTenantLinkUtils";
 
 function roleLabel(role: string): string {
@@ -250,14 +251,16 @@ export function WorkspaceLinkTenantsTab({
             const unitOcc = occupancyByUnit.get(unitId) ?? occupancyByUnit.get(null) ?? [];
             const title =
               singleUnit && displayUnits.length === 1
-                ? unit.unitName || structureCfg.unitLabel || String(property.name ?? "Main House")
-                : unit.unitName || `${structureCfg.unitLabel} ${index + 1}`;
+                ? unitDisplayLabel(
+                    unit,
+                    structureCfg.unitLabel || String(property.name ?? "Main House")
+                  )
+                : unitDisplayLabel(unit, `${structureCfg.unitLabel} ${index + 1}`);
             return (
               <section key={unit.id ?? unit.clientId} className="pg-pfin-section">
                 <header className="pg-pfin-section__head">
                   <div>
                     <h3 className="pg-pfin-section__title">{title}</h3>
-                    {unit.description ? <p className="pg-pfin-section__desc">{unit.description}</p> : null}
                   </div>
                 </header>
                 <LeaseOccupancyTable occupancy={unitOcc} isMobile={isMobile} />

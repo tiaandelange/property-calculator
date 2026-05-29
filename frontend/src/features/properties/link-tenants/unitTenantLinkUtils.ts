@@ -50,6 +50,13 @@ export function isSingleUnitProperty(structureTypeId: string, units: PropertyUni
   return cfg.unitMode === "single_default_unit" || active.length <= 1;
 }
 
+/** Unit name with optional description, e.g. "Unit 1 · Ground floor flat". */
+export function unitDisplayLabel(unit: Pick<PropertyUnitDraft, "unitName" | "description">, fallbackName = "Unit"): string {
+  const name = unit.unitName?.trim() || fallbackName;
+  const desc = unit.description?.trim();
+  return desc ? `${name} · ${desc}` : name;
+}
+
 export function displayUnitsForLinking(structureTypeId: string, units: PropertyUnitDraft[]): PropertyUnitDraft[] {
   const active = units.filter((u) => u.isActive !== false).sort((a, b) => a.sortOrder - b.sortOrder);
   if (active.length > 0) return active;

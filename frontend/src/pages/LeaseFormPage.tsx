@@ -10,6 +10,14 @@ import {
 } from "../api/ownedProperties";
 import { invalidatePropertyWorkspace } from "../features/properties/invalidate";
 import type { PropertyUnitDraft } from "../features/properties/units/propertyUnitTypes";
+import { unitDisplayLabel } from "../features/properties/link-tenants/unitTenantLinkUtils";
+import {
+  computeEndDateFromTerm,
+  isLeaseEndExpired,
+  LEASE_TERM_PRESET_OPTIONS,
+  resolveLeaseTypeFromEndDate,
+  type LeaseTermPreset
+} from "../utils/leaseTermUtils";
 import { Container } from "../components/ui/Container";
 import { Section } from "../components/ui/Section";
 import { Card } from "../components/ui/Card";
@@ -21,7 +29,14 @@ type RentDueMode = "first" | "last" | "custom";
 function rentDueDayFromMode(mode: RentDueMode, customDay: number): number {
   if (mode === "first") return 1;
   if (mode === "last") return 31;
-  return Math.min(31, Math.max(2, customDay));
+  return Math.min(31, Math.max(1, customDay));
+}
+
+/** Stable YYYY-MM-DD for date input from day-of-month (January always has 31 days). */
+function ymdFromRentDueDay(day: number): string {
+  const y = new Date().getFullYear();
+  const d = Math.min(31, Math.max(1, day));
+  return `${y}-01-${String(d).padStart(2, "0")}`;
 }
 
 function rentDueLabel(day: number): string {
@@ -51,14 +66,29 @@ export function LeaseFormPage() {
   const [form, setForm] = useState({
     unitId: "",
     startDate: "",
+    termPreset: "12" as LeaseTermPreset,
     endDate: "",
-    leaseType: "FIXED_TERM",
     monthlyRent: "",
     depositAmount: "",
     rentDueMode: "first" as RentDueMode,
     rentDueCustomDay: 15,
     notes: ""
   });
+
+  const effectiveEndDate = useMemo(
+    () => computeEndDateFromTerm(form.startDate, form.termPreset, form.endDate),
+    [form.startDate, form.termPreset, form.endDate]
+  );
+
+  const effectiveLeaseType = useMemo(
+    () => resolveLeaseTypeFromEndDate(effectiveEndDate),
+    [effectiveEndDate]
+  );
+
+  const termExpired = useMemo(
+    () => Boolean(effectiveEndDate && isLeaseEndExpired(effectiveEndDate)),
+    [effectiveEndDate]
+  );
 
   useEffect(() => {
     void (async () => {
@@ -107,7 +137,7 @@ export function LeaseFormPage() {
     })();
   }, [propertyId]);
 
-  const showUnitField = units.length > 1;
+  const showUnitField = units.length > 0;
 
   const additionalTenantOptions = useMemo(
     () => tenants.filter((t) => String(t.id) !== primaryTenantId),
@@ -164,11 +194,15 @@ export function LeaseFormPage() {
       setError("Select a unit for this property.");
       return;
     }
-    if (form.leaseType === "FIXED_TERM" && !form.endDate) {
-      setError("End date is required for fixed-term leases.");
+    if (form.termPreset === "manual" && !form.endDate) {
+      setError("Select an end date or choose a fixed term (6, 12, or 24 months).");
       return;
     }
-    if (form.endDate && form.startDate && form.endDate <= form.startDate) {
+    if (!effectiveEndDate) {
+      setError("Enter a start date to calculate the lease end.");
+      return;
+    }
+    if (effectiveEndDate <= form.startDate) {
       setError("End date must be after the start date.");
       return;
     }
@@ -208,9 +242,9 @@ export function LeaseFormPage() {
         leaseTenants,
         rentSplitEnabled: rentSplitEnabled && allSelectedTenantIds.length >= 2,
         startDate: form.startDate,
-        leaseType: form.leaseType,
-        fixedTermEndDate: form.endDate || null,
-        endDate: form.endDate || null,
+        leaseType: effectiveLeaseType,
+        fixedTermEndDate: effectiveEndDate,
+        endDate: effectiveEndDate,
         monthlyRent,
         depositAmount: Number(form.depositAmount),
         rentDueDay,
@@ -278,7 +312,7 @@ export function LeaseFormPage() {
                     <option value="">Select unit</option>
                     {units.map((u) => (
                       <option key={u.id ?? u.clientId} value={u.id ?? ""}>
-                        {u.unitName}
+                        {unitDisplayLabel(u)}
                       </option>
                     ))}
                   </select>
@@ -319,24 +353,54 @@ export function LeaseFormPage() {
                 <Input type="date" value={form.startDate} onChange={(e) => setForm({ ...form, startDate: e.target.value })} required />
               </Field>
 
-              <Field label="End date">
-                <Input
-                  type="date"
-                  value={form.endDate}
-                  onChange={(e) => setForm({ ...form, endDate: e.target.value })}
-                  required={form.leaseType === "FIXED_TERM"}
-                />
-                <p className="pg-muted" style={{ fontSize: 12, margin: "6px 0 0" }}>
-                  Required for fixed-term leases. For month-to-month, optional — e.g. when a 12-month term ends and rolls
-                  over.
-                </p>
+              <Field label="Lease term">
+                <select
+                  className="pg-input"
+                  value={form.termPreset}
+                  onChange={(e) => setForm({ ...form, termPreset: e.target.value as LeaseTermPreset })}
+                >
+                  {LEASE_TERM_PRESET_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+                {form.termPreset !== "manual" && form.startDate && effectiveEndDate ? (
+                  <p className="pg-muted" style={{ fontSize: 12, margin: "6px 0 0" }}>
+                    End date: <strong>{effectiveEndDate}</strong>
+                    {termExpired ? (
+                      <span> · Term has ended — lease will be saved as month-to-month</span>
+                    ) : (
+                      <span> · Fixed-term until this date</span>
+                    )}
+                  </p>
+                ) : null}
               </Field>
 
-              <Field label="Lease type">
-                <select className="pg-input" value={form.leaseType} onChange={(e) => setForm({ ...form, leaseType: e.target.value })}>
-                  <option value="FIXED_TERM">Fixed term</option>
-                  <option value="MONTH_TO_MONTH">Month-to-month</option>
-                </select>
+              {form.termPreset === "manual" ? (
+                <Field label="End date">
+                  <Input
+                    type="date"
+                    value={form.endDate}
+                    onChange={(e) => setForm({ ...form, endDate: e.target.value })}
+                    required
+                  />
+                  {form.endDate && termExpired ? (
+                    <p className="pg-muted" style={{ fontSize: 12, margin: "6px 0 0" }}>
+                      This date has passed — lease will be saved as month-to-month.
+                    </p>
+                  ) : null}
+                </Field>
+              ) : null}
+
+              <Field label="Lease status">
+                <div className="pg-input" style={{ background: "var(--surface-muted)", cursor: "default" }} aria-readonly>
+                  {effectiveLeaseType === "MONTH_TO_MONTH" ? "Month-to-month" : "Fixed term"}
+                </div>
+                <p className="pg-muted" style={{ fontSize: 12, margin: "6px 0 0" }}>
+                  Set automatically from the term and dates. After a fixed term ends, the lease continues as
+                  month-to-month.
+                </p>
               </Field>
 
               <Field label="Monthly rent">
@@ -375,31 +439,17 @@ export function LeaseFormPage() {
                   <option value="custom">Choose a day…</option>
                 </select>
                 {form.rentDueMode === "custom" ? (
-                  <div style={{ marginTop: 8, display: "grid", gap: 8 }}>
-                    <label className="pg-muted" style={{ fontSize: 13 }}>
-                      Pick any date — we use the day of that month ({form.rentDueCustomDay})
-                      <Input
-                        type="date"
-                        onChange={(e) => {
-                          if (!e.target.value) return;
-                          const day = new Date(e.target.value + "T12:00:00").getDate();
-                          setForm({ ...form, rentDueCustomDay: Math.min(30, Math.max(2, day)) });
-                        }}
-                        style={{ marginTop: 4 }}
-                      />
-                    </label>
-                    <label className="pg-muted" style={{ fontSize: 13 }}>
-                      Or enter day of month (2–30)
-                      <Input
-                        type="number"
-                        min={2}
-                        max={30}
-                        value={form.rentDueCustomDay}
-                        onChange={(e) => setForm({ ...form, rentDueCustomDay: Number(e.target.value) })}
-                        style={{ marginTop: 4 }}
-                      />
-                    </label>
-                  </div>
+                  <Input
+                    type="date"
+                    value={ymdFromRentDueDay(form.rentDueCustomDay)}
+                    onChange={(e) => {
+                      if (!e.target.value) return;
+                      const day = new Date(e.target.value + "T12:00:00").getDate();
+                      setForm({ ...form, rentDueCustomDay: day });
+                    }}
+                    style={{ marginTop: 8 }}
+                    required
+                  />
                 ) : null}
                 <p className="pg-muted" style={{ fontSize: 12, margin: "6px 0 0" }}>
                   Due: {rentDueLabel(rentDueDay)}
