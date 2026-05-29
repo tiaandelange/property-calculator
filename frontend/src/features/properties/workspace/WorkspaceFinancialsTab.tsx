@@ -33,6 +33,13 @@ import { PropertyFinancialSummaryPanel } from "../financials/PropertyFinancialSu
 import { ExpenseCategoriesCard } from "../financials/ExpenseCategoriesCard";
 import { RecurringExpenseModal } from "../financials/RecurringExpenseModal";
 import { propertyFinancialsStatementUrl } from "../../financials/financialDirectoryUtils";
+import { invoiceDetailPath } from "../../invoices/invoiceRoutes";
+import {
+  canEditStatementRow,
+  invoiceIdFromStatementRow,
+  invoiceStatementCreditClass,
+  invoiceStatementDisplayType
+} from "../../invoices/invoiceStatementUtils";
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 import { Card } from "../../../components/ui/Card";
@@ -50,7 +57,6 @@ import {
   hardDeletePropertyExpense,
   hardDeletePropertyIncome,
   propertyApiErrorMessage,
-  updateInvoice,
   updateLease,
   updateProperty,
   updatePropertyExpense,
@@ -869,17 +875,6 @@ export function WorkspaceFinancialsTab({
       setStatementDraft(draft);
       return;
     }
-    if (row.source === "INVOICE") {
-      const draft = {
-        source: "INVOICE",
-        date: row.date,
-        total: String(row.credit ?? ""),
-        status: row.status ?? "DRAFT",
-        notes: row.invoiceNotes ?? ""
-      };
-      statementDraftRef.current = draft;
-      setStatementDraft(draft);
-    }
   }
 
   function discardStatementEdit() {
@@ -939,21 +934,8 @@ export function WorkspaceFinancialsTab({
         expensePayload.bondPrincipalAmount = bp === "" ? null : Number(bp);
       }
       await updatePropertyExpense(row.sourceId, expensePayload);
-    } else if (row.source === "INVOICE" && draft.source === "INVOICE") {
-      const total = Number(draft.total);
-      if (Number.isNaN(total) || total < 0) {
-        setStatementFeedback("Enter a valid total.");
-        return false;
-      }
-      const notesRaw = String(draft.notes ?? "");
-      await updateInvoice(row.sourceId, {
-        invoiceDate: draft.date,
-        total,
-        status: draft.status,
-        notes: notesRaw.trim() === "" ? null : notesRaw.trim()
-      });
     } else {
-      setStatementFeedback("Unsupported row type for save.");
+      setStatementFeedback("Edit this invoice on the invoice detail page.");
       return false;
     }
     setStatementFeedback(null);
@@ -1248,11 +1230,12 @@ export function WorkspaceFinancialsTab({
 
                     let dateCell: ReactNode = r.date;
                     let descCell: ReactNode = r.description;
-                    let typeCell: ReactNode = r.type;
+                    let typeCell: ReactNode =
+                      r.source === "INVOICE" ? invoiceStatementDisplayType(r) : r.type;
                     let debitCell: ReactNode = r.debit != null ? fmt(r.debit) : "—";
                     let creditCell: ReactNode = r.credit != null ? fmt(r.credit) : "—";
                     const creditClass =
-                      r.source === "INVOICE" && r.status !== "PAID" && !isEditing ? " pg-statement-credit-unpaid" : "";
+                      r.source === "INVOICE" ? invoiceStatementCreditClass(String(r.status ?? "")) : "";
                     let balanceCell: ReactNode = fmt(r.balance);
 
                     const rowYm = String(r.date ?? "").slice(0, 7);
@@ -1352,39 +1335,10 @@ export function WorkspaceFinancialsTab({
                       );
                       creditCell = "—";
                       balanceCell = "—";
-                    } else if (isEditing && d?.source === "INVOICE") {
-                      dateCell = (
-                        <Input type="date" value={String(d.date ?? "")} onChange={(e) => patchDraft({ date: e.target.value })} />
-                      );
-                      descCell = (
-                        <div style={{ display: "grid", gap: 6 }}>
-                          {r.invoiceNumber ? (
-                            <span className="pg-muted" style={{ fontSize: 12 }}>
-                              Invoice {r.invoiceNumber}
-                            </span>
-                          ) : null}
-                          <Input
-                            value={String(d.notes ?? "")}
-                            onChange={(e) => patchDraft({ notes: e.target.value })}
-                            placeholder="Notes / description"
-                          />
-                        </div>
-                      );
-                      typeCell = (
-                        <select className="pg-input" value={String(d.status ?? "DRAFT")} onChange={(e) => patchDraft({ status: e.target.value })}>
-                          {INVOICE_STATUS_OPTIONS.map((s) => (
-                            <option key={s} value={s}>
-                              {s}
-                            </option>
-                          ))}
-                        </select>
-                      );
-                      debitCell = "—";
-                      creditCell = (
-                        <Input type="number" step="any" min={0} value={String(d.total ?? "")} onChange={(e) => patchDraft({ total: e.target.value })} />
-                      );
-                      balanceCell = "—";
                     }
+
+                    const invoiceViewId =
+                      r.source === "INVOICE" && r.sourceId ? invoiceIdFromStatementRow(r) : "";
 
                     return (
                       <tr key={r.id}>
@@ -1395,7 +1349,7 @@ export function WorkspaceFinancialsTab({
                           {debitCell}
                         </td>
                         <td
-                          className={`pg-statement-num${creditClass}`}
+                          className={`pg-statement-num${creditClass ? ` ${creditClass}` : ""}`}
                           style={{ verticalAlign: "top" }}
                           title={
                             r.source === "INVOICE" && r.status !== "PAID" && !isEditing
@@ -1431,9 +1385,20 @@ export function WorkspaceFinancialsTab({
                               </>
                             ) : (
                               <>
-                                <button type="button" className="pg-btn pg-btn-ghost" style={{ fontSize: 12, padding: "4px 10px" }} onClick={() => beginStatementEdit(r)}>
-                                  Edit
-                                </button>
+                                {invoiceViewId ? (
+                                  <Link
+                                    className="pg-btn pg-btn-ghost"
+                                    style={{ fontSize: 12, padding: "4px 10px", display: "inline-flex", alignItems: "center", gap: 4 }}
+                                    to={invoiceDetailPath(invoiceViewId)}
+                                  >
+                                    View
+                                  </Link>
+                                ) : null}
+                                {canEditStatementRow(r) ? (
+                                  <button type="button" className="pg-btn pg-btn-ghost" style={{ fontSize: 12, padding: "4px 10px" }} onClick={() => beginStatementEdit(r)}>
+                                    Edit
+                                  </button>
+                                ) : null}
                                 <button
                                   type="button"
                                   className="pg-btn pg-btn-ghost"

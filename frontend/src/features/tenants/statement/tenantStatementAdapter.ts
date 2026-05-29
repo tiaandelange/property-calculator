@@ -108,7 +108,12 @@ function mapStatementRow(row: Record<string, unknown>): TenantLedgerTransaction 
     balance: Number(row.balance ?? 0),
     source: row.source != null ? String(row.source) : undefined,
     status: row.status != null ? String(row.status) : undefined,
-    invoiceId: row.invoiceId != null ? String(row.invoiceId) : undefined,
+    invoiceId:
+      row.invoiceId != null
+        ? String(row.invoiceId)
+        : String(row.source ?? "").toUpperCase() === "INVOICE" && row.sourceId != null
+          ? String(row.sourceId)
+          : undefined,
     tenantId: row.tenantId != null ? String(row.tenantId) : undefined,
     statementType: row.statementType != null ? String(row.statementType) : undefined,
     reference: row.reference != null ? String(row.reference) : undefined,

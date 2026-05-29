@@ -237,20 +237,7 @@ export function TenantWorkspacePage() {
                 />
               ) : null}
               {fin === "invoices" ? (
-                <TenantInvoicesTable
-                  invoices={invoices}
-                  tenantId={id ?? ""}
-                  propertyId={propertyId}
-                  loading={loading}
-                  onOpenInvoice={
-                    isMobile
-                      ? (invId) => {
-                          setOverlayInvoiceId(invId);
-                          setInvoiceOverlay(true);
-                        }
-                      : undefined
-                  }
-                />
+                <TenantInvoicesTable invoices={invoices} loading={loading} />
               ) : null}
               {fin === "payments" ? <TenantPaymentsTable paidInvoices={paidInvoices} loading={loading} /> : null}
               {fin === "ledger" ? (

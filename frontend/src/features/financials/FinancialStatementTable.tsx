@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { ExternalLink, Pencil } from "lucide-react";
-import { invoiceStatementCreditClass } from "../invoices/invoiceStatementUtils";
+import { invoiceStatementCreditClass, invoiceStatementDisplayType } from "../invoices/invoiceStatementUtils";
 import { invoiceDetailPath } from "../invoices/invoiceRoutes";
 import type { FinancialStatementRow } from "./financialDirectoryTypes";
 import { fmtZar, propertyFinancialsStatementUrl } from "./financialDirectoryUtils";
@@ -72,7 +72,9 @@ export function FinancialStatementTable({
                     </div>
                   ) : null}
                 </td>
-                <td style={{ minWidth: 120 }}>{r.type}</td>
+                <td style={{ minWidth: 120 }}>
+                  {r.source === "INVOICE" ? invoiceStatementDisplayType(r as unknown as Record<string, unknown>) : r.type}
+                </td>
                 <td className="pg-statement-num">{r.debit != null ? fmtZar(r.debit) : "—"}</td>
                 <td className={`pg-statement-num${creditClass ? ` ${creditClass}` : ""}`}>
                   {r.credit != null ? fmtZar(r.credit) : "—"}
@@ -83,14 +85,16 @@ export function FinancialStatementTable({
                 <td>{r.source}</td>
                 <td style={{ whiteSpace: "nowrap" }}>
                   <div className="pg-fins-row-actions">
-                    <Link
-                      className="pg-fins-action-btn"
-                      to={manageUrl}
-                      title="Edit on property financials"
-                      aria-label={`Edit on ${r.propertyName} financials`}
-                    >
-                      <Pencil size={16} aria-hidden />
-                    </Link>
+                    {r.source !== "INVOICE" ? (
+                      <Link
+                        className="pg-fins-action-btn"
+                        to={manageUrl}
+                        title="Edit on property financials"
+                        aria-label={`Edit on ${r.propertyName} financials`}
+                      >
+                        <Pencil size={16} aria-hidden />
+                      </Link>
+                    ) : null}
                     {invoiceViewUrl ? (
                       <Link
                         className="pg-fins-action-btn"
@@ -99,6 +103,7 @@ export function FinancialStatementTable({
                         aria-label="View invoice"
                       >
                         <ExternalLink size={16} aria-hidden />
+                        View
                       </Link>
                     ) : null}
                   </div>

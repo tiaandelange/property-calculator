@@ -3,9 +3,10 @@ import { useNavigate } from "react-router-dom";
 import { BookOpen, Check, ChevronDown, ExternalLink, Pencil, Plus, Trash2, X } from "lucide-react";
 import { invoiceDetailPath } from "../../invoices/invoiceRoutes";
 import {
+  canEditStatementRow,
+  invoiceStatementDisplayType,
   invoiceIdFromStatementRow,
-  invoiceStatementCreditClass,
-  tenantIdFromStatementRow
+  invoiceStatementCreditClass
 } from "../../invoices/invoiceStatementUtils";
 import { getPropertyStatement } from "../../../api/ownedProperties";
 import { Card } from "../../../components/ui/Card";
@@ -17,10 +18,7 @@ import {
   createCurrentInvoiceFromLease,
   deletePropertyExpense,
   deletePropertyIncome,
-  getInvoice,
   hardDeleteInvoice,
-  markInvoicePaid,
-  updateInvoice,
   updatePropertyExpense,
   updatePropertyIncome
 } from "../../../api/ownedProperties";
@@ -92,9 +90,7 @@ function isAmountLocked(r: Record<string, unknown>): boolean {
 }
 
 function canEditRow(r: Record<string, unknown>): boolean {
-  const sourceId = rowSourceId(r);
-  if (!sourceId) return false;
-  return r.source === "EXPENSE" || r.source === "INCOME" || r.source === "INVOICE";
+  return canEditStatementRow(r);
 }
 
 function invoiceUiStatus(raw: string): string {
@@ -545,16 +541,8 @@ export function WorkspaceStatementTab({
           category: String(draftRow.type ?? "RENT")
         });
       } else {
-        const total = creditNum;
-        if (!Number.isFinite(total) || total <= 0) {
-          setRowEditError("Enter a valid invoice amount.");
-          return;
-        }
-        await updateInvoice(String(draftRow.id), {
-          invoiceDate: String(draftRow.date ?? "").trim() || undefined,
-          notes: String(draftRow.description).trim(),
-          total
-        });
+        setRowEditError("This line must be edited on the invoice page.");
+        return;
       }
       cancelRowEdit();
       await reload();
@@ -565,21 +553,12 @@ export function WorkspaceStatementTab({
     }
   }
 
-  async function applyRowStatus(source: "INVOICE" | "INCOME", id: string, uiStatus: string) {
+  async function applyRowStatus(source: "INCOME", id: string, uiStatus: string) {
     setStatusUpdatingRowId(id);
     setError("");
     try {
-      if (source === "INVOICE") {
-        const mapped = invoiceApiStatus(uiStatus);
-        if (mapped === "PAID") {
-          await markInvoicePaid(String(id));
-        } else {
-          await updateInvoice(String(id), { status: mapped });
-        }
-      } else {
-        const mapped = INCOME_STATUS_UI.find((o) => o.value === uiStatus)?.api ?? uiStatus;
-        await updatePropertyIncome(String(id), { status: mapped });
-      }
+      const mapped = INCOME_STATUS_UI.find((o) => o.value === uiStatus)?.api ?? uiStatus;
+      await updatePropertyIncome(String(id), { status: mapped });
       await reload();
     } catch (e: any) {
       setError(e?.message ?? "Failed to update status.");
@@ -590,25 +569,10 @@ export function WorkspaceStatementTab({
   }
 
   async function openInvoiceForRow(r: Record<string, unknown>) {
-    const sourceId = rowSourceId(r);
     setError("");
     try {
-      if (r.source === "INVOICE" && sourceId) {
-        const invoiceId = invoiceIdFromStatementRow(r);
-        const tenantId = tenantIdFromStatementRow(r);
-        if (tenantId) {
-          navigate(invoiceDetailPath(invoiceId));
-          return;
-        }
-        const inv = await getInvoice(sourceId);
-        const invAny = inv as Record<string, unknown>;
-        const invoiceAny = (invAny?.invoice ?? invAny) as Record<string, unknown>;
-        const resolvedInvoiceId = String(invoiceAny?.id ?? sourceId);
-        const resolvedTenantId = String(
-          invoiceAny?.tenantId ?? invoiceAny?.tenant_id ?? invAny?.tenantId ?? invAny?.tenant_id ?? ""
-        );
-        if (!resolvedTenantId) throw new Error("Tenant id was missing for this invoice.");
-        navigate(invoiceDetailPath(resolvedInvoiceId));
+      if (r.source === "INVOICE" && rowSourceId(r)) {
+        navigate(invoiceDetailPath(invoiceIdFromStatementRow(r)));
         return;
       }
       if (isExpectedRentRow(r)) {
@@ -616,11 +580,6 @@ export function WorkspaceStatementTab({
         const created = await createCurrentInvoiceFromLease(propertyId, leaseId);
         const invoiceId = String((created as { invoiceId?: string }).invoiceId ?? "");
         if (!invoiceId) throw new Error("Invoice could not be created.");
-        const inv = await getInvoice(invoiceId);
-        const invAny = inv as Record<string, unknown>;
-        const invoiceAny = (invAny?.invoice ?? invAny) as Record<string, unknown>;
-        const tenantId = String(invoiceAny?.tenantId ?? invoiceAny?.tenant_id ?? invAny?.tenantId ?? invAny?.tenant_id ?? "");
-        if (!tenantId) throw new Error("Invoice created, but tenant id was missing.");
         navigate(invoiceDetailPath(invoiceId));
         return;
       }
@@ -807,7 +766,7 @@ export function WorkspaceStatementTab({
                           )}
                         </Select>
                       ) : (
-                        String(r.type ?? "")
+                        invoiceStatementDisplayType(r)
                       )}
                     </td>
                     <td className="pg-pfin-table__amount" style={{ textAlign: "right" }}>
@@ -854,20 +813,9 @@ export function WorkspaceStatementTab({
                     </td>
                     <td style={{ verticalAlign: "middle" }}>
                       {r.source === "INVOICE" && sourceId ? (
-                        <StatementStatusPicker
-                          label={statusLabelForRow("INVOICE", String(r.status ?? ""), statusUiValue)}
-                          badgeClass={pfinStatusBadgeClass("INVOICE", String(r.status ?? ""), statusUiValue)}
-                          options={INVOICE_STATUS_UI}
-                          uiValue={statusUiValue}
-                          disabled={isEditing}
-                          busy={rowStatusBusy}
-                          menuOpen={statusMenuKey === editKey}
-                          onToggleMenu={() => setStatusMenuKey((k) => (k === editKey ? null : editKey))}
-                          onPick={(v) => {
-                            setStatusMenuKey(null);
-                            void applyRowStatus("INVOICE", sourceId, v).catch(() => undefined);
-                          }}
-                        />
+                        <span className={pfinStatusBadgeClass("INVOICE", String(r.status ?? ""), statusUiValue)}>
+                          {statusLabelForRow("INVOICE", String(r.status ?? ""), statusUiValue)}
+                        </span>
                       ) : r.source === "INCOME" && sourceId ? (
                         <StatementStatusPicker
                           label={statusLabelForRow("INCOME", String(r.status ?? ""), statusUiValue)}
@@ -925,8 +873,8 @@ export function WorkspaceStatementTab({
                             <>
                               <button
                                 type="button"
-                                className="pg-pfin-icon-btn"
-                                style={{ color: "var(--primary)" }}
+                                className="pg-btn pg-btn-ghost pg-btn-sm"
+                                style={{ display: "inline-flex", alignItems: "center", gap: 4 }}
                                 disabled={!invoiceActionEnabled(r) || rowBusy}
                                 title={
                                   invoiceActionEnabled(r)
@@ -942,15 +890,22 @@ export function WorkspaceStatementTab({
                                 aria-label={r.source === "INVOICE" ? "View invoice" : "Create invoice"}
                               >
                                 {r.source === "INVOICE" ? (
-                                  <ExternalLink size={16} aria-hidden />
+                                  <>
+                                    <ExternalLink size={14} aria-hidden />
+                                    View
+                                  </>
                                 ) : (
-                                  <BookOpen size={16} aria-hidden />
+                                  <>
+                                    <BookOpen size={14} aria-hidden />
+                                    Create
+                                  </>
                                 )}
                               </button>
+                              {canEditRow(r) ? (
                               <button
                                 type="button"
                                 className="pg-pfin-icon-btn"
-                                disabled={!canEditRow(r) || rowSaving || rowBusy}
+                                disabled={rowSaving || rowBusy}
                                 onClick={(e) => {
                                   stopRowEvent(e);
                                   if (editingRowKey && editingRowKey !== editKey) cancelRowEdit();
@@ -961,6 +916,7 @@ export function WorkspaceStatementTab({
                               >
                                 <Pencil size={16} aria-hidden />
                               </button>
+                              ) : null}
                               <button
                                 type="button"
                                 className="pg-pfin-icon-btn pg-pfin-icon-btn--danger"

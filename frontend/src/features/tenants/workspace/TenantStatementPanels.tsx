@@ -368,22 +368,37 @@ export function TenantStatementTabContent({
               </table>
             </div>
             <div className="pg-tstmt-txn-mobile">
-              {filtered.map((row) => (
+              {filtered.map((row) => {
+                const raw = row.raw ?? {};
+                const showInvoiceView = isInvoiceStatementRow(raw) && !!invoiceIdFromStatementRow(raw);
+                return (
                 <div key={row.id} className="pg-tstmt-txn-card">
                   <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
                     <span className="pg-muted">{formatDateShort(row.date)}</span>
                     <TypeBadge type={row.type} />
                   </div>
                   <div style={{ marginTop: 6, fontWeight: 500 }}>{row.description || "—"}</div>
-                  <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, alignItems: "center" }}>
                     <span style={{ color: amountColor(row.type, row.amount) }}>
                       {row.amount < 0 ? "-" : ""}
                       {fmtZar(Math.abs(row.amount))}
                     </span>
                     <span className="pg-muted">Bal {fmtZar(row.balance)}</span>
                   </div>
+                  {showInvoiceView ? (
+                    <button
+                      type="button"
+                      className="pg-btn pg-btn-ghost pg-btn-sm"
+                      style={{ display: "inline-flex", alignItems: "center", gap: 4, marginTop: 8 }}
+                      onClick={() => navigate(invoiceDetailPath(invoiceIdFromStatementRow(raw)))}
+                    >
+                      <ExternalLink size={14} aria-hidden />
+                      View
+                    </button>
+                  ) : null}
                 </div>
-              ))}
+              );
+              })}
             </div>
           </>
         )}
@@ -411,15 +426,13 @@ function SummaryRow({
 
 export function TenantInvoicesTable({
   invoices,
-  tenantId,
-  propertyId,
-  loading,
-  onOpenInvoice
+  loading
 }: {
   invoices: TenantInvoiceListItem[];
-  tenantId: string;
+  tenantId?: string;
   propertyId?: string;
   loading?: boolean;
+  /** @deprecated Invoice edits open on /invoices/:id — prop ignored. */
   onOpenInvoice?: (id: string) => void;
 }) {
   if (loading) return <div className="pg-tstmt-card pg-tstmt-skeleton" />;
@@ -455,15 +468,9 @@ export function TenantInvoicesTable({
                 <td>{inv.status}</td>
                 <td>{fmtZar(inv.total)}</td>
                 <td>
-                  {onOpenInvoice ? (
-                    <button type="button" className="pg-link" onClick={() => onOpenInvoice(inv.id)}>
-                      Edit
-                    </button>
-                  ) : (
-                    <Link className="pg-link" to={invoiceDetailPath(inv.id)}>
-                      View
-                    </Link>
-                  )}
+                  <Link className="pg-link" to={invoiceDetailPath(inv.id)}>
+                    View
+                  </Link>
                 </td>
               </tr>
             ))}
