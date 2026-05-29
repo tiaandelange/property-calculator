@@ -79,7 +79,7 @@ async function enrichPropertyListItems(uid: string, items: PropertyListItem[]): 
 
   const { data: leaseRows, error: leaseErr } = await sb
     .from("leases")
-    .select("property_id, status, monthly_rent, fixed_term_end_date, end_date")
+    .select("property_id, status, monthly_rent, fixed_term_end_date")
     .eq("user_id", uid)
     .in("property_id", ids);
   if (leaseErr) throw toError(leaseErr);

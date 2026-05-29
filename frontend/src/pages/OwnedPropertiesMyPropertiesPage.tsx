@@ -63,7 +63,7 @@ export function OwnedPropertiesMyPropertiesPage() {
       setRows(await getProperties());
     } catch (e: any) {
       console.error("[MyProperties] Load failed", e);
-      setError(e?.response?.data?.message ?? "Failed to load properties.");
+      setError(e?.message ?? e?.response?.data?.message ?? "Failed to load properties.");
     } finally {
       setLoading(false);
     }

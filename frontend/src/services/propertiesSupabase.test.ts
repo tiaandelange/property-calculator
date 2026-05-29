@@ -104,10 +104,15 @@ describe("propertiesSupabase", () => {
 
   it("listProperties queries properties scoped to user_id", async () => {
     getUser.mockResolvedValue({ data: { user: { id: userId } }, error: null });
-    const emptyInQuery = {
-      eq: vi.fn(function eqChain() {
-        return { eq: eqChain, in: vi.fn(() => Promise.resolve({ data: [], error: null })) };
-      })
+    const queryResult = Promise.resolve({ data: [], error: null });
+    const fluent = (): Record<string, unknown> => {
+      const chain: Record<string, unknown> = {};
+      const self = () => chain;
+      for (const method of ["eq", "in", "is", "neq", "order"]) {
+        chain[method] = vi.fn(self);
+      }
+      chain.then = queryResult.then.bind(queryResult);
+      return chain;
     };
     from.mockImplementation((table: string) => {
       if (table === "properties") {
@@ -119,10 +124,7 @@ describe("propertiesSupabase", () => {
           }))
         };
       }
-      if (table === "leases" || table === "property_units") {
-        return { select: vi.fn(() => emptyInQuery) };
-      }
-      return { select: vi.fn(() => emptyInQuery) };
+      return { select: vi.fn(() => fluent()) };
     });
 
     const rows = await listProperties();
