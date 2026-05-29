@@ -109,6 +109,21 @@ export async function listLeasesForProperty(propertyId: string | number): Promis
   return buildLeaseBundle(leases);
 }
 
+/** Single lease with tenant, property, and lease_tenants (lease agreement page). */
+export async function getLeaseById(id: string | number): Promise<Record<string, unknown>> {
+  const uid = await requireUserId();
+  const sb = getSupabase();
+  const { data, error } = await sb
+    .from("leases")
+    .select(`${LEASE_SELECT}, properties ( id, name, address_line1, suburb, city )`)
+    .eq("id", String(id))
+    .eq("user_id", uid)
+    .maybeSingle();
+  if (error) throw toError(error);
+  if (!data) throw new Error("Lease not found.");
+  return dbToLease(data as Record<string, unknown>);
+}
+
 /** Same envelope as `GET /api/properties/:propertyId/current-lease`. */
 export async function getCurrentLease(propertyId: string | number): Promise<{
   currentLeases: Record<string, unknown>[];

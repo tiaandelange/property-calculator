@@ -34,9 +34,10 @@ export function LeaseRowActions({
         </button>
       )}
       <Link
-        to={`/owned-properties/${lease.propertyId}?tab=leases`}
+        to={`/leases/${lease.id}`}
         className="pg-leases-action-btn"
-        aria-label={`Lease details for ${lease.tenantName}`}
+        aria-label={`Lease agreement for ${lease.tenantName}`}
+        title="Lease agreement"
       >
         <Eye size={16} aria-hidden />
       </Link>

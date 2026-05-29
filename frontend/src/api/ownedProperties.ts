@@ -168,6 +168,11 @@ export async function getPropertyCurrentLease(propertyId: string | number) {
   return leasesSupabase.getCurrentLease(propertyId);
 }
 
+export async function getLease(leaseId: string | number) {
+  assertSupabaseConfigured();
+  return leasesSupabase.getLeaseById(leaseId);
+}
+
 export async function createLease(propertyId: string | number, payload: Record<string, unknown>) {
   assertSupabaseConfigured();
   return leasesSupabase.createLease(propertyId, payload);
