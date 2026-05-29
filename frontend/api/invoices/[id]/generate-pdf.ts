@@ -59,8 +59,12 @@ function paymentReferenceFromProfile(raw: unknown, invoiceNumber: string): strin
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
+  if (req.method === "OPTIONS") {
+    res.status(204).end();
+    return;
+  }
   if (req.method !== "POST") {
-    res.status(405).setHeader("Allow", "POST").json({ error: "Method not allowed" });
+    res.status(405).setHeader("Allow", "POST, OPTIONS").json({ error: "Method not allowed" });
     return;
   }
 

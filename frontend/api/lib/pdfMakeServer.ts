@@ -1,51 +1,55 @@
 import { createRequire } from "node:module";
 import { existsSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import type { TDocumentDefinitions } from "pdfmake/interfaces";
+
 // pdfmake is CommonJS. This project is ESM (`"type": "module"`), so we must load
 // pdfmake via `createRequire` to avoid default-import interop issues.
-// Important: keep the actual `require("pdfmake")` lazy so that a missing module
-// yields a handled runtime error (JSON) instead of a Vercel module-load crash.
 const req = createRequire(import.meta.url);
 
 type PdfMakeFontDescriptor = { normal: string; bold?: string; italics?: string; bolditalics?: string };
 type PdfMakeFonts = Record<string, PdfMakeFontDescriptor>;
 
+const FONT_FILES = {
+  normal: "Roboto-Regular.ttf",
+  bold: "Roboto-Medium.ttf",
+  italics: "Roboto-Italic.ttf",
+  bolditalics: "Roboto-MediumItalic.ttf"
+} as const;
+
 let printer: any | null = null;
 
-function resolveLocalPdfFonts(): PdfMakeFontDescriptor {
+/** Resolve committed Roboto TTF paths (shared by invoice + report PDF routes). */
+export function resolveLocalPdfFonts(): PdfMakeFontDescriptor {
+  const moduleDir = dirname(fileURLToPath(import.meta.url));
   const candidates = [
+    join(moduleDir, "../../assets/fonts/pdfmake"),
     join(process.cwd(), "assets", "fonts", "pdfmake"),
     join(process.cwd(), "frontend", "assets", "fonts", "pdfmake")
   ];
 
-  const names = {
-    normal: "Roboto-Regular.ttf",
-    bold: "Roboto-Medium.ttf",
-    italics: "Roboto-Italic.ttf",
-    bolditalics: "Roboto-MediumItalic.ttf"
-  } as const;
-
   const tried: string[] = [];
   for (const base of candidates) {
-    const normal = join(base, names.normal);
-    const bold = join(base, names.bold);
-    const italics = join(base, names.italics);
-    const bolditalics = join(base, names.bolditalics);
+    const normal = join(base, FONT_FILES.normal);
+    const bold = join(base, FONT_FILES.bold);
+    const italics = join(base, FONT_FILES.italics);
+    const bolditalics = join(base, FONT_FILES.bolditalics);
     tried.push(normal, bold, italics, bolditalics);
-    if ([normal, bold, italics, bolditalics].every((p) => existsSync(p))) return { normal, bold, italics, bolditalics };
+    if ([normal, bold, italics, bolditalics].every((p) => existsSync(p))) {
+      return { normal, bold, italics, bolditalics };
+    }
   }
 
   throw new Error(
-    `PDF fonts missing. Expected these files under assets/fonts/pdfmake/ (bundled into Vercel function).\nTried:\n  ${tried.join("\n  ")}`
+    `PDF fonts missing. Expected Roboto TTF files under assets/fonts/pdfmake/ (bundled into Vercel function).\nTried:\n  ${tried.join("\n  ")}`
   );
 }
 
-function getPdfPrinter(): any {
+/** Shared PdfPrinter instance for invoice and report PDF generation. */
+export function getPdfPrinter(): any {
   if (!printer) {
-    // Lazy-load pdfmake so failures don't become FUNCTION_INVOCATION_FAILED.
     const PdfPrinter = req("pdfmake") as any;
-
     const roboto = resolveLocalPdfFonts();
     const fonts: PdfMakeFonts = {
       Roboto: {
@@ -59,7 +63,7 @@ function getPdfPrinter(): any {
     console.info("[pdfmake] init", {
       runtime: process.env.VERCEL_ENV ?? "local",
       font: "Roboto",
-      hasNormal: Boolean(roboto.normal)
+      normal: roboto.normal
     });
 
     printer = new PdfPrinter(fonts);

@@ -5,12 +5,36 @@
   "outputDirectory": "frontend/dist",
   "framework": "vite",
   "trailingSlash": false,
+
+  "crons": [
+    {
+      "path": "/api/cron/run-due",
+      "schedule": "0 6 * * *"
+    }
+  ],
+
+  "functions": {
+    "frontend/api/reports/generate.ts": {
+      "includeFiles": "frontend/assets/fonts/pdfmake/**"
+    },
+    "frontend/api/reports/pdf-smoke-test.ts": {
+      "includeFiles": "frontend/assets/fonts/pdfmake/**"
+    },
+    "frontend/api/invoices/pdf-smoke-test.ts": {
+      "includeFiles": "frontend/assets/fonts/pdfmake/**"
+    },
+    "frontend/api/invoices/[id]/generate-pdf.ts": {
+      "includeFiles": "frontend/assets/fonts/pdfmake/**"
+    }
+  },
+
   "rewrites": [
     {
-      "source": "/(.*)",
+      "source": "/((?!api/).*)",
       "destination": "/index.html"
     }
   ],
+
   "headers": [
     {
       "source": "/(.*)",
