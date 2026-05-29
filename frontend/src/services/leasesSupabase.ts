@@ -36,7 +36,17 @@ function isValidDayOfMonth(d: number): boolean {
   return Number.isInteger(d) && d >= 1 && d <= 31;
 }
 
-const LEASE_SELECT = `*, tenants (*)`;
+const LEASE_SELECT = `
+  *,
+  tenants (*),
+  lease_tenants (
+    id,
+    tenant_id,
+    role,
+    is_primary,
+    tenants ( id, first_name, last_name, email, phone, status )
+  )
+`;
 
 const LEASE_DIRECTORY_SELECT = `
   *,
@@ -113,6 +123,7 @@ function mapRpcExceptionMessage(code: string): string {
     NOT_AUTHENTICATED: "Not signed in.",
     PROPERTY_NOT_FOUND: "Property not found",
     INVALID_TENANT: "Invalid tenant",
+    INVALID_UNIT: "Invalid unit for this property.",
     MISSING_PROPERTY_OR_TENANT: "tenantId and property are required.",
     NEGATIVE_AMOUNT: "Amounts must be non-negative.",
     INVALID_RENT_DUE_DAY: "rentDueDay must be between 1 and 31",
@@ -174,7 +185,75 @@ function buildLeaseSnakePatch(input: Record<string, unknown>): Record<string, un
   return patch;
 }
 
-/** Atomic create (tenant + lease + optional rent rule) via `public.create_property_lease`. */
+/** Active leases with lease_tenants for property occupancy display. */
+export type ActiveLeaseOccupancy = {
+  leaseId: string;
+  unitId: string | null;
+  monthlyRent: number;
+  displayStatus: string;
+  startDate?: string;
+  fixedTermEndDate?: string | null;
+  tenants: Array<{
+    tenantId: string;
+    firstName: string;
+    lastName: string;
+    email?: string | null;
+    role: string;
+    isPrimary: boolean;
+  }>;
+};
+
+export async function listActiveLeaseOccupancyForProperty(propertyId: string | number): Promise<ActiveLeaseOccupancy[]> {
+  const uid = await requireUserId();
+  const sb = getSupabase();
+  const { data, error } = await sb
+    .from("leases")
+    .select(LEASE_SELECT)
+    .eq("user_id", uid)
+    .eq("property_id", String(propertyId))
+    .order("created_at", { ascending: false });
+  if (error) throw toError(error);
+
+  return (data ?? [])
+    .map((row) => dbToLease(row as Record<string, unknown>))
+    .filter((l) => isCurrentLeaseStatus(String(l.displayStatus ?? l.status ?? "")))
+    .map((l) => {
+      const leaseTenants = Array.isArray(l.leaseTenants) ? l.leaseTenants : [];
+      const tenants = leaseTenants.map((lt: Record<string, unknown>) => {
+        const t = (lt.tenant ?? {}) as Record<string, unknown>;
+        return {
+          tenantId: String(lt.tenantId ?? t.id ?? ""),
+          firstName: String(t.firstName ?? ""),
+          lastName: String(t.lastName ?? ""),
+          email: t.email != null ? String(t.email) : null,
+          role: String(lt.role ?? "occupant"),
+          isPrimary: lt.isPrimary === true
+        };
+      });
+      if (!tenants.length && l.tenant && typeof l.tenant === "object") {
+        const t = l.tenant as Record<string, unknown>;
+        tenants.push({
+          tenantId: String(l.tenantId ?? t.id ?? ""),
+          firstName: String(t.firstName ?? ""),
+          lastName: String(t.lastName ?? ""),
+          email: t.email != null ? String(t.email) : null,
+          role: "primary_tenant",
+          isPrimary: true
+        });
+      }
+      return {
+        leaseId: String(l.id),
+        unitId: l.unitId != null ? String(l.unitId) : null,
+        monthlyRent: Number(l.monthlyRent ?? 0),
+        displayStatus: String(l.displayStatus ?? l.status ?? ""),
+        startDate: l.startDate != null ? String(l.startDate) : undefined,
+        fixedTermEndDate: l.fixedTermEndDate != null ? String(l.fixedTermEndDate) : null,
+        tenants
+      };
+    });
+}
+
+/** Atomic create (lease + lease_tenants + optional rent rule) via `public.create_property_lease`. */
 export async function createLease(propertyId: string | number, input: Record<string, unknown>): Promise<Record<string, unknown>> {
   await requireUserId();
   const sb = getSupabase();
@@ -189,6 +268,7 @@ export async function createLease(propertyId: string | number, input: Record<str
       raw.includes("TENANT_HAS_ACTIVE_LEASE") ||
       raw.includes("PROPERTY_NOT_FOUND") ||
       raw.includes("INVALID_TENANT") ||
+      raw.includes("INVALID_UNIT") ||
       raw.includes("FIXED_TERM") ||
       raw.includes("NEGATIVE_AMOUNT") ||
       raw.includes("INVALID_RENT_DUE_DAY") ||

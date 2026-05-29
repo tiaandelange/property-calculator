@@ -239,8 +239,8 @@ export function LeasesListPage() {
       >
         <p style={{ marginTop: 0 }}>
           Permanently delete the lease for <strong>{deleteLeaseItem?.tenantName ?? "this tenant"}</strong> at{" "}
-          <strong>{deleteLeaseItem?.propertyName ?? "this property"}</strong>? All linked invoices, income, and recurring
-          rules are removed. This cannot be undone.
+          <strong>{deleteLeaseItem?.propertyName ?? "this property"}</strong>? This removes the property/unit link and
+          associated lease financial history. The tenant record will remain in Global Tenants.
         </p>
         {actionError ? <div className="pg-alert pg-alert-error" style={{ marginTop: 12 }}>{actionError}</div> : null}
       </ConfirmDialog>

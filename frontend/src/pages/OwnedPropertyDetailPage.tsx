@@ -498,11 +498,12 @@ export function OwnedPropertyDetailPage() {
         onConfirm={() => void confirmHardDeleteLease()}
       >
         <p style={{ marginTop: 0 }}>
-          Permanently delete <strong>{leaseDeleteTarget?.label}</strong>? This removes the lease and all linked invoices,
-          income entries, and recurring rules. This cannot be undone.
+          Permanently delete <strong>{leaseDeleteTarget?.label}</strong>? This removes the lease property/unit link and
+          associated lease financial history (invoices, income, recurring rules). The tenant record will remain in Global
+          Tenants.
         </p>
         <p className="pg-muted" style={{ fontSize: 13, marginBottom: 0 }}>
-          To keep lease history in reports, cancel the lease instead.
+          To keep lease history and financial records, cancel the lease instead.
         </p>
         {leaseActionError ? <div className="pg-alert pg-alert-error" style={{ marginTop: 12 }}>{leaseActionError}</div> : null}
       </ConfirmDialog>

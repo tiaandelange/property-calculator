@@ -33,10 +33,30 @@ function normalizeTenantEmbed(c: Record<string, unknown>): void {
   delete c.tenants;
 }
 
+function normalizeLeaseTenantsEmbed(c: Record<string, unknown>): void {
+  const raw = c.leaseTenants ?? c.lease_tenants;
+  if (!Array.isArray(raw)) {
+    c.leaseTenants = [];
+    delete c.lease_tenants;
+    return;
+  }
+  c.leaseTenants = raw.map((row) => {
+    const r = snakeRowToCamel(row as Record<string, unknown>) as Record<string, unknown>;
+    const tenantRaw = r.tenants ?? r.tenant;
+    if (tenantRaw && typeof tenantRaw === "object" && !Array.isArray(tenantRaw)) {
+      r.tenant = snakeRowToCamel(tenantRaw as Record<string, unknown>);
+    }
+    delete r.tenants;
+    return r;
+  });
+  delete c.lease_tenants;
+}
+
 export function dbToLease(row: Record<string, unknown>): Record<string, unknown> {
   const c = { ...snakeRowToCamel(row) } as Record<string, unknown>;
   normalizeTenantEmbed(c);
   normalizePropertyEmbed(c);
+  normalizeLeaseTenantsEmbed(c);
   const disp = leaseDisplayStatus({
     status: String(c.status ?? ""),
     fixedTermEndDate: (c.fixedTermEndDate as string | Date | null | undefined) ?? null

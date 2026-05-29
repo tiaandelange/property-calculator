@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { Container } from "../components/ui/Container";
@@ -6,8 +6,7 @@ import { Section } from "../components/ui/Section";
 import { Card } from "../components/ui/Card";
 import { Field, Input } from "../components/ui/Input";
 import { Button } from "../components/ui/Button";
-import { createTenant, getProperties, getTenant, listPropertyUnits, updateTenant } from "../api/ownedProperties";
-import type { PropertyUnitDraft } from "../features/properties/units/propertyUnitTypes";
+import { createTenant, getTenant, updateTenant } from "../api/ownedProperties";
 
 export function TenantFormPage() {
   const { id } = useParams();
@@ -15,9 +14,6 @@ export function TenantFormPage() {
   const navigate = useNavigate();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const [properties, setProperties] = useState<any[]>([]);
-  const [units, setUnits] = useState<PropertyUnitDraft[]>([]);
-  const [unitsLoading, setUnitsLoading] = useState(false);
   const [form, setForm] = useState({
     firstName: "",
     lastName: "",
@@ -25,49 +21,8 @@ export function TenantFormPage() {
     phone: "",
     idNumber: "",
     emergencyContactName: "",
-    emergencyContactPhone: "",
-    appliedPropertyId: "",
-    appliedUnitId: ""
+    emergencyContactPhone: ""
   });
-
-  useEffect(() => {
-    void (async () => {
-      try {
-        setProperties(await getProperties());
-      } catch {
-        setProperties([]);
-      }
-    })();
-  }, []);
-
-  useEffect(() => {
-    const pid = form.appliedPropertyId;
-    if (!pid) {
-      setUnits([]);
-      return;
-    }
-    void (async () => {
-      setUnitsLoading(true);
-      try {
-        const rows = await listPropertyUnits(pid);
-        setUnits(rows.filter((u) => u.isActive !== false));
-      } catch {
-        setUnits([]);
-      } finally {
-        setUnitsLoading(false);
-      }
-    })();
-  }, [form.appliedPropertyId]);
-
-  const showAppliedUnit = form.appliedPropertyId !== "" && units.length > 1;
-
-  const activeUnits = useMemo(() => units.filter((u) => u.isActive !== false), [units]);
-
-  useEffect(() => {
-    if (!showAppliedUnit && form.appliedUnitId) {
-      setForm((prev) => ({ ...prev, appliedUnitId: "" }));
-    }
-  }, [showAppliedUnit, form.appliedUnitId]);
 
   useEffect(() => {
     if (!isEdit || !id) return;
@@ -82,10 +37,7 @@ export function TenantFormPage() {
           phone: String(t.phone ?? ""),
           idNumber: String(t.idNumber ?? ""),
           emergencyContactName: String(t.emergencyContactName ?? ""),
-          emergencyContactPhone: String(t.emergencyContactPhone ?? ""),
-          appliedPropertyId:
-            t.appliedPropertyId != null && String(t.appliedPropertyId) !== "" ? String(t.appliedPropertyId) : "",
-          appliedUnitId: t.appliedUnitId != null && String(t.appliedUnitId) !== "" ? String(t.appliedUnitId) : ""
+          emergencyContactPhone: String(t.emergencyContactPhone ?? "")
         });
       } catch (e: any) {
         setError(e?.response?.data?.message ?? "Failed to load tenant.");
@@ -105,10 +57,7 @@ export function TenantFormPage() {
         phone: form.phone || undefined,
         idNumber: form.idNumber || undefined,
         emergencyContactName: form.emergencyContactName || undefined,
-        emergencyContactPhone: form.emergencyContactPhone || undefined,
-        appliedPropertyId: form.appliedPropertyId === "" ? null : String(form.appliedPropertyId),
-        appliedUnitId:
-          showAppliedUnit && form.appliedUnitId !== "" ? String(form.appliedUnitId) : null
+        emergencyContactPhone: form.emergencyContactPhone || undefined
       };
       if (isEdit && id) {
         await updateTenant(id, payload);
@@ -139,6 +88,9 @@ export function TenantFormPage() {
               Back to tenants
             </Link>
           </div>
+          <p className="pg-muted" style={{ marginTop: 8, marginBottom: 0, fontSize: 13 }}>
+            Tenants are global contact records. Link a tenant to a property and unit by creating a lease.
+          </p>
           {error ? (
             <div className="pg-alert pg-alert-error" style={{ marginTop: 12 }}>
               {error}
@@ -166,47 +118,6 @@ export function TenantFormPage() {
             <Field label="Emergency contact phone (optional)">
               <Input value={form.emergencyContactPhone} onChange={(e) => setForm({ ...form, emergencyContactPhone: e.target.value })} />
             </Field>
-            <Field label="Applied property (optional)">
-              <select
-                className="pg-input"
-                value={form.appliedPropertyId}
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    appliedPropertyId: e.target.value,
-                    appliedUnitId: ""
-                  })
-                }
-              >
-                <option value="">None</option>
-                {properties.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
-              <p className="pg-muted" style={{ fontSize: 12, margin: "6px 0 0" }}>
-                Records which property the tenant applied for. This does not link them to the property — use Link Tenants on the
-                property page when ready.
-              </p>
-            </Field>
-            {showAppliedUnit ? (
-              <Field label="Applied unit">
-                <select
-                  className="pg-input"
-                  value={form.appliedUnitId}
-                  onChange={(e) => setForm({ ...form, appliedUnitId: e.target.value })}
-                  disabled={unitsLoading}
-                >
-                  <option value="">Select unit</option>
-                  {activeUnits.map((u) => (
-                    <option key={u.id ?? u.clientId} value={u.id ?? ""}>
-                      {u.unitName}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-            ) : null}
             <Button type="submit" loading={saving}>
               {isEdit ? "Save changes" : "Create tenant"}
             </Button>

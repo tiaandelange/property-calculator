@@ -116,20 +116,8 @@ async function clearPrimaryForUnit(unitId: string | null, propertyId: string, ex
   if (error) throw toError(error);
 }
 
-async function ensureTenantPropertyAssociation(tenantId: string, propertyId: string): Promise<void> {
-  const uid = await requireUserId();
-  const sb = getSupabase();
-  const { data, error } = await sb.from("tenants").select("property_id").eq("id", tenantId).eq("user_id", uid).maybeSingle();
-  if (error) throw toError(error);
-  if (!data) throw new Error("Tenant not found.");
-  if (data.property_id == null) {
-    const { error: uErr } = await sb
-      .from("tenants")
-      .update({ property_id: propertyId, status: "ACTIVE" })
-      .eq("id", tenantId)
-      .eq("user_id", uid);
-    if (uErr) throw toError(uErr);
-  }
+async function ensureTenantPropertyAssociation(_tenantId: string, _propertyId: string): Promise<void> {
+  // Occupancy is lease-driven; do not write tenants.property_id.
 }
 
 export async function listTenantUnitLinksForProperty(propertyId: string): Promise<TenantUnitLinkRecord[]> {

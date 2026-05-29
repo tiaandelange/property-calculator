@@ -78,7 +78,7 @@ describe("tenantsSupabase", () => {
     expect(rows[0].firstName).toBe("Jane");
   });
 
-  it("listTenantsEligibleForProperty includes unassigned tenants for the property", async () => {
+  it("listTenantsEligibleForProperty returns all tenants without active lease elsewhere", async () => {
     getUser.mockResolvedValue({ data: { user: { id: userId } }, error: null });
     const unassigned = { ...tenantRowSnake, id: "t-unassigned", property_id: null };
     const otherProperty = { ...tenantRowSnake, id: "t-other", property_id: "other-prop" };
@@ -94,23 +94,10 @@ describe("tenantsSupabase", () => {
           }))
         };
       }
-      if (table === "leases") {
+      if (table === "lease_tenants") {
         return {
           select: vi.fn(() => ({
-            eq: vi.fn(() => ({
-              in: vi.fn(() => Promise.resolve({ data: [], error: null }))
-            }))
-          }))
-        };
-      }
-      if (table === "tenant_unit_links") {
-        return {
-          select: vi.fn(() => ({
-            eq: vi.fn(() => ({
-              eq: vi.fn(() => ({
-                not: vi.fn(() => Promise.resolve({ data: [], error: null }))
-              }))
-            }))
+            eq: vi.fn(() => Promise.resolve({ data: [], error: null }))
           }))
         };
       }
@@ -119,53 +106,42 @@ describe("tenantsSupabase", () => {
 
     const rows = await listTenantsEligibleForProperty(propertyId);
     expect(rows.map((r) => r.id)).toEqual(expect.arrayContaining(["t-unassigned", tenantId]));
-    expect(rows.map((r) => r.id)).not.toContain("t-other");
+    expect(rows.map((r) => r.id)).toContain("t-other");
   });
 
-  it("listTenantsForProperty includes applied-property and unit-linked tenants", async () => {
+  it("listTenantsForProperty derives tenants from leases and lease_tenants", async () => {
     getUser.mockResolvedValue({ data: { user: { id: userId } }, error: null });
-    const appliedTenant = {
-      ...tenantRowSnake,
-      id: "t-applied",
-      property_id: null,
-      applied_property_id: propertyId
-    };
     from.mockImplementation((table: string) => {
-      if (table === "tenants") {
-        return {
-          select: vi.fn(() => ({
-            eq: vi.fn(() => ({
-              eq: vi.fn((col2: string) => ({
-                order: vi.fn(() =>
-                  Promise.resolve({
-                    data: col2 === "applied_property_id" ? [appliedTenant] : [],
-                    error: null
-                  })
-                ),
-                in: vi.fn(() => Promise.resolve({ data: [], error: null }))
-              }))
-            }))
-          }))
-        };
-      }
-      if (table === "tenant_unit_links") {
-        return {
-          select: vi.fn(() => ({
-            eq: vi.fn(() => ({
-              eq: vi.fn(() => ({
-                not: vi.fn(() => Promise.resolve({ data: [], error: null }))
-              }))
-            }))
-          }))
-        };
-      }
       if (table === "leases") {
         return {
           select: vi.fn(() => ({
             eq: vi.fn(() => ({
               eq: vi.fn(() => ({
-                in: vi.fn(() => Promise.resolve({ data: [], error: null })),
-                order: vi.fn(() => Promise.resolve({ data: [], error: null }))
+                order: vi.fn(() =>
+                  Promise.resolve({
+                    data: [
+                      {
+                        id: "lease-1",
+                        user_id: userId,
+                        property_id: propertyId,
+                        tenant_id: tenantId,
+                        status: "ACTIVE",
+                        start_date: "2026-01-01T00:00:00Z",
+                        fixed_term_end_date: null,
+                        monthly_rent: 5000,
+                        lease_tenants: [
+                          {
+                            tenant_id: tenantId,
+                            role: "primary_tenant",
+                            is_primary: true,
+                            tenants: tenantRowSnake
+                          }
+                        ]
+                      }
+                    ],
+                    error: null
+                  })
+                )
               }))
             }))
           }))
@@ -175,64 +151,10 @@ describe("tenantsSupabase", () => {
     });
 
     const rows = await listTenantsForProperty(propertyId);
-    expect(rows.map((r) => r.id)).toContain("t-applied");
-  });
-
-  it("listTenantsForProperty runs direct tenants + lease lookups", async () => {
-    getUser.mockResolvedValue({ data: { user: { id: userId } }, error: null });
-    from.mockImplementation((table: string) => {
-      if (table === "tenants") {
-        return {
-          select: vi.fn(() => ({
-            eq: vi.fn(() => ({
-              eq: vi.fn((col2: string) => ({
-                order: vi.fn(() =>
-                  Promise.resolve({
-                    data:
-                      col2 === "property_id"
-                        ? [{ ...tenantRowSnake, property_id: propertyId }]
-                        : [],
-                    error: null
-                  })
-                ),
-                in: vi.fn(() => Promise.resolve({ data: [], error: null }))
-              }))
-            }))
-          }))
-        };
-      }
-      if (table === "tenant_unit_links") {
-        return {
-          select: vi.fn(() => ({
-            eq: vi.fn(() => ({
-              eq: vi.fn(() => ({
-                not: vi.fn(() => Promise.resolve({ data: [], error: null }))
-              }))
-            }))
-          }))
-        };
-      }
-      if (table === "leases") {
-        return {
-          select: vi.fn(() => ({
-            eq: vi.fn(() => ({
-              eq: vi.fn(() => ({
-                in: vi.fn(() => Promise.resolve({ data: [], error: null })),
-                order: vi.fn(() => Promise.resolve({ data: [], error: null }))
-              }))
-            }))
-          }))
-        };
-      }
-      return { select: vi.fn() };
-    });
-
-    const rows = await listTenantsForProperty(propertyId);
-    expect(from).toHaveBeenCalledWith("tenants");
     expect(from).toHaveBeenCalledWith("leases");
-    expect(from).toHaveBeenCalledWith("tenant_unit_links");
     expect(rows).toHaveLength(1);
-    expect(rows[0].currentLease).toBeNull();
+    expect(rows[0].id).toBe(tenantId);
+    expect(rows[0].currentLease).not.toBeNull();
   });
 
   it("getTenant loads tenant and leases", async () => {
@@ -278,24 +200,18 @@ describe("tenantsSupabase", () => {
     expect(created.id).toBe(tenantId);
   });
 
-  it("createTenantForProperty includes property_id in insert body", async () => {
+  it("createTenantForProperty creates a global tenant without property_id", async () => {
     getUser.mockResolvedValue({ data: { user: { id: userId } }, error: null });
     const insert = vi.fn(() => ({
       select: vi.fn(() => ({
-        single: vi.fn(() =>
-          Promise.resolve({
-            data: { ...tenantRowSnake, property_id: propertyId },
-            error: null
-          })
-        )
+        single: vi.fn(() => Promise.resolve({ data: tenantRowSnake, error: null }))
       }))
     }));
     from.mockReturnValue({ insert });
 
     await createTenantForProperty(propertyId, { firstName: "Jane", lastName: "Doe" });
-    expect(insert).toHaveBeenCalledWith(
-      expect.objectContaining({ user_id: userId, property_id: propertyId })
-    );
+    expect(insert).toHaveBeenCalledWith(expect.objectContaining({ user_id: userId }));
+    expect(insert).toHaveBeenCalledWith(expect.not.objectContaining({ property_id: propertyId }));
   });
 
   it("updateTenant merges existing row then updates with user_id filter", async () => {
@@ -391,73 +307,9 @@ describe("tenantsSupabase", () => {
     expect(out.tenant?.status).toBe("PAST");
   });
 
-  it("linkTenantToProperty updates tenant scoped by user_id", async () => {
+  it("linkTenantToProperty is deprecated", async () => {
     getUser.mockResolvedValue({ data: { user: { id: userId } }, error: null });
-    from.mockImplementation((table: string) => {
-      if (table === "leases") {
-        return {
-          select: vi.fn(() => ({
-            eq: vi.fn(() => ({
-              eq: vi.fn(() => ({
-                in: vi.fn(() => Promise.resolve({ data: [], error: null }))
-              }))
-            }))
-          }))
-        };
-      }
-      const update = vi.fn(() => ({
-        eq: vi.fn(() => ({
-          eq: vi.fn(() => ({
-            select: vi.fn(() => ({
-              single: vi.fn(() =>
-                Promise.resolve({
-                  data: { ...tenantRowSnake, property_id: propertyId, status: "ACTIVE" },
-                  error: null
-                })
-              )
-            }))
-          }))
-        }))
-      }));
-      return { update };
-    });
-
-    const { tenant } = await linkTenantToProperty(propertyId, tenantId);
-    expect(tenant.propertyId).toBe(propertyId);
-  });
-
-  it("linkTenantToProperty surfaces RLS failure (cannot attach to another user property)", async () => {
-    getUser.mockResolvedValue({ data: { user: { id: userId } }, error: null });
-    from.mockImplementation((table: string) => {
-      if (table === "leases") {
-        return {
-          select: vi.fn(() => ({
-            eq: vi.fn(() => ({
-              eq: vi.fn(() => ({
-                in: vi.fn(() => Promise.resolve({ data: [], error: null }))
-              }))
-            }))
-          }))
-        };
-      }
-      const update = vi.fn(() => ({
-        eq: vi.fn(() => ({
-          eq: vi.fn(() => ({
-            select: vi.fn(() => ({
-              single: vi.fn(() =>
-                Promise.resolve({
-                  data: null,
-                  error: { message: "new row violates row-level security policy", code: "42501" }
-                })
-              )
-            }))
-          }))
-        }))
-      }));
-      return { update };
-    });
-
-    await expect(linkTenantToProperty(propertyId, tenantId)).rejects.toThrow(/row-level security/i);
+    await expect(linkTenantToProperty(propertyId, tenantId)).rejects.toThrow(/creating a lease/i);
   });
 
   it("unlinkTenantFromProperty blocks when an active lease exists on the property", async () => {

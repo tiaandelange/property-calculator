@@ -2,36 +2,114 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Plus } from "lucide-react";
 import { useMediaQuery } from "../../../hooks/useMediaQuery";
-import {
-  createTenantUnitLink,
-  listTenantUnitLinksForProperty,
-  removeTenantUnitLink,
-  updateTenantUnitLink
-} from "../../../services/tenantUnitLinksSupabase";
+import { listActiveLeaseOccupancyForProperty, type ActiveLeaseOccupancy } from "../../../services/leasesSupabase";
 import { listPropertyUnits } from "../../../services/propertyUnitsSupabase";
-import { getTenantsEligibleForProperty, propertyApiErrorMessage } from "../../../api/ownedProperties";
+import { propertyApiErrorMessage } from "../../../api/ownedProperties";
 import { fmtZar } from "../financials/propertyFinancialsAdapter";
 import { getPropertyTypeConfig } from "../../../config/propertyTypes";
 import type { PropertyUnitDraft } from "../units/propertyUnitTypes";
-import { LinkTenantToUnitModal, type LinkTenantFormState } from "./LinkTenantToUnitModal";
-import { EditTenantUnitLinkModal } from "./EditTenantUnitLinkModal";
-import { UnitTenantLinksSection } from "./TenantUnitLinksTable";
-import type { TenantUnitLinkRecord } from "./tenantUnitLinkTypes";
 import {
-  activeLinksForUnit,
   displayUnitsForLinking,
   isSingleUnitProperty,
   shouldShowTenantLinking,
-  structureTypeIdFromPropertyRow,
-  sumExpectedRentForUnits,
-  unitExpectedRentDisplay,
-  unitOccupancyLabel
+  structureTypeIdFromPropertyRow
 } from "./unitTenantLinkUtils";
+
+function roleLabel(role: string): string {
+  return role.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function LeaseOccupancyTable({
+  occupancy,
+  isMobile
+}: {
+  occupancy: ActiveLeaseOccupancy[];
+  isMobile?: boolean;
+}) {
+  if (!occupancy.length) {
+    return (
+      <div className="pg-pfin-empty">
+        <p>No tenants linked through active leases for this unit.</p>
+        <p className="pg-muted">Create a lease to connect tenants to this property and unit.</p>
+      </div>
+    );
+  }
+
+  if (isMobile) {
+    return (
+      <ul className="pg-pfin-expense-list">
+        {occupancy.flatMap((lease) =>
+          lease.tenants.map((t) => (
+            <li key={`${lease.leaseId}-${t.tenantId}`} className="pg-pfin-expense-list__item">
+              <div className="pg-pfin-expense-list__main">
+                <div>
+                  <div className="pg-pfin-expense-list__title">
+                    <Link className="pg-link" to={`/tenants/${t.tenantId}`}>
+                      {t.firstName} {t.lastName}
+                    </Link>
+                    {t.isPrimary ? (
+                      <span className="pg-pfin-badge pg-pfin-badge--primary" style={{ marginLeft: 8 }}>
+                        Primary
+                      </span>
+                    ) : null}
+                  </div>
+                  <div className="pg-muted" style={{ fontSize: 12 }}>
+                    {roleLabel(t.role)} · {lease.displayStatus} · {fmtZar(lease.monthlyRent)}/mo
+                  </div>
+                </div>
+              </div>
+            </li>
+          ))
+        )}
+      </ul>
+    );
+  }
+
+  return (
+    <div className="pg-pfin-table-wrap">
+      <table className="pg-pfin-table">
+        <thead>
+          <tr>
+            <th>Tenant</th>
+            <th>Role</th>
+            <th>Lease</th>
+            <th>Rent</th>
+          </tr>
+        </thead>
+        <tbody>
+          {occupancy.flatMap((lease) =>
+            lease.tenants.map((t) => (
+              <tr key={`${lease.leaseId}-${t.tenantId}`}>
+                <td>
+                  <Link className="pg-link" to={`/tenants/${t.tenantId}`}>
+                    {t.firstName} {t.lastName}
+                  </Link>
+                  {t.isPrimary ? (
+                    <span className="pg-pfin-badge pg-pfin-badge--primary" style={{ marginLeft: 8 }}>
+                      Primary
+                    </span>
+                  ) : null}
+                </td>
+                <td>{roleLabel(t.role)}</td>
+                <td>
+                  <span className="pg-muted">{lease.displayStatus}</span>
+                  <div className="pg-muted" style={{ fontSize: 12 }}>
+                    Lease #{lease.leaseId.slice(0, 8)}
+                  </div>
+                </td>
+                <td>{fmtZar(lease.monthlyRent)}/mo</td>
+              </tr>
+            ))
+          )}
+        </tbody>
+      </table>
+    </div>
+  );
+}
 
 export function WorkspaceLinkTenantsTab({
   propertyId,
-  property,
-  onRefresh
+  property
 }: {
   propertyId: string;
   property: Record<string, unknown>;
@@ -39,13 +117,9 @@ export function WorkspaceLinkTenantsTab({
 }) {
   const isMobile = useMediaQuery("(max-width: 767px)");
   const [units, setUnits] = useState<PropertyUnitDraft[]>([]);
-  const [links, setLinks] = useState<TenantUnitLinkRecord[]>([]);
-  const [eligibleTenants, setEligibleTenants] = useState<any[]>([]);
+  const [occupancy, setOccupancy] = useState<ActiveLeaseOccupancy[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [linkModal, setLinkModal] = useState<{ unitId: string | null; unitName: string } | null>(null);
-  const [editLink, setEditLink] = useState<TenantUnitLinkRecord | null>(null);
 
   const structureTypeId = structureTypeIdFromPropertyRow(property);
   const structureCfg = getPropertyTypeConfig(structureTypeId);
@@ -57,14 +131,12 @@ export function WorkspaceLinkTenantsTab({
     setLoading(true);
     setError("");
     try {
-      const [unitRows, linkRows, tenants] = await Promise.all([
+      const [unitRows, occRows] = await Promise.all([
         listPropertyUnits(propertyId),
-        listTenantUnitLinksForProperty(propertyId),
-        getTenantsEligibleForProperty(propertyId)
+        listActiveLeaseOccupancyForProperty(propertyId)
       ]);
       setUnits(unitRows);
-      setLinks(linkRows);
-      setEligibleTenants(Array.isArray(tenants) ? tenants : []);
+      setOccupancy(occRows);
     } catch (e) {
       setError(propertyApiErrorMessage(e));
     } finally {
@@ -78,75 +150,17 @@ export function WorkspaceLinkTenantsTab({
 
   const displayUnits = useMemo(() => displayUnitsForLinking(structureTypeId, units), [structureTypeId, units]);
   const singleUnit = isSingleUnitProperty(structureTypeId, displayUnits);
-  const totalExpectedRent = sumExpectedRentForUnits(displayUnits);
 
-  const onCreateLink = async (form: LinkTenantFormState) => {
-    if (!linkModal) return;
-    setSaving(true);
-    setError("");
-    try {
-      await createTenantUnitLink({
-        propertyId,
-        unitId: linkModal.unitId,
-        tenantId: form.tenantId,
-        role: form.isPrimary ? "primary_tenant" : form.role,
-        status: form.status,
-        isPrimary: form.isPrimary,
-        startDate: form.startDate || null,
-        endDate: form.endDate || null,
-        notes: form.notes || null
-      });
-      setLinkModal(null);
-      await load();
-      await onRefresh?.();
-    } catch (e) {
-      setError(propertyApiErrorMessage(e));
-    } finally {
-      setSaving(false);
+  const occupancyByUnit = useMemo(() => {
+    const map = new Map<string | null, ActiveLeaseOccupancy[]>();
+    for (const row of occupancy) {
+      const key = row.unitId;
+      const list = map.get(key) ?? [];
+      list.push(row);
+      map.set(key, list);
     }
-  };
-
-  const onSaveEdit = async (patch: {
-    role: import("./tenantUnitLinkTypes").TenantLinkRole;
-    status: import("./tenantUnitLinkTypes").TenantLinkStatus;
-    isPrimary: boolean;
-    startDate: string;
-    endDate: string;
-    notes: string;
-  }) => {
-    if (!editLink) return;
-    setSaving(true);
-    setError("");
-    try {
-      await updateTenantUnitLink(editLink.id, {
-        role: patch.role,
-        status: patch.status,
-        isPrimary: patch.isPrimary,
-        startDate: patch.startDate || null,
-        endDate: patch.endDate || null,
-        notes: patch.notes || null
-      });
-      setEditLink(null);
-      await load();
-      await onRefresh?.();
-    } catch (e) {
-      setError(propertyApiErrorMessage(e));
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const onRemove = async (link: TenantUnitLinkRecord) => {
-    if (!window.confirm(`Remove link for ${link.tenant?.firstName ?? "tenant"} ${link.tenant?.lastName ?? ""}?`)) return;
-    setError("");
-    try {
-      await removeTenantUnitLink(link.id);
-      await load();
-      await onRefresh?.();
-    } catch (e) {
-      setError(propertyApiErrorMessage(e));
-    }
-  };
+    return map;
+  }, [occupancy]);
 
   if (isStr) {
     return (
@@ -154,9 +168,9 @@ export function WorkspaceLinkTenantsTab({
         <section className="pg-pfin-section">
           <header className="pg-pfin-section__head">
             <div>
-              <h2 className="pg-pfin-section__title">Tenant links not used for short-term rentals</h2>
+              <h2 className="pg-pfin-section__title">Bookings and occupancy</h2>
               <p className="pg-pfin-section__desc">
-                This property type uses occupancy, bookings and short-term rental costs instead of tenant leases.
+                This property type uses bookings and occupancy instead of leases and tenant links.
               </p>
             </div>
           </header>
@@ -191,21 +205,18 @@ export function WorkspaceLinkTenantsTab({
       <section className="pg-pfin-section">
         <header className="pg-pfin-section__head pg-pfin-section__head--row">
           <div>
-            <h2 className="pg-pfin-section__title">Link Tenants</h2>
-            <p className="pg-pfin-section__desc">Assign existing tenants to units without creating leases automatically.</p>
-            {totalExpectedRent > 0 ? (
-              <p className="pg-muted" style={{ fontSize: 13, margin: "8px 0 0" }}>
-                Total expected rent (per unit, not per tenant): <strong>{fmtZar(totalExpectedRent)}</strong>/mo
-              </p>
-            ) : null}
+            <h2 className="pg-pfin-section__title">Tenants linked through active leases</h2>
+            <p className="pg-pfin-section__desc">
+              Occupancy is derived from active leases. Create a lease to connect tenants to a property and unit.
+            </p>
           </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <Link className="pg-btn pg-btn-ghost" to="/tenants/new">
+            <Link className="pg-btn pg-btn-primary" to={`/leases/new?propertyId=${propertyId}`}>
               <Plus size={16} aria-hidden style={{ marginRight: 6 }} />
-              Create Tenant
+              Create Lease
             </Link>
-            <Link className="pg-btn pg-btn-ghost" to="/tenants">
-              Tenant Directory
+            <Link className="pg-btn pg-btn-ghost" to="/tenants/new">
+              Create Tenant
             </Link>
           </div>
         </header>
@@ -217,13 +228,13 @@ export function WorkspaceLinkTenantsTab({
         </div>
       ) : null}
 
-      {loading ? <div className="pg-muted">Loading units and tenant links…</div> : null}
+      {loading ? <div className="pg-muted">Loading lease tenants…</div> : null}
 
       {!loading && displayUnits.length === 0 ? (
         <section className="pg-pfin-section">
           <div className="pg-pfin-empty">
             <p>No units found for this property.</p>
-            <p className="pg-muted">Add units in Property Structure before linking tenants.</p>
+            <p className="pg-muted">Add units in Property Structure before creating leases.</p>
             <Link className="pg-btn pg-btn-secondary" to={`/owned-properties/${propertyId}/edit`}>
               Edit Property Structure
             </Link>
@@ -234,45 +245,35 @@ export function WorkspaceLinkTenantsTab({
       {!loading && displayUnits.length > 0
         ? displayUnits.map((unit, index) => {
             const unitId = unit.id ?? null;
-            const unitLinks = links.filter((l) => (l.unitId ?? null) === (unitId ?? null));
+            const unitOcc = occupancyByUnit.get(unitId) ?? occupancyByUnit.get(null) ?? [];
             const title =
               singleUnit && displayUnits.length === 1
                 ? unit.unitName || structureCfg.unitLabel || String(property.name ?? "Main House")
                 : unit.unitName || `${structureCfg.unitLabel} ${index + 1}`;
             return (
-              <UnitTenantLinksSection
-                key={unit.id ?? unit.clientId}
-                unitName={title}
-                unitDescription={unit.description}
-                occupancyLabel={unitOccupancyLabel(links, unitId, unit)}
-                expectedRent={unitExpectedRentDisplay(unit)}
-                linkedCount={activeLinksForUnit(links, unitId).length}
-                links={unitLinks}
-                loading={false}
-                isMobile={isMobile}
-                canLink={Boolean(unitId)}
-                missingUnitId={!unitId}
-                onLinkTenant={() => setLinkModal({ unitId, unitName: title })}
-                onEdit={(l) => setEditLink(l)}
-                onRemove={(l) => void onRemove(l)}
-              />
+              <section key={unit.id ?? unit.clientId} className="pg-pfin-section">
+                <header className="pg-pfin-section__head">
+                  <div>
+                    <h3 className="pg-pfin-section__title">{title}</h3>
+                    {unit.description ? <p className="pg-pfin-section__desc">{unit.description}</p> : null}
+                  </div>
+                </header>
+                <LeaseOccupancyTable occupancy={unitOcc} isMobile={isMobile} />
+              </section>
             );
           })
         : null}
 
-      <LinkTenantToUnitModal
-        open={linkModal != null}
-        unitName={linkModal?.unitName ?? ""}
-        propertyId={propertyId}
-        unitId={linkModal?.unitId ?? null}
-        tenants={eligibleTenants}
-        existingLinks={links.filter((l) => (l.unitId ?? null) === (linkModal?.unitId ?? null))}
-        saving={saving}
-        onClose={() => setLinkModal(null)}
-        onSubmit={onCreateLink}
-      />
-
-      <EditTenantUnitLinkModal open={editLink != null} link={editLink} saving={saving} onClose={() => setEditLink(null)} onSubmit={onSaveEdit} />
+      {!loading && occupancy.length === 0 && displayUnits.length > 0 ? (
+        <section className="pg-pfin-section">
+          <div className="pg-pfin-empty">
+            <p>No active leases on this property yet.</p>
+            <Link className="pg-btn pg-btn-primary" to={`/leases/new?propertyId=${propertyId}`}>
+              Create Lease
+            </Link>
+          </div>
+        </section>
+      ) : null}
     </div>
   );
 }
