@@ -197,6 +197,9 @@ function buildLeaseSnakePatch(input: Record<string, unknown>): Record<string, un
   }
   if (input.leaseType) patch.lease_type = input.leaseType;
   if (Object.prototype.hasOwnProperty.call(input, "notes")) patch.notes = input.notes ?? null;
+  if (Object.prototype.hasOwnProperty.call(input, "unitId")) {
+    patch.unit_id = input.unitId ? input.unitId : null;
+  }
 
   return patch;
 }

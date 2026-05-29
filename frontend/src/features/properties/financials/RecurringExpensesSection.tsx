@@ -1,5 +1,22 @@
-import { Pencil, Plus, Trash2, Receipt, Shield, Droplets, Wrench, Wifi, Trees } from "lucide-react";
+import { Receipt, Shield, Droplets, Wrench, Trees } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { IconButton } from "../../../components/icons";
+import {
+  ProplyticAmountCell,
+  ProplyticMobileRowCard,
+  ProplyticMobileRowList,
+  ProplyticStatusBadge,
+  ProplyticTable,
+  ProplyticTableActions,
+  ProplyticTableBody,
+  ProplyticTableCell,
+  ProplyticTableEmptyState,
+  ProplyticTableHeadCell,
+  ProplyticTableHeader,
+  ProplyticTableRow,
+  ProplyticTableSkeleton,
+  ProplyticTableWrap
+} from "../../../components/tables";
 import { fmtZar, type RecurringExpenseDisplayItem } from "./propertyFinancialsAdapter";
 
 const CATEGORY_ICONS: Record<string, LucideIcon> = {
@@ -10,21 +27,6 @@ const CATEGORY_ICONS: Record<string, LucideIcon> = {
   Maintenance: Wrench,
   Other: Trees
 };
-
-function frequencyBadgeClass(freq: string): string {
-  const f = freq.toUpperCase();
-  if (f.includes("WEEK")) return "pg-pfin-badge pg-pfin-badge--info";
-  if (f.includes("QUARTER")) return "pg-pfin-badge pg-pfin-badge--warning";
-  if (f.includes("YEAR") || f.includes("ANNUAL")) return "pg-pfin-badge pg-pfin-badge--primary";
-  return "pg-pfin-badge pg-pfin-badge--success";
-}
-
-function statusBadgeClass(status: string): string {
-  if (status === "paused") return "pg-pfin-badge pg-pfin-badge--muted";
-  if (status === "overdue") return "pg-pfin-badge pg-pfin-badge--danger";
-  if (status === "due_soon") return "pg-pfin-badge pg-pfin-badge--warning";
-  return "pg-pfin-badge pg-pfin-badge--success";
-}
 
 function formatFrequency(freq: string): string {
   const f = freq.toUpperCase();
@@ -40,6 +42,13 @@ function formatDate(iso: string | null): string {
   const [y, m, d] = iso.split("-").map(Number);
   if (!y || !m || !d) return iso;
   return new Date(y, m - 1, d).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+}
+
+function recurringStatusKey(status: string): string {
+  if (status === "paused") return "inactive";
+  if (status === "overdue") return "overdue";
+  if (status === "due_soon") return "due";
+  return "active";
 }
 
 export function RecurringExpensesSection({
@@ -67,115 +76,120 @@ export function RecurringExpensesSection({
           <p className="pg-pfin-section__desc">Monthly schedules posted automatically to your property ledger.</p>
         </div>
         <button type="button" className="pg-btn pg-btn-primary pg-pfin-add-btn" onClick={onAdd}>
-          <Plus size={18} aria-hidden />
           Add Expense
         </button>
       </header>
 
-      {loading ? <div className="pg-muted">Loading recurring expenses…</div> : null}
+      {loading ? <ProplyticTableSkeleton rows={4} /> : null}
 
       {!loading && items.length === 0 ? (
-        <div className="pg-pfin-empty">
-          <p>No recurring expenses yet</p>
-          <p className="pg-muted">Add recurring expenses to improve monthly cash-flow forecasting.</p>
-          <button type="button" className="pg-btn pg-btn-secondary" onClick={onAdd}>
-            Add Expense
-          </button>
-        </div>
+        <ProplyticTableEmptyState
+          title="No recurring expenses yet"
+          description="Add recurring expenses to improve monthly cash-flow forecasting."
+          action={
+            <button type="button" className="pg-btn pg-btn-secondary" onClick={onAdd}>
+              Add Expense
+            </button>
+          }
+        />
       ) : null}
 
       {!loading && items.length > 0 && !isMobile ? (
-        <div className="pg-pfin-table-wrap">
-          <table className="pg-pfin-table">
-            <thead>
-              <tr>
-                <th>Expense name</th>
-                <th>Category</th>
-                <th>Frequency</th>
-                <th>Amount</th>
-                <th>Next due</th>
-                <th>Status</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
+        <ProplyticTableWrap responsive>
+          <ProplyticTable variant="financial">
+            <ProplyticTableHeader>
+              <ProplyticTableRow>
+                <ProplyticTableHeadCell>Expense name</ProplyticTableHeadCell>
+                <ProplyticTableHeadCell>Category</ProplyticTableHeadCell>
+                <ProplyticTableHeadCell>Frequency</ProplyticTableHeadCell>
+                <ProplyticTableHeadCell numeric>Amount</ProplyticTableHeadCell>
+                <ProplyticTableHeadCell>Next due</ProplyticTableHeadCell>
+                <ProplyticTableHeadCell>Status</ProplyticTableHeadCell>
+                <ProplyticTableHeadCell actions>
+                  <span className="pg-ptable-sr-only">Actions</span>
+                </ProplyticTableHeadCell>
+              </ProplyticTableRow>
+            </ProplyticTableHeader>
+            <ProplyticTableBody>
               {items.map((item) => {
                 const Icon = CATEGORY_ICONS[item.categoryLabel] ?? Receipt;
                 return (
-                  <tr key={String(item.id)}>
-                    <td>
+                  <ProplyticTableRow key={String(item.id)}>
+                    <ProplyticTableCell>
                       <div className="pg-pfin-expense-name">
                         <span className="pg-pfin-expense-icon" aria-hidden>
                           <Icon size={16} />
                         </span>
                         <span>{item.name}</span>
                       </div>
-                    </td>
-                    <td>{item.categoryLabel}</td>
-                    <td>
-                      <span className={frequencyBadgeClass(item.frequency)}>{formatFrequency(item.frequency)}</span>
-                    </td>
-                    <td className="pg-pfin-table__amount">{fmtZar(item.amount)}</td>
-                    <td>{formatDate(item.nextDueDate)}</td>
-                    <td>
-                      <span className={statusBadgeClass(item.status)}>{item.status === "active" ? "Active" : "Paused"}</span>
-                    </td>
-                    <td>
-                      <div className="pg-pfin-row-actions">
-                        <button type="button" className="pg-pfin-icon-btn" aria-label="Edit" onClick={() => onEdit(item)}>
-                          <Pencil size={16} />
-                        </button>
-                        <button type="button" className="pg-pfin-icon-btn" aria-label="Stop schedule" onClick={() => onStop(item)}>
-                          <span className="pg-pfin-icon-btn__text">Stop</span>
-                        </button>
-                        <button
-                          type="button"
-                          className="pg-pfin-icon-btn pg-pfin-icon-btn--danger"
-                          aria-label="Delete"
-                          onClick={() => onDelete(item)}
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
+                    </ProplyticTableCell>
+                    <ProplyticTableCell>{item.categoryLabel}</ProplyticTableCell>
+                    <ProplyticTableCell>
+                      <ProplyticStatusBadge status={item.frequency} label={formatFrequency(item.frequency)} />
+                    </ProplyticTableCell>
+                    <ProplyticTableCell numeric>
+                      <ProplyticAmountCell tone="debit">{fmtZar(item.amount)}</ProplyticAmountCell>
+                    </ProplyticTableCell>
+                    <ProplyticTableCell>{formatDate(item.nextDueDate)}</ProplyticTableCell>
+                    <ProplyticTableCell>
+                      <ProplyticStatusBadge
+                        status={recurringStatusKey(item.status)}
+                        label={item.status === "active" ? "Active" : "Paused"}
+                      />
+                    </ProplyticTableCell>
+                    <ProplyticTableCell actions>
+                      <ProplyticTableActions>
+                        <IconButton icon="edit" aria-label="Edit expense" variant="outline" onClick={() => onEdit(item)} />
+                        <IconButton icon="void" aria-label="Stop schedule" variant="outline" onClick={() => onStop(item)} />
+                        <IconButton icon="delete" aria-label="Delete expense" variant="danger" onClick={() => onDelete(item)} />
+                      </ProplyticTableActions>
+                    </ProplyticTableCell>
+                  </ProplyticTableRow>
                 );
               })}
-            </tbody>
-          </table>
-        </div>
+            </ProplyticTableBody>
+          </ProplyticTable>
+        </ProplyticTableWrap>
       ) : null}
 
       {!loading && items.length > 0 && isMobile ? (
-        <ul className="pg-pfin-expense-list">
+        <ProplyticMobileRowList>
           {items.map((item) => {
             const Icon = CATEGORY_ICONS[item.categoryLabel] ?? Receipt;
             return (
-              <li key={String(item.id)} className="pg-pfin-expense-list__item">
-                <div className="pg-pfin-expense-list__main">
-                  <span className="pg-pfin-expense-icon" aria-hidden>
-                    <Icon size={18} />
-                  </span>
-                  <div>
-                    <div className="pg-pfin-expense-list__title">{item.name}</div>
-                    <span className={frequencyBadgeClass(item.frequency)}>{formatFrequency(item.frequency)}</span>
-                  </div>
-                </div>
-                <div className="pg-pfin-expense-list__right">
-                  <strong>{fmtZar(item.amount)}</strong>
-                  <button type="button" className="pg-pfin-icon-btn" aria-label="Edit" onClick={() => onEdit(item)}>
-                    <Pencil size={16} />
-                  </button>
-                </div>
+              <li key={String(item.id)}>
+                <ProplyticMobileRowCard
+                  title={
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                      <span className="pg-pfin-expense-icon" aria-hidden>
+                        <Icon size={16} />
+                      </span>
+                      {item.name}
+                    </span>
+                  }
+                  subtitle={item.categoryLabel}
+                  badge={
+                    <ProplyticStatusBadge
+                      status={recurringStatusKey(item.status)}
+                      label={item.status === "active" ? "Active" : "Paused"}
+                    />
+                  }
+                  fields={[
+                    { label: "Frequency", value: formatFrequency(item.frequency) },
+                    { label: "Amount", value: fmtZar(item.amount) },
+                    { label: "Next due", value: formatDate(item.nextDueDate) }
+                  ]}
+                  actions={
+                    <>
+                      <IconButton icon="edit" aria-label="Edit expense" variant="outline" onClick={() => onEdit(item)} />
+                      <IconButton icon="delete" aria-label="Delete expense" variant="danger" onClick={() => onDelete(item)} />
+                    </>
+                  }
+                />
               </li>
             );
           })}
-          <li>
-            <a href="#pfin-recurring" className="pg-pfin-link-all">
-              View all expenses
-            </a>
-          </li>
-        </ul>
+        </ProplyticMobileRowList>
       ) : null}
     </section>
   );

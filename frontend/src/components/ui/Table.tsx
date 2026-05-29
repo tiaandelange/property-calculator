@@ -1,23 +1,13 @@
-import type React from "react";
-
-export function TableWrap({
-  children,
-  className
-}: {
-  children: React.ReactNode;
-  className?: string;
-}) {
-  return <div className={["pg-table-wrap", className].filter(Boolean).join(" ")}>{children}</div>;
-}
-
-export function Table({
-  children,
-  className,
-  ...props
-}: React.TableHTMLAttributes<HTMLTableElement>) {
-  return (
-    <table className={["pg-table", className].filter(Boolean).join(" ")} {...props}>
-      {children}
-    </table>
-  );
-}
+/**
+ * Legacy table primitives — delegates to the universal Proplytic table system.
+ * Prefer importing from `components/tables` for new code.
+ */
+export {
+  ProplyticTableWrap as TableWrap,
+  ProplyticTable as Table,
+  ProplyticTableHeader,
+  ProplyticTableBody,
+  ProplyticTableRow,
+  ProplyticTableCell,
+  ProplyticTableHeadCell
+} from "../tables";

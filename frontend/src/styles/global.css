@@ -1,5 +1,6 @@
 @import "./themes/proplytic.tokens.css";
 @import "./ui-components.css";
+@import "./proplytic-table.css";
 @import "./dashboard-shell.css";
 @import "./portfolio-dashboard.css";
 @import "./tenants-dashboard.css";

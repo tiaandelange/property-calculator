@@ -687,8 +687,8 @@ export function WorkspaceStatementTab({
               </button>
             </div>
           </header>
-          <div className="pg-pfin-table-wrap">
-            <table className="pg-pfin-table">
+          <div className="pg-ptable-wrap pg-ptable-wrap--responsive">
+            <table className="pg-ptable pg-ptable--financial pg-pfin-table">
               <thead>
                 <tr>
                   <th>Date</th>

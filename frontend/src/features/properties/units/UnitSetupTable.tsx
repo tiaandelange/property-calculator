@@ -1,5 +1,6 @@
 import { Copy, Plus, Trash2 } from "lucide-react";
 import { useMediaQuery } from "../../../hooks/useMediaQuery";
+import { ProplyticTableWrap } from "../../../components/tables";
 import { Input } from "../../../components/ui/Input";
 import { getPropertyTypeConfig } from "../../../config/propertyTypes";
 import { UNIT_USE_TYPE_OPTIONS, type PropertyUnitDraft } from "./propertyUnitTypes";
@@ -86,8 +87,8 @@ export function UnitSetupTable({
   }
 
   return (
-    <div className="pg-pfin-table-wrap">
-      <table className="pg-pfin-table pg-prop-units-table">
+    <ProplyticTableWrap>
+      <table className="pg-ptable pg-ptable--editable pg-pfin-table pg-prop-units-table">
         <thead>
           <tr>
             <th>{label} name</th>
@@ -205,7 +206,7 @@ export function UnitSetupTable({
           Add {label}
         </button>
       ) : null}
-    </div>
+    </ProplyticTableWrap>
   );
 }
 

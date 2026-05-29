@@ -1,18 +1,21 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Helmet } from "react-helmet-async";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
   createLease,
+  getLease,
   getTenantsEligibleForProperty,
   getProperties,
   listPropertyUnits,
-  propertyApiErrorMessage
+  propertyApiErrorMessage,
+  updateLease
 } from "../api/ownedProperties";
 import { invalidatePropertyWorkspace } from "../features/properties/invalidate";
 import type { PropertyUnitDraft } from "../features/properties/units/propertyUnitTypes";
 import { unitDisplayLabel } from "../features/properties/link-tenants/unitTenantLinkUtils";
 import {
   computeEndDateFromTerm,
+  fixedTermEndFromPreset,
   isLeaseEndExpired,
   LEASE_TERM_PRESET_OPTIONS,
   resolveLeaseTypeFromEndDate,
@@ -47,8 +50,27 @@ function rentDueLabel(day: number): string {
   return `${day}${suffix} of the month`;
 }
 
+function inferTermPreset(startYmd: string, endYmd: string | null | undefined): LeaseTermPreset {
+  const end = endYmd?.trim().slice(0, 10) ?? "";
+  if (!startYmd.trim() || !end) return "manual";
+  if (end === fixedTermEndFromPreset(startYmd, 6)) return "6";
+  if (end === fixedTermEndFromPreset(startYmd, 12)) return "12";
+  if (end === fixedTermEndFromPreset(startYmd, 24)) return "24";
+  return "manual";
+}
+
+function rentDueModeFromDay(day: number): RentDueMode {
+  if (day === 1) return "first";
+  if (day === 31) return "last";
+  return "custom";
+}
+
 export function LeaseFormPage() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { id: routeLeaseId } = useParams<{ id?: string }>();
+  const editLeaseId = location.pathname.endsWith("/edit") && routeLeaseId ? routeLeaseId : null;
+  const isEdit = Boolean(editLeaseId);
   const [searchParams] = useSearchParams();
   const prefillPropertyId = searchParams.get("propertyId") ?? "";
 
@@ -64,6 +86,7 @@ export function LeaseFormPage() {
   const [rentShares, setRentShares] = useState<Record<string, string>>({});
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [loadingLease, setLoadingLease] = useState(isEdit);
   const [form, setForm] = useState({
     unitId: "",
     startDate: "",
@@ -95,12 +118,81 @@ export function LeaseFormPage() {
     void (async () => {
       const rows = await getProperties();
       setProperties(rows);
-      if (!prefillPropertyId && rows[0]) setPropertyId(String(rows[0].id));
-      else if (prefillPropertyId) setPropertyId(prefillPropertyId);
+      if (!isEdit) {
+        if (!prefillPropertyId && rows[0]) setPropertyId(String(rows[0].id));
+        else if (prefillPropertyId) setPropertyId(prefillPropertyId);
+      }
     })();
-  }, [prefillPropertyId]);
+  }, [prefillPropertyId, isEdit]);
 
   useEffect(() => {
+    if (!editLeaseId) return;
+    void (async () => {
+      setLoadingLease(true);
+      setError("");
+      try {
+        const lease = await getLease(editLeaseId);
+        const propId = String(lease.propertyId ?? "");
+        const start = String(lease.startDate ?? "").slice(0, 10);
+        const end = lease.fixedTermEndDate ? String(lease.fixedTermEndDate).slice(0, 10) : "";
+        const termPreset = inferTermPreset(start, end);
+        const rentDay = Number(lease.rentDueDay ?? 1);
+        const monthly = lease.monthlyRent != null ? String(lease.monthlyRent) : "";
+        const deposit = lease.depositAmount != null ? String(lease.depositAmount) : "";
+
+        setPropertyId(propId);
+        setRentSplitEnabled(Boolean(lease.rentSplitEnabled));
+        setForm({
+          unitId: lease.unitId != null ? String(lease.unitId) : "",
+          startDate: start,
+          termPreset,
+          endDate: termPreset === "manual" ? end : "",
+          monthlyRent: monthly,
+          depositAmount: deposit,
+          rentDueMode: rentDueModeFromDay(rentDay),
+          rentDueCustomDay: rentDay >= 1 && rentDay <= 28 ? rentDay : 15,
+          notes: lease.notes != null ? String(lease.notes) : ""
+        });
+
+        const leaseTenants = (lease.leaseTenants as Array<Record<string, unknown>> | undefined) ?? [];
+        const primaryRow = leaseTenants.find((t) => Boolean(t.isPrimary)) ?? leaseTenants[0];
+        const primaryId = primaryRow?.tenantId != null ? String(primaryRow.tenantId) : String(lease.tenantId ?? "");
+        setPrimaryTenantId(primaryId);
+        setAdditionalTenantIds(
+          leaseTenants
+            .map((t) => (t.tenantId != null ? String(t.tenantId) : ""))
+            .filter((tid) => tid && tid !== primaryId)
+        );
+
+        const shares: Record<string, string> = {};
+        for (const t of leaseTenants) {
+          const tid = t.tenantId != null ? String(t.tenantId) : "";
+          if (!tid) continue;
+          if (t.rentShareAmount != null) shares[tid] = String(t.rentShareAmount);
+        }
+        setRentShares(shares);
+
+        const tenantRows = leaseTenants
+          .map((t) => {
+            const embedded = t.tenant as Record<string, unknown> | undefined;
+            if (embedded?.id) return embedded;
+            if (t.tenantId) {
+              return { id: t.tenantId, firstName: "", lastName: "" };
+            }
+            return null;
+          })
+          .filter(Boolean) as Record<string, unknown>[];
+        if (tenantRows.length) setTenants(tenantRows);
+      } catch (err: unknown) {
+        setError(propertyApiErrorMessage(err));
+      } finally {
+        setLoadingLease(false);
+      }
+    })();
+  }, [editLeaseId]);
+
+  useEffect(() => {
+    if (isEdit) return;
     void (async () => {
       try {
         const settings = await getOrCreateUserSettings();
@@ -118,21 +210,28 @@ export function LeaseFormPage() {
         /* keep form defaults */
       }
     })();
-  }, []);
+  }, [isEdit]);
 
   useEffect(() => {
     if (!propertyId) {
       setUnits([]);
-      setTenants([]);
-      setForm((prev) => ({ ...prev, unitId: "" }));
-      setPrimaryTenantId("");
-      setAdditionalTenantIds([]);
+      if (!isEdit) {
+        setTenants([]);
+        setForm((prev) => ({ ...prev, unitId: "" }));
+        setPrimaryTenantId("");
+        setAdditionalTenantIds([]);
+      }
       return;
     }
     void (async () => {
       setUnitsLoading(true);
-      setTenantsLoading(true);
+      if (!isEdit) setTenantsLoading(true);
       try {
+        if (isEdit) {
+          const unitRows = await listPropertyUnits(propertyId);
+          setUnits(unitRows.filter((u) => u.isActive !== false));
+          return;
+        }
         const [unitRows, tenantRows] = await Promise.all([
           listPropertyUnits(propertyId),
           getTenantsEligibleForProperty(propertyId)
@@ -153,10 +252,10 @@ export function LeaseFormPage() {
         setTenants([]);
       } finally {
         setUnitsLoading(false);
-        setTenantsLoading(false);
+        if (!isEdit) setTenantsLoading(false);
       }
     })();
-  }, [propertyId]);
+  }, [propertyId, isEdit]);
 
   const showUnitField = units.length > 0;
 
@@ -245,6 +344,22 @@ export function LeaseFormPage() {
     setSaving(true);
     setError("");
     try {
+      if (isEdit && editLeaseId) {
+        await updateLease(editLeaseId, {
+          unitId: form.unitId || null,
+          startDate: form.startDate,
+          leaseType: effectiveLeaseType,
+          fixedTermEndDate: effectiveEndDate,
+          monthlyRent,
+          depositAmount: Number(form.depositAmount),
+          rentDueDay,
+          notes: form.notes || null
+        });
+        invalidatePropertyWorkspace(propertyId);
+        navigate(`/owned-properties/${propertyId}?tab=tenants`);
+        return;
+      }
+
       const leaseTenants = allSelectedTenantIds.map((tenantId) => ({
         tenantId,
         role: tenantId === primaryTenantId ? "primary_tenant" : "co_tenant",
@@ -280,23 +395,39 @@ export function LeaseFormPage() {
     }
   };
 
+  if (loadingLease) {
+    return (
+      <Section>
+        <Container>
+          <p className="pg-muted">Loading lease…</p>
+        </Container>
+      </Section>
+    );
+  }
+
+  const pageTitle = isEdit ? "Edit Lease" : "Add Lease";
+  const submitLabel = isEdit ? "Save Changes" : "Create Lease";
+  const backHref = isEdit && propertyId ? `/owned-properties/${propertyId}?tab=tenants` : "/leases";
+
   return (
     <Section>
       <Helmet>
-        <title>Add Lease | The Property Guy</title>
+        <title>{pageTitle} | The Property Guy</title>
       </Helmet>
       <Container>
         <div className="pg-workspace-page">
           <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
             <h1 className="pg-h2" style={{ margin: 0 }}>
-              Add Lease
+              {pageTitle}
             </h1>
-            <Link className="pg-btn pg-btn-ghost" to="/leases">
-              Back to Leases
+            <Link className="pg-btn pg-btn-ghost" to={backHref}>
+              {isEdit ? "Back to property" : "Back to Leases"}
             </Link>
           </div>
           <p className="pg-muted" style={{ fontSize: 13, margin: 0 }}>
-            Select property and unit, choose tenants, and set lease terms. Tenants appear under the property automatically.
+            {isEdit
+              ? "Update lease terms, rent, and dates. Tenant assignments are shown for reference."
+              : "Select property and unit, choose tenants, and set lease terms. Tenants appear under the property automatically."}
           </p>
           {error ? <div className="pg-alert pg-alert-error">{error}</div> : null}
           <Card>
@@ -306,11 +437,13 @@ export function LeaseFormPage() {
                   className="pg-input"
                   value={propertyId}
                   onChange={(e) => {
+                    if (isEdit) return;
                     setPropertyId(e.target.value);
                     setPrimaryTenantId("");
                     setAdditionalTenantIds([]);
                   }}
                   required
+                  disabled={isEdit}
                 >
                   <option value="">Select property</option>
                   {properties.map((p) => (
@@ -349,7 +482,7 @@ export function LeaseFormPage() {
                     setPrimaryTenantId(next);
                     setAdditionalTenantIds((prev) => prev.filter((id) => id !== next));
                   }}
-                  disabled={!propertyId || tenantsLoading}
+                  disabled={!propertyId || tenantsLoading || isEdit}
                   required
                 >
                   <option value="">{tenantsLoading ? "Loading tenants…" : "Select primary tenant"}</option>
@@ -478,54 +611,70 @@ export function LeaseFormPage() {
               </Field>
 
               <Field label="Additional tenants (optional)">
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-                  <select
-                    className="pg-input"
-                    style={{ flex: "1 1 200px" }}
-                    defaultValue=""
-                    disabled={!primaryTenantId || additionalTenantOptions.length === 0}
-                    onChange={(e) => {
-                      if (e.target.value) {
-                        addAdditionalTenant(e.target.value);
-                        e.target.value = "";
-                      }
-                    }}
-                  >
-                    <option value="">Add tenant by name…</option>
-                    {additionalTenantOptions
-                      .filter((t) => !additionalTenantIds.includes(String(t.id)))
-                      .map((t) => (
-                        <option key={t.id} value={t.id}>
-                          {t.firstName} {t.lastName}
-                        </option>
-                      ))}
-                  </select>
-                </div>
-                {additionalTenantIds.length > 0 ? (
-                  <ul className="pg-workspace-inset-list" style={{ marginTop: 10 }}>
+                {!isEdit ? (
+                  <>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                      <select
+                        className="pg-input"
+                        style={{ flex: "1 1 200px" }}
+                        defaultValue=""
+                        disabled={!primaryTenantId || additionalTenantOptions.length === 0}
+                        onChange={(e) => {
+                          if (e.target.value) {
+                            addAdditionalTenant(e.target.value);
+                            e.target.value = "";
+                          }
+                        }}
+                      >
+                        <option value="">Add tenant by name…</option>
+                        {additionalTenantOptions
+                          .filter((t) => !additionalTenantIds.includes(String(t.id)))
+                          .map((t) => (
+                            <option key={t.id} value={t.id}>
+                              {t.firstName} {t.lastName}
+                            </option>
+                          ))}
+                      </select>
+                    </div>
+                    {additionalTenantIds.length > 0 ? (
+                      <ul className="pg-workspace-inset-list" style={{ marginTop: 10 }}>
+                        {additionalTenantIds.map((id) => {
+                          const t = tenants.find((row) => String(row.id) === id);
+                          return (
+                            <li key={id} className="pg-workspace-inset" style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+                              <span>{t ? `${t.firstName} ${t.lastName}` : id}</span>
+                              <button type="button" className="pg-btn pg-btn-ghost" onClick={() => removeAdditionalTenant(id)}>
+                                Remove
+                              </button>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    ) : (
+                      <p className="pg-muted" style={{ fontSize: 12, margin: "8px 0 0" }}>
+                        Add co-tenants, spouses, or occupants on the same lease. Names only — no extra details required.
+                      </p>
+                    )}
+                  </>
+                ) : additionalTenantIds.length > 0 ? (
+                  <ul className="pg-workspace-inset-list" style={{ marginTop: 0 }}>
                     {additionalTenantIds.map((id) => {
                       const t = tenants.find((row) => String(row.id) === id);
                       return (
-                        <li key={id} className="pg-workspace-inset" style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
-                          <span>
-                            {t ? `${t.firstName} ${t.lastName}` : id}
-                          </span>
-                          <button type="button" className="pg-btn pg-btn-ghost" onClick={() => removeAdditionalTenant(id)}>
-                            Remove
-                          </button>
+                        <li key={id} className="pg-workspace-inset">
+                          {t ? `${t.firstName} ${t.lastName}`.trim() || id : id}
                         </li>
                       );
                     })}
                   </ul>
                 ) : (
-                  <p className="pg-muted" style={{ fontSize: 12, margin: "8px 0 0" }}>
-                    Add co-tenants, spouses, or occupants on the same lease. Names only — no extra details required.
-                  </p>
+                  <p className="pg-muted" style={{ fontSize: 12, margin: 0 }}>No additional tenants on this lease.</p>
                 )}
               </Field>
 
               {allSelectedTenantIds.length >= 2 ? (
                 <Field label="Split monthly rent">
+                  {!isEdit ? (
                   <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}>
                     <input
                       type="checkbox"
@@ -534,6 +683,11 @@ export function LeaseFormPage() {
                     />
                     Split rent between tenants (shares must sum to total monthly rent)
                   </label>
+                  ) : (
+                    <p className="pg-muted" style={{ fontSize: 13, margin: 0 }}>
+                      {rentSplitEnabled ? "Rent is split between tenants on this lease." : "Rent is not split between tenants."}
+                    </p>
+                  )}
                   {rentSplitEnabled ? (
                     <div className="pg-workspace-inset-list" style={{ marginTop: 10 }}>
                       {allSelectedTenantIds.map((id) => {
@@ -544,6 +698,9 @@ export function LeaseFormPage() {
                               {t ? `${t.firstName} ${t.lastName}` : id}
                               {id === primaryTenantId ? " (primary)" : ""}
                             </span>
+                            {isEdit ? (
+                              <span>{rentShares[id] ? `R ${Number(rentShares[id]).toLocaleString("en-ZA")}` : "—"}</span>
+                            ) : (
                             <Input
                               type="number"
                               min={0}
@@ -552,6 +709,7 @@ export function LeaseFormPage() {
                               onChange={(e) => setRentShares((prev) => ({ ...prev, [id]: e.target.value }))}
                               required
                             />
+                            )}
                           </label>
                         );
                       })}
@@ -566,9 +724,9 @@ export function LeaseFormPage() {
 
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 8 }}>
                 <Button type="submit" loading={saving}>
-                  Create Lease
+                  {submitLabel}
                 </Button>
-                <Link className="pg-btn pg-btn-ghost" to="/leases">
+                <Link className="pg-btn pg-btn-ghost" to={backHref}>
                   Cancel
                 </Link>
               </div>

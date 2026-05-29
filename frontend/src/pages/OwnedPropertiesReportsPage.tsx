@@ -1,7 +1,19 @@
 import { useEffect, useState } from "react";
 import { Helmet } from "react-helmet-async";
-import { ExternalLink, Trash2 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { IconButton } from "../components/icons";
+import {
+  ProplyticTable,
+  ProplyticTableActions,
+  ProplyticTableBody,
+  ProplyticTableCell,
+  ProplyticTableEmptyState,
+  ProplyticTableHeadCell,
+  ProplyticTableHeader,
+  ProplyticTableRow,
+  ProplyticTableSkeleton,
+  ProplyticTableWrap
+} from "../components/tables";
 import { Container } from "../components/ui/Container";
 import { Section } from "../components/ui/Section";
 import { Card } from "../components/ui/Card";
@@ -59,67 +71,70 @@ export function OwnedPropertiesReportsPage() {
 
           <section className="pg-tenants-list-panel pg-workspace-card" aria-busy={loading}>
             {loading ? (
-              <div className="pg-muted">Loading reports…</div>
+              <ProplyticTableSkeleton rows={5} />
             ) : rows.length ? (
-              <div className="pg-tenants-table-wrap">
-                <table className="pg-tenants-table" style={{ minWidth: 860 }}>
-                  <thead>
-                    <tr>
-                      <th scope="col">Generated</th>
-                      <th scope="col">Property</th>
-                      <th scope="col">File</th>
-                      <th scope="col">
-                        <span className="pg-tenants-sr-only">Actions</span>
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
+              <ProplyticTableWrap responsive>
+                <ProplyticTable style={{ minWidth: 860 }}>
+                  <ProplyticTableHeader>
+                    <ProplyticTableRow>
+                      <ProplyticTableHeadCell>Generated</ProplyticTableHeadCell>
+                      <ProplyticTableHeadCell>Property</ProplyticTableHeadCell>
+                      <ProplyticTableHeadCell>File</ProplyticTableHeadCell>
+                      <ProplyticTableHeadCell actions>
+                        <span className="pg-ptable-sr-only">Actions</span>
+                      </ProplyticTableHeadCell>
+                    </ProplyticTableRow>
+                  </ProplyticTableHeader>
+                  <ProplyticTableBody>
                     {rows.map((r) => {
                       const dt = r.createdAt ? new Date(r.createdAt) : null;
                       const when = dt && !Number.isNaN(dt.getTime()) ? dt.toLocaleString() : r.createdAt || "—";
                       return (
-                        <tr key={r.id}>
-                          <td>
+                        <ProplyticTableRow key={r.id}>
+                          <ProplyticTableCell>
                             <div style={{ fontWeight: 700 }}>{when}</div>
                             <div className="pg-tenants-sub">{r.id}</div>
-                          </td>
-                          <td>
+                          </ProplyticTableCell>
+                          <ProplyticTableCell>
                             <strong>{r.propertyName || "Property"}</strong>
                             <div className="pg-tenants-sub">{r.propertyId ?? "—"}</div>
-                          </td>
-                          <td>
+                          </ProplyticTableCell>
+                          <ProplyticTableCell>
                             <div style={{ fontWeight: 700 }}>{r.fileName}</div>
                             <div className="pg-tenants-sub">{r.storageBucket ?? "—"}</div>
-                          </td>
-                          <td>
-                            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
-                              <Button
-                                type="button"
-                                variant="secondary"
+                          </ProplyticTableCell>
+                          <ProplyticTableCell actions>
+                            <ProplyticTableActions>
+                              <IconButton
+                                icon="download"
+                                aria-label="View or download report"
+                                variant="outline"
+                                disabled={!r.storageBucket || !r.storageKey}
                                 onClick={async () => {
                                   const url = await getStoredReportSignedUrl(r);
                                   if (!url) throw new Error("This report has no stored PDF.");
                                   window.open(url, "_blank", "noopener,noreferrer");
                                 }}
-                                disabled={!r.storageBucket || !r.storageKey}
-                              >
-                                <ExternalLink size={16} style={{ marginRight: 6 }} aria-hidden />
-                                View / Download
-                              </Button>
-                              <Button type="button" variant="ghost" onClick={() => setPendingDelete(r)}>
-                                <Trash2 size={16} style={{ marginRight: 6 }} aria-hidden />
-                                Delete
-                              </Button>
-                            </div>
-                          </td>
-                        </tr>
+                              />
+                              <IconButton
+                                icon="delete"
+                                aria-label="Delete report"
+                                variant="danger"
+                                onClick={() => setPendingDelete(r)}
+                              />
+                            </ProplyticTableActions>
+                          </ProplyticTableCell>
+                        </ProplyticTableRow>
                       );
                     })}
-                  </tbody>
-                </table>
-              </div>
+                  </ProplyticTableBody>
+                </ProplyticTable>
+              </ProplyticTableWrap>
             ) : (
-              <div className="pg-muted">No property reports generated yet.</div>
+              <ProplyticTableEmptyState
+                title="No property reports generated yet"
+                description="Generate reports from a property workspace to see them here."
+              />
             )}
           </section>
         </div>

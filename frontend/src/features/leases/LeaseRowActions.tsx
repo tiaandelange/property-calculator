@@ -13,7 +13,7 @@ export function LeaseRowActions({
   onDelete?: (leaseId: string) => void;
 }) {
   return (
-    <div className="pg-leases-actions">
+    <div className="pg-ptable-actions">
       <IconButton
         icon="property"
         aria-label={`View property ${lease.propertyName}`}

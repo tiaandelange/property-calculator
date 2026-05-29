@@ -8,7 +8,7 @@ export function TenantRowActions({ tenant }: { tenant: TenantListItem }) {
       : undefined;
 
   return (
-    <div className="pg-tenants-actions">
+    <div className="pg-ptable-actions">
       <IconButton icon="view" aria-label={`View ${tenant.fullName}`} href={`/tenants/${tenant.id}`} variant="outline" />
       {mailHref ? (
         <IconButton icon="email" aria-label={`Email ${tenant.fullName}`} href={mailHref} variant="outline" />

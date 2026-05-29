@@ -174,6 +174,7 @@ export function App() {
 
         <Route path="/leases" element={<RequireAuth><OwnedLeasesPage /></RequireAuth>} />
         <Route path="/leases/new" element={<RequireAuth><LeaseFormPage /></RequireAuth>} />
+        <Route path="/leases/:id/edit" element={<RequireAuth><LeaseFormPage /></RequireAuth>} />
         <Route path="/leases/:id" element={<RequireAuth><LeaseDetailRedirect /></RequireAuth>} />
         <Route path="/financials" element={<RequireAuth><FinancialsListPage /></RequireAuth>} />
         <Route path="/invoices" element={<RequireAuth><InvoicesListPage /></RequireAuth>} />

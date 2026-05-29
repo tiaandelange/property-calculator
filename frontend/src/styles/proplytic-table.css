@@ -1,0 +1,491 @@
+/* Universal Proplytic table system — theme tokens only */
+
+.pg-ptable-wrap,
+.pg-table-wrap,
+.pg-pfin-table-wrap,
+.pg-invoices-table-wrap,
+.pg-tenants-table-wrap,
+.pg-leases-table-wrap,
+.pg-statement-wrap,
+.pg-tstmt-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: 18px;
+}
+
+.pg-ptable,
+.pg-table,
+.pg-pfin-table,
+.pg-invoices-table,
+.pg-tenants-table,
+.pg-leases-table,
+.pg-statement-table,
+.pg-tstmt-table,
+.pg-fins-statement-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.pg-ptable th,
+.pg-ptable td,
+.pg-table th,
+.pg-table td,
+.pg-pfin-table th,
+.pg-pfin-table td,
+.pg-invoices-table th,
+.pg-invoices-table td,
+.pg-tenants-table th,
+.pg-tenants-table td,
+.pg-leases-table th,
+.pg-leases-table td,
+.pg-statement-table th,
+.pg-statement-table td,
+.pg-tstmt-table th,
+.pg-tstmt-table td {
+  padding: 12px 14px;
+  text-align: left;
+  border-bottom: 1px solid var(--border-soft);
+  vertical-align: middle;
+}
+
+.pg-ptable th,
+.pg-table th,
+.pg-pfin-table th,
+.pg-invoices-table th,
+.pg-tenants-table th,
+.pg-leases-table th,
+.pg-statement-table th,
+.pg-tstmt-table th {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  background: var(--surface-muted);
+  white-space: nowrap;
+}
+
+.pg-ptable tbody tr:last-child td,
+.pg-table tbody tr:last-child td,
+.pg-pfin-table tbody tr:last-child td,
+.pg-invoices-table tbody tr:last-child td,
+.pg-tenants-table tbody tr:last-child td,
+.pg-leases-table tbody tr:last-child td,
+.pg-statement-table tbody tr:last-child td,
+.pg-tstmt-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.pg-ptable tbody tr:hover td,
+.pg-table tbody tr:hover td,
+.pg-pfin-table tbody tr:hover td,
+.pg-invoices-table tbody tr:hover td,
+.pg-tenants-table tbody tr:hover td,
+.pg-leases-table tbody tr:hover td,
+.pg-statement-table tbody tr:hover td,
+.pg-tstmt-table tbody tr:hover td {
+  background: var(--surface-muted);
+}
+
+.pg-ptable__num,
+.pg-ptable-num,
+.pg-statement-num,
+.pg-invoices-table__num,
+.pg-pfin-table__amount {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.pg-ptable__actions,
+.pg-ptable-actions,
+.pg-statement-table__actions,
+.pg-invoices-actions,
+.pg-tenants-actions,
+.pg-leases-actions,
+.pg-fins-row-actions,
+.pg-pfin-row-actions {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.pg-ptable-actions,
+.pg-invoices-actions,
+.pg-tenants-actions,
+.pg-leases-actions,
+.pg-fins-row-actions,
+.pg-pfin-row-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+/* Variants */
+.pg-ptable--financial .pg-ptable__num,
+.pg-ptable--financial .pg-pfin-table__amount,
+.pg-ptable--financial .pg-statement-num {
+  font-weight: 600;
+}
+
+.pg-ptable--compact th,
+.pg-ptable--compact td {
+  padding: 8px 10px;
+  font-size: 12px;
+}
+
+.pg-ptable--editable td {
+  vertical-align: middle;
+}
+
+.pg-ptable--editable .pg-input,
+.pg-ptable--editable select {
+  min-height: 34px;
+}
+
+/* Density (from settings: html[data-density]) */
+html[data-density="compact"] .pg-ptable th,
+html[data-density="compact"] .pg-ptable td,
+html[data-density="compact"] .pg-table th,
+html[data-density="compact"] .pg-table td,
+html[data-density="compact"] .pg-pfin-table th,
+html[data-density="compact"] .pg-pfin-table td,
+html[data-density="compact"] .pg-invoices-table th,
+html[data-density="compact"] .pg-invoices-table td,
+html[data-density="compact"] .pg-tenants-table th,
+html[data-density="compact"] .pg-tenants-table td,
+html[data-density="compact"] .pg-leases-table th,
+html[data-density="compact"] .pg-leases-table td {
+  padding: 8px 10px;
+}
+
+html[data-density="compact"] .pg-ptable,
+html[data-density="compact"] .pg-table,
+html[data-density="compact"] .pg-pfin-table,
+html[data-density="compact"] .pg-invoices-table {
+  font-size: 12px;
+}
+
+/* Amount tones (financial) */
+.pg-ptable-amount {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.pg-ptable-amount--debit {
+  color: var(--text-primary);
+}
+
+.pg-ptable-amount--credit-paid,
+.pg-statement-credit--paid {
+  color: var(--success);
+}
+
+.pg-ptable-amount--credit-due,
+.pg-statement-credit--due,
+.pg-statement-credit--warning {
+  color: var(--warning);
+}
+
+.pg-ptable-amount--credit-overdue,
+.pg-statement-credit--overdue,
+.pg-statement-credit--danger {
+  color: var(--danger);
+}
+
+.pg-ptable-amount--balance {
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+/* Status badges */
+.pg-ptable-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 22px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+  border: 1px solid transparent;
+}
+
+.pg-ptable-badge--success {
+  color: var(--success);
+  background: var(--success-soft);
+  border-color: color-mix(in srgb, var(--success) 24%, transparent);
+}
+
+.pg-ptable-badge--warning {
+  color: var(--warning);
+  background: var(--warning-soft);
+  border-color: color-mix(in srgb, var(--warning) 24%, transparent);
+}
+
+.pg-ptable-badge--danger {
+  color: var(--danger);
+  background: var(--danger-soft);
+  border-color: color-mix(in srgb, var(--danger) 24%, transparent);
+}
+
+.pg-ptable-badge--primary {
+  color: var(--primary);
+  background: var(--primary-soft);
+  border-color: color-mix(in srgb, var(--primary) 24%, transparent);
+}
+
+.pg-ptable-badge--info {
+  color: var(--info);
+  background: var(--info-soft);
+  border-color: color-mix(in srgb, var(--info) 24%, transparent);
+}
+
+.pg-ptable-badge--neutral {
+  color: var(--text-secondary);
+  background: var(--surface-muted);
+  border-color: var(--border-soft);
+}
+
+/* Legacy pfin badges → map to ptable badges */
+.pg-pfin-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  border: 1px solid transparent;
+}
+
+.pg-pfin-badge--success {
+  color: var(--success);
+  background: var(--success-soft);
+}
+
+.pg-pfin-badge--warning {
+  color: var(--warning);
+  background: var(--warning-soft);
+}
+
+.pg-pfin-badge--danger {
+  color: var(--danger);
+  background: var(--danger-soft);
+}
+
+.pg-pfin-badge--primary {
+  color: var(--primary);
+  background: var(--primary-soft);
+}
+
+.pg-pfin-badge--info {
+  color: var(--info);
+  background: var(--info-soft);
+}
+
+.pg-pfin-badge--muted {
+  color: var(--text-secondary);
+  background: var(--surface-muted);
+  border-color: var(--border-soft);
+}
+
+/* Empty state */
+.pg-ptable-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 40px 24px;
+  text-align: center;
+  background: var(--surface);
+  border: 1px dashed var(--border-soft);
+  border-radius: 18px;
+}
+
+.pg-ptable-empty__title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.pg-ptable-empty__desc {
+  margin: 0;
+  max-width: 360px;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+/* Skeleton */
+.pg-ptable-skeleton {
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.pg-ptable-skeleton__row {
+  height: 40px;
+  border-radius: 10px;
+  background: linear-gradient(
+    90deg,
+    var(--surface-muted) 0%,
+    color-mix(in srgb, var(--surface-muted) 55%, var(--border-soft)) 50%,
+    var(--surface-muted) 100%
+  );
+  background-size: 200% 100%;
+  animation: pg-ptable-shimmer 1.2s ease-in-out infinite;
+}
+
+@keyframes pg-ptable-shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
+}
+
+.pg-invoices-table-skeleton,
+.pg-tenants-table-skeleton,
+.pg-leases-table-skeleton,
+.pg-fins-table-skeleton {
+  min-height: 220px;
+  border-radius: 18px;
+  background: linear-gradient(
+    90deg,
+    var(--surface-muted) 0%,
+    color-mix(in srgb, var(--surface-muted) 55%, var(--border-soft)) 50%,
+    var(--surface-muted) 100%
+  );
+  background-size: 200% 100%;
+  animation: pg-ptable-shimmer 1.2s ease-in-out infinite;
+}
+
+/* Mobile row cards */
+.pg-ptable-mobile-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.pg-ptable-mobile-card {
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: 16px;
+  padding: 14px 16px;
+}
+
+.pg-ptable-mobile-card__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.pg-ptable-mobile-card__title {
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 0.9375rem;
+}
+
+.pg-ptable-mobile-card__subtitle {
+  margin-top: 4px;
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+}
+
+.pg-ptable-mobile-card__head-end {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.pg-ptable-mobile-card__fields {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.pg-ptable-mobile-card__field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 0.8125rem;
+}
+
+.pg-ptable-mobile-card__field dt {
+  margin: 0;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.pg-ptable-mobile-card__field dd {
+  margin: 0;
+  color: var(--text-primary);
+  font-weight: 600;
+  text-align: right;
+}
+
+.pg-ptable-mobile-card__actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 12px;
+  min-height: 44px;
+}
+
+.pg-ptable-mobile-only {
+  display: none;
+}
+
+.pg-ptable-desktop-only {
+  display: block;
+}
+
+@media (max-width: 767px) {
+  .pg-ptable-mobile-only {
+    display: block;
+  }
+
+  .pg-ptable-desktop-only {
+    display: none;
+  }
+
+  .pg-ptable-wrap--responsive,
+  .pg-pfin-table-wrap.pg-ptable-wrap--responsive {
+    display: none;
+  }
+}
+
+/* Screen reader */
+.pg-ptable-sr-only,
+.pg-invoices-sr-only,
+.pg-tenants-sr-only,
+.pg-leases-sr-only,
+.pg-fins-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

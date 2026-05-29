@@ -14,8 +14,7 @@ import {
   getPropertyTenants,
   getPropertyStatement,
   getPropertyWorkspaceReports,
-  getPortfolioDashboardSummary,
-  updateLease
+  getPortfolioDashboardSummary
 } from "../api/ownedProperties";
 import { WorkspaceTabs } from "../components/workspace/WorkspaceTabs";
 import { invalidatePropertyWorkspace } from "../features/properties/invalidate";
@@ -242,42 +241,9 @@ export function OwnedPropertyDetailPage() {
     }
   };
 
-  const onEditLease = async (lease: any) => {
+  const onEditLease = (lease: { id?: string }) => {
     if (!lease?.id) return;
-    const leaseType = window.prompt("Lease type (FIXED_TERM or MONTH_TO_MONTH)", lease.leaseType ?? "FIXED_TERM");
-    if (!leaseType) return;
-    const startDate = window.prompt("Start date (YYYY-MM-DD)", lease.startDate ? String(lease.startDate).slice(0, 10) : new Date().toISOString().slice(0, 10));
-    if (!startDate) return;
-    const fixedTermEndDate =
-      leaseType === "FIXED_TERM"
-        ? window.prompt(
-            "Fixed term end date (YYYY-MM-DD)",
-            lease.fixedTermEndDate ? String(lease.fixedTermEndDate).slice(0, 10) : ""
-          )
-        : "";
-
-    const monthlyRent = window.prompt("Monthly rent (number)", String(lease.monthlyRent ?? 0));
-    if (monthlyRent == null) return;
-    const depositAmount = window.prompt("Deposit amount (number)", String(lease.depositAmount ?? 0));
-    if (depositAmount == null) return;
-    const rentDueDay = window.prompt("Rent due day (1-31)", String(lease.rentDueDay ?? 1));
-    if (rentDueDay == null) return;
-    const notes = window.prompt("Notes (optional)", lease.notes ?? "") ?? undefined;
-
-    try {
-      await updateLease(lease.id, {
-        leaseType,
-        startDate,
-        fixedTermEndDate: leaseType === "FIXED_TERM" ? fixedTermEndDate || null : null,
-        monthlyRent: Number(monthlyRent),
-        depositAmount: Number(depositAmount),
-        rentDueDay: Number(rentDueDay),
-        notes
-      });
-      await refreshAfterMutation();
-    } catch (e: any) {
-      window.alert(e?.response?.data?.message ?? "Failed to update lease.");
-    }
+    navigate(`/leases/${lease.id}/edit`);
   };
 
   const onAddReceivedIncomeForTenant = async (tenantId: string | number) => {
@@ -395,7 +361,7 @@ export function OwnedPropertyDetailPage() {
                             Boolean(lease.tenantId)
                           }
                           onGenerateInvoice={() => setGenerateLeaseTarget(lease)}
-                          onEdit={() => void onEditLease(lease)}
+                          onEdit={() => onEditLease(lease)}
                           onCancel={() => {
                             setLeaseActionError("");
                             setLeaseCancelTarget(lease);
@@ -436,7 +402,7 @@ export function OwnedPropertyDetailPage() {
                                 isCurrentLeaseStatus(String(l.displayStatus ?? l.status ?? "")) && Boolean(l.tenantId)
                               }
                               onGenerateInvoice={() => setGenerateLeaseTarget(l)}
-                              onEdit={() => void onEditLease(l)}
+                              onEdit={() => onEditLease(l)}
                               onDelete={() => {
                                 setLeaseActionError("");
                                 const tn = l.tenant ?? data.tenants?.find((t: any) => t.id === l.tenantId);

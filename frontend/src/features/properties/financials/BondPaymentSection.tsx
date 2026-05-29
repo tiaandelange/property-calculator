@@ -106,8 +106,8 @@ export function BondPaymentSection({
       ) : null}
 
       {showTable && !isMobile ? (
-        <div className="pg-pfin-table-wrap">
-          <table className="pg-pfin-table">
+        <div className="pg-ptable-wrap pg-ptable-wrap--responsive">
+          <table className="pg-ptable pg-pfin-table">
             <thead>
               <tr>
                 <th>Bond</th>

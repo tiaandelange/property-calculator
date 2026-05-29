@@ -5,6 +5,20 @@ import { listActiveLeaseOccupancyForProperty, type ActiveLeaseOccupancy } from "
 import { listPropertyUnits } from "../../../services/propertyUnitsSupabase";
 import { propertyApiErrorMessage } from "../../../api/ownedProperties";
 import { fmtZar } from "../financials/propertyFinancialsAdapter";
+import {
+  ProplyticAmountCell,
+  ProplyticMobileRowCard,
+  ProplyticMobileRowList,
+  ProplyticStatusBadge,
+  ProplyticTable,
+  ProplyticTableBody,
+  ProplyticTableCell,
+  ProplyticTableEmptyState,
+  ProplyticTableHeadCell,
+  ProplyticTableHeader,
+  ProplyticTableRow,
+  ProplyticTableWrap
+} from "../../../components/tables";
 import { getPropertyTypeConfig } from "../../../config/propertyTypes";
 import type { PropertyUnitDraft } from "../units/propertyUnitTypes";
 import {
@@ -28,88 +42,88 @@ function LeaseOccupancyTable({
 }) {
   if (!occupancy.length) {
     return (
-      <div className="pg-pfin-empty">
-        <p>No tenants linked through active leases for this unit.</p>
-        <p className="pg-muted">Create a lease to connect tenants to this property and unit.</p>
-      </div>
+      <ProplyticTableEmptyState
+        title="No tenants linked through active leases for this unit"
+        description="Create a lease to connect tenants to this property and unit."
+      />
     );
   }
 
   if (isMobile) {
     return (
-      <ul className="pg-pfin-expense-list">
+      <ProplyticMobileRowList>
         {occupancy.flatMap((lease) =>
           lease.tenants.map((t) => (
-            <li key={`${lease.leaseId}-${t.tenantId}`} className="pg-pfin-expense-list__item">
-              <div className="pg-pfin-expense-list__main">
-                <div>
-                  <div className="pg-pfin-expense-list__title">
-                    <Link className="pg-link" to={`/tenants/${t.tenantId}`}>
-                      {t.firstName} {t.lastName}
-                    </Link>
-                    {t.isPrimary ? (
-                      <span className="pg-pfin-badge pg-pfin-badge--primary" style={{ marginLeft: 8 }}>
-                        Primary
-                      </span>
-                    ) : null}
-                  </div>
-                  <div className="pg-muted" style={{ fontSize: 12 }}>
-                    {roleLabel(t.role)} · {lease.displayStatus} ·{" "}
-                    {t.rentShareAmount != null ? fmtZar(t.rentShareAmount) : fmtZar(lease.monthlyRent)}/mo
-                  </div>
-                </div>
-              </div>
+            <li key={`${lease.leaseId}-${t.tenantId}`}>
+              <ProplyticMobileRowCard
+                title={
+                  <Link className="pg-link" to={`/tenants/${t.tenantId}`}>
+                    {t.firstName} {t.lastName}
+                  </Link>
+                }
+                badge={t.isPrimary ? <ProplyticStatusBadge status="primary_tenant" label="Primary" /> : undefined}
+                fields={[
+                  { label: "Role", value: roleLabel(t.role) },
+                  { label: "Lease", value: lease.displayStatus },
+                  {
+                    label: "Rent",
+                    value: `${t.rentShareAmount != null ? fmtZar(t.rentShareAmount) : fmtZar(lease.monthlyRent)}/mo`
+                  }
+                ]}
+              />
             </li>
           ))
         )}
-      </ul>
+      </ProplyticMobileRowList>
     );
   }
 
   return (
-    <div className="pg-pfin-table-wrap">
-      <table className="pg-pfin-table">
-        <thead>
-          <tr>
-            <th>Tenant</th>
-            <th>Role</th>
-            <th>Lease</th>
-            <th>Rent</th>
-          </tr>
-        </thead>
-        <tbody>
+    <ProplyticTableWrap responsive>
+      <ProplyticTable>
+        <ProplyticTableHeader>
+          <ProplyticTableRow>
+            <ProplyticTableHeadCell>Tenant</ProplyticTableHeadCell>
+            <ProplyticTableHeadCell>Role</ProplyticTableHeadCell>
+            <ProplyticTableHeadCell>Lease</ProplyticTableHeadCell>
+            <ProplyticTableHeadCell numeric>Rent</ProplyticTableHeadCell>
+          </ProplyticTableRow>
+        </ProplyticTableHeader>
+        <ProplyticTableBody>
           {occupancy.flatMap((lease) =>
             lease.tenants.map((t) => (
-              <tr key={`${lease.leaseId}-${t.tenantId}`}>
-                <td>
+              <ProplyticTableRow key={`${lease.leaseId}-${t.tenantId}`}>
+                <ProplyticTableCell>
                   <Link className="pg-link" to={`/tenants/${t.tenantId}`}>
                     {t.firstName} {t.lastName}
                   </Link>
                   {t.isPrimary ? (
-                    <span className="pg-pfin-badge pg-pfin-badge--primary" style={{ marginLeft: 8 }}>
-                      Primary
+                    <span style={{ marginLeft: 8 }}>
+                      <ProplyticStatusBadge status="primary_tenant" label="Primary" />
                     </span>
                   ) : null}
-                </td>
-                <td>{roleLabel(t.role)}</td>
-                <td>
-                  <span className="pg-muted">{lease.displayStatus}</span>
-                  <div className="pg-muted" style={{ fontSize: 12 }}>
+                </ProplyticTableCell>
+                <ProplyticTableCell>{roleLabel(t.role)}</ProplyticTableCell>
+                <ProplyticTableCell>
+                  <ProplyticStatusBadge status={lease.displayStatus} />
+                  <div className="pg-muted" style={{ fontSize: 12, marginTop: 4 }}>
                     Lease #{lease.leaseId.slice(0, 8)}
                   </div>
-                </td>
-                <td>
-                  {t.rentShareAmount != null ? fmtZar(t.rentShareAmount) : fmtZar(lease.monthlyRent)}/mo
+                </ProplyticTableCell>
+                <ProplyticTableCell numeric>
+                  <ProplyticAmountCell>
+                    {t.rentShareAmount != null ? fmtZar(t.rentShareAmount) : fmtZar(lease.monthlyRent)}/mo
+                  </ProplyticAmountCell>
                   {lease.tenants.length > 1 && t.rentShareAmount != null ? (
                     <div className="pg-muted" style={{ fontSize: 11 }}>Split share</div>
                   ) : null}
-                </td>
-              </tr>
+                </ProplyticTableCell>
+              </ProplyticTableRow>
             ))
           )}
-        </tbody>
-      </table>
-    </div>
+        </ProplyticTableBody>
+      </ProplyticTable>
+    </ProplyticTableWrap>
   );
 }
 

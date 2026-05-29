@@ -1,4 +1,5 @@
 import { AppIcon, IconButton } from "../../components/icons";
+import { ProplyticTableWrap } from "../../components/tables";
 import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
 import { Select } from "../../components/ui/Select";
@@ -57,7 +58,8 @@ export function InvoiceLineItemsEditor({ lineItems, editable, defaultRent, onCha
       </h3>
 
       <div className="pg-inv-lines__desktop">
-        <table className="pg-inv-lines__table">
+        <ProplyticTableWrap>
+          <table className="pg-ptable pg-ptable--editable pg-inv-lines__table">
           <thead>
             <tr>
               <th scope="col">Item</th>
@@ -182,7 +184,8 @@ export function InvoiceLineItemsEditor({ lineItems, editable, defaultRent, onCha
               );
             })}
           </tbody>
-        </table>
+          </table>
+        </ProplyticTableWrap>
       </div>
 
       <div className="pg-inv-lines__mobile">

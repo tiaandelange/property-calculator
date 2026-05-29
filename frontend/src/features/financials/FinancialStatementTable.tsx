@@ -1,5 +1,17 @@
 import { Link } from "react-router-dom";
 import { IconButton } from "../../components/icons";
+import {
+  ProplyticAmountCell,
+  ProplyticTable,
+  ProplyticTableActions,
+  ProplyticTableBody,
+  ProplyticTableCell,
+  ProplyticTableHeadCell,
+  ProplyticTableHeader,
+  ProplyticTableRow,
+  ProplyticTableSkeleton,
+  ProplyticTableWrap
+} from "../../components/tables";
 import { invoiceStatementCreditClass, invoiceStatementDisplayType } from "../invoices/invoiceStatementUtils";
 import { invoiceDetailPath } from "../invoices/invoiceRoutes";
 import type { FinancialStatementRow } from "./financialDirectoryTypes";
@@ -9,6 +21,15 @@ function finSubForSource(source: string): "statement" | "invoice" | "expenses" {
   if (source === "INVOICE") return "invoice";
   if (source === "EXPENSE") return "expenses";
   return "statement";
+}
+
+function creditTone(row: FinancialStatementRow): "credit-paid" | "credit-due" | "credit-overdue" | "neutral" {
+  if (row.source !== "INVOICE") return "neutral";
+  const cls = invoiceStatementCreditClass(row.status);
+  if (cls.includes("paid")) return "credit-paid";
+  if (cls.includes("overdue") || cls.includes("danger")) return "credit-overdue";
+  if (cls.includes("due") || cls.includes("warning")) return "credit-due";
+  return "neutral";
 }
 
 export function FinancialStatementTable({
@@ -21,70 +42,73 @@ export function FinancialStatementTable({
   showRunningBalance: boolean;
 }) {
   if (loading) {
-    return (
-      <div className="pg-statement-wrap">
-        <div className="pg-fins-table-skeleton" aria-hidden />
-      </div>
-    );
+    return <ProplyticTableSkeleton rows={8} />;
   }
 
   if (!items.length) return null;
 
   return (
-    <div className="pg-statement-wrap">
-      <table className="pg-statement-table pg-fins-statement-table">
-        <thead>
-          <tr>
-            <th>Date</th>
-            <th>Property</th>
-            <th>Description</th>
-            <th>Type</th>
-            <th className="pg-statement-num">Debit</th>
-            <th className="pg-statement-num">Credit</th>
-            {showRunningBalance ? <th className="pg-statement-num">Balance</th> : null}
-            <th>Source</th>
-            <th>
-              <span className="pg-fins-sr-only">Actions</span>
-            </th>
-          </tr>
-        </thead>
-        <tbody>
+    <ProplyticTableWrap responsive>
+      <ProplyticTable variant="financial" className="pg-fins-statement-table">
+        <ProplyticTableHeader>
+          <ProplyticTableRow>
+            <ProplyticTableHeadCell>Date</ProplyticTableHeadCell>
+            <ProplyticTableHeadCell>Property</ProplyticTableHeadCell>
+            <ProplyticTableHeadCell>Description</ProplyticTableHeadCell>
+            <ProplyticTableHeadCell>Type</ProplyticTableHeadCell>
+            <ProplyticTableHeadCell numeric>Debit</ProplyticTableHeadCell>
+            <ProplyticTableHeadCell numeric>Credit</ProplyticTableHeadCell>
+            {showRunningBalance ? <ProplyticTableHeadCell numeric>Balance</ProplyticTableHeadCell> : null}
+            <ProplyticTableHeadCell>Source</ProplyticTableHeadCell>
+            <ProplyticTableHeadCell actions>
+              <span className="pg-ptable-sr-only">Actions</span>
+            </ProplyticTableHeadCell>
+          </ProplyticTableRow>
+        </ProplyticTableHeader>
+        <ProplyticTableBody>
           {items.map((r) => {
-            const creditClass =
-              r.source === "INVOICE" ? invoiceStatementCreditClass(r.status) : "";
             const manageUrl = propertyFinancialsStatementUrl(r.propertyId, finSubForSource(r.source));
-            const invoiceViewUrl =
-              r.source === "INVOICE" && r.invoiceId ? invoiceDetailPath(r.invoiceId) : null;
+            const invoiceViewUrl = r.source === "INVOICE" && r.invoiceId ? invoiceDetailPath(r.invoiceId) : null;
 
             return (
-              <tr key={r.id}>
-                <td>{r.date}</td>
-                <td>
+              <ProplyticTableRow key={r.id}>
+                <ProplyticTableCell>{r.date}</ProplyticTableCell>
+                <ProplyticTableCell>
                   <Link className="pg-fins-name" to={`/owned-properties/${r.propertyId}?tab=financials&fin=statement`}>
                     {r.propertyName}
                   </Link>
-                </td>
-                <td style={{ minWidth: 160 }}>
+                </ProplyticTableCell>
+                <ProplyticTableCell style={{ minWidth: 160 }}>
                   {r.description}
                   {r.invoiceNumber ? (
                     <div className="pg-muted" style={{ fontSize: 12, marginTop: 4 }}>
                       Invoice {r.invoiceNumber}
                     </div>
                   ) : null}
-                </td>
-                <td style={{ minWidth: 120 }}>
-                  {r.source === "INVOICE" ? invoiceStatementDisplayType(r as unknown as Record<string, unknown>) : r.type}
-                </td>
-                <td className="pg-statement-num">{r.debit != null ? fmtZar(r.debit) : "—"}</td>
-                <td className={`pg-statement-num${creditClass ? ` ${creditClass}` : ""}`}>
-                  {r.credit != null ? fmtZar(r.credit) : "—"}
-                </td>
+                </ProplyticTableCell>
+                <ProplyticTableCell style={{ minWidth: 120 }}>
+                  {r.source === "INVOICE"
+                    ? invoiceStatementDisplayType(r as unknown as Record<string, unknown>)
+                    : r.type}
+                </ProplyticTableCell>
+                <ProplyticTableCell numeric>
+                  {r.debit != null ? <ProplyticAmountCell tone="debit">{fmtZar(r.debit)}</ProplyticAmountCell> : "—"}
+                </ProplyticTableCell>
+                <ProplyticTableCell numeric>
+                  {r.credit != null ? (
+                    <ProplyticAmountCell tone={creditTone(r)}>{fmtZar(r.credit)}</ProplyticAmountCell>
+                  ) : (
+                    "—"
+                  )}
+                </ProplyticTableCell>
                 {showRunningBalance ? (
-                  <td className="pg-statement-num">{r.balance != null ? fmtZar(r.balance) : "—"}</td>
+                  <ProplyticTableCell numeric>
+                    {r.balance != null ? <ProplyticAmountCell tone="balance">{fmtZar(r.balance)}</ProplyticAmountCell> : "—"}
+                  </ProplyticTableCell>
                 ) : null}
-                <td>{r.source}</td>
-                <td style={{ whiteSpace: "nowrap" }}>
-                  <div className="pg-fins-row-actions">
+                <ProplyticTableCell>{r.source}</ProplyticTableCell>
+                <ProplyticTableCell actions>
+                  <ProplyticTableActions>
                     {r.source !== "INVOICE" ? (
                       <IconButton
                         icon="edit"
@@ -96,13 +120,13 @@ export function FinancialStatementTable({
                     {invoiceViewUrl ? (
                       <IconButton icon="open" aria-label="View invoice" href={invoiceViewUrl} variant="outline" />
                     ) : null}
-                  </div>
-                </td>
-              </tr>
+                  </ProplyticTableActions>
+                </ProplyticTableCell>
+              </ProplyticTableRow>
             );
           })}
-        </tbody>
-      </table>
-    </div>
+        </ProplyticTableBody>
+      </ProplyticTable>
+    </ProplyticTableWrap>
   );
 }

@@ -8,6 +8,20 @@ import {
   Wallet
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
+import { IconButton } from "../../../components/icons";
+import {
+  ProplyticAmountCell,
+  ProplyticStatusBadge,
+  ProplyticTable,
+  ProplyticTableActions,
+  ProplyticTableBody,
+  ProplyticTableCell,
+  ProplyticTableHeadCell,
+  ProplyticTableHeader,
+  ProplyticTableRow,
+  ProplyticTableSkeleton,
+  ProplyticTableWrap
+} from "../../../components/tables";
 import { IconContainer } from "../../../components/ui/IconContainer";
 import { Button } from "../../../components/ui/Button";
 import { invoiceDetailPath } from "../../invoices/invoiceRoutes";
@@ -435,7 +449,7 @@ export function TenantInvoicesTable({
   /** @deprecated Invoice edits open on /invoices/:id — prop ignored. */
   onOpenInvoice?: (id: string) => void;
 }) {
-  if (loading) return <div className="pg-tstmt-card pg-tstmt-skeleton" />;
+  if (loading) return <ProplyticTableSkeleton rows={4} />;
   if (!invoices.length) {
     return (
       <div className="pg-tstmt-card">
@@ -445,38 +459,42 @@ export function TenantInvoicesTable({
   }
   return (
     <div className="pg-tstmt-card">
-      <div className="pg-tstmt-table-wrap">
-        <table className="pg-tenants-table pg-tstmt-table">
-          <thead>
-            <tr>
-              <th scope="col">Invoice</th>
-              <th scope="col">Date</th>
-              <th scope="col">Due</th>
-              <th scope="col">Status</th>
-              <th scope="col">Total</th>
-              <th scope="col">
-                <span className="pg-tenants-sr-only">Actions</span>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
+      <ProplyticTableWrap responsive>
+        <ProplyticTable variant="financial">
+          <ProplyticTableHeader>
+            <ProplyticTableRow>
+              <ProplyticTableHeadCell>Invoice</ProplyticTableHeadCell>
+              <ProplyticTableHeadCell>Date</ProplyticTableHeadCell>
+              <ProplyticTableHeadCell>Due</ProplyticTableHeadCell>
+              <ProplyticTableHeadCell>Status</ProplyticTableHeadCell>
+              <ProplyticTableHeadCell numeric>Total</ProplyticTableHeadCell>
+              <ProplyticTableHeadCell actions>
+                <span className="pg-ptable-sr-only">Actions</span>
+              </ProplyticTableHeadCell>
+            </ProplyticTableRow>
+          </ProplyticTableHeader>
+          <ProplyticTableBody>
             {invoices.map((inv) => (
-              <tr key={inv.id}>
-                <td>{inv.invoiceNumber}</td>
-                <td>{formatDateShort(inv.invoiceDate)}</td>
-                <td>{formatDateShort(inv.dueDate)}</td>
-                <td>{inv.status}</td>
-                <td>{fmtZar(inv.total)}</td>
-                <td>
-                  <Link className="pg-link" to={invoiceDetailPath(inv.id)}>
-                    View
-                  </Link>
-                </td>
-              </tr>
+              <ProplyticTableRow key={inv.id}>
+                <ProplyticTableCell>{inv.invoiceNumber}</ProplyticTableCell>
+                <ProplyticTableCell>{formatDateShort(inv.invoiceDate)}</ProplyticTableCell>
+                <ProplyticTableCell>{formatDateShort(inv.dueDate)}</ProplyticTableCell>
+                <ProplyticTableCell>
+                  <ProplyticStatusBadge status={inv.status} />
+                </ProplyticTableCell>
+                <ProplyticTableCell numeric>
+                  <ProplyticAmountCell>{fmtZar(inv.total)}</ProplyticAmountCell>
+                </ProplyticTableCell>
+                <ProplyticTableCell actions>
+                  <ProplyticTableActions>
+                    <IconButton icon="open" aria-label="View invoice" href={invoiceDetailPath(inv.id)} variant="outline" />
+                  </ProplyticTableActions>
+                </ProplyticTableCell>
+              </ProplyticTableRow>
             ))}
-          </tbody>
-        </table>
-      </div>
+          </ProplyticTableBody>
+        </ProplyticTable>
+      </ProplyticTableWrap>
     </div>
   );
 }
@@ -488,7 +506,7 @@ export function TenantPaymentsTable({
   paidInvoices: TenantInvoiceListItem[];
   loading?: boolean;
 }) {
-  if (loading) return <div className="pg-tstmt-card pg-tstmt-skeleton" />;
+  if (loading) return <ProplyticTableSkeleton rows={4} />;
   if (!paidInvoices.length) {
     return (
       <div className="pg-tstmt-card">
@@ -498,26 +516,28 @@ export function TenantPaymentsTable({
   }
   return (
     <div className="pg-tstmt-card">
-      <div className="pg-tstmt-table-wrap">
-        <table className="pg-tenants-table pg-tstmt-table">
-          <thead>
-            <tr>
-              <th scope="col">Date</th>
-              <th scope="col">Invoice</th>
-              <th scope="col">Amount</th>
-            </tr>
-          </thead>
-          <tbody>
+      <ProplyticTableWrap responsive>
+        <ProplyticTable variant="financial">
+          <ProplyticTableHeader>
+            <ProplyticTableRow>
+              <ProplyticTableHeadCell>Date</ProplyticTableHeadCell>
+              <ProplyticTableHeadCell>Invoice</ProplyticTableHeadCell>
+              <ProplyticTableHeadCell numeric>Amount</ProplyticTableHeadCell>
+            </ProplyticTableRow>
+          </ProplyticTableHeader>
+          <ProplyticTableBody>
             {paidInvoices.map((inv) => (
-              <tr key={inv.id}>
-                <td>{formatDateShort(inv.paidAt ?? inv.invoiceDate)}</td>
-                <td>{inv.invoiceNumber}</td>
-                <td style={{ color: "var(--success)" }}>{fmtZar(inv.total)}</td>
-              </tr>
+              <ProplyticTableRow key={inv.id}>
+                <ProplyticTableCell>{formatDateShort(inv.paidAt ?? inv.invoiceDate)}</ProplyticTableCell>
+                <ProplyticTableCell>{inv.invoiceNumber}</ProplyticTableCell>
+                <ProplyticTableCell numeric>
+                  <ProplyticAmountCell tone="credit-paid">{fmtZar(inv.total)}</ProplyticAmountCell>
+                </ProplyticTableCell>
+              </ProplyticTableRow>
             ))}
-          </tbody>
-        </table>
-      </div>
+          </ProplyticTableBody>
+        </ProplyticTable>
+      </ProplyticTableWrap>
     </div>
   );
 }
@@ -547,8 +567,8 @@ export function TenantLedgerPanel({
   return (
     <div className="pg-tstmt-card">
       <h2>Ledger</h2>
-      <div className="pg-tstmt-table-wrap" style={{ marginTop: 12 }}>
-        <table className="pg-tstmt-table">
+      <div className="pg-ptable-wrap pg-ptable-wrap--responsive" style={{ marginTop: 12 }}>
+        <table className="pg-ptable pg-ptable--financial pg-tstmt-table">
           <thead>
             <tr>
               <th scope="col">Date</th>

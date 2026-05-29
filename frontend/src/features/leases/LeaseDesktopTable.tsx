@@ -1,7 +1,19 @@
 import { Link } from "react-router-dom";
+import {
+  ProplyticAmountCell,
+  ProplyticStatusBadge,
+  ProplyticTable,
+  ProplyticTableActions,
+  ProplyticTableBody,
+  ProplyticTableCell,
+  ProplyticTableHeadCell,
+  ProplyticTableHeader,
+  ProplyticTableRow,
+  ProplyticTableSkeleton,
+  ProplyticTableWrap
+} from "../../components/tables";
 import type { LeaseListItem } from "./leaseDirectoryTypes";
 import { fmtZar, formatDateShort, tenantInitialsFromName } from "./leaseDirectoryUtils";
-import { LeaseDisplayStatusBadge, LeaseLifecycleBadge } from "./LeaseStatusBadges";
 import { LeaseRowActions } from "./LeaseRowActions";
 
 export function LeaseDesktopTable({
@@ -16,36 +28,32 @@ export function LeaseDesktopTable({
   onDeleteLease?: (leaseId: string) => void;
 }) {
   if (loading) {
-    return (
-      <div className="pg-leases-table-wrap">
-        <div className="pg-leases-table-skeleton" aria-hidden />
-      </div>
-    );
+    return <ProplyticTableSkeleton rows={6} />;
   }
 
   if (!items.length) return null;
 
   return (
-    <div className="pg-leases-table-wrap">
-      <table className="pg-leases-table">
-        <thead>
-          <tr>
-            <th scope="col">Tenant</th>
-            <th scope="col">Property</th>
-            <th scope="col">Monthly Rent</th>
-            <th scope="col">Lease Term</th>
-            <th scope="col">Rent Due</th>
-            <th scope="col">Deposit</th>
-            <th scope="col">Status</th>
-            <th scope="col">
-              <span className="pg-leases-sr-only">Actions</span>
-            </th>
-          </tr>
-        </thead>
-        <tbody>
+    <ProplyticTableWrap responsive>
+      <ProplyticTable>
+        <ProplyticTableHeader>
+          <ProplyticTableRow>
+            <ProplyticTableHeadCell>Tenant</ProplyticTableHeadCell>
+            <ProplyticTableHeadCell>Property</ProplyticTableHeadCell>
+            <ProplyticTableHeadCell numeric>Monthly Rent</ProplyticTableHeadCell>
+            <ProplyticTableHeadCell>Lease Term</ProplyticTableHeadCell>
+            <ProplyticTableHeadCell>Rent Due</ProplyticTableHeadCell>
+            <ProplyticTableHeadCell numeric>Deposit</ProplyticTableHeadCell>
+            <ProplyticTableHeadCell>Status</ProplyticTableHeadCell>
+            <ProplyticTableHeadCell actions>
+              <span className="pg-ptable-sr-only">Actions</span>
+            </ProplyticTableHeadCell>
+          </ProplyticTableRow>
+        </ProplyticTableHeader>
+        <ProplyticTableBody>
           {items.map((lease) => (
-            <tr key={lease.id}>
-              <td>
+            <ProplyticTableRow key={lease.id}>
+              <ProplyticTableCell>
                 <div className="pg-leases-cell-tenant">
                   <span className="pg-leases-avatar" aria-hidden>
                     {tenantInitialsFromName(lease.tenantName)}
@@ -61,22 +69,23 @@ export function LeaseDesktopTable({
                     <div className="pg-leases-sub">{lease.leaseTypeLabel}</div>
                   </div>
                 </div>
-              </td>
-              <td>
+              </ProplyticTableCell>
+              <ProplyticTableCell>
                 <div className="pg-leases-property">
                   <Link className="pg-leases-name" to={`/owned-properties/${lease.propertyId}`}>
                     <strong>{lease.propertyName}</strong>
                   </Link>
                   <div className="pg-leases-sub">{lease.propertyAddress || "—"}</div>
                 </div>
-              </td>
-              <td>
-                <div className="pg-leases-rent">
-                  <strong>{lease.monthlyRent != null ? fmtZar(lease.monthlyRent) : "—"}</strong>
-                  {lease.monthlyRent != null ? <div className="pg-leases-sub">/ month</div> : null}
-                </div>
-              </td>
-              <td>
+              </ProplyticTableCell>
+              <ProplyticTableCell numeric>
+                {lease.monthlyRent != null ? (
+                  <ProplyticAmountCell>{fmtZar(lease.monthlyRent)}</ProplyticAmountCell>
+                ) : (
+                  "—"
+                )}
+              </ProplyticTableCell>
+              <ProplyticTableCell>
                 {lease.startDate || lease.endDate ? (
                   <div className="pg-leases-term">
                     <div>{formatDateShort(lease.startDate)}</div>
@@ -85,26 +94,30 @@ export function LeaseDesktopTable({
                 ) : (
                   <span className="pg-leases-sub">—</span>
                 )}
-              </td>
-              <td>
+              </ProplyticTableCell>
+              <ProplyticTableCell>
                 <div className="pg-leases-due">{lease.rentDueDay != null ? `Day ${lease.rentDueDay}` : "—"}</div>
-              </td>
-              <td>
-                <strong className="pg-leases-deposit">{lease.depositAmount != null ? fmtZar(lease.depositAmount) : "—"}</strong>
-              </td>
-              <td>
+              </ProplyticTableCell>
+              <ProplyticTableCell numeric>
+                {lease.depositAmount != null ? (
+                  <ProplyticAmountCell>{fmtZar(lease.depositAmount)}</ProplyticAmountCell>
+                ) : (
+                  "—"
+                )}
+              </ProplyticTableCell>
+              <ProplyticTableCell>
                 <div className="pg-leases-status-stack">
-                  <LeaseLifecycleBadge status={lease.lifecycleStatus} />
-                  <LeaseDisplayStatusBadge status={lease.displayStatus} />
+                  <ProplyticStatusBadge status={lease.lifecycleStatus} />
+                  <ProplyticStatusBadge status={lease.displayStatus} />
                 </div>
-              </td>
-              <td>
+              </ProplyticTableCell>
+              <ProplyticTableCell actions>
                 <LeaseRowActions lease={lease} onCancel={onCancelLease} onDelete={onDeleteLease} />
-              </td>
-            </tr>
+              </ProplyticTableCell>
+            </ProplyticTableRow>
           ))}
-        </tbody>
-      </table>
-    </div>
+        </ProplyticTableBody>
+      </ProplyticTable>
+    </ProplyticTableWrap>
   );
 }
