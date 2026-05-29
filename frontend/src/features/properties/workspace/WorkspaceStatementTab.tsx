@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useMemo, useState, type MouseEvent } from "react";
 import { useNavigate } from "react-router-dom";
-import { BookOpen, Check, ExternalLink, Pencil, Plus, Trash2, X } from "lucide-react";
+import { BookOpen, Check, ChevronDown, ExternalLink, Pencil, Plus, Trash2, X } from "lucide-react";
 import { getPropertyStatement } from "../../../api/ownedProperties";
 import { Card } from "../../../components/ui/Card";
 import { Input } from "../../../components/ui/Input";
@@ -143,24 +143,106 @@ function rowToDraft(r: Record<string, unknown>): StatementDraft {
   };
 }
 
-function statementStatusSelectClass(source: string, statusRaw: string): string {
+function pfinStatusBadgeClass(source: string, statusRaw: string, uiValue?: string): string {
   const s = String(statusRaw ?? "").toUpperCase();
+  const ui =
+    uiValue ??
+    (source === "INVOICE" ? invoiceUiStatus(s) : source === "INCOME" ? incomeUiStatus(s) : s);
+  if (source === "EXPENSE") {
+    if (s === "PAID" || s === "ACTIVE") return "pg-pfin-badge pg-pfin-badge--success";
+    if (s === "OVERDUE") return "pg-pfin-badge pg-pfin-badge--danger";
+    return "pg-pfin-badge pg-pfin-badge--muted";
+  }
   if (source === "INVOICE") {
-    if (s === "PAID") return "pg-statement-status-select--paid";
-    if (s === "OVERDUE") return "pg-statement-status-select--overdue";
-    if (s === "CANCELLED") return "pg-statement-status-select--cancelled";
-    if (s === "DRAFT") return "pg-statement-status-select--draft";
-    if (s === "SENT") return "pg-statement-status-select--sent";
-    return "pg-statement-status-select--unpaid";
+    if (ui === "PAID") return "pg-pfin-badge pg-pfin-badge--success";
+    if (ui === "OVERDUE") return "pg-pfin-badge pg-pfin-badge--danger";
+    if (ui === "CANCELLED" || ui === "DRAFT") return "pg-pfin-badge pg-pfin-badge--muted";
+    return "pg-pfin-badge pg-pfin-badge--warning";
   }
   if (source === "INCOME") {
-    if (s === "RECEIVED") return "pg-statement-status-select--paid";
-    if (s === "CANCELLED") return "pg-statement-status-select--cancelled";
-    return "pg-statement-status-select--due";
+    if (ui === "RECEIVED") return "pg-pfin-badge pg-pfin-badge--success";
+    if (ui === "CANCELLED") return "pg-pfin-badge pg-pfin-badge--muted";
+    return "pg-pfin-badge pg-pfin-badge--warning";
   }
-  if (s === "PAID") return "pg-statement-status-select--paid";
-  if (s === "OVERDUE") return "pg-statement-status-select--overdue";
-  return "pg-statement-status-select--draft";
+  return "pg-pfin-badge pg-pfin-badge--muted";
+}
+
+function statusLabelForRow(source: string, statusRaw: string, uiValue: string): string {
+  if (source === "INVOICE") {
+    return INVOICE_STATUS_UI.find((o) => o.value === uiValue)?.label ?? statusRaw;
+  }
+  if (source === "INCOME") {
+    return INCOME_STATUS_UI.find((o) => o.value === uiValue)?.label ?? statusRaw;
+  }
+  const raw = String(statusRaw ?? "");
+  if (raw.toUpperCase() === "ACTIVE") return "Active";
+  return raw.charAt(0) + raw.slice(1).toLowerCase();
+}
+
+function StatementStatusPicker({
+  label,
+  badgeClass,
+  options,
+  uiValue,
+  disabled,
+  busy,
+  menuOpen,
+  onToggleMenu,
+  onPick
+}: {
+  label: string;
+  badgeClass: string;
+  options: ReadonlyArray<{ value: string; label: string }>;
+  uiValue: string;
+  disabled?: boolean;
+  busy?: boolean;
+  menuOpen: boolean;
+  onToggleMenu: () => void;
+  onPick: (value: string) => void;
+}) {
+  return (
+    <div className="pg-pfin-status-picker" onClick={stopRowEvent}>
+      <span className={badgeClass}>{label}</span>
+      {!disabled ? (
+        <>
+          <button
+            type="button"
+            className="pg-pfin-status-picker__chev"
+            aria-label="Change status"
+            aria-expanded={menuOpen}
+            aria-haspopup="listbox"
+            disabled={busy}
+            onClick={(e) => {
+              stopRowEvent(e);
+              onToggleMenu();
+            }}
+          >
+            <ChevronDown size={14} aria-hidden />
+          </button>
+          {menuOpen ? (
+            <ul className="pg-pfin-status-picker__menu" role="listbox" aria-label="Status options">
+              {options.map((opt) => (
+                <li key={opt.value} role="none">
+                  <button
+                    type="button"
+                    role="option"
+                    aria-selected={opt.value === uiValue}
+                    className={`pg-pfin-status-picker__option${opt.value === uiValue ? " is-selected" : ""}`}
+                    onClick={(e) => {
+                      stopRowEvent(e);
+                      onPick(opt.value);
+                    }}
+                  >
+                    {opt.label}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </>
+      ) : null}
+    </div>
+  );
 }
 
 function monthIdUtc(d: Date): string {
@@ -186,30 +268,6 @@ function fmtZar(n: unknown): string {
   const v = Number(n ?? 0);
   if (!Number.isFinite(v)) return "—";
   return `R ${v.toLocaleString()}`;
-}
-
-function statementStatusBadgeClass(source: string, statusRaw: string): string {
-  const s = String(statusRaw ?? "").toUpperCase();
-  if (source === "INVOICE") {
-    if (s === "PAID") return "pg-tenants-badge pg-tenants-badge--success";
-    if (s === "OVERDUE") return "pg-tenants-badge pg-tenants-badge--danger";
-    if (s === "DRAFT") return "pg-tenants-badge pg-tenants-badge--info";
-    if (s === "SENT") return "pg-tenants-badge pg-tenants-badge--warning";
-    return "pg-tenants-badge pg-tenants-badge--warning";
-  }
-  if (source === "INCOME") {
-    if (s === "RECEIVED") return "pg-tenants-badge pg-tenants-badge--success";
-    if (s === "EXPECTED") return "pg-tenants-badge pg-tenants-badge--warning";
-    if (s === "CANCELLED") return "pg-tenants-badge pg-tenants-badge--danger";
-    return "pg-tenants-badge pg-tenants-badge--info";
-  }
-  if (source === "EXPENSE") {
-    if (s === "PAID") return "pg-tenants-badge pg-tenants-badge--success";
-    if (s === "OVERDUE") return "pg-tenants-badge pg-tenants-badge--danger";
-    if (s === "ACTIVE") return "pg-tenants-badge pg-tenants-badge--warning";
-    return "pg-tenants-badge pg-tenants-badge--info";
-  }
-  return "pg-tenants-badge pg-tenants-badge--info";
 }
 
 export function WorkspaceStatementTab({
@@ -243,6 +301,7 @@ export function WorkspaceStatementTab({
   const [savingRowId, setSavingRowId] = useState<string | null>(null);
   const [deletingRowId, setDeletingRowId] = useState<string | null>(null);
   const [statusUpdatingRowId, setStatusUpdatingRowId] = useState<string | null>(null);
+  const [statusMenuKey, setStatusMenuKey] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<any>(null);
 
   const monthIds = useMemo(() => {
@@ -325,6 +384,17 @@ export function WorkspaceStatementTab({
       cancelled = true;
     };
   }, [propertyId, monthIds, reloadKey]);
+
+  useEffect(() => {
+    if (!statusMenuKey) return;
+    const close = (e: Event) => {
+      const target = e.target as HTMLElement | null;
+      if (target?.closest(".pg-pfin-status-picker")) return;
+      setStatusMenuKey(null);
+    };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [statusMenuKey]);
 
   const totals = useMemo(() => {
     let debit = 0;
@@ -763,52 +833,40 @@ export function WorkspaceStatementTab({
                         "—"
                       )}
                     </td>
-                    <td style={{ verticalAlign: "middle" }} onClick={stopRowEvent}>
+                    <td style={{ verticalAlign: "middle" }}>
                       {r.source === "INVOICE" && sourceId ? (
-                        <Select
-                          className={[
-                            "pg-statement-status-select",
-                            statementStatusSelectClass("INVOICE", statusUiValue)
-                          ].join(" ")}
-                          value={statusUiValue}
-                          disabled={rowStatusBusy || isEditing}
-                          aria-label="Statement line status"
-                          onClick={stopRowEvent}
-                          onChange={(e) => {
-                            const v = e.target.value;
+                        <StatementStatusPicker
+                          label={statusLabelForRow("INVOICE", String(r.status ?? ""), statusUiValue)}
+                          badgeClass={pfinStatusBadgeClass("INVOICE", String(r.status ?? ""), statusUiValue)}
+                          options={INVOICE_STATUS_UI}
+                          uiValue={statusUiValue}
+                          disabled={isEditing}
+                          busy={rowStatusBusy}
+                          menuOpen={statusMenuKey === editKey}
+                          onToggleMenu={() => setStatusMenuKey((k) => (k === editKey ? null : editKey))}
+                          onPick={(v) => {
+                            setStatusMenuKey(null);
                             void applyRowStatus("INVOICE", sourceId, v).catch(() => undefined);
                           }}
-                        >
-                          {INVOICE_STATUS_UI.map((opt) => (
-                            <option key={opt.value} value={opt.value}>
-                              {opt.label}
-                            </option>
-                          ))}
-                        </Select>
+                        />
                       ) : r.source === "INCOME" && sourceId ? (
-                        <Select
-                          className={[
-                            "pg-statement-status-select",
-                            statementStatusSelectClass("INCOME", statusUiValue)
-                          ].join(" ")}
-                          value={statusUiValue}
-                          disabled={rowStatusBusy || isEditing}
-                          aria-label="Statement line status"
-                          onClick={stopRowEvent}
-                          onChange={(e) => {
-                            const v = e.target.value;
+                        <StatementStatusPicker
+                          label={statusLabelForRow("INCOME", String(r.status ?? ""), statusUiValue)}
+                          badgeClass={pfinStatusBadgeClass("INCOME", String(r.status ?? ""), statusUiValue)}
+                          options={INCOME_STATUS_UI}
+                          uiValue={statusUiValue}
+                          disabled={isEditing}
+                          busy={rowStatusBusy}
+                          menuOpen={statusMenuKey === editKey}
+                          onToggleMenu={() => setStatusMenuKey((k) => (k === editKey ? null : editKey))}
+                          onPick={(v) => {
+                            setStatusMenuKey(null);
                             void applyRowStatus("INCOME", sourceId, v).catch(() => undefined);
                           }}
-                        >
-                          {INCOME_STATUS_UI.map((opt) => (
-                            <option key={opt.value} value={opt.value}>
-                              {opt.label}
-                            </option>
-                          ))}
-                        </Select>
+                        />
                       ) : (
-                        <span className={statementStatusBadgeClass(String(r.source ?? ""), String(r.status ?? ""))}>
-                          {String(r.status ?? "")}
+                        <span className={pfinStatusBadgeClass(String(r.source ?? ""), String(r.status ?? ""))}>
+                          {statusLabelForRow(String(r.source ?? ""), String(r.status ?? ""), statusUiValue)}
                         </span>
                       )}
                     </td>
