@@ -5,6 +5,11 @@ export type GenerateInvoicePdfResponse = {
   message?: string;
   invoiceId: string;
   hasPdf?: boolean;
+  /** True when an existing stored PDF was reused (no regeneration). */
+  reused?: boolean;
+  /** Draft preview — PDF bytes only, not stored in Supabase Storage. */
+  ephemeral?: boolean;
+  pdfBase64?: string;
   downloadUrl?: string;
   expiresIn?: number;
   storageKey?: string;
@@ -36,6 +41,6 @@ export async function generateInvoicePdfViaVercel(invoiceId: string): Promise<Ge
   }
 
   const json = (await res.json().catch(() => ({}))) as GenerateInvoicePdfResponse & { error?: string };
-  if (!json.downloadUrl && json.error) throw new Error(json.error);
+  if (!json.downloadUrl && !json.pdfBase64 && json.error) throw new Error(json.error);
   return json;
 }

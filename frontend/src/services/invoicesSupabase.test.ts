@@ -5,7 +5,8 @@ import {
   createInvoice,
   updateInvoice,
   deleteInvoice,
-  markInvoicePaid
+  markInvoicePaid,
+  markInvoiceSent
 } from "./invoicesSupabase";
 
 const getUser = vi.fn();
@@ -227,6 +228,77 @@ describe("invoicesSupabase", () => {
     expect(storageRemove).toHaveBeenCalledWith(["u1/invoices/inv-9.pdf"]);
     expect(rpc).toHaveBeenCalledWith("hard_delete_invoice", { p_id: "inv-9" });
     expect(out.message).toBe("Deleted");
+  });
+
+  it("markInvoiceSent sets status SENT and sent_at", async () => {
+    getUser.mockResolvedValue({ data: { user: { id: "u1" } }, error: null });
+    let fromCalls = 0;
+    from.mockImplementation(() => {
+      fromCalls++;
+      if (fromCalls === 1) {
+        return {
+          select: vi.fn(() => ({
+            eq: vi.fn(() => ({
+              eq: vi.fn(() => ({
+                maybeSingle: vi.fn(() =>
+                  Promise.resolve({ data: { id: "inv-1", status: "DRAFT" }, error: null })
+                )
+              }))
+            }))
+          }))
+        };
+      }
+      return {
+        update: vi.fn(() => ({
+          eq: vi.fn(() => ({
+            eq: vi.fn(() => ({
+              select: vi.fn(() => ({
+                single: vi.fn(() =>
+                  Promise.resolve({
+                    data: {
+                      id: "inv-1",
+                      user_id: "u1",
+                      property_id: "p1",
+                      tenant_id: "t1",
+                      invoice_number: "INV-1",
+                      invoice_date: "2026-01-01T12:00:00.000Z",
+                      due_date: "2026-01-15T12:00:00.000Z",
+                      status: "SENT",
+                      sent_at: "2026-01-02T12:00:00.000Z",
+                      subtotal: 100,
+                      total: 100,
+                      notes: null,
+                      pdf_path: null
+                    },
+                    error: null
+                  })
+                )
+              }))
+            }))
+          }))
+        }))
+      };
+    });
+
+    const out = await markInvoiceSent("inv-1");
+    expect(out.status).toBe("SENT");
+    expect(out.sentAt).toBeTruthy();
+  });
+
+  it("markInvoiceSent rejects non-editable status", async () => {
+    getUser.mockResolvedValue({ data: { user: { id: "u1" } }, error: null });
+    from.mockReturnValue({
+      select: vi.fn(() => ({
+        eq: vi.fn(() => ({
+          eq: vi.fn(() => ({
+            maybeSingle: vi.fn(() =>
+              Promise.resolve({ data: { id: "inv-1", status: "SENT" }, error: null })
+            )
+          }))
+        }))
+      }))
+    });
+    await expect(markInvoiceSent("inv-1")).rejects.toThrow(/cannot be marked as sent/i);
   });
 
   it("markInvoicePaid updates row", async () => {

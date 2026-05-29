@@ -355,6 +355,12 @@ export async function voidInvoice(invoiceId: string | number) {
   return invoicesSupabase.voidInvoice(invoiceId);
 }
 
+/** Lock invoice for editing: draft/generated → sent with sent_at timestamp. */
+export async function markInvoiceSent(invoiceId: string | number) {
+  assertSupabaseConfigured();
+  return invoicesSupabase.markInvoiceSent(invoiceId);
+}
+
 /** Generate invoice PDF (Vercel + Storage when Supabase env is set). */
 export async function generateInvoicePdf(invoiceId: string | number) {
   assertSupabaseConfigured();

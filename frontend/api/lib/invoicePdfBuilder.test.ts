@@ -16,13 +16,18 @@ describe("invoicePdfBuilder", () => {
       status: "DRAFT",
       subtotal: 5000,
       total: 5000,
+      balanceDue: 5000,
       notes: null,
       tenantLines: ["Jane Tenant", "jane@example.com"],
       propertyLines: ["Unit 4", "1 Main Rd, Cape Town"],
+      unitLabel: "Unit 4",
+      leaseLabel: "From 2026-01-01",
+      paymentReference: "INV-00042",
       lineItems: [{ description: "Rent", quantity: 1, unitPrice: 5000, total: 5000 }],
       ledgerRows: [],
       totalDueOutstanding: 5000,
-      paymentDetailLines: ["Bank: Test Bank"]
+      paymentDetailLines: ["Bank: Test Bank"],
+      isDraftPreview: true
     });
     const text = JSON.stringify(def.content);
     expect(text).toContain("INV-00042");

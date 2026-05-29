@@ -5,6 +5,7 @@ import {
   dbInvoiceToClient,
   rpcInvoiceCreateResultToClient
 } from "../api/invoiceRowMapping";
+import { isInvoiceEditable } from "../features/invoices/invoiceFoundation";
 
 const INVOICES_BUCKET = "invoices";
 const SIGNED_URL_TTL_SEC = 600;
@@ -306,6 +307,37 @@ export async function deleteInvoice(id: string | number): Promise<{ message: str
   if (error) throw toError(error);
   const r = (data ?? {}) as { message?: string };
   return { message: typeof r.message === "string" ? r.message : "Deleted" };
+}
+
+export async function markInvoiceSent(id: string | number): Promise<Record<string, unknown>> {
+  const uid = await requireUserId();
+  const sb = getSupabase();
+  const { data: existing, error: fetchErr } = await sb
+    .from("invoices")
+    .select("id, status")
+    .eq("id", String(id))
+    .eq("user_id", uid)
+    .maybeSingle();
+  if (fetchErr) throw toError(fetchErr);
+  if (!existing) throw new Error("Invoice not found");
+  if (!isInvoiceEditable(existing.status)) {
+    throw new Error("Invoice cannot be marked as sent in its current status.");
+  }
+
+  const now = new Date().toISOString();
+  const { data, error } = await sb
+    .from("invoices")
+    .update({
+      status: "SENT",
+      sent_at: now,
+      updated_at: now
+    })
+    .eq("id", String(id))
+    .eq("user_id", uid)
+    .select("*")
+    .single();
+  if (error) throw toError(error);
+  return dbInvoiceToClient(data as Record<string, unknown>);
 }
 
 export async function markInvoicePaid(id: string | number): Promise<Record<string, unknown>> {

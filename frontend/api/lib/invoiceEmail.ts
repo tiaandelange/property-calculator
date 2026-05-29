@@ -28,9 +28,9 @@ export async function sendInvoiceEmail(
     return { ok: false, message: "Email provider not configured." };
   }
 
-  // Provider integration placeholder — same behaviour as Express scaffold.
+  // Provider integration placeholder — do not report success until mail is actually sent.
   return {
-    ok: true,
-    message: "Email provider configured. Email send is scaffolded for provider integration."
+    ok: false,
+    message: "Email sending coming later."
   };
 }

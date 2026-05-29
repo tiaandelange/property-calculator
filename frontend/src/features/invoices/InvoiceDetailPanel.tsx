@@ -1,18 +1,19 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
-import { Download, ExternalLink, Mail, Save, Trash2 } from "lucide-react";
+import { Download, ExternalLink, Save, Send, Trash2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import {
   createPropertyInvoice,
   generateInvoicePdf,
   getInvoice,
   hardDeleteInvoice,
-  sendInvoiceEmail,
+  markInvoiceSent,
   updateInvoice,
   voidInvoice
 } from "../../api/ownedProperties";
-import { fetchPdfBlob, isAbsoluteHttpUrl, openPdfBlobInNewTab, triggerPdfFileDownload } from "../../api/pdfBlob";
+import { fetchPdfBlob, triggerPdfFileDownload } from "../../api/pdfBlob";
 import { fetchMe } from "../../api/user";
 import { invalidatePropertyWorkspace } from "../properties/invalidate";
+import { openInvoicePdfExport, invoicePdfWasStored } from "./invoicePdfExport";
 import { Button } from "../../components/ui/Button";
 import { Field, Input } from "../../components/ui/Input";
 import { ConfirmDialog } from "../../components/ui/ConfirmDialog";
@@ -33,6 +34,16 @@ import {
   type InvoiceLineItemDraft
 } from "./invoiceLineItemUtils";
 import { invoiceDetailPath, invoiceStatementPath } from "./invoiceRoutes";
+import {
+  INVOICE_SEND_EMAIL_COMING_SOON,
+  INVOICE_SEND_MODAL_MESSAGE,
+  INVOICE_SEND_MODAL_TITLE,
+  canMarkInvoiceSent,
+  invoiceSendButtonLabel,
+  invoiceSendConfirmLabel,
+  invoiceSendSuccessMessage,
+  isInvoiceEmailDeliveryAvailable
+} from "./invoiceSendWorkflow";
 
 function bankingLines(details: unknown): string[] {
   if (!details || typeof details !== "object" || Array.isArray(details)) return [];
@@ -102,6 +113,7 @@ export function InvoiceDetailPanel({
   const [sendBusy, setSendBusy] = useState(false);
   const [actionBusy, setActionBusy] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<"delete" | "void" | null>(null);
+  const [confirmSend, setConfirmSend] = useState(false);
   const [invoiceNumber, setInvoiceNumber] = useState("Draft");
   const [status, setStatus] = useState<string>("DRAFT");
   const [invoicePeriod, setInvoicePeriod] = useState<string | null>(null);
@@ -291,16 +303,9 @@ export function InvoiceDetailPanel({
     setPdfBusy(true);
     try {
       const gen = await generateInvoicePdf(id);
-      const downloadUrl = gen.downloadUrl;
-      if (!downloadUrl) throw new Error(gen.error ?? "No download URL returned.");
-      setHasPdf(true);
-      if (isAbsoluteHttpUrl(downloadUrl)) {
-        window.open(downloadUrl, "_blank", "noopener,noreferrer");
-      } else {
-        const blob = await fetchPdfBlob(downloadUrl);
-        openPdfBlobInNewTab(blob);
-      }
-      setSuccess("PDF opened in a new tab.");
+      await openInvoicePdfExport(gen);
+      if (invoicePdfWasStored(gen)) setHasPdf(true);
+      setSuccess(gen.reused ? "PDF opened (stored copy)." : "PDF opened in a new tab.");
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Could not export PDF.");
     } finally {
@@ -318,7 +323,16 @@ export function InvoiceDetailPanel({
       let url = inv.downloadUrl as string | null | undefined;
       if (!url) {
         const gen = await generateInvoicePdf(id);
+        if (gen.pdfBase64) {
+          const binary = atob(gen.pdfBase64);
+          const bytes = new Uint8Array(binary.length);
+          for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+          triggerPdfFileDownload(new Blob([bytes], { type: "application/pdf" }), `${String(inv.invoiceNumber ?? "invoice").replace(/\s+/g, "_")}.pdf`);
+          setSuccess("PDF downloaded.");
+          return;
+        }
         url = gen.downloadUrl ?? null;
+        if (invoicePdfWasStored(gen)) setHasPdf(true);
       }
       if (!url) throw new Error("Generate the PDF first.");
       const blob = await fetchPdfBlob(url);
@@ -332,35 +346,28 @@ export function InvoiceDetailPanel({
     }
   };
 
-  const sendToTenant = async () => {
+  const confirmSendInvoice = async () => {
     if (!editable) return;
     setError("");
     setSuccess("");
-    let id: string | undefined = activeId;
-    if (!id) {
-      const saved = await saveInvoice();
-      if (!saved) return;
-      id = saved;
-    }
-    if (!tenantEmail?.trim()) {
-      setError("This tenant has no email on file.");
-      return;
-    }
+    const statusBeforeSend = status;
     setSendBusy(true);
     try {
-      if (status === "DRAFT" || status === "GENERATED") {
-        await updateInvoice(id, { status: "SENT" });
-        setStatus("SENT");
+      let id: string | undefined = activeId;
+      if (!id) {
+        const saved = await saveInvoice();
+        if (!saved) return;
+        id = saved;
       }
-      if (!hasPdf) {
-        await generateInvoicePdf(id);
-        setHasPdf(true);
-      }
-      const res = await sendInvoiceEmail(id);
-      setSuccess(res.message ?? `Invoice sent to ${tenantEmail}.`);
+      await markInvoiceSent(id);
+      await generateInvoicePdf(id);
+      setHasPdf(true);
+      invalidatePropertyWorkspace(propertyId);
       await loadInvoice(id);
+      setConfirmSend(false);
+      setSuccess(invoiceSendSuccessMessage(statusBeforeSend));
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Could not send invoice.");
+      setError(e instanceof Error ? e.message : "Could not mark invoice as sent.");
     } finally {
       setSendBusy(false);
     }
@@ -479,10 +486,10 @@ export function InvoiceDetailPanel({
                 Download PDF
               </Button>
             ) : null}
-            {editable ? (
-              <Button type="button" variant="secondary" loading={sendBusy} onClick={() => void sendToTenant()}>
-                <Mail size={16} style={{ marginRight: 8 }} aria-hidden />
-                Send to tenant
+            {editable && canMarkInvoiceSent(status) ? (
+              <Button type="button" variant="secondary" loading={sendBusy} onClick={() => setConfirmSend(true)}>
+                <Send size={16} style={{ marginRight: 8 }} aria-hidden />
+                {invoiceSendButtonLabel()}
               </Button>
             ) : null}
             {propertyId ? (
@@ -627,6 +634,24 @@ export function InvoiceDetailPanel({
           <div className="pg-tstmt-invoice-preview__total">{fmtZar(total)}</div>
         </aside>
       </form>
+
+      <ConfirmDialog
+        open={confirmSend}
+        title={INVOICE_SEND_MODAL_TITLE}
+        confirmLabel={invoiceSendConfirmLabel()}
+        loading={sendBusy}
+        onClose={() => setConfirmSend(false)}
+        onConfirm={() => void confirmSendInvoice()}
+      >
+        <p className="pg-muted" style={{ margin: 0 }}>
+          {INVOICE_SEND_MODAL_MESSAGE}
+        </p>
+        {!isInvoiceEmailDeliveryAvailable() ? (
+          <p className="pg-muted" style={{ margin: "12px 0 0", fontSize: "0.875rem" }}>
+            {INVOICE_SEND_EMAIL_COMING_SOON}
+          </p>
+        ) : null}
+      </ConfirmDialog>
 
       <ConfirmDialog
         open={confirmDelete != null}

@@ -24,13 +24,18 @@ export type InvoicePdfData = {
   status: string;
   subtotal: number;
   total: number;
+  balanceDue: number;
   notes: string | null;
   tenantLines: string[];
   propertyLines: string[];
+  unitLabel: string | null;
+  leaseLabel: string | null;
+  paymentReference: string | null;
   lineItems: InvoicePdfLineItem[];
   ledgerRows: InvoicePdfLedgerRow[];
   totalDueOutstanding: number;
   paymentDetailLines: string[];
+  isDraftPreview?: boolean;
 };
 
 function formatMoney(n: number) {
@@ -102,12 +107,33 @@ export function buildInvoicePdfDefinition(data: InvoicePdfData): TDocumentDefini
   ];
 
   const invDateLabel = data.invoiceDate.slice(0, 10);
+  const statusLabel = data.isDraftPreview ? `${data.status} (preview — not finalised)` : data.status;
   const windowStartLabel = data.ledgerRows.length
     ? data.ledgerRows[0]?.date?.slice(0, 7) ?? invDateLabel.slice(0, 7)
     : invDateLabel.slice(0, 7);
 
+  const metaStack: Content[] = [
+    { text: "TAX INVOICE", style: "h2", alignment: "right" },
+    { text: `Invoice no. ${data.invoiceNumber}`, alignment: "right", margin: m(0, 6, 0, 0) },
+    { text: `Issue date: ${invDateLabel}`, alignment: "right" },
+    { text: `Due date: ${data.dueDate.slice(0, 10)}`, alignment: "right" },
+    { text: `Status: ${statusLabel}`, alignment: "right" },
+    { text: `Balance due: ${formatMoney(data.balanceDue)}`, alignment: "right", margin: m(0, 4, 0, 0) }
+  ];
+  if (data.paymentReference) {
+    metaStack.push({ text: `Payment reference: ${data.paymentReference}`, alignment: "right" });
+  }
+
+  const propertyStack: Content[] = [
+    { text: "Property", style: "subheader" },
+    { text: data.propertyLines.join("\n\n") || "—" }
+  ];
+  if (data.unitLabel) propertyStack.push({ text: `Unit: ${data.unitLabel}`, margin: m(0, 6, 0, 0) });
+  if (data.leaseLabel) propertyStack.push({ text: `Lease: ${data.leaseLabel}`, margin: m(0, 4, 0, 0) });
+
   return {
     info: { title: `Tax invoice ${data.invoiceNumber}` },
+    watermark: data.isDraftPreview ? { text: "DRAFT", color: "gray", opacity: 0.12, bold: true, angle: -35 } : undefined,
     content: [
       {
         columns: [
@@ -119,14 +145,8 @@ export function buildInvoicePdfDefinition(data: InvoicePdfData): TDocumentDefini
             ]
           },
           {
-            width: 200,
-            stack: [
-              { text: "TAX INVOICE", style: "h2", alignment: "right" },
-              { text: `Invoice no. ${data.invoiceNumber}`, alignment: "right", margin: m(0, 6, 0, 0) },
-              { text: `Invoice date: ${invDateLabel}`, alignment: "right" },
-              { text: `Due date: ${data.dueDate.slice(0, 10)}`, alignment: "right" },
-              { text: `Status: ${data.status}`, alignment: "right" }
-            ]
+            width: 220,
+            stack: metaStack
           }
         ],
         margin: m(0, 0, 0, 16)
@@ -140,7 +160,7 @@ export function buildInvoicePdfDefinition(data: InvoicePdfData): TDocumentDefini
           { width: 40, text: "" },
           {
             width: "*",
-            stack: [{ text: "Property", style: "subheader" }, { text: data.propertyLines.join("\n\n") || "—" }]
+            stack: propertyStack
           }
         ],
         margin: m(0, 0, 0, 14)
@@ -158,7 +178,13 @@ export function buildInvoicePdfDefinition(data: InvoicePdfData): TDocumentDefini
             width: 200,
             stack: [
               { text: `Subtotal ${formatMoney(data.subtotal)}`, alignment: "right" },
-              { text: `Total ${formatMoney(data.total)}`, alignment: "right", bold: true, margin: m(0, 4, 0, 0) }
+              { text: `Total ${formatMoney(data.total)}`, alignment: "right", bold: true, margin: m(0, 4, 0, 0) },
+              {
+                text: `Balance due ${formatMoney(data.balanceDue)}`,
+                alignment: "right",
+                bold: true,
+                margin: m(0, 4, 0, 0)
+              }
             ]
           }
         ],

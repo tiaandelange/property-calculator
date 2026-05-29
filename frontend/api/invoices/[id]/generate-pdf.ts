@@ -7,9 +7,15 @@ import {
   type InvoicePdfLedgerRow,
   type InvoicePdfLineItem
 } from "../../lib/invoicePdfBuilder.js";
+import {
+  invoiceHasStoredPdf,
+  invoicePdfStorageKey,
+  shouldPersistInvoicePdf
+} from "../../lib/invoicePdfPolicy.js";
 import { authenticateSupabaseRequest, isUuid } from "../../lib/supabaseServerAuth";
 
 const INVOICES_BUCKET = "invoices";
+const SIGNED_URL_TTL_SEC = 600;
 
 function formatMoney(n: number) {
   return `R ${Number(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -20,6 +26,38 @@ function isoDate(v: unknown): string {
   const s = String(v);
   const d = new Date(s);
   return Number.isNaN(d.getTime()) ? s : d.toISOString();
+}
+
+function firstEmbed<T extends Record<string, unknown>>(raw: unknown): T | null {
+  if (!raw || typeof raw !== "object") return null;
+  if (Array.isArray(raw)) {
+    const first = raw[0];
+    return first && typeof first === "object" ? (first as T) : null;
+  }
+  return raw as T;
+}
+
+function unitLabelFromRow(unit: Record<string, unknown> | null): string | null {
+  if (!unit) return null;
+  const label = String(unit.unit_label ?? unit.unitLabel ?? "").trim();
+  if (label) return label;
+  const num = String(unit.unit_number ?? unit.unitNumber ?? "").trim();
+  return num ? `Unit ${num}` : null;
+}
+
+function leaseLabelFromRow(lease: Record<string, unknown> | null): string | null {
+  if (!lease) return null;
+  const start = lease.start_date ?? lease.startDate;
+  if (start) return `From ${String(start).slice(0, 10)}`;
+  return "Active lease";
+}
+
+function paymentReferenceFromProfile(raw: unknown, invoiceNumber: string): string | null {
+  if (raw && typeof raw === "object" && !Array.isArray(raw)) {
+    const note = (raw as Record<string, unknown>).referenceNote;
+    if (note != null && String(note).trim()) return String(note).trim();
+  }
+  return invoiceNumber.trim() || null;
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
@@ -41,6 +79,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   }
 
   const { sb, uid } = auth.ctx;
+  const forceRegenerate = String(req.query.force ?? "").trim() === "1";
 
   try {
     const { data: invoice, error: invErr } = await sb
@@ -51,16 +90,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
         user_id,
         property_id,
         tenant_id,
+        lease_id,
         invoice_number,
         invoice_date,
+        issue_date,
         due_date,
         status,
         subtotal,
         total,
+        total_amount,
+        balance_due,
         notes,
         pdf_storage_bucket,
         pdf_storage_key,
-        invoice_line_items ( id, description, quantity, unit_price, total ),
+        invoice_line_items ( id, description, quantity, unit_price, total, category, sort_order ),
         tenants ( first_name, last_name, email, phone, id_number ),
         properties (
           name,
@@ -70,7 +113,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
           city,
           province,
           postal_code
-        )
+        ),
+        property_units ( unit_label, unit_number ),
+        leases ( id, start_date, fixed_term_end_date, status )
       `
       )
       .eq("id", invoiceId)
@@ -86,13 +131,37 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       return;
     }
 
+    const status = String(invoice.status ?? "DRAFT");
+    const persistPdf = shouldPersistInvoicePdf(status);
+    const storageKey = invoicePdfStorageKey(uid, invoiceId);
+
+    if (persistPdf && !forceRegenerate && invoiceHasStoredPdf(invoice, INVOICES_BUCKET)) {
+      const existingKey = String(invoice.pdf_storage_key);
+      const { data: signed, error: signErr } = await sb.storage
+        .from(INVOICES_BUCKET)
+        .createSignedUrl(existingKey, SIGNED_URL_TTL_SEC);
+      if (!signErr && signed?.signedUrl) {
+        res.status(200).json({
+          message: "Invoice PDF ready",
+          invoiceId,
+          hasPdf: true,
+          reused: true,
+          downloadUrl: signed.signedUrl,
+          expiresIn: SIGNED_URL_TTL_SEC,
+          storageKey: existingKey,
+          storageBucket: INVOICES_BUCKET
+        });
+        return;
+      }
+    }
+
     const { data: profile } = await sb
       .from("profiles")
       .select("invoice_payment_details")
       .eq("id", uid)
       .maybeSingle();
 
-    const invoiceDateIso = isoDate(invoice.invoice_date);
+    const invoiceDateIso = isoDate(invoice.issue_date ?? invoice.invoice_date);
     const { windowStart, windowEnd } = threeMonthBoundsFromInvoiceDate(invoiceDateIso);
 
     const propertyId = String(invoice.property_id);
@@ -121,7 +190,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
         .order("id", { ascending: true }),
       sb
         .from("invoices")
-        .select("total, status")
+        .select("total, status, balance_due, total_amount")
         .eq("property_id", propertyId)
         .eq("tenant_id", tenantId)
         .in("status", ["DRAFT", "GENERATED", "SENT", "OVERDUE", "DUE", "PARTIALLY_PAID"])
@@ -164,10 +233,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
 
     ledgerRows.sort((a, b) => a.date.localeCompare(b.date) || a.desc.localeCompare(b.desc));
 
-    const totalDueOutstanding = (openInvoicesRes.data ?? []).reduce((a, i) => a + Number(i.total ?? 0), 0);
+    const totalDueOutstanding = (openInvoicesRes.data ?? []).reduce(
+      (a, i) => a + Number(i.balance_due ?? i.total_amount ?? i.total ?? 0),
+      0
+    );
 
-    const tenantRaw = invoice.tenants as unknown;
-    const tenant = (Array.isArray(tenantRaw) ? tenantRaw[0] : tenantRaw) as Record<string, unknown> | null;
+    const tenant = firstEmbed<Record<string, unknown>>(invoice.tenants);
     const tenantLines = tenant
       ? [
           `${tenant.first_name ?? ""} ${tenant.last_name ?? ""}`.trim(),
@@ -177,8 +248,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
         ].filter(Boolean)
       : ["—"];
 
-    const propertyRaw = invoice.properties as unknown;
-    const property = (Array.isArray(propertyRaw) ? propertyRaw[0] : propertyRaw) as Record<string, unknown> | null;
+    const property = firstEmbed<Record<string, unknown>>(invoice.properties);
     const addr = property
       ? [
           property.address_line1,
@@ -196,15 +266,75 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       ? [property.name ? String(property.name).trim() : "", addr].filter(Boolean)
       : ["—"];
 
-    const rawLines = invoice.invoice_line_items as Array<Record<string, unknown>> | null;
-    const lineItems: InvoicePdfLineItem[] = (rawLines ?? []).map((li) => ({
-      description: String(li.description ?? ""),
-      quantity: Number(li.quantity) || 0,
-      unitPrice: Number(li.unit_price) || 0,
-      total: Number(li.total) || 0
-    }));
+    const unit = firstEmbed<Record<string, unknown>>(invoice.property_units);
+    const lease = firstEmbed<Record<string, unknown>>(invoice.leases);
 
-    const storageKey = `${uid}/invoices/${invoiceId}.pdf`;
+    const rawLines = invoice.invoice_line_items as Array<Record<string, unknown>> | null;
+    const lineItems: InvoicePdfLineItem[] = (rawLines ?? [])
+      .sort(
+        (a, b) =>
+          Number(a.sort_order ?? 0) - Number(b.sort_order ?? 0) ||
+          String(a.id ?? "").localeCompare(String(b.id ?? ""))
+      )
+      .map((li) => ({
+        description: String(li.description ?? ""),
+        quantity: Number(li.quantity) || 0,
+        unitPrice: Number(li.unit_price) || 0,
+        total: Number(li.total) || 0
+      }));
+
+    const invoiceNumber = String(invoice.invoice_number);
+    const total = Number(invoice.total_amount ?? invoice.total) || 0;
+    const balanceDue = Number(invoice.balance_due ?? total) || 0;
+    const paymentReference = paymentReferenceFromProfile(profile?.invoice_payment_details, invoiceNumber);
+
+    const definition = buildInvoicePdfDefinition({
+      invoiceId,
+      invoiceNumber,
+      invoiceDate: invoiceDateIso,
+      dueDate: isoDate(invoice.due_date),
+      status,
+      subtotal: Number(invoice.subtotal) || total,
+      total,
+      balanceDue,
+      notes: invoice.notes != null ? String(invoice.notes) : null,
+      tenantLines,
+      propertyLines,
+      unitLabel: unitLabelFromRow(unit),
+      leaseLabel: leaseLabelFromRow(lease),
+      paymentReference,
+      lineItems,
+      ledgerRows,
+      totalDueOutstanding,
+      paymentDetailLines: paymentDetailsLines(profile?.invoice_payment_details),
+      isDraftPreview: !persistPdf
+    });
+
+    const pdfBuffer = await renderPdfDefinitionToBuffer(definition);
+
+    if (!persistPdf) {
+      if (invoiceHasStoredPdf(invoice, INVOICES_BUCKET)) {
+        await sb.storage.from(INVOICES_BUCKET).remove([String(invoice.pdf_storage_key)]);
+        await sb
+          .from("invoices")
+          .update({
+            pdf_storage_bucket: null,
+            pdf_storage_key: null,
+            pdf_path: null,
+            updated_at: new Date().toISOString()
+          })
+          .eq("id", invoiceId)
+          .eq("user_id", uid);
+      }
+      res.status(200).json({
+        message: "Draft invoice PDF generated (not stored)",
+        invoiceId,
+        hasPdf: false,
+        ephemeral: true,
+        pdfBase64: pdfBuffer.toString("base64")
+      });
+      return;
+    }
 
     const priorKey =
       invoice.pdf_storage_bucket === INVOICES_BUCKET && invoice.pdf_storage_key
@@ -213,25 +343,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     if (priorKey && priorKey !== storageKey) {
       await sb.storage.from(INVOICES_BUCKET).remove([priorKey]);
     }
-
-    const definition = buildInvoicePdfDefinition({
-      invoiceId,
-      invoiceNumber: String(invoice.invoice_number),
-      invoiceDate: invoiceDateIso,
-      dueDate: isoDate(invoice.due_date),
-      status: String(invoice.status),
-      subtotal: Number(invoice.subtotal) || 0,
-      total: Number(invoice.total) || 0,
-      notes: invoice.notes != null ? String(invoice.notes) : null,
-      tenantLines,
-      propertyLines,
-      lineItems,
-      ledgerRows,
-      totalDueOutstanding,
-      paymentDetailLines: paymentDetailsLines(profile?.invoice_payment_details)
-    });
-
-    const pdfBuffer = await renderPdfDefinitionToBuffer(definition);
 
     const { error: upErr } = await sb.storage.from(INVOICES_BUCKET).upload(storageKey, pdfBuffer, {
       contentType: "application/pdf",
@@ -260,7 +371,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       return;
     }
 
-    const { data: signed, error: signErr } = await sb.storage.from(INVOICES_BUCKET).createSignedUrl(storageKey, 600);
+    const { data: signed, error: signErr } = await sb.storage
+      .from(INVOICES_BUCKET)
+      .createSignedUrl(storageKey, SIGNED_URL_TTL_SEC);
     if (signErr || !signed?.signedUrl) {
       res.status(201).json({
         invoiceId,
@@ -277,7 +390,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       invoiceId,
       hasPdf: true,
       downloadUrl: signed.signedUrl,
-      expiresIn: 600,
+      expiresIn: SIGNED_URL_TTL_SEC,
       storageKey,
       storageBucket: INVOICES_BUCKET
     });

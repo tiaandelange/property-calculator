@@ -8,7 +8,7 @@ import {
   propertyApiErrorMessage,
   voidInvoice
 } from "../api/ownedProperties";
-import { fetchPdfBlob, isAbsoluteHttpUrl, openPdfBlobInNewTab } from "../api/pdfBlob";
+import { openInvoicePdfExport } from "../features/invoices/invoicePdfExport";
 import { PROPERTY_DATA_INVALIDATION } from "../features/properties/invalidate";
 import { InvoiceControlsBar } from "../features/invoices/InvoiceControlsBar";
 import { InvoiceDesktopTable } from "../features/invoices/InvoiceDesktopTable";
@@ -94,14 +94,7 @@ export function InvoicesListPage() {
     setBusyId(row.id);
     try {
       const gen = await generateInvoicePdf(row.id);
-      const downloadUrl = gen.downloadUrl;
-      if (!downloadUrl) throw new Error(gen.error ?? "No download URL returned.");
-      if (isAbsoluteHttpUrl(downloadUrl)) {
-        window.open(downloadUrl, "_blank", "noopener,noreferrer");
-      } else {
-        const blob = await fetchPdfBlob(downloadUrl);
-        openPdfBlobInNewTab(blob);
-      }
+      await openInvoicePdfExport(gen);
     } catch (e: unknown) {
       window.alert(e instanceof Error ? e.message : "Could not export invoice PDF.");
     } finally {
