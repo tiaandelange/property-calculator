@@ -59,17 +59,20 @@ function toIsoDate(v: unknown): string {
 function normalizeLineItems(input: Record<string, unknown>): Record<string, unknown>[] {
   const raw = input.lineItems ?? input.line_items;
   if (!Array.isArray(raw)) return [];
-  return raw.map((item) => {
+  return raw.map((item, index) => {
     const o = item as Record<string, unknown>;
     const qty = n(o.quantity ?? o.qty ?? 1);
     const unitPrice = n(o.unitPrice ?? o.unit_price);
-    const total = n(o.total ?? qty * unitPrice);
-    return {
+    const total = n(o.total ?? o.amount ?? qty * unitPrice);
+    const row: Record<string, unknown> = {
       description: String(o.description ?? ""),
       quantity: qty,
       unit_price: unitPrice,
-      total
+      total,
+      sort_order: o.sortOrder ?? o.sort_order ?? index + 1
     };
+    if (o.category != null) row.category = String(o.category);
+    return row;
   });
 }
 
@@ -84,14 +87,33 @@ const INVOICE_DETAIL_SELECT = `
   tenants ( id, first_name, last_name, email, phone )
 `;
 
-export async function listInvoices(propertyId: string | number): Promise<Record<string, unknown>[]> {
+export async function listInvoices(
+  propertyId: string | number,
+  filters?: {
+    tenantId?: string;
+    leaseId?: string;
+    unitId?: string;
+    status?: string | string[];
+    invoiceType?: string;
+    invoicePeriod?: string;
+  }
+): Promise<Record<string, unknown>[]> {
   await requireUserId();
   const sb = getSupabase();
-  const { data, error } = await sb
+  let query = sb
     .from("invoices")
     .select(INVOICE_LIST_SELECT)
-    .eq("property_id", String(propertyId))
-    .order("created_at", { ascending: false });
+    .eq("property_id", String(propertyId));
+  if (filters?.tenantId) query = query.eq("tenant_id", filters.tenantId);
+  if (filters?.leaseId) query = query.eq("lease_id", filters.leaseId);
+  if (filters?.unitId) query = query.eq("unit_id", filters.unitId);
+  if (filters?.invoiceType) query = query.eq("invoice_type", filters.invoiceType);
+  if (filters?.invoicePeriod) query = query.eq("invoice_period", filters.invoicePeriod);
+  if (filters?.status) {
+    const statuses = Array.isArray(filters.status) ? filters.status : [filters.status];
+    query = query.in("status", statuses.map((s) => String(s).toUpperCase()));
+  }
+  const { data, error } = await query.order("created_at", { ascending: false });
   if (error) throw toError(error);
   const mapped = (data ?? []).map((r) => dbInvoiceBundleToClient(r as Record<string, unknown>));
   return Promise.all(mapped.map((row) => attachSignedPdfDownloadUrl(row)));
@@ -125,12 +147,16 @@ export async function createInvoice(
   const leaseId = leaseRaw != null && String(leaseRaw).trim() !== "" ? String(leaseRaw) : null;
 
   const pInvoiceData: Record<string, unknown> = {
-    invoice_date: toIsoDate(input.invoiceDate ?? input.invoice_date),
+    invoice_date: toIsoDate(input.invoiceDate ?? input.invoice_date ?? input.issueDate ?? input.issue_date),
+    issue_date: toIsoDate(input.issueDate ?? input.issue_date ?? input.invoiceDate ?? input.invoice_date),
     due_date: toIsoDate(input.dueDate ?? input.due_date),
     status: String(input.status ?? "DRAFT"),
     notes: input.notes != null ? String(input.notes) : null,
-    total: input.total != null ? n(input.total) : undefined,
-    subtotal: input.subtotal != null ? n(input.subtotal) : undefined
+    total: input.total != null ? n(input.total) : input.totalAmount != null ? n(input.totalAmount) : undefined,
+    subtotal: input.subtotal != null ? n(input.subtotal) : undefined,
+    tax_amount: input.taxAmount != null ? n(input.taxAmount) : input.tax_amount != null ? n(input.tax_amount) : undefined,
+    invoice_type: String(input.invoiceType ?? input.invoice_type ?? "MANUAL"),
+    invoice_period: input.invoicePeriod ?? input.invoice_period
   };
   if (input.invoiceNumber != null || input.invoice_number != null) {
     pInvoiceData.invoice_number = String(input.invoiceNumber ?? input.invoice_number ?? "").trim();

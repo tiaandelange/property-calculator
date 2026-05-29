@@ -1,4 +1,5 @@
 import { snakeRowToCamel } from "./propertyRowMapping";
+import { isInvoiceEditable, normalizeInvoiceStatus } from "../features/invoices/invoiceFoundation";
 
 function coerceIsoDateField(v: unknown): string {
   if (v == null) return new Date(0).toISOString();
@@ -13,8 +14,11 @@ function coerceIsoDateField(v: unknown): string {
 
 function mapLineItem(row: Record<string, unknown>): Record<string, unknown> {
   const c = snakeRowToCamel(row) as Record<string, unknown>;
+  const amount = c.amount ?? c.total;
   return {
     ...c,
+    amount,
+    total: c.total ?? amount,
     createdAt: c.createdAt != null ? coerceIsoDateField(c.createdAt) : c.createdAt,
     updatedAt: c.updatedAt != null ? coerceIsoDateField(c.updatedAt) : c.updatedAt
   };
@@ -44,8 +48,23 @@ export function dbInvoiceToClient(row: Record<string, unknown>): Record<string, 
   return {
     ...core,
     id,
+    primaryTenantId: c.tenantId ?? c.tenant_id,
+    issueDate:
+      c.issueDate != null
+        ? coerceIsoDateField(c.issueDate)
+        : c.invoiceDate != null
+          ? coerceIsoDateField(c.invoiceDate)
+          : c.invoiceDate,
     invoiceDate: c.invoiceDate != null ? coerceIsoDateField(c.invoiceDate) : c.invoiceDate,
     dueDate: c.dueDate != null ? coerceIsoDateField(c.dueDate) : c.dueDate,
+    invoiceType: c.invoiceType ?? c.invoice_type ?? "MANUAL",
+    invoicePeriod: c.invoicePeriod ?? c.invoice_period ?? null,
+    totalAmount: c.totalAmount ?? c.total_amount ?? c.total,
+    balanceDue: c.balanceDue ?? c.balance_due ?? null,
+    taxAmount: c.taxAmount ?? c.tax_amount ?? 0,
+    status: normalizeInvoiceStatus(c.status),
+    isEditable: isInvoiceEditable(c.status),
+    deletedAt: c.archivedAt != null ? coerceIsoDateField(c.archivedAt) : c.archivedAt,
     createdAt: c.createdAt != null ? coerceIsoDateField(c.createdAt) : c.createdAt,
     updatedAt: c.updatedAt != null ? coerceIsoDateField(c.updatedAt) : c.updatedAt,
     sentAt: c.sentAt != null ? coerceIsoDateField(c.sentAt) : c.sentAt,
