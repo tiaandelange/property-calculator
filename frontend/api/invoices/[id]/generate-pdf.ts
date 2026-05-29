@@ -39,10 +39,8 @@ function firstEmbed<T extends Record<string, unknown>>(raw: unknown): T | null {
 
 function unitLabelFromRow(unit: Record<string, unknown> | null): string | null {
   if (!unit) return null;
-  const label = String(unit.unit_label ?? unit.unitLabel ?? "").trim();
-  if (label) return label;
-  const num = String(unit.unit_number ?? unit.unitNumber ?? "").trim();
-  return num ? `Unit ${num}` : null;
+  const name = String(unit.unit_name ?? unit.unitName ?? unit.unit_label ?? unit.unitLabel ?? "").trim();
+  return name || null;
 }
 
 function leaseLabelFromRow(lease: Record<string, unknown> | null): string | null {
@@ -114,7 +112,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
           province,
           postal_code
         ),
-        property_units ( unit_label, unit_number ),
+        property_units ( unit_name ),
         leases ( id, start_date, fixed_term_end_date, status )
       `
       )

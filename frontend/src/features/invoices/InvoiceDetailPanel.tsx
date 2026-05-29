@@ -33,7 +33,8 @@ import {
   sortInvoiceLineItems,
   type InvoiceLineItemDraft
 } from "./invoiceLineItemUtils";
-import { invoiceDetailPath, invoiceStatementPath } from "./invoiceRoutes";
+import { propertyUnitDisplayLabel } from "./propertyUnitDisplayLabel";
+import { invoiceStatementPath } from "./invoiceRoutes";
 import {
   INVOICE_SEND_EMAIL_COMING_SOON,
   INVOICE_SEND_MODAL_MESSAGE,
@@ -63,11 +64,7 @@ function bankingLines(details: unknown): string[] {
 }
 
 function unitLabel(unit: Record<string, unknown> | null | undefined): string | null {
-  if (!unit) return null;
-  const label = String(unit.unitLabel ?? unit.unit_label ?? "").trim();
-  if (label) return label;
-  const num = String(unit.unitNumber ?? unit.unit_number ?? "").trim();
-  return num ? `Unit ${num}` : null;
+  return propertyUnitDisplayLabel(unit);
 }
 
 export function InvoiceDetailPanel({

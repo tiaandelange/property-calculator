@@ -1,6 +1,7 @@
 import { dbInvoiceToClient } from "../../api/invoiceRowMapping";
 import { snakeRowToCamel } from "../../api/propertyRowMapping";
 import type { InvoiceDirectoryRow } from "./invoiceDirectoryTypes";
+import { propertyUnitDisplayLabel } from "./propertyUnitDisplayLabel";
 
 function nestedOne(row: Record<string, unknown>, key: string): Record<string, unknown> | null {
   const raw = row[key];
@@ -21,11 +22,7 @@ function tenantNameFrom(row: Record<string, unknown>, tenant: Record<string, unk
 }
 
 function unitLabelFrom(unit: Record<string, unknown> | null): string | null {
-  if (!unit) return null;
-  const label = String(unit.unitLabel ?? unit.unit_label ?? "").trim();
-  if (label) return label;
-  const num = String(unit.unitNumber ?? unit.unit_number ?? "").trim();
-  return num ? `Unit ${num}` : null;
+  return propertyUnitDisplayLabel(unit);
 }
 
 function leaseLabelFrom(lease: Record<string, unknown> | null): string | null {
