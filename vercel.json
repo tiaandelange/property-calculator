@@ -14,6 +14,16 @@
   ],
 
   "functions": {
+    "frontend/api/invoices/generate.ts": {
+      "includeFiles": "frontend/assets/fonts/pdfmake/**",
+      "maxDuration": 60,
+      "memory": 1024
+    },
+    "frontend/api/reports/generate.ts": {
+      "includeFiles": "frontend/assets/fonts/pdfmake/**",
+      "maxDuration": 60,
+      "memory": 1024
+    },
     "frontend/api/invoices/**/*.ts": {
       "includeFiles": "frontend/assets/fonts/pdfmake/**",
       "maxDuration": 60,

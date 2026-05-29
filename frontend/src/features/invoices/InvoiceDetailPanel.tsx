@@ -323,17 +323,6 @@ export function InvoiceDetailPanel({
       let url = inv.downloadUrl as string | null | undefined;
       if (!url) {
         const gen = await generateInvoicePdf(id);
-        if (gen.pdfBase64) {
-          const binary = atob(gen.pdfBase64);
-          const bytes = new Uint8Array(binary.length);
-          for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
-          triggerPdfFileDownload(
-            new Blob([bytes], { type: "application/pdf" }),
-            `${String(inv.invoiceNumber ?? "invoice").replace(/\s+/g, "_")}.pdf`
-          );
-          setSuccess("PDF downloaded.");
-          return;
-        }
         url = gen.downloadUrl ?? null;
         if (invoicePdfWasStored(gen)) setHasPdf(true);
       }

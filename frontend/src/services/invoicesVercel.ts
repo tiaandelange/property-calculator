@@ -7,9 +7,8 @@ export type GenerateInvoicePdfResponse = {
   hasPdf?: boolean;
   /** True when an existing stored PDF was reused (no regeneration). */
   reused?: boolean;
-  /** Draft preview — PDF bytes only, not stored in Supabase Storage. */
+  /** Draft preview — signed URL only, invoice row not updated. */
   ephemeral?: boolean;
-  pdfBase64?: string;
   downloadUrl?: string;
   expiresIn?: number;
   storageKey?: string;
@@ -17,18 +16,8 @@ export type GenerateInvoicePdfResponse = {
   error?: string;
 };
 
-function arrayBufferToBase64(buffer: ArrayBuffer): string {
-  const bytes = new Uint8Array(buffer);
-  let binary = "";
-  const chunkSize = 8192;
-  for (let i = 0; i < bytes.length; i += chunkSize) {
-    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
-  }
-  return btoa(binary);
-}
-
 /**
- * Calls `POST /api/invoices/:id/generate-pdf` (Vercel serverless).
+ * Calls `POST /api/invoices/generate` (Vercel serverless) — same pattern as reports.
  * Requires a Supabase session access token.
  */
 export async function generateInvoicePdfViaVercel(invoiceId: string): Promise<GenerateInvoicePdfResponse> {
@@ -38,11 +27,13 @@ export async function generateInvoicePdfViaVercel(invoiceId: string): Promise<Ge
   const token = sessionData.session?.access_token;
   if (!token) throw new Error("Not signed in.");
 
-  const res = await fetch(`/api/invoices/${encodeURIComponent(invoiceId)}/generate-pdf`, {
+  const res = await fetch("/api/invoices/generate", {
     method: "POST",
     headers: {
+      "Content-Type": "application/json",
       Authorization: `Bearer ${token}`
-    }
+    },
+    body: JSON.stringify({ invoiceId })
   });
 
   if (!res.ok) {
@@ -50,18 +41,7 @@ export async function generateInvoicePdfViaVercel(invoiceId: string): Promise<Ge
     throw new Error(`${msg} (HTTP ${res.status})`);
   }
 
-  const contentType = (res.headers.get("content-type") ?? "").toLowerCase();
-  if (contentType.includes("application/pdf")) {
-    const pdfBase64 = arrayBufferToBase64(await res.arrayBuffer());
-    return {
-      invoiceId: res.headers.get("X-Invoice-Id") ?? invoiceId,
-      hasPdf: false,
-      ephemeral: true,
-      pdfBase64
-    };
-  }
-
   const json = (await res.json().catch(() => ({}))) as GenerateInvoicePdfResponse & { error?: string };
-  if (!json.downloadUrl && !json.pdfBase64 && json.error) throw new Error(json.error);
+  if (!json.downloadUrl && json.error) throw new Error(json.error);
   return json;
 }

@@ -1,21 +1,8 @@
-import { fetchPdfBlob, isAbsoluteHttpUrl, openPdfBlobInNewTab } from "../../api/pdfBlob";
+import { fetchPdfBlob, isAbsoluteHttpUrl } from "../../api/pdfBlob";
 import type { GenerateInvoicePdfResponse } from "../../services/invoicesVercel";
 
-function blobFromBase64Pdf(pdfBase64: string): Blob {
-  const binary = atob(pdfBase64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i += 1) {
-    bytes[i] = binary.charCodeAt(i);
-  }
-  return new Blob([bytes], { type: "application/pdf" });
-}
-
-/** Open invoice PDF from generate-pdf response (ephemeral base64 or stored signed URL). */
+/** Open invoice PDF in a new browser tab — same pattern as property report PDF export. */
 export async function openInvoicePdfExport(gen: GenerateInvoicePdfResponse): Promise<void> {
-  if (gen.pdfBase64) {
-    openPdfBlobInNewTab(blobFromBase64Pdf(gen.pdfBase64));
-    return;
-  }
   const downloadUrl = gen.downloadUrl;
   if (!downloadUrl) throw new Error(gen.error ?? "No download URL returned.");
   if (isAbsoluteHttpUrl(downloadUrl)) {
@@ -23,7 +10,9 @@ export async function openInvoicePdfExport(gen: GenerateInvoicePdfResponse): Pro
     return;
   }
   const blob = await fetchPdfBlob(downloadUrl);
-  openPdfBlobInNewTab(blob);
+  const objectUrl = URL.createObjectURL(blob);
+  window.open(objectUrl, "_blank", "noopener,noreferrer");
+  window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
 }
 
 export function invoicePdfWasStored(gen: GenerateInvoicePdfResponse): boolean {

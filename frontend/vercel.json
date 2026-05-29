@@ -18,6 +18,16 @@
   ],
 
   "functions": {
+    "api/invoices/generate.ts": {
+      "includeFiles": "assets/fonts/pdfmake/**",
+      "maxDuration": 60,
+      "memory": 1024
+    },
+    "api/reports/generate.ts": {
+      "includeFiles": "assets/fonts/pdfmake/**",
+      "maxDuration": 60,
+      "memory": 1024
+    },
     "api/invoices/**/*.ts": {
       "includeFiles": "assets/fonts/pdfmake/**",
       "maxDuration": 60,

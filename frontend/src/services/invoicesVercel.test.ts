@@ -13,7 +13,7 @@ describe("generateInvoicePdfViaVercel", () => {
     global.fetch = vi.fn();
   });
 
-  it("POSTs to /api/invoices/:id/generate-pdf with Bearer token", async () => {
+  it("POSTs to /api/invoices/generate with Bearer token and invoiceId body", async () => {
     getSession.mockResolvedValue({
       data: { session: { access_token: "tok-inv" } },
       error: null
@@ -21,9 +21,6 @@ describe("generateInvoicePdfViaVercel", () => {
     (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
       ok: true,
       status: 201,
-      headers: {
-        get: (name: string) => (name.toLowerCase() === "content-type" ? "application/json" : null)
-      },
       json: async () => ({
         invoiceId: "11111111-1111-1111-1111-111111111111",
         hasPdf: true,
@@ -37,39 +34,39 @@ describe("generateInvoicePdfViaVercel", () => {
 
     expect(out.downloadUrl).toContain("signed.example");
     expect(global.fetch).toHaveBeenCalledWith(
-      "/api/invoices/11111111-1111-1111-1111-111111111111/generate-pdf",
+      "/api/invoices/generate",
       expect.objectContaining({
         method: "POST",
-        headers: { Authorization: "Bearer tok-inv" }
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer tok-inv"
+        },
+        body: JSON.stringify({ invoiceId: "11111111-1111-1111-1111-111111111111" })
       })
     );
   });
 
-  it("accepts ephemeral draft PDF returned as application/pdf", async () => {
+  it("accepts ephemeral draft PDF signed URL response", async () => {
     getSession.mockResolvedValue({
       data: { session: { access_token: "tok-inv" } },
       error: null
     });
-    const pdfBytes = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d]);
     (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
       ok: true,
-      status: 200,
-      headers: {
-        get: (name: string) => {
-          const key = name.toLowerCase();
-          if (key === "content-type") return "application/pdf";
-          if (key === "x-invoice-id") return "22222222-2222-2222-2222-222222222222";
-          return null;
-        }
-      },
-      arrayBuffer: async () => pdfBytes.buffer
+      status: 201,
+      json: async () => ({
+        invoiceId: "22222222-2222-2222-2222-222222222222",
+        hasPdf: false,
+        ephemeral: true,
+        downloadUrl: "https://signed.example/draft.pdf",
+        expiresIn: 600
+      })
     });
 
     const { generateInvoicePdfViaVercel } = await import("./invoicesVercel");
     const out = await generateInvoicePdfViaVercel("22222222-2222-2222-2222-222222222222");
 
     expect(out.ephemeral).toBe(true);
-    expect(out.pdfBase64).toBe(btoa("%PDF-"));
-    expect(out.invoiceId).toBe("22222222-2222-2222-2222-222222222222");
+    expect(out.downloadUrl).toContain("signed.example");
   });
 });
