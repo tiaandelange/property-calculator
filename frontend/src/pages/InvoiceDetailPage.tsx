@@ -3,8 +3,6 @@ import { Helmet } from "react-helmet-async";
 import { Link, Navigate, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { getTenant } from "../api/ownedProperties";
 import { fetchMe } from "../api/user";
-import { Container } from "../components/ui/Container";
-import { Section } from "../components/ui/Section";
 import { InvoiceDetailPanel } from "../features/invoices/InvoiceDetailPanel";
 import { invoiceDetailPath } from "../features/invoices/invoiceRoutes";
 
@@ -101,59 +99,45 @@ export function InvoiceDetailPage() {
   };
 
   return (
-    <Section>
+    <>
       <Helmet>
-        <title>{isNew ? "Create Invoice" : "Invoice"} | The Property Guy</title>
+        <title>{isNew ? "Create Invoice" : "Edit Invoice"} | The Property Guy</title>
       </Helmet>
-      <Container>
-        <div className="pg-tstmt pg-workspace-page" style={{ maxWidth: 1040, margin: "0 auto" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
-            <h1 className="pg-h2" style={{ margin: 0 }}>
-              {isNew ? "Create Invoice" : "Invoice"}
-            </h1>
-            <Link className="pg-btn pg-btn-ghost" to="/invoices">
-              Back to invoices
-            </Link>
-          </div>
-          {error ? <div className="pg-alert pg-alert-error" style={{ marginTop: 12 }}>{error}</div> : null}
-          {loading ? (
-            <div className="pg-tstmt-skeleton" style={{ marginTop: 20, minHeight: 320 }} aria-busy="true" />
-          ) : isNew ? (
-            bootstrap && tenantId ? (
-              <div style={{ marginTop: 20 }}>
-                <InvoiceDetailPanel
-                  propertyId={bootstrap.propertyId}
-                  tenantId={tenantId}
-                  tenantName={bootstrap.tenantName}
-                  tenantEmail={bootstrap.tenantEmail}
-                  leaseId={bootstrap.leaseId}
-                  profileName={bootstrap.profileName}
-                  invoicePaymentDetails={bootstrap.invoicePaymentDetails}
-                  defaultRent={bootstrap.defaultRent}
-                  onInvoiceCreated={handleCreated}
-                  onCancel={() => navigate("/invoices")}
-                />
-              </div>
-            ) : (
-              <p className="pg-muted" style={{ marginTop: 16 }}>
-                Open an invoice from the{" "}
-                <Link className="pg-link" to="/invoices">
-                  invoices list
-                </Link>{" "}
-                or create one from a{" "}
-                <Link className="pg-link" to="/leases">
-                  lease
-                </Link>
-                .
-              </p>
-            )
+      <div className="pg-inv-editor-page">
+        {error ? <div className="pg-alert pg-alert-error" style={{ marginBottom: 16 }}>{error}</div> : null}
+        {loading ? (
+          <div className="pg-tstmt-skeleton" style={{ minHeight: 320 }} aria-busy="true" />
+        ) : isNew ? (
+          bootstrap && tenantId ? (
+            <InvoiceDetailPanel
+              propertyId={bootstrap.propertyId}
+              tenantId={tenantId}
+              tenantName={bootstrap.tenantName}
+              tenantEmail={bootstrap.tenantEmail}
+              leaseId={bootstrap.leaseId}
+              profileName={bootstrap.profileName}
+              invoicePaymentDetails={bootstrap.invoicePaymentDetails}
+              defaultRent={bootstrap.defaultRent}
+              onInvoiceCreated={handleCreated}
+              onCancel={() => navigate("/invoices")}
+            />
           ) : (
-            <div style={{ marginTop: 20 }}>
-              <InvoiceDetailPanel invoiceId={invoiceId} onDeleted={handleDeleted} />
-            </div>
-          )}
-        </div>
-      </Container>
-    </Section>
+            <p className="pg-muted">
+              Open an invoice from the{" "}
+              <Link className="pg-link" to="/invoices">
+                invoices list
+              </Link>{" "}
+              or create one from a{" "}
+              <Link className="pg-link" to="/leases">
+                lease
+              </Link>
+              .
+            </p>
+          )
+        ) : (
+          <InvoiceDetailPanel invoiceId={invoiceId} onDeleted={handleDeleted} />
+        )}
+      </div>
+    </>
   );
 }

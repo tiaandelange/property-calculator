@@ -1,5 +1,17 @@
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
-import { Download, ExternalLink, Save, Send, Trash2 } from "lucide-react";
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  ArrowLeft,
+  Calendar,
+  ChevronDown,
+  Download,
+  Eye,
+  Hash,
+  MoreVertical,
+  Save,
+  Send,
+  Trash2,
+  User
+} from "lucide-react";
 import { Link } from "react-router-dom";
 import {
   createPropertyInvoice,
@@ -15,7 +27,7 @@ import { fetchMe } from "../../api/user";
 import { invalidatePropertyWorkspace } from "../properties/invalidate";
 import { openInvoicePdfExport, invoicePdfWasStored } from "./invoicePdfExport";
 import { Button } from "../../components/ui/Button";
-import { Field, Input } from "../../components/ui/Input";
+import { Input } from "../../components/ui/Input";
 import { ConfirmDialog } from "../../components/ui/ConfirmDialog";
 import {
   invoiceCanHardDelete,
@@ -33,9 +45,7 @@ import {
   sortInvoiceLineItems,
   type InvoiceLineItemDraft
 } from "./invoiceLineItemUtils";
-import { propertyUnitDisplayLabel } from "./propertyUnitDisplayLabel";
 import { invoiceStatementPath } from "./invoiceRoutes";
-import { propertyLeasesPath } from "../leases/leaseRoutes";
 import {
   INVOICE_SEND_EMAIL_COMING_SOON,
   INVOICE_SEND_MODAL_MESSAGE,
@@ -62,10 +72,6 @@ function bankingLines(details: unknown): string[] {
     }
   }
   return lines;
-}
-
-function unitLabel(unit: Record<string, unknown> | null | undefined): string | null {
-  return propertyUnitDisplayLabel(unit);
 }
 
 export function InvoiceDetailPanel({
@@ -102,9 +108,6 @@ export function InvoiceDetailPanel({
   const [tenantId, setTenantId] = useState(bootstrapTenantId ?? "");
   const [tenantEmail, setTenantEmail] = useState(bootstrapTenantEmail ?? null);
   const [leaseId, setLeaseId] = useState(bootstrapLeaseId ?? null);
-  const [propertyName, setPropertyName] = useState("—");
-  const [unitLabelText, setUnitLabelText] = useState<string | null>(null);
-  const [leaseLabel, setLeaseLabel] = useState<string | null>(null);
   const [loading, setLoading] = useState(Boolean(initialInvoiceId));
   const [saving, setSaving] = useState(false);
   const [pdfBusy, setPdfBusy] = useState(false);
@@ -112,9 +115,10 @@ export function InvoiceDetailPanel({
   const [actionBusy, setActionBusy] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<"delete" | "void" | null>(null);
   const [confirmSend, setConfirmSend] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const moreRef = useRef<HTMLDivElement>(null);
   const [invoiceNumber, setInvoiceNumber] = useState("Draft");
   const [status, setStatus] = useState<string>("DRAFT");
-  const [invoicePeriod, setInvoicePeriod] = useState<string | null>(null);
   const [balanceDue, setBalanceDue] = useState(0);
   const [fromName, setFromName] = useState(profileName);
   const [toName, setToName] = useState(bootstrapTenantName ?? "Tenant");
@@ -128,6 +132,8 @@ export function InvoiceDetailPanel({
 
   const editable = !activeId || isInvoiceEditable(status);
   const locked = Boolean(activeId) && !editable;
+  const pageTitle = activeId ? "Edit Invoice" : "Create Invoice";
+  const displayNumber = invoiceNumber === "Draft" && !activeId ? "New invoice" : invoiceNumber;
 
   useEffect(() => {
     setActiveId(initialInvoiceId);
@@ -153,6 +159,15 @@ export function InvoiceDetailPanel({
     })();
   }, [invoicePaymentDetails]);
 
+  useEffect(() => {
+    if (!moreOpen) return;
+    const close = (e: MouseEvent) => {
+      if (moreRef.current && !moreRef.current.contains(e.target as Node)) setMoreOpen(false);
+    };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [moreOpen]);
+
   const [hasPdf, setHasPdf] = useState(false);
 
   const loadInvoice = useCallback(async (id: string) => {
@@ -166,7 +181,6 @@ export function InvoiceDetailPanel({
       setLeaseId(inv.leaseId != null ? String(inv.leaseId) : null);
       setInvoiceNumber(String(inv.invoiceNumber ?? inv.id));
       setStatus(String(inv.status ?? "DRAFT"));
-      setInvoicePeriod(inv.invoicePeriod != null ? String(inv.invoicePeriod) : null);
       const total = Number(inv.totalAmount ?? inv.total ?? 0);
       const bal = inv.balanceDue != null ? Number(inv.balanceDue) : total;
       setBalanceDue(Number.isFinite(bal) ? bal : total);
@@ -179,19 +193,6 @@ export function InvoiceDetailPanel({
       if (tenant) {
         setToName(`${String(tenant.firstName ?? "")} ${String(tenant.lastName ?? "")}`.trim() || "Tenant");
         setTenantEmail(tenant.email != null ? String(tenant.email) : null);
-      }
-
-      const property = inv.property as Record<string, unknown> | undefined;
-      if (property?.name) setPropertyName(String(property.name));
-
-      const unit = inv.unit as Record<string, unknown> | undefined;
-      setUnitLabelText(unitLabel(unit ?? null));
-
-      const lease = inv.lease as Record<string, unknown> | undefined;
-      if (lease?.startDate ?? lease?.start_date) {
-        setLeaseLabel(`From ${String(lease.startDate ?? lease.start_date).slice(0, 10)}`);
-      } else if (inv.leaseId) {
-        setLeaseLabel("View lease");
       }
 
       const lines = (inv.lineItems as Array<Record<string, unknown>> | undefined) ?? [];
@@ -316,6 +317,7 @@ export function InvoiceDetailPanel({
     let id: string | undefined = activeId;
     if (!id) return;
     setPdfBusy(true);
+    setMoreOpen(false);
     try {
       let inv = await getInvoice(id);
       let url = inv.downloadUrl as string | null | undefined;
@@ -325,7 +327,10 @@ export function InvoiceDetailPanel({
           const binary = atob(gen.pdfBase64);
           const bytes = new Uint8Array(binary.length);
           for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
-          triggerPdfFileDownload(new Blob([bytes], { type: "application/pdf" }), `${String(inv.invoiceNumber ?? "invoice").replace(/\s+/g, "_")}.pdf`);
+          triggerPdfFileDownload(
+            new Blob([bytes], { type: "application/pdf" }),
+            `${String(inv.invoiceNumber ?? "invoice").replace(/\s+/g, "_")}.pdf`
+          );
           setSuccess("PDF downloaded.");
           return;
         }
@@ -388,205 +393,316 @@ export function InvoiceDetailPanel({
     }
   }
 
+  const renderDateField = (id: string, label: string, value: string, onChange: (v: string) => void) => (
+    <div className="pg-inv-editor__field pg-inv-editor__field--date">
+      <label className="pg-inv-editor__label" htmlFor={id}>
+        {label}
+      </label>
+      <div className="pg-inv-editor__input-wrap">
+        <Calendar className="pg-inv-editor__input-icon" size={18} aria-hidden />
+        <Input
+          id={id}
+          type="date"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          required
+          readOnly={!editable}
+          disabled={!editable}
+          aria-label={label}
+        />
+      </div>
+    </div>
+  );
+
+  const renderMoreMenu = () => (
+    <div className="pg-inv-editor__more-wrap" ref={moreRef}>
+      <Button
+        type="button"
+        variant="ghost"
+        aria-label="More actions"
+        aria-expanded={moreOpen}
+        aria-haspopup="menu"
+        onClick={() => setMoreOpen((o) => !o)}
+      >
+        <MoreVertical size={18} aria-hidden />
+      </Button>
+      {moreOpen ? (
+        <div className="pg-inv-editor__more-menu" role="menu">
+          {activeId ? (
+            <button type="button" className="pg-inv-editor__more-item" role="menuitem" disabled={pdfBusy} onClick={() => void downloadPdf()}>
+              <Download size={16} aria-hidden />
+              Download PDF
+            </button>
+          ) : null}
+          {propertyId ? (
+            <Link className="pg-inv-editor__more-item" role="menuitem" to={invoiceStatementPath(propertyId)} onClick={() => setMoreOpen(false)}>
+              View statement
+            </Link>
+          ) : null}
+          {activeId && invoiceCanHardDelete(status) ? (
+            <button
+              type="button"
+              className="pg-inv-editor__more-item pg-inv-editor__more-item--danger"
+              role="menuitem"
+              onClick={() => {
+                setMoreOpen(false);
+                setConfirmDelete("delete");
+              }}
+            >
+              <Trash2 size={16} aria-hidden />
+              Delete invoice
+            </button>
+          ) : null}
+          {activeId && invoiceCanVoid(status) ? (
+            <button
+              type="button"
+              className="pg-inv-editor__more-item pg-inv-editor__more-item--danger"
+              role="menuitem"
+              onClick={() => {
+                setMoreOpen(false);
+                setConfirmDelete("void");
+              }}
+            >
+              Void invoice
+            </button>
+          ) : null}
+          {onCancel ? (
+            <button
+              type="button"
+              className="pg-inv-editor__more-item"
+              role="menuitem"
+              onClick={() => {
+                setMoreOpen(false);
+                onCancel();
+              }}
+            >
+              Cancel
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+
   if (loading) {
-    return <div className="pg-tstmt-skeleton" style={{ minHeight: 240 }} aria-busy="true" />;
+    return <div className="pg-tstmt-skeleton" style={{ minHeight: 320 }} aria-busy="true" />;
   }
 
   return (
     <>
-      <form className="pg-tstmt-invoice-editor" onSubmit={submit}>
-        <div>
-          {error ? <div className="pg-alert pg-alert-error" style={{ marginBottom: 12 }}>{error}</div> : null}
-          {success ? (
-            <div className="pg-alert" style={{ marginBottom: 12, background: "var(--success-soft)", color: "var(--success)" }}>
-              {success}
+      <form className="pg-inv-editor" onSubmit={submit}>
+        <header className="pg-inv-editor__page-head">
+          <div className="pg-inv-editor__page-head-main">
+            <div className="pg-inv-editor__back-row">
+              <Link className="pg-inv-editor__back" to="/invoices" aria-label="Back to invoices">
+                <ArrowLeft size={18} aria-hidden />
+              </Link>
+              <nav className="pg-inv-editor__breadcrumb" aria-label="Breadcrumb">
+                <Link to="/invoices">Invoices</Link>
+                <span className="pg-inv-editor__breadcrumb-sep" aria-hidden>
+                  /
+                </span>
+                <span aria-current="page">{displayNumber}</span>
+              </nav>
             </div>
-          ) : null}
-
-          {locked ? (
-            <div className="pg-alert" style={{ marginBottom: 16, background: "var(--warning-soft)", color: "var(--text-primary)" }}>
-              This invoice has been sent and can no longer be edited. To correct it, delete/void it or create a correction
-              according to your accounting workflow.
-            </div>
-          ) : null}
-
-          <header className="pg-invoice-detail-head" style={{ marginBottom: 16 }}>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center" }}>
-              <h2 style={{ margin: 0, fontSize: "1.25rem" }}>{invoiceNumber}</h2>
+            <div className="pg-inv-editor__title-row">
+              <h1 className="pg-inv-editor__title">{pageTitle}</h1>
               <InvoiceStatusBadge status={status} />
-              {!activeId ? <span className="pg-muted">New invoice</span> : null}
             </div>
-            <dl className="pg-invoice-detail-meta">
-              <div>
-                <dt>Property</dt>
-                <dd>
-                  {propertyId ? (
-                    <Link className="pg-link" to={`/owned-properties/${propertyId}`}>
-                      {propertyName}
-                    </Link>
-                  ) : (
-                    propertyName
-                  )}
-                </dd>
-              </div>
-              <div>
-                <dt>Unit</dt>
-                <dd>{unitLabelText ?? "—"}</dd>
-              </div>
-              <div>
-                <dt>Lease</dt>
-                <dd>
-                  {leaseId ? (
-                    <Link
-                      className="pg-link"
-                      to={propertyId ? propertyLeasesPath(propertyId, leaseId) : `/leases/${leaseId}`}
-                    >
-                      {leaseLabel ?? "View lease"}
-                    </Link>
-                  ) : (
-                    "—"
-                  )}
-                </dd>
-              </div>
-              <div>
-                <dt>Tenant</dt>
-                <dd>
-                  {tenantId ? (
-                    <Link className="pg-link" to={`/tenants/${tenantId}`}>
-                      {toName}
-                    </Link>
-                  ) : (
-                    toName
-                  )}
-                </dd>
-              </div>
-              <div>
-                <dt>Period</dt>
-                <dd>{invoicePeriod ?? "—"}</dd>
-              </div>
-              <div>
-                <dt>Balance due</dt>
-                <dd>{fmtZar(activeId ? balanceDue : total)}</dd>
-              </div>
-            </dl>
-          </header>
-
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 16, alignItems: "center" }}>
-            {editable ? (
-              <Button type="submit" loading={saving}>
-                <Save size={16} style={{ marginRight: 8 }} aria-hidden />
-                {activeId ? "Save changes" : "Save invoice"}
-              </Button>
-            ) : null}
+            <p className="pg-inv-editor__subtitle">Create and send professional invoices to your tenants.</p>
+          </div>
+          <div className="pg-inv-editor__actions pg-inv-editor__actions--desktop">
             <Button type="button" variant="secondary" loading={pdfBusy} onClick={() => void exportPdf()}>
-              <Download size={16} style={{ marginRight: 8 }} aria-hidden />
-              Export PDF
+              <Eye size={16} style={{ marginRight: 8 }} aria-hidden />
+              Preview
             </Button>
-            {hasPdf ? (
-              <Button type="button" variant="ghost" loading={pdfBusy} onClick={() => void downloadPdf()}>
-                Download PDF
+            {editable ? (
+              <Button type="submit" variant="secondary" loading={saving} className="pg-inv-editor__btn-outline">
+                <Save size={16} style={{ marginRight: 8 }} aria-hidden />
+                Save Draft
               </Button>
             ) : null}
             {editable && canMarkInvoiceSent(status) ? (
-              <Button type="button" variant="secondary" loading={sendBusy} onClick={() => setConfirmSend(true)}>
+              <Button type="button" loading={sendBusy} onClick={() => setConfirmSend(true)}>
                 <Send size={16} style={{ marginRight: 8 }} aria-hidden />
                 {invoiceSendButtonLabel()}
               </Button>
             ) : null}
-            {propertyId ? (
-              <Link className="pg-btn pg-btn-ghost" to={invoiceStatementPath(propertyId)}>
-                <ExternalLink size={16} style={{ marginRight: 8 }} aria-hidden />
-                Statement
+            {renderMoreMenu()}
+          </div>
+        </header>
+
+        <header className="pg-inv-editor__mobile-head">
+          <Link className="pg-inv-editor__back" to="/invoices" aria-label="Back to invoices">
+            <ArrowLeft size={18} aria-hidden />
+          </Link>
+          <h1 className="pg-inv-editor__mobile-title">{pageTitle}</h1>
+          {renderMoreMenu()}
+        </header>
+
+        {error ? (
+          <div className="pg-alert pg-alert-error" role="alert">
+            {error}
+          </div>
+        ) : null}
+        {success ? (
+          <div className="pg-alert" style={{ background: "var(--success-soft)", color: "var(--success)" }} role="status">
+            {success}
+          </div>
+        ) : null}
+
+        <div className="pg-inv-editor__card">
+          {locked ? (
+            <div className="pg-inv-editor__locked" role="status">
+              This invoice has been sent and can no longer be edited.
+            </div>
+          ) : null}
+
+          <div className="pg-inv-editor__fields pg-inv-editor__fields--desktop">
+            <div className="pg-inv-editor__field pg-inv-editor__field--tenant">
+              <span className="pg-inv-editor__label">Tenant / Contact</span>
+              <div className="pg-inv-editor__tenant-select" aria-label="Tenant">
+                <span className="pg-inv-editor__tenant-avatar" aria-hidden>
+                  <User size={16} />
+                </span>
+                <span className="pg-inv-editor__tenant-name">{toName}</span>
+                <ChevronDown size={18} className="pg-inv-editor__input-icon" aria-hidden />
+              </div>
+            </div>
+
+            {renderDateField("inv-issue-date", "Issue Date", issueDate, setIssueDate)}
+            {renderDateField("inv-due-date", "Due Date", dueDate, setDueDate)}
+
+            <div className="pg-inv-editor__field pg-inv-editor__field--number">
+              <label className="pg-inv-editor__label" htmlFor="inv-number">
+                Invoice Number
+              </label>
+              <div className="pg-inv-editor__input-wrap">
+                <Hash className="pg-inv-editor__input-icon" size={18} aria-hidden />
+                <Input id="inv-number" value={displayNumber} readOnly disabled aria-label="Invoice number" />
+              </div>
+            </div>
+
+            <div className="pg-inv-editor__field pg-inv-editor__field--status">
+              <span className="pg-inv-editor__label">Status</span>
+              <div className="pg-inv-editor__status-wrap">
+                <InvoiceStatusBadge status={status} />
+              </div>
+            </div>
+
+            <div className="pg-inv-editor__branding">
+              <span>PDF Branding:</span>
+              <strong>{fromName ? `${fromName} Standard` : "Proplytic Standard"}</strong>
+              <Link className="pg-inv-editor__branding-link" to="/settings">
+                Change
               </Link>
-            ) : null}
-            {activeId && invoiceCanHardDelete(status) ? (
-              <Button type="button" variant="ghost" onClick={() => setConfirmDelete("delete")}>
-                <Trash2 size={16} style={{ marginRight: 8 }} aria-hidden />
-                Delete
-              </Button>
-            ) : null}
-            {activeId && invoiceCanVoid(status) ? (
-              <Button type="button" variant="ghost" onClick={() => setConfirmDelete("void")}>
-                Void
-              </Button>
-            ) : null}
-            {onCancel ? (
-              <Button type="button" variant="ghost" onClick={onCancel}>
-                Cancel
-              </Button>
-            ) : null}
-          </div>
-
-          <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
-            <Field label="From">
-              <Input value={fromName} readOnly disabled />
-            </Field>
-            <Field label="To">
-              <Input value={toName} readOnly disabled />
-            </Field>
-            <Field label="Issue date">
-              <Input
-                type="date"
-                value={issueDate}
-                onChange={(e) => setIssueDate(e.target.value)}
-                required
-                readOnly={!editable}
-                disabled={!editable}
-              />
-            </Field>
-            <Field label="Due date">
-              <Input
-                type="date"
-                value={dueDate}
-                onChange={(e) => setDueDate(e.target.value)}
-                required
-                readOnly={!editable}
-                disabled={!editable}
-              />
-            </Field>
-          </div>
-
-          <div style={{ marginTop: 16 }}>
-            <InvoiceLineItemsEditor
-              lineItems={lineItems}
-              editable={editable}
-              defaultRent={defaultRent}
-              onChange={setLineItems}
-            />
-            <div className="pg-invoice-line-items__totals">
-              <div>
-                <span className="pg-muted">Subtotal</span>
-                <strong>{fmtZar(subtotal)}</strong>
-              </div>
-              {taxAmount > 0 ? (
-                <div>
-                  <span className="pg-muted">Tax</span>
-                  <strong>{fmtZar(taxAmount)}</strong>
-                </div>
-              ) : null}
-              <div className="pg-invoice-line-items__totals-total">
-                <span className="pg-muted">Total</span>
-                <strong>{fmtZar(total)}</strong>
-              </div>
             </div>
           </div>
 
-          <Field label="Notes">
-            <textarea
-              className="pg-input"
-              rows={3}
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              readOnly={!editable}
-              disabled={!editable}
-              style={{ width: "100%", resize: "vertical" }}
-            />
-          </Field>
+          <div className="pg-inv-editor__mobile-fields">
+            <div className="pg-inv-editor__mobile-card pg-inv-editor__mobile-card--status">
+              <span className="pg-inv-editor__label">Status</span>
+              <InvoiceStatusBadge status={status} />
+            </div>
+
+            <div className="pg-inv-editor__mobile-card">
+              <span className="pg-inv-editor__label">Tenant / Contact</span>
+              <div className="pg-inv-editor__tenant-select" style={{ marginTop: 8 }}>
+                <span className="pg-inv-editor__tenant-avatar" aria-hidden>
+                  <User size={16} />
+                </span>
+                <span className="pg-inv-editor__tenant-name">{toName}</span>
+                <ChevronDown size={18} className="pg-inv-editor__input-icon" aria-hidden />
+              </div>
+            </div>
+
+            <div className="pg-inv-editor__mobile-card">
+              <dl>
+                <div className="pg-inv-editor__mobile-detail-row">
+                  <dt>Issue Date</dt>
+                  <dd>
+                    <Input
+                      type="date"
+                      value={issueDate}
+                      onChange={(e) => setIssueDate(e.target.value)}
+                      required
+                      readOnly={!editable}
+                      disabled={!editable}
+                      aria-label="Issue Date"
+                      style={{ border: "none", background: "transparent", textAlign: "right", padding: 0, minHeight: 0 }}
+                    />
+                  </dd>
+                </div>
+                <div className="pg-inv-editor__mobile-detail-row">
+                  <dt>Due Date</dt>
+                  <dd>
+                    <Input
+                      type="date"
+                      value={dueDate}
+                      onChange={(e) => setDueDate(e.target.value)}
+                      required
+                      readOnly={!editable}
+                      disabled={!editable}
+                      aria-label="Due Date"
+                      style={{ border: "none", background: "transparent", textAlign: "right", padding: 0, minHeight: 0 }}
+                    />
+                  </dd>
+                </div>
+                <div className="pg-inv-editor__mobile-detail-row">
+                  <dt>Invoice Number</dt>
+                  <dd>{displayNumber}</dd>
+                </div>
+              </dl>
+            </div>
+          </div>
+
+          <InvoiceLineItemsEditor lineItems={lineItems} editable={editable} defaultRent={defaultRent} onChange={setLineItems} />
+
+          <div className="pg-inv-editor__footer-grid">
+            <div className="pg-inv-editor__notes-stack">
+              <div className="pg-inv-editor__field">
+                <label className="pg-inv-editor__label" htmlFor="inv-notes-tenant">
+                  Notes to tenant
+                </label>
+                <textarea
+                  id="inv-notes-tenant"
+                  className="pg-inv-editor__textarea"
+                  rows={4}
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  readOnly={!editable}
+                  disabled={!editable}
+                  placeholder="Thank you for your prompt payment."
+                />
+              </div>
+            </div>
+
+            <aside className="pg-inv-editor__totals" aria-label="Invoice totals">
+              <div className="pg-inv-editor__totals-row">
+                <span>Subtotal</span>
+                <strong>{fmtZar(subtotal)}</strong>
+              </div>
+              {taxAmount > 0 ? (
+                <div className="pg-inv-editor__totals-row">
+                  <span>Tax</span>
+                  <strong>{fmtZar(taxAmount)}</strong>
+                </div>
+              ) : null}
+              <div className="pg-inv-editor__totals-row pg-inv-editor__totals-total">
+                <span>Total</span>
+                <strong>{fmtZar(total)}</strong>
+              </div>
+              <div className="pg-inv-editor__totals-row pg-inv-editor__totals-balance">
+                <span>Balance Due</span>
+                <strong>{fmtZar(activeId ? balanceDue : total)}</strong>
+              </div>
+            </aside>
+          </div>
 
           {bankLines.length ? (
-            <div style={{ marginTop: 12, fontSize: "0.875rem", color: "var(--text-secondary)" }}>
-              <strong style={{ color: "var(--text-primary)" }}>Banking details</strong>
-              <ul style={{ margin: "8px 0 0", paddingLeft: 18 }}>
+            <div className="pg-inv-editor__banking">
+              <strong style={{ color: "var(--text-primary)" }}>Payment details</strong>
+              <ul>
                 {bankLines.map((line) => (
                   <li key={line}>{line}</li>
                 ))}
@@ -595,45 +711,26 @@ export function InvoiceDetailPanel({
           ) : null}
         </div>
 
-        <aside className="pg-tstmt-invoice-preview" aria-label="Invoice summary">
-          <div style={{ fontWeight: 700, color: "var(--primary)", marginBottom: 8, fontSize: "1.25rem" }}>Proplytic</div>
-          <div className="pg-muted">Tax Invoice · {invoiceNumber}</div>
-          <div style={{ marginTop: 12, fontSize: "0.875rem", display: "grid", gap: 4 }}>
-            <div>
-              <span className="pg-muted">To: </span>
-              {toName}
-            </div>
-            <div>
-              <span className="pg-muted">Issue: </span>
-              {issueDate}
-            </div>
-            <div>
-              <span className="pg-muted">Due: </span>
-              {dueDate}
-            </div>
-            <div>
-              <span className="pg-muted">Total: </span>
-              {fmtZar(total)}
-            </div>
-          </div>
-          <table style={{ width: "100%", marginTop: 16, fontSize: "0.8125rem", borderCollapse: "collapse" }}>
-            <thead>
-              <tr style={{ borderBottom: "1px solid var(--border-soft)" }}>
-                <th style={{ textAlign: "left", padding: "6px 0", color: "var(--text-muted)" }}>Item</th>
-                <th style={{ textAlign: "right", padding: "6px 0", color: "var(--text-muted)" }}>Amt</th>
-              </tr>
-            </thead>
-            <tbody>
-              {lineItems.map((li, i) => (
-                <tr key={i} style={{ borderBottom: "1px solid var(--border-soft)" }}>
-                  <td style={{ padding: "8px 0" }}>{li.description || "—"}</td>
-                  <td style={{ padding: "8px 0", textAlign: "right" }}>{fmtZar(li.quantity * li.unitPrice)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <div className="pg-tstmt-invoice-preview__total">{fmtZar(total)}</div>
-        </aside>
+        <div className="pg-inv-editor__mobile-bar">
+          {editable ? (
+            <Button type="submit" variant="secondary" loading={saving} className="pg-inv-editor__btn-outline">
+              Save Draft
+            </Button>
+          ) : (
+            <Button type="button" variant="secondary" loading={pdfBusy} onClick={() => void exportPdf()}>
+              Preview
+            </Button>
+          )}
+          {editable && canMarkInvoiceSent(status) ? (
+            <Button type="button" loading={sendBusy} onClick={() => setConfirmSend(true)}>
+              {invoiceSendButtonLabel()}
+            </Button>
+          ) : locked ? (
+            <Button type="button" variant="secondary" loading={pdfBusy} onClick={() => void exportPdf()}>
+              Export PDF
+            </Button>
+          ) : null}
+        </div>
       </form>
 
       <ConfirmDialog
