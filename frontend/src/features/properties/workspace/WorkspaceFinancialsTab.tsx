@@ -168,8 +168,6 @@ const PROPERTY_INCOME_CATEGORY_OPTIONS: Array<{ value: string; label: string }> 
 
 const INCOME_STATUS_OPTIONS = ["EXPECTED", "RECEIVED", "CANCELLED"] as const;
 
-const INVOICE_STATUS_OPTIONS = ["DRAFT", "SENT", "PAID", "OVERDUE", "CANCELLED"] as const;
-
 function IconStatementSave() {
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden style={{ display: "block", pointerEvents: "none" }}>
