@@ -58,7 +58,7 @@ describe("mapPropertyBondPayment", () => {
       new Date("2026-05-29")
     );
     expect(rows).toHaveLength(1);
-    expect(rows[0]?.name).toBe("Oak Street bond");
+    expect(rows[0]?.name).toBe("Oak Street");
     expect(rows[0]?.interestRateLabel).toBe("11.25% p.a.");
     expect(rows[0]?.monthlyPayment).toBeGreaterThan(0);
     expect(rows[0]?.termLabel).toBe("20 years");

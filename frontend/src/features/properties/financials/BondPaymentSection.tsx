@@ -1,4 +1,4 @@
-import { Landmark, Pencil, Plus, Trash2 } from "lucide-react";
+import { Pencil, Plus, Trash2 } from "lucide-react";
 import { fmtZar } from "./propertyFinancialsAdapter";
 import type { BondPaymentDisplayItem } from "./propertyBondAdapter";
 
@@ -123,12 +123,7 @@ export function BondPaymentSection({
               {items.map((item) => (
                 <tr key={item.id}>
                   <td>
-                    <div className="pg-pfin-expense-name">
-                      <span className="pg-pfin-expense-icon" aria-hidden>
-                        <Landmark size={16} />
-                      </span>
-                      <span>{item.name}</span>
-                    </div>
+                    <span>{item.name}</span>
                   </td>
                   <td>
                     <span
@@ -185,9 +180,6 @@ export function BondPaymentSection({
           {items.map((item) => (
             <li key={item.id} className="pg-pfin-expense-list__item">
               <div className="pg-pfin-expense-list__main">
-                <span className="pg-pfin-expense-icon" aria-hidden>
-                  <Landmark size={18} />
-                </span>
                 <div>
                   <div className="pg-pfin-expense-list__title">{item.name}</div>
                   <span

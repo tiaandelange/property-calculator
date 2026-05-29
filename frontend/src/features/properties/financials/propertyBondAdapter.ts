@@ -178,7 +178,7 @@ export function mapPropertyBondPayment(
 
   let monthlyPaymentHint: string | null = monthlyPaymentHintFromFinance(finance);
 
-  const label = propertyName.trim() ? `${propertyName.trim()} bond` : "Home loan bond";
+  const label = propertyName.trim() || "Property";
 
   return [
     {
@@ -244,7 +244,7 @@ export function mapAdditionalBondPayment(
   return {
     id: bond.id,
     source: "additional",
-    name: bond.description.trim() || "Additional bond",
+    name: bond.description.trim() || "—",
     termLabel: originalTermLabelFromFinance(finance),
     termHoverLabel: remainingTermHoverFromFinance(finance),
     remainingTermMonths: finance.remainingTermMonths,
