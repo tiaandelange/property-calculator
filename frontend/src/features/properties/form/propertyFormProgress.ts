@@ -2,6 +2,7 @@ import type { PropertyFormValues } from "./propertyFormConstants";
 
 export type PropertyFormSectionId =
   | "basic"
+  | "structure"
   | "location"
   | "details"
   | "financial"
@@ -11,6 +12,7 @@ export type PropertyFormSectionId =
 
 export const PROPERTY_FORM_SECTIONS: { id: PropertyFormSectionId; label: string }[] = [
   { id: "basic", label: "Basic information" },
+  { id: "structure", label: "Property structure" },
   { id: "location", label: "Location" },
   { id: "details", label: "Property details" },
   { id: "financial", label: "Financial details" },
@@ -36,6 +38,8 @@ export function isPropertyFormSectionComplete(
   switch (id) {
     case "basic":
       return hasText(form.name) && hasText(form.investmentType);
+    case "structure":
+      return hasText(form.structureTypeId);
     case "location":
       return hasText(form.addressLine1) && hasText(form.city) && hasText(form.province);
     case "details":

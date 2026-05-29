@@ -694,3 +694,46 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+.pg-prop-structure-flags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.pg-prop-units-mobile {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.pg-prop-unit-card {
+  border: 1px solid var(--border-soft);
+  border-radius: 12px;
+  padding: 12px;
+  background: var(--surface);
+}
+
+.pg-prop-unit-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.pg-prop-unit-card__fields {
+  display: grid;
+  gap: 10px;
+}
+
+.pg-prop-units-add {
+  width: 100%;
+  justify-content: center;
+}
+
+.pg-prop-units-table th,
+.pg-prop-units-table td {
+  vertical-align: middle;
+}

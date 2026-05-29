@@ -1,5 +1,6 @@
 import { assertSupabaseConfigured } from "../lib/supabaseClient";
 import * as propertiesSupabase from "../services/propertiesSupabase";
+import * as propertyUnitsSupabase from "../services/propertyUnitsSupabase";
 import * as tenantsSupabase from "../services/tenantsSupabase";
 import * as leasesSupabase from "../services/leasesSupabase";
 import { buildLeaseDirectory } from "../features/leases/leaseDirectoryAdapter";
@@ -68,6 +69,16 @@ export async function deleteProperty(id: string | number) {
   assertSupabaseConfigured();
   await propertiesSupabase.deleteProperty(id);
   return { message: "Deleted" };
+}
+
+export async function listPropertyUnits(propertyId: string | number) {
+  assertSupabaseConfigured();
+  return propertyUnitsSupabase.listPropertyUnits(String(propertyId));
+}
+
+export async function syncPropertyUnits(propertyId: string | number, units: Parameters<typeof propertyUnitsSupabase.syncPropertyUnits>[1]) {
+  assertSupabaseConfigured();
+  return propertyUnitsSupabase.syncPropertyUnits(String(propertyId), units);
 }
 
 export async function getTenants() {

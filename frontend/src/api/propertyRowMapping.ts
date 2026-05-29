@@ -132,7 +132,8 @@ export function buildPropertyFieldsFromBody(body: Record<string, unknown>): Reco
     project_stage: enumOrNull(s(body.projectStage), FLIP_STAGE_ENUM),
     after_repair_value: n(body.afterRepairValue),
     refinance_amount: n(body.refinanceAmount),
-    brrrr_stage: enumOrNull(s(body.brrrrStage), BRRRR_STAGE_ENUM)
+    brrrr_stage: enumOrNull(s(body.brrrrStage), BRRRR_STAGE_ENUM),
+    structure_type_id: s(body.structureTypeId)
   };
 }
 

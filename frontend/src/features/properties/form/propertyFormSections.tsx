@@ -4,6 +4,7 @@ import { Input } from "../../../components/ui/Input";
 import { propertyFinancialsStatementUrl } from "../../financials/financialDirectoryUtils";
 import { PropertyFormField } from "./PropertyFormField";
 import { PropertyFormSection } from "./PropertyFormSection";
+import { PropertyStructureSection } from "../units/PropertyStructureSection";
 import {
   BOND_TERM_YEAR_OPTIONS,
   INVESTMENT_TYPE_OPTIONS,
@@ -86,7 +87,9 @@ export function PropertyFormSections({
         </div>
       </PropertyFormSection>
 
-      <PropertyFormSection number={2} title="Location" id="property-section-location">
+      <PropertyStructureSection form={form} setForm={setForm} mode={mode} />
+
+      <PropertyFormSection number={3} title="Location" id="property-section-location">
         <div className="pg-prop-grid">
           <PropertyFormField label="Street address" required className="pg-prop-grid__span-2">
             <Input
@@ -122,7 +125,7 @@ export function PropertyFormSections({
         </div>
       </PropertyFormSection>
 
-      <PropertyFormSection number={3} title="Property Details" id="property-section-details">
+      <PropertyFormSection number={4} title="Property Details" id="property-section-details">
         <div className="pg-prop-grid pg-prop-grid--4">
           <PropertyFormField label="Bedrooms">
             <Input
@@ -163,7 +166,7 @@ export function PropertyFormSections({
       </PropertyFormSection>
 
       <PropertyFormSection
-        number={4}
+        number={5}
         title="Financial Details"
         description="Purchase, bond, and portfolio assumptions. Ledger income and expenses are managed separately."
         id="property-section-financial"
@@ -425,7 +428,7 @@ export function PropertyFormSections({
       </PropertyFormSection>
 
       <PropertyFormSection
-        number={5}
+        number={6}
         title="Maintenance & Vacancy"
         id="property-section-maintenance"
       >
@@ -473,11 +476,11 @@ export function PropertyFormSections({
         </div>
       </PropertyFormSection>
 
-      <PropertyFormSection number={6} title="Media Upload" id="property-section-media">
+      <PropertyFormSection number={7} title="Media Upload" id="property-section-media">
         {mediaSection}
       </PropertyFormSection>
 
-      <PropertyFormSection number={7} title="Description & Notes" id="property-section-description">
+      <PropertyFormSection number={8} title="Description & Notes" id="property-section-description">
         <PropertyFormField label="Property notes & description">
           <textarea
             className="pg-input pg-prop-textarea"

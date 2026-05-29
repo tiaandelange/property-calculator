@@ -6,9 +6,14 @@ import {
   createProperty,
   deleteProperty,
   getProperty,
+  listPropertyUnits,
   propertyApiErrorMessage,
+  syncPropertyUnits,
   updateProperty
 } from "../api/ownedProperties";
+import { legacyPropertyTypeToStructureId, mapStructureTypeToDbFields } from "../config/propertyTypes";
+import type { PropertyUnitDraft } from "../features/properties/units/propertyUnitTypes";
+import { resolvePropertyExpectedMonthlyIncome, unitsForStructureType } from "../features/properties/units/unitSetupUtils";
 import { invalidatePropertyWorkspace } from "../features/properties/invalidate";
 import { PropertyForm } from "../features/properties/form/PropertyForm";
 import { BOND_TERM_YEAR_OPTIONS } from "../features/properties/form/propertyFormConstants";
@@ -17,8 +22,13 @@ import type { PropertyFormValues } from "../features/properties/form/propertyFor
 
 const DEFAULT_FORM: PropertyFormValues = {
   name: "",
-  propertyType: "OTHER",
+  propertyType: "HOUSE",
   investmentType: "LONG_TERM_RENTAL",
+  structureTypeId: "single_family_house",
+  unitCount: 1,
+  hasMultipleUnits: false,
+  rentBasis: "room",
+  units: [] as PropertyUnitDraft[],
   addressLine1: "",
   city: "",
   province: "",
@@ -44,16 +54,43 @@ export function OwnedPropertyFormPage() {
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
+    if (isEdit) return;
+    setForm((prev) => {
+      if (Array.isArray(prev.units) && (prev.units as PropertyUnitDraft[]).length > 0) return prev;
+      const sid = String(prev.structureTypeId ?? "single_family_house");
+      const generated = unitsForStructureType(sid, Number(prev.unitCount ?? 1) || 1);
+      return { ...prev, units: generated, unitCount: generated.length };
+    });
+  }, [isEdit]);
+
+  useEffect(() => {
     async function load() {
       if (!isEdit || !id) return;
       setLoaded(false);
       setError("");
       try {
         const data = await getProperty(id);
+        const structureTypeId =
+          String(data.structureTypeId ?? "") ||
+          legacyPropertyTypeToStructureId(String(data.propertyType ?? "OTHER"), String(data.investmentType ?? ""));
+        let units: PropertyUnitDraft[] = [];
+        try {
+          units = await listPropertyUnits(id);
+        } catch {
+          units = [];
+        }
+        if (units.length === 0) {
+          units = unitsForStructureType(structureTypeId, 1);
+        }
         const next: PropertyFormValues = {
           ...data,
           propertyType: data.propertyType ?? "OTHER",
           investmentType: data.investmentType ?? "LONG_TERM_RENTAL",
+          structureTypeId,
+          unitCount: units.length || 1,
+          hasMultipleUnits: units.length > 1,
+          rentBasis: "room",
+          units,
           purchasePrice: data.purchasePrice ?? "",
           currentEstimatedValue: data.currentEstimatedValue ?? "",
           outstandingBondBalance: data.outstandingBondBalance ?? ""
@@ -119,9 +156,17 @@ export function OwnedPropertyFormPage() {
       const sdRaw = typeof form.bondStartDate === "string" ? form.bondStartDate.trim() : "";
       const bondStartDate = /^\d{4}-\d{2}-\d{2}$/.test(sdRaw) ? sdRaw : null;
 
+      const structureTypeId = String(form.structureTypeId ?? "single_family_house");
+      const mapped = mapStructureTypeToDbFields(structureTypeId, String(form.investmentType ?? ""));
+      const units = Array.isArray(form.units) ? (form.units as PropertyUnitDraft[]) : [];
+      const rolledIncome = resolvePropertyExpectedMonthlyIncome(form, units, structureTypeId);
+
       const propertyPayload: PropertyFormValues = {
         ...form,
-        propertyType: form.propertyType ?? "OTHER",
+        propertyType: mapped.propertyType,
+        investmentType: mapped.investmentType,
+        structureTypeId,
+        expectedMonthlyIncome: rolledIncome ?? form.expectedMonthlyIncome ?? null,
         bondTermYears,
         bondStartDate,
         bondRemainingTermMonths:
@@ -129,6 +174,18 @@ export function OwnedPropertyFormPage() {
       };
       const saved = isEdit && id ? await updateProperty(id, propertyPayload) : await createProperty(propertyPayload);
       const propertyId = isEdit && id ? id : (saved?.id as string | number | undefined);
+
+      if (propertyId != null && propertyId !== "" && units.length > 0) {
+        try {
+          await syncPropertyUnits(propertyId, units);
+        } catch (unitErr: unknown) {
+          const msg = unitErr instanceof Error ? unitErr.message : "Property saved but units could not be saved.";
+          setError(msg);
+          setSaving(false);
+          navigate(`/owned-properties/${propertyId}?tab=overview`);
+          return;
+        }
+      }
       const k = draftKeyForProperty(id, isEdit);
       if (k) {
         try {

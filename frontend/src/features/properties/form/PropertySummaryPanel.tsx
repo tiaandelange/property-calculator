@@ -1,12 +1,10 @@
 import { Check, Circle, Home, Lightbulb } from "lucide-react";
 import { Link } from "react-router-dom";
 import { propertyFinancialsStatementUrl } from "../../financials/financialDirectoryUtils";
-import {
-  INVESTMENT_TYPE_LABELS,
-  PROPERTY_TYPE_LABELS,
-  type PropertyFormMode,
-  type PropertyFormValues
-} from "./propertyFormConstants";
+import { getPropertyTypeConfig } from "../../../config/propertyTypes";
+import type { PropertyUnitDraft } from "../units/propertyUnitTypes";
+import { sumUnitsExpectedRentMonthly } from "../units/unitSetupUtils";
+import { INVESTMENT_TYPE_LABELS, type PropertyFormMode, type PropertyFormValues } from "./propertyFormConstants";
 import { PROPERTY_FORM_SECTIONS, isPropertyFormSectionComplete, propertyFormProgress } from "./propertyFormProgress";
 
 function formatRent(amount: unknown): string {
@@ -36,6 +34,10 @@ export function PropertySummaryPanel({
   const { completed, total, pct } = propertyFormProgress(mediaCount, form);
   const investmentType = String(form.investmentType ?? "");
   const propertyType = String(form.propertyType ?? "OTHER");
+  const structureTypeId = String(form.structureTypeId ?? "single_family_house");
+  const structureCfg = getPropertyTypeConfig(structureTypeId);
+  const units = Array.isArray(form.units) ? (form.units as PropertyUnitDraft[]) : [];
+  const unitRentTotal = sumUnitsExpectedRentMonthly(units);
   const status = String(form.status ?? "").trim() || "Draft";
 
   return (
@@ -51,12 +53,20 @@ export function PropertySummaryPanel({
             <dd>{INVESTMENT_TYPE_LABELS[investmentType] ?? (investmentType || "—")}</dd>
           </div>
           <div>
-            <dt>Category</dt>
-            <dd>{PROPERTY_TYPE_LABELS[propertyType] ?? propertyType}</dd>
+            <dt>Structure</dt>
+            <dd>{structureCfg.label}</dd>
+          </div>
+          <div>
+            <dt>Units</dt>
+            <dd>{units.filter((u) => u.isActive !== false).length}</dd>
           </div>
           <div>
             <dt>Expected rent</dt>
-            <dd>{formatRent(form.expectedMonthlyIncome)}</dd>
+            <dd>{formatRent(unitRentTotal > 0 ? unitRentTotal : form.expectedMonthlyIncome)}</dd>
+          </div>
+          <div>
+            <dt>Tenants in setup</dt>
+            <dd>{structureCfg.supportsTenants ? "Later (per unit)" : "N/A — bookings"}</dd>
           </div>
         </dl>
         <span className={statusBadgeClass(status)}>{status.replace(/_/g, " ")}</span>
