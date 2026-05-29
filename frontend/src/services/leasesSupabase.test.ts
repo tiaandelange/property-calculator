@@ -51,12 +51,16 @@ const leaseRowSnake = {
 const getUser = vi.fn();
 const from = vi.fn();
 const rpc = vi.fn();
+const storageRemove = vi.fn();
 
 vi.mock("../lib/supabaseClient", () => ({
   getSupabase: () => ({
     auth: { getUser },
     from,
-    rpc
+    rpc,
+    storage: {
+      from: () => ({ remove: storageRemove })
+    }
   })
 }));
 
@@ -65,6 +69,7 @@ describe("leasesSupabase", () => {
     getUser.mockReset();
     from.mockReset();
     rpc.mockReset();
+    storageRemove.mockReset();
   });
 
   it("throws when logged out", async () => {
@@ -137,15 +142,34 @@ describe("leasesSupabase", () => {
     expect(out.lease.status).toBe("CANCELLED");
   });
 
-  it("hardDeleteLease calls hard_delete_lease RPC", async () => {
+  it("hardDeleteLease removes invoice PDFs then calls hard_delete_lease RPC", async () => {
     getUser.mockResolvedValue({ data: { user: { id: userId } }, error: null });
+    from.mockImplementation((table: string) => {
+      if (table === "invoices") {
+        return {
+          select: vi.fn(() => ({
+            eq: vi.fn(() => ({
+              eq: vi.fn(() =>
+                Promise.resolve({
+                  data: [{ id: "inv-1", pdf_storage_bucket: "invoices", pdf_storage_key: "a.pdf" }],
+                  error: null
+                })
+              )
+            }))
+          }))
+        };
+      }
+      return {};
+    });
     rpc.mockResolvedValue({
-      data: { deleted: true, message: "Lease permanently deleted" },
+      data: { deleted: true, message: "Lease and attached records permanently deleted" },
       error: null
     });
     const out = await hardDeleteLease(leaseId);
+    expect(from).toHaveBeenCalledWith("invoices");
+    expect(storageRemove).toHaveBeenCalledWith(["a.pdf"]);
     expect(rpc).toHaveBeenCalledWith("hard_delete_lease", { p_lease_id: leaseId });
-    expect(out.message).toMatch(/permanently deleted/i);
+    expect(out.message).toMatch(/deleted/i);
   });
 
   it("deleteOrArchiveLease calls delete_or_archive_lease RPC", async () => {

@@ -279,19 +279,30 @@ export async function updateLease(id: string | number, input: Record<string, unk
   return dbToLease(updatedRow as Record<string, unknown>);
 }
 
-/** Permanently deletes a lease with no invoices or income (via `public.hard_delete_lease`). */
+/** Permanently deletes a lease and all attached invoices/income (via `public.hard_delete_lease`). */
 export async function hardDeleteLease(id: string | number): Promise<{ message: string }> {
-  await requireUserId();
+  const uid = await requireUserId();
   const sb = getSupabase();
-  const { data, error } = await sb.rpc("hard_delete_lease", { p_lease_id: String(id) });
+  const lid = String(id);
+
+  const { data: invoiceRows, error: invListErr } = await sb
+    .from("invoices")
+    .select("id, pdf_storage_bucket, pdf_storage_key")
+    .eq("lease_id", lid)
+    .eq("user_id", uid);
+  if (invListErr) throw toError(invListErr);
+
+  for (const row of invoiceRows ?? []) {
+    const r = row as { pdf_storage_bucket?: string | null; pdf_storage_key?: string | null };
+    if (r.pdf_storage_key && r.pdf_storage_bucket) {
+      await sb.storage.from(String(r.pdf_storage_bucket)).remove([String(r.pdf_storage_key)]);
+    }
+  }
+
+  const { data, error } = await sb.rpc("hard_delete_lease", { p_lease_id: lid });
   if (error) {
     const raw = error.message ?? "";
     if (raw.includes("LEASE_NOT_FOUND")) throw new Error("Lease not found");
-    if (raw.includes("LEASE_HAS_FINANCIALS")) {
-      throw new Error(
-        "This lease has invoices or income on record and cannot be permanently deleted. Cancel the lease instead to keep financial history."
-      );
-    }
     throw toError(error);
   }
   const out = (data ?? {}) as Record<string, unknown>;

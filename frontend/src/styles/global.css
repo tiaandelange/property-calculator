@@ -538,6 +538,15 @@ textarea {
   background: var(--btn-secondary-bg-hover);
   text-decoration: none;
 }
+.pg-btn-danger {
+  background: var(--danger);
+  color: #fff;
+  border-color: color-mix(in srgb, var(--danger) 80%, transparent);
+}
+.pg-btn-danger:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--danger) 88%, #000);
+  text-decoration: none;
+}
 .pg-btn-ghost {
   background: transparent;
   color: var(--text);

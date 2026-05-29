@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
-import { ExternalLink, Trash2 } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 import { Container } from "../components/ui/Container";
 import { Section } from "../components/ui/Section";
 import { Card } from "../components/ui/Card";
+import { ConfirmDialog } from "../components/ui/ConfirmDialog";
 import {
   cancelLease,
   createPropertyIncome,
@@ -23,6 +24,8 @@ import { WorkspaceFinancialsTab } from "../features/properties/workspace/Workspa
 import { WorkspaceOverviewTab } from "../features/properties/workspace/WorkspaceOverviewTab";
 import { WorkspaceStatementTab } from "../features/properties/workspace/WorkspaceStatementTab";
 import { WorkspaceLinkTenantsTab } from "../features/properties/link-tenants/WorkspaceLinkTenantsTab";
+import { CancelLeaseDialog } from "../features/properties/workspace/CancelLeaseDialog";
+import { PropertyLeaseCard, leaseTenantLabel } from "../features/properties/workspace/PropertyLeaseCard";
 
 /** YYYY-MM in the user's local calendar (avoid UTC drift from `toISOString().slice(0, 7)`). */
 function localCalendarMonth(d = new Date()) {
@@ -53,6 +56,10 @@ export function OwnedPropertyDetailPage() {
   const [stmtLoading, setStmtLoading] = useState(false);
   const [reportsCatalog, setReportsCatalog] = useState<any>(null);
   const [reportsLoading, setReportsLoading] = useState(false);
+  const [leaseDeleteTarget, setLeaseDeleteTarget] = useState<{ id: string | number; label: string } | null>(null);
+  const [leaseCancelTarget, setLeaseCancelTarget] = useState<any>(null);
+  const [leaseActionLoading, setLeaseActionLoading] = useState(false);
+  const [leaseActionError, setLeaseActionError] = useState("");
   const tabRaw = useMemo(() => new URLSearchParams(search).get("tab") ?? "overview", [search]);
   const tab =
     tabRaw === "lease"
@@ -182,27 +189,37 @@ export function OwnedPropertyDetailPage() {
     if (id) invalidatePropertyWorkspace(id);
   };
 
-  const onCancelLease = async (lease: { id: string | number }) => {
-    const cancellationDate = window.prompt("Cancellation date (YYYY-MM-DD)", new Date().toISOString().slice(0, 10));
-    if (!cancellationDate) return;
-    const cancellationReason = window.prompt("Cancellation reason (optional)", "") ?? undefined;
-    await cancelLease(lease.id, { cancellationDate, cancellationReason, cancelledBy: "LANDLORD" });
-    await refreshAfterMutation();
-  };
-
-  const onHardDeleteLease = async (leaseId: string | number) => {
-    if (
-      !window.confirm(
-        "Permanently delete this lease? This cannot be undone. If it has invoices or income on record, cancel the lease instead to keep financial history."
-      )
-    ) {
-      return;
-    }
+  const confirmHardDeleteLease = async () => {
+    if (!leaseDeleteTarget) return;
+    setLeaseActionLoading(true);
+    setLeaseActionError("");
     try {
-      await deleteLease(leaseId);
+      await deleteLease(leaseDeleteTarget.id);
+      setLeaseDeleteTarget(null);
       await refreshAfterMutation();
     } catch (e: any) {
-      window.alert(e?.response?.data?.message ?? e?.message ?? "Failed to delete lease.");
+      setLeaseActionError(e?.response?.data?.message ?? e?.message ?? "Failed to delete lease.");
+    } finally {
+      setLeaseActionLoading(false);
+    }
+  };
+
+  const confirmCancelLease = async (payload: { cancellationDate: string; cancellationReason?: string }) => {
+    if (!leaseCancelTarget?.id) return;
+    setLeaseActionLoading(true);
+    setLeaseActionError("");
+    try {
+      await cancelLease(leaseCancelTarget.id, {
+        cancellationDate: payload.cancellationDate,
+        cancellationReason: payload.cancellationReason,
+        cancelledBy: "LANDLORD"
+      });
+      setLeaseCancelTarget(null);
+      await refreshAfterMutation();
+    } catch (e: any) {
+      setLeaseActionError(e?.response?.data?.message ?? e?.message ?? "Failed to cancel lease.");
+    } finally {
+      setLeaseActionLoading(false);
     }
   };
 
@@ -353,56 +370,29 @@ export function OwnedPropertyDetailPage() {
                     ) : null}
                   </div>
                   {currentLeases.length > 0 ? (
-                    <div className="pg-workspace-inset-list">
-                      {currentLeases.map((lease: any) => {
-                        const tn = lease.tenant ?? data.tenants?.find((t: any) => t.id === lease.tenantId);
-                        return (
-                          <Card key={lease.id} title={`Current lease #${lease.id}`}>
-                            <div className="pg-muted" style={{ marginBottom: 6 }}>
-                              Tenant:{" "}
-                              {tn?.id ? (
-                                <Link className="pg-link" to={`/tenants/${tn.id}`}>
-                                  {tn.firstName} {tn.lastName}
-                                </Link>
-                              ) : (
-                                <span className="pg-muted">Unknown</span>
-                              )}
-                            </div>
-                            <div>
-                              <strong>{lease.leaseType}</strong> <span className="pg-muted">({lease.displayStatus ?? lease.status})</span>
-                            </div>
-                            <div className="pg-muted" style={{ marginTop: 4 }}>
-                              Start: {lease.startDate ? new Date(lease.startDate).toLocaleDateString() : "-"}{" "}
-                              | End:{" "}
-                              {lease.fixedTermEndDate ? new Date(lease.fixedTermEndDate).toLocaleDateString() : <span className="pg-muted">Month-to-month</span>}
-                            </div>
-                            <div style={{ marginTop: 4 }}>
-                              Rent: R {Number(lease.monthlyRent ?? 0).toLocaleString()} | Deposit: R {Number(lease.depositAmount ?? 0).toLocaleString()}
-                            </div>
-                            <div style={{ marginTop: 4 }}>Rent due day: {lease.rentDueDay}</div>
-                            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
-                              <button className="pg-btn pg-btn-ghost" type="button" onClick={() => void onEditLease(lease)}>
-                                Edit lease
-                              </button>
-                              <button className="pg-btn pg-btn-secondary" type="button" onClick={() => void onCancelLease(lease)}>
-                                Cancel lease
-                              </button>
-                              <button
-                                className="pg-btn pg-btn-ghost"
-                                type="button"
-                                style={{ color: "var(--danger)" }}
-                                onClick={() => void onHardDeleteLease(lease.id)}
-                              >
-                                <Trash2 size={16} style={{ marginRight: 6 }} aria-hidden />
-                                Delete permanently
-                              </button>
-                              <Link className="pg-btn pg-btn-primary" to={`/owned-properties/${id}?tab=financials&fin=invoice`}>
-                                Create invoice from lease
-                              </Link>
-                            </div>
-                          </Card>
-                        );
-                      })}
+                    <div className="pg-workspace-card-stack">
+                      {currentLeases.map((lease: any) => (
+                        <PropertyLeaseCard
+                          key={lease.id}
+                          lease={lease}
+                          title={`Current lease #${lease.id}`}
+                          tenantLabel={leaseTenantLabel(lease, data.tenants)}
+                          showEdit
+                          showCancel
+                          showDelete
+                          onEdit={() => void onEditLease(lease)}
+                          onCancel={() => {
+                            setLeaseActionError("");
+                            setLeaseCancelTarget(lease);
+                          }}
+                          onDelete={() => {
+                            setLeaseActionError("");
+                            const tn = lease.tenant ?? data.tenants?.find((t: any) => t.id === lease.tenantId);
+                            const name = tn ? `${tn.firstName ?? ""} ${tn.lastName ?? ""}`.trim() : "this lease";
+                            setLeaseDeleteTarget({ id: lease.id, label: name || `lease #${lease.id}` });
+                          }}
+                        />
+                      ))}
                     </div>
                   ) : (
                     <div className="pg-muted">No current lease linked to this property.</div>
@@ -414,50 +404,26 @@ export function OwnedPropertyDetailPage() {
                     </summary>
                     <div style={{ height: 10 }} />
                     {(data.leases?.filter?.((l: any) => !currentLeaseIdSet.has(String(l.id)))?.length ?? 0) ? (
-                      <div className="pg-workspace-inset-list">
+                      <div className="pg-workspace-card-stack">
                         {data.leases
                           .filter((l: any) => !currentLeaseIdSet.has(String(l.id)))
                           .map((l: any) => (
-                            <div key={l.id} className="pg-workspace-inset">
-                              <div className="pg-muted" style={{ marginBottom: 6 }}>
-                                Tenant:{" "}
-                                {l.tenant?.id ? (
-                                  <Link className="pg-link" to={`/tenants/${l.tenant.id}`}>
-                                    {l.tenant.firstName} {l.tenant.lastName}
-                                  </Link>
-                                ) : (
-                                  <span className="pg-muted">Unknown</span>
-                                )}
-                              </div>
-                              <div>
-                                <strong>{l.leaseType}</strong> <span className="pg-muted">({l.status})</span>
-                              </div>
-                              <div className="pg-muted" style={{ marginTop: 4 }}>
-                                Start: {l.startDate ? new Date(l.startDate).toLocaleDateString() : "-"}{" "}
-                                | End: {l.fixedTermEndDate ? new Date(l.fixedTermEndDate).toLocaleDateString() : "Month-to-month"}
-                              </div>
-                              <div style={{ marginTop: 4 }}>
-                                Rent: R {Number(l.monthlyRent ?? 0).toLocaleString()} | Deposit: R {Number(l.depositAmount ?? 0).toLocaleString()}
-                              </div>
-                              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
-                                {!["CANCELLED", "TERMINATED", "ARCHIVED"].includes(l.status) ? (
-                                  <button className="pg-btn pg-btn-ghost" type="button" onClick={() => void onEditLease(l)}>
-                                    Edit
-                                  </button>
-                                ) : null}
-                                {["ACTIVE", "MONTH_TO_MONTH"].includes(l.status) ? null : (
-                                  <button
-                                    className="pg-btn pg-btn-ghost"
-                                    type="button"
-                                    style={{ color: "var(--danger)" }}
-                                    onClick={() => void onHardDeleteLease(l.id)}
-                                  >
-                                    <Trash2 size={16} style={{ marginRight: 6 }} aria-hidden />
-                                    Delete permanently
-                                  </button>
-                                )}
-                              </div>
-                            </div>
+                            <PropertyLeaseCard
+                              key={l.id}
+                              lease={l}
+                              title={`Lease #${l.id}`}
+                              tenantLabel={leaseTenantLabel(l, data.tenants)}
+                              showEdit={!["CANCELLED", "TERMINATED", "ARCHIVED"].includes(l.status)}
+                              showCancel={false}
+                              showDelete={!["ACTIVE", "MONTH_TO_MONTH"].includes(l.status)}
+                              onEdit={() => void onEditLease(l)}
+                              onDelete={() => {
+                                setLeaseActionError("");
+                                const tn = l.tenant ?? data.tenants?.find((t: any) => t.id === l.tenantId);
+                                const name = tn ? `${tn.firstName ?? ""} ${tn.lastName ?? ""}`.trim() : "this lease";
+                                setLeaseDeleteTarget({ id: l.id, label: name || `lease #${l.id}` });
+                              }}
+                            />
                           ))}
                       </div>
                     ) : (
@@ -519,6 +485,41 @@ export function OwnedPropertyDetailPage() {
           </>
         ) : null}
       </Container>
+
+      <ConfirmDialog
+        open={leaseDeleteTarget != null}
+        title="Delete lease permanently?"
+        confirmLabel="Delete permanently"
+        confirmVariant="danger"
+        loading={leaseActionLoading}
+        onClose={() => {
+          if (!leaseActionLoading) setLeaseDeleteTarget(null);
+        }}
+        onConfirm={() => void confirmHardDeleteLease()}
+      >
+        <p style={{ marginTop: 0 }}>
+          Permanently delete <strong>{leaseDeleteTarget?.label}</strong>? This removes the lease and all linked invoices,
+          income entries, and recurring rules. This cannot be undone.
+        </p>
+        <p className="pg-muted" style={{ fontSize: 13, marginBottom: 0 }}>
+          To keep lease history in reports, cancel the lease instead.
+        </p>
+        {leaseActionError ? <div className="pg-alert pg-alert-error" style={{ marginTop: 12 }}>{leaseActionError}</div> : null}
+      </ConfirmDialog>
+
+      <CancelLeaseDialog
+        open={leaseCancelTarget != null}
+        leaseLabel={leaseCancelTarget ? leaseTenantLabel(leaseCancelTarget, data?.tenants) : undefined}
+        errorMessage={leaseCancelTarget ? leaseActionError : undefined}
+        loading={leaseActionLoading}
+        onClose={() => {
+          if (!leaseActionLoading) {
+            setLeaseCancelTarget(null);
+            setLeaseActionError("");
+          }
+        }}
+        onConfirm={(payload) => void confirmCancelLease(payload)}
+      />
     </Section>
   );
 }

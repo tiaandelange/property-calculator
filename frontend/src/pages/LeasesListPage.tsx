@@ -13,6 +13,8 @@ import { paginate } from "../features/leases/leaseDirectoryUtils";
 import { Container } from "../components/ui/Container";
 import { Section } from "../components/ui/Section";
 import { Button } from "../components/ui/Button";
+import { ConfirmDialog } from "../components/ui/ConfirmDialog";
+import { CancelLeaseDialog } from "../features/properties/workspace/CancelLeaseDialog";
 
 const EMPTY_METRICS: LeaseDirectoryMetrics = {
   totalLeases: 0,
@@ -46,6 +48,10 @@ export function LeasesListPage() {
     status: "ALL",
     leaseType: "ALL"
   });
+  const [deleteLeaseId, setDeleteLeaseId] = useState<string | null>(null);
+  const [cancelLeaseItem, setCancelLeaseItem] = useState<LeaseListItem | null>(null);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [actionError, setActionError] = useState("");
 
   const load = async () => {
     setLoading(true);
@@ -103,38 +109,44 @@ export function LeasesListPage() {
     setFilters((prev) => ({ ...prev, ...next }));
   };
 
-  const handleCancelLease = async (leaseId: string) => {
-    const lease = items.find((l) => l.id === leaseId);
-    if (!lease?.isCancellable) return;
-    const cancellationDate = window.prompt("Cancellation date (YYYY-MM-DD)", new Date().toISOString().slice(0, 10));
-    if (!cancellationDate) return;
-    const cancellationReason = window.prompt("Cancellation reason (optional)", "") ?? undefined;
+  const confirmCancelLease = async (payload: { cancellationDate: string; cancellationReason?: string }) => {
+    if (!cancelLeaseItem?.isCancellable) return;
+    setActionLoading(true);
+    setActionError("");
     try {
-      await cancelLeaseApi(leaseId, { cancellationDate, cancellationReason, cancelledBy: "LANDLORD" });
-      invalidatePropertyWorkspace(lease.propertyId);
+      await cancelLeaseApi(cancelLeaseItem.id, {
+        cancellationDate: payload.cancellationDate,
+        cancellationReason: payload.cancellationReason,
+        cancelledBy: "LANDLORD"
+      });
+      invalidatePropertyWorkspace(cancelLeaseItem.propertyId);
+      setCancelLeaseItem(null);
       await load();
     } catch (e: unknown) {
-      window.alert(propertyApiErrorMessage(e));
+      setActionError(propertyApiErrorMessage(e));
+    } finally {
+      setActionLoading(false);
     }
   };
 
-  const handleDeleteLease = async (leaseId: string) => {
-    const lease = items.find((l) => l.id === leaseId);
-    if (
-      !window.confirm(
-        "Permanently delete this lease? This cannot be undone. If the lease has invoices or income on record, cancel it instead to keep financial history."
-      )
-    ) {
-      return;
-    }
+  const confirmDeleteLease = async () => {
+    if (!deleteLeaseId) return;
+    const lease = items.find((l) => l.id === deleteLeaseId);
+    setActionLoading(true);
+    setActionError("");
     try {
-      await hardDeleteLease(leaseId);
+      await hardDeleteLease(deleteLeaseId);
       if (lease?.propertyId) invalidatePropertyWorkspace(lease.propertyId);
+      setDeleteLeaseId(null);
       await load();
     } catch (e: unknown) {
-      window.alert(propertyApiErrorMessage(e));
+      setActionError(propertyApiErrorMessage(e));
+    } finally {
+      setActionLoading(false);
     }
   };
+
+  const deleteLeaseItem = deleteLeaseId ? items.find((l) => l.id === deleteLeaseId) : null;
 
   return (
     <Section>
@@ -175,8 +187,17 @@ export function LeasesListPage() {
                 <LeaseDesktopTable
                   items={pageItems}
                   loading={loading}
-                  onCancelLease={(id) => void handleCancelLease(id)}
-                  onDeleteLease={(id) => void handleDeleteLease(id)}
+                  onCancelLease={(id) => {
+                    const lease = items.find((l) => l.id === id);
+                    if (lease?.isCancellable) {
+                      setActionError("");
+                      setCancelLeaseItem(lease);
+                    }
+                  }}
+                  onDeleteLease={(id) => {
+                    setActionError("");
+                    setDeleteLeaseId(id);
+                  }}
                 />
                 <LeasePagination page={page} totalItems={filtered.length} onPageChange={setPage} />
               </section>
@@ -184,8 +205,17 @@ export function LeasesListPage() {
                 <LeaseMobileList
                   items={pageItems}
                   loading={loading}
-                  onCancelLease={(id) => void handleCancelLease(id)}
-                  onDeleteLease={(id) => void handleDeleteLease(id)}
+                  onCancelLease={(id) => {
+                    const lease = items.find((l) => l.id === id);
+                    if (lease?.isCancellable) {
+                      setActionError("");
+                      setCancelLeaseItem(lease);
+                    }
+                  }}
+                  onDeleteLease={(id) => {
+                    setActionError("");
+                    setDeleteLeaseId(id);
+                  }}
                 />
                 <section className="pg-workspace-card pg-leases-pagination-panel">
                   <LeasePagination page={page} totalItems={filtered.length} onPageChange={setPage} />
@@ -195,6 +225,41 @@ export function LeasesListPage() {
           )}
         </div>
       </Container>
+
+      <ConfirmDialog
+        open={deleteLeaseId != null}
+        title="Delete lease permanently?"
+        confirmLabel="Delete permanently"
+        confirmVariant="danger"
+        loading={actionLoading}
+        onClose={() => {
+          if (!actionLoading) setDeleteLeaseId(null);
+        }}
+        onConfirm={() => void confirmDeleteLease()}
+      >
+        <p style={{ marginTop: 0 }}>
+          Permanently delete the lease for <strong>{deleteLeaseItem?.tenantName ?? "this tenant"}</strong> at{" "}
+          <strong>{deleteLeaseItem?.propertyName ?? "this property"}</strong>? All linked invoices, income, and recurring
+          rules are removed. This cannot be undone.
+        </p>
+        {actionError ? <div className="pg-alert pg-alert-error" style={{ marginTop: 12 }}>{actionError}</div> : null}
+      </ConfirmDialog>
+
+      <CancelLeaseDialog
+        open={cancelLeaseItem != null}
+        leaseLabel={
+          cancelLeaseItem ? `${cancelLeaseItem.tenantName} · ${cancelLeaseItem.propertyName}` : undefined
+        }
+        errorMessage={cancelLeaseItem ? actionError : undefined}
+        loading={actionLoading}
+        onClose={() => {
+          if (!actionLoading) {
+            setCancelLeaseItem(null);
+            setActionError("");
+          }
+        }}
+        onConfirm={(payload) => void confirmCancelLease(payload)}
+      />
     </Section>
   );
 }

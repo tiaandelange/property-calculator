@@ -225,3 +225,34 @@
 .pg-dashboard-shell .pg-stat-title {
   color: var(--dash-text-secondary, var(--text-muted));
 }
+
+/* Property workspace lease cards */
+.pg-lease-card {
+  position: relative;
+}
+
+.pg-lease-card__delete {
+  position: absolute;
+  top: clamp(12px, 1.2vw, 16px);
+  right: clamp(12px, 1.2vw, 16px);
+  z-index: 1;
+}
+
+.pg-lease-card__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding-right: 48px;
+}
+
+.pg-lease-card__title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--dash-text-secondary, var(--text-secondary));
+}
+
+.pg-lease-card__body {
+  margin-top: 8px;
+}
