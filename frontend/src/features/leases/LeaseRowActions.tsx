@@ -1,5 +1,6 @@
 import { Building2, Eye, Trash2, User, XCircle } from "lucide-react";
 import { Link } from "react-router-dom";
+import { propertyLeasesPath } from "./leaseRoutes";
 import type { LeaseListItem } from "./leaseDirectoryTypes";
 
 export function LeaseRowActions({
@@ -34,10 +35,10 @@ export function LeaseRowActions({
         </button>
       )}
       <Link
-        to={`/leases/${lease.id}`}
+        to={propertyLeasesPath(lease.propertyId, lease.id)}
         className="pg-leases-action-btn"
-        aria-label={`Lease agreement for ${lease.tenantName}`}
-        title="Lease agreement"
+        aria-label={`View lease for ${lease.tenantName} at ${lease.propertyName}`}
+        title="View lease on property"
       >
         <Eye size={16} aria-hidden />
       </Link>

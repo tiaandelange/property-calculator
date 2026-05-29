@@ -1,6 +1,7 @@
 import { Download, ExternalLink, Pencil, Trash2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { invoiceDetailPath } from "./invoiceRoutes";
+import { propertyLeasesPath } from "../leases/leaseRoutes";
 import { InvoiceStatusBadge } from "./InvoiceStatusBadge";
 import type { InvoiceDirectoryRow } from "./invoiceDirectoryTypes";
 import { fmtZar, formatDateShort, invoiceCanHardDelete, invoiceCanVoid } from "./invoiceDirectoryUtils";
@@ -78,7 +79,7 @@ export function InvoiceDesktopTable({
                 <td>{row.unitLabel ?? "—"}</td>
                 <td>
                   {row.leaseId ? (
-                    <Link className="pg-invoices-link" to={`/leases/${row.leaseId}`}>
+                    <Link className="pg-invoices-link" to={propertyLeasesPath(row.propertyId, row.leaseId)}>
                       {row.leaseLabel ?? "View"}
                     </Link>
                   ) : (

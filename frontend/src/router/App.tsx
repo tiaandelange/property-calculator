@@ -15,7 +15,7 @@ import { OwnedPropertyFormPage } from "../pages/OwnedPropertyFormPage";
 import { OwnedPropertyDetailPage } from "../pages/OwnedPropertyDetailPage";
 import { OwnedLeasesPage } from "../pages/OwnedLeasesPage";
 import { LeaseFormPage } from "../pages/LeaseFormPage";
-import { LeaseAgreementPage } from "../pages/LeaseAgreementPage";
+import { LeaseDetailRedirect } from "../pages/LeaseDetailRedirect";
 import { FinancialsListPage } from "../pages/FinancialsListPage";
 import { OwnedInvoicesPage } from "../pages/OwnedInvoicesPage";
 import { InvoicesListPage } from "../pages/InvoicesListPage";
@@ -174,7 +174,7 @@ export function App() {
 
         <Route path="/leases" element={<RequireAuth><OwnedLeasesPage /></RequireAuth>} />
         <Route path="/leases/new" element={<RequireAuth><LeaseFormPage /></RequireAuth>} />
-        <Route path="/leases/:id" element={<RequireAuth><LeaseAgreementPage /></RequireAuth>} />
+        <Route path="/leases/:id" element={<RequireAuth><LeaseDetailRedirect /></RequireAuth>} />
         <Route path="/financials" element={<RequireAuth><FinancialsListPage /></RequireAuth>} />
         <Route path="/invoices" element={<RequireAuth><InvoicesListPage /></RequireAuth>} />
         <Route path="/invoices/new" element={<RequireAuth><InvoiceDetailPage /></RequireAuth>} />

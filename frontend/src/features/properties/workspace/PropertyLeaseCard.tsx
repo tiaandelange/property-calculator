@@ -1,4 +1,4 @@
-import { Pencil, Trash2, XCircle } from "lucide-react";
+import { Pencil, ReceiptText, Trash2, XCircle } from "lucide-react";
 import { Link } from "react-router-dom";
 import {
   formatLeaseCardDate,
@@ -28,18 +28,26 @@ export function PropertyLeaseCard({
   showEdit = true,
   showCancel = false,
   showDelete = true,
+  highlighted = false,
+  cardId,
+  canGenerateInvoice = false,
   onEdit,
   onCancel,
-  onDelete
+  onDelete,
+  onGenerateInvoice
 }: {
   lease: PropertyLeaseCardLease;
   fallbackTenants?: Array<{ id?: string | number; firstName?: string; lastName?: string }>;
   showEdit?: boolean;
   showCancel?: boolean;
   showDelete?: boolean;
+  highlighted?: boolean;
+  cardId?: string;
+  canGenerateInvoice?: boolean;
   onEdit?: () => void;
   onCancel?: () => void;
   onDelete?: () => void;
+  onGenerateInvoice?: () => void;
 }) {
   const tenantName = leaseTenantDisplayName(lease, fallbackTenants);
   const tenantHref = leaseTenantHref(lease, fallbackTenants);
@@ -51,10 +59,14 @@ export function PropertyLeaseCard({
       .map((lt) => `${lt.tenant?.firstName ?? ""} ${lt.tenant?.lastName ?? ""}`.trim())
       .filter(Boolean) ?? [];
 
-  const hasActions = (showEdit && onEdit) || (showCancel && onCancel) || (showDelete && onDelete);
+  const hasActions =
+    (showEdit && onEdit) || (showCancel && onCancel) || (showDelete && onDelete) || Boolean(onGenerateInvoice);
 
   return (
-    <article className="pg-lease-card pg-workspace-card">
+    <article
+      id={cardId}
+      className={`pg-lease-card pg-workspace-card${highlighted ? " pg-lease-card--highlighted" : ""}`}
+    >
       <header className="pg-lease-card__head">
         <div className="pg-lease-card__primary">
           <h3 className="pg-lease-card__title">
@@ -123,6 +135,18 @@ export function PropertyLeaseCard({
                 onClick={onDelete}
               >
                 <Trash2 size={16} />
+              </button>
+            ) : null}
+            {onGenerateInvoice ? (
+              <button
+                type="button"
+                className="pg-pfin-icon-btn"
+                aria-label="Generate invoice"
+                title={canGenerateInvoice ? "Generate invoice" : "Only active leases can generate invoices"}
+                disabled={!canGenerateInvoice}
+                onClick={onGenerateInvoice}
+              >
+                <ReceiptText size={16} />
               </button>
             ) : null}
           </div>

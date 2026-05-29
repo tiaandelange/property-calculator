@@ -151,7 +151,7 @@ export function InvoicesListPage() {
               <h2>No invoices found</h2>
               <p>
                 {items.length === 0
-                  ? "Invoices from active leases are generated automatically, or create one from a lease agreement."
+                  ? "Invoices from active leases are generated automatically, or create one from a property lease."
                   : "Try adjusting your search or filters."}
               </p>
               <Link className="pg-btn pg-btn-primary" to="/leases">

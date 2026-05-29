@@ -35,6 +35,7 @@ import {
 } from "./invoiceLineItemUtils";
 import { propertyUnitDisplayLabel } from "./propertyUnitDisplayLabel";
 import { invoiceStatementPath } from "./invoiceRoutes";
+import { propertyLeasesPath } from "../leases/leaseRoutes";
 import {
   INVOICE_SEND_EMAIL_COMING_SOON,
   INVOICE_SEND_MODAL_MESSAGE,
@@ -436,7 +437,10 @@ export function InvoiceDetailPanel({
                 <dt>Lease</dt>
                 <dd>
                   {leaseId ? (
-                    <Link className="pg-link" to={`/leases/${leaseId}`}>
+                    <Link
+                      className="pg-link"
+                      to={propertyId ? propertyLeasesPath(propertyId, leaseId) : `/leases/${leaseId}`}
+                    >
                       {leaseLabel ?? "View lease"}
                     </Link>
                   ) : (

@@ -295,3 +295,8 @@
   padding-top: 14px;
   border-top: 1px solid var(--border-soft);
 }
+
+.pg-lease-card--highlighted {
+  border-color: var(--primary, #7c5cff);
+  box-shadow: 0 0 0 1px var(--primary-soft, rgba(124, 92, 255, 0.35));
+}

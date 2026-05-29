@@ -26,6 +26,8 @@ import { WorkspaceStatementTab } from "../features/properties/workspace/Workspac
 import { WorkspaceLinkTenantsTab } from "../features/properties/link-tenants/WorkspaceLinkTenantsTab";
 import { CancelLeaseDialog } from "../features/properties/workspace/CancelLeaseDialog";
 import { PropertyLeaseCard, leaseTenantLabel } from "../features/properties/workspace/PropertyLeaseCard";
+import { ManualGenerateLeaseInvoiceFlow } from "../features/leases/ManualGenerateLeaseInvoiceFlow";
+import { isCurrentLeaseStatus } from "../utils/leaseDisplay";
 
 /** YYYY-MM in the user's local calendar (avoid UTC drift from `toISOString().slice(0, 7)`). */
 function localCalendarMonth(d = new Date()) {
@@ -60,6 +62,8 @@ export function OwnedPropertyDetailPage() {
   const [leaseCancelTarget, setLeaseCancelTarget] = useState<any>(null);
   const [leaseActionLoading, setLeaseActionLoading] = useState(false);
   const [leaseActionError, setLeaseActionError] = useState("");
+  const [leaseHistoryOpen, setLeaseHistoryOpen] = useState(false);
+  const [generateLeaseTarget, setGenerateLeaseTarget] = useState<any>(null);
   const tabRaw = useMemo(() => new URLSearchParams(search).get("tab") ?? "overview", [search]);
   const tab =
     tabRaw === "lease"
@@ -70,6 +74,7 @@ export function OwnedPropertyDetailPage() {
           ? "tenants"
           : tabRaw;
   const finSub = useMemo(() => new URLSearchParams(search).get("fin") ?? "statement", [search]);
+  const highlightLeaseId = useMemo(() => new URLSearchParams(search).get("leaseId"), [search]);
   const prevTabRef = useRef<string | null>(null);
   /** Ignore out-of-order responses when multiple loadAll() runs overlap (fixes stale Overview after Financials edits). */
   const loadSeqRef = useRef(0);
@@ -183,6 +188,20 @@ export function OwnedPropertyDetailPage() {
   }, [id, tab]);
 
   usePropertyWorkspaceRefresh({ propertyId: id, onRefresh: () => void loadAll() });
+
+  useEffect(() => {
+    if (!highlightLeaseId || !data) return;
+    const inCurrent = currentLeases.some((l: any) => String(l.id) === highlightLeaseId);
+    if (!inCurrent) setLeaseHistoryOpen(true);
+  }, [highlightLeaseId, data, currentLeases]);
+
+  useEffect(() => {
+    if (tab !== "leases" || !highlightLeaseId) return;
+    const timer = window.setTimeout(() => {
+      document.getElementById(`lease-card-${highlightLeaseId}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, leaseHistoryOpen ? 100 : 0);
+    return () => window.clearTimeout(timer);
+  }, [tab, highlightLeaseId, data, leaseHistoryOpen]);
 
   const refreshAfterMutation = async () => {
     await loadAll();
@@ -366,9 +385,16 @@ export function OwnedPropertyDetailPage() {
                           key={lease.id}
                           lease={lease}
                           fallbackTenants={data.tenants}
+                          cardId={`lease-card-${lease.id}`}
+                          highlighted={highlightLeaseId === String(lease.id)}
                           showEdit
                           showCancel
                           showDelete
+                          canGenerateInvoice={
+                            isCurrentLeaseStatus(String(lease.displayStatus ?? lease.status ?? "")) &&
+                            Boolean(lease.tenantId)
+                          }
+                          onGenerateInvoice={() => setGenerateLeaseTarget(lease)}
                           onEdit={() => void onEditLease(lease)}
                           onCancel={() => {
                             setLeaseActionError("");
@@ -387,7 +413,7 @@ export function OwnedPropertyDetailPage() {
                     <div className="pg-muted">No current lease linked to this property.</div>
                   )}
 
-                  <details>
+                  <details open={leaseHistoryOpen || undefined} onToggle={(e) => setLeaseHistoryOpen((e.target as HTMLDetailsElement).open)}>
                     <summary className="pg-muted" style={{ cursor: "pointer" }}>
                       Lease history
                     </summary>
@@ -401,9 +427,15 @@ export function OwnedPropertyDetailPage() {
                               key={l.id}
                               lease={l}
                               fallbackTenants={data.tenants}
+                              cardId={`lease-card-${l.id}`}
+                              highlighted={highlightLeaseId === String(l.id)}
                               showEdit={!["CANCELLED", "TERMINATED", "ARCHIVED"].includes(l.status)}
                               showCancel={false}
                               showDelete={!["ACTIVE", "MONTH_TO_MONTH"].includes(l.status)}
+                              canGenerateInvoice={
+                                isCurrentLeaseStatus(String(l.displayStatus ?? l.status ?? "")) && Boolean(l.tenantId)
+                              }
+                              onGenerateInvoice={() => setGenerateLeaseTarget(l)}
                               onEdit={() => void onEditLease(l)}
                               onDelete={() => {
                                 setLeaseActionError("");
@@ -509,6 +541,18 @@ export function OwnedPropertyDetailPage() {
         }}
         onConfirm={(payload) => void confirmCancelLease(payload)}
       />
+
+      {generateLeaseTarget ? (
+        <ManualGenerateLeaseInvoiceFlow
+          open={Boolean(generateLeaseTarget)}
+          leaseId={String(generateLeaseTarget.id)}
+          tenantId={String(generateLeaseTarget.tenantId ?? "")}
+          propertyId={String(id ?? generateLeaseTarget.propertyId ?? "")}
+          monthlyRent={Number(generateLeaseTarget.monthlyRent ?? 0)}
+          rentDueDay={Number(generateLeaseTarget.rentDueDay ?? 1)}
+          onClose={() => setGenerateLeaseTarget(null)}
+        />
+      ) : null}
     </Section>
   );
 }
