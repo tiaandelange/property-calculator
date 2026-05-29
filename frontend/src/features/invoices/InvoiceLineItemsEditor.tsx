@@ -1,4 +1,4 @@
-import { Plus, Trash2 } from "lucide-react";
+import { AppIcon, IconButton } from "../../components/icons";
 import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
 import { Select } from "../../components/ui/Select";
@@ -72,7 +72,11 @@ export function InvoiceLineItemsEditor({ lineItems, editable, defaultRent, onCha
               <th scope="col" className="pg-inv-lines__num">
                 Amount
               </th>
-              {editable ? <th scope="col"><span className="pg-invoices-sr-only">Actions</span></th> : null}
+              {editable ? (
+                <th scope="col">
+                  <span className="pg-invoices-sr-only">Actions</span>
+                </th>
+              ) : null}
             </tr>
           </thead>
           <tbody>
@@ -141,15 +145,15 @@ export function InvoiceLineItemsEditor({ lineItems, editable, defaultRent, onCha
                   <td className="pg-inv-lines__num pg-inv-lines__amount">{fmtZar(amount)}</td>
                   {editable ? (
                     <td>
-                      <button
-                        type="button"
-                        className="pg-invoices-action-btn pg-invoices-action-btn--danger"
+                      <IconButton
+                        icon="delete"
                         aria-label={`Delete line ${idx + 1}`}
+                        variant="outline"
+                        size="sm"
+                        className="pg-inv-lines__delete-btn"
                         disabled={lineItems.length <= 1}
                         onClick={() => removeLine(idx)}
-                      >
-                        <Trash2 size={16} aria-hidden />
-                      </button>
+                      />
                     </td>
                   ) : null}
                 </tr>
@@ -166,19 +170,17 @@ export function InvoiceLineItemsEditor({ lineItems, editable, defaultRent, onCha
           return (
             <article key={`m-${idx}-${li.sortOrder}`} className="pg-inv-lines__mobile-card">
               <div className="pg-inv-lines__mobile-card-head">
-                <span className="pg-inv-lines__mobile-card-title">
-                  {categoryOptionLabel(optionValue)}
-                </span>
+                <span className="pg-inv-lines__mobile-card-title">{categoryOptionLabel(optionValue)}</span>
                 {editable ? (
-                  <button
-                    type="button"
-                    className="pg-invoices-action-btn pg-invoices-action-btn--danger"
+                  <IconButton
+                    icon="delete"
                     aria-label={`Delete line ${idx + 1}`}
+                    variant="outline"
+                    size="sm"
+                    className="pg-inv-lines__delete-btn"
                     disabled={lineItems.length <= 1}
                     onClick={() => removeLine(idx)}
-                  >
-                    <Trash2 size={16} aria-hidden />
-                  </button>
+                  />
                 ) : null}
               </div>
               {editable ? (
@@ -235,7 +237,7 @@ export function InvoiceLineItemsEditor({ lineItems, editable, defaultRent, onCha
                   {li.description || "—"}
                 </p>
               )}
-              <div className="pg-inv-lines__mobile-detail-row" style={{ border: "none", padding: 0 }}>
+              <div className="pg-inv-lines__mobile-amount-row">
                 <span className="pg-muted">Amount</span>
                 <strong>{fmtZar(amount)}</strong>
               </div>
@@ -247,7 +249,7 @@ export function InvoiceLineItemsEditor({ lineItems, editable, defaultRent, onCha
       {editable ? (
         <div className="pg-inv-lines__add">
           <Button type="button" variant="ghost" onClick={addLine}>
-            <Plus size={16} style={{ marginRight: 8 }} aria-hidden />
+            <AppIcon name="add" size="sm" style={{ marginRight: 8 }} />
             Add line item
           </Button>
         </div>

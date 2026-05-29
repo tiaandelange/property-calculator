@@ -466,6 +466,27 @@
   margin-bottom: 4px;
 }
 
+.pg-inv-lines__mobile-amount-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 4px;
+  font-size: 14px;
+}
+
+.pg-inv-lines__delete-btn.pg-icon-btn {
+  min-width: 36px;
+  min-height: 36px;
+  width: 36px;
+  height: 36px;
+}
+
+.pg-inv-editor__more-wrap .pg-icon-btn {
+  min-width: 44px;
+  min-height: 44px;
+}
+
 /* —— Notes + totals —— */
 .pg-inv-editor__footer-grid {
   display: grid;

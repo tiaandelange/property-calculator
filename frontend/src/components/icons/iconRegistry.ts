@@ -25,6 +25,7 @@ import {
   FileCheck,
   Filter,
   GitBranch,
+  Hash,
   HelpCircle,
   Home,
   Hotel,
@@ -146,7 +147,8 @@ export const ICON_NAMES = [
   "maintenance",
   "info",
   "portfolio",
-  "verified"
+  "verified",
+  "hash"
 ] as const;
 
 export type IconName = (typeof ICON_NAMES)[number];
@@ -225,7 +227,8 @@ export const iconMap: Record<IconName, LucideIcon> = {
   maintenance: Wrench,
   info: Info,
   portfolio: Briefcase,
-  verified: FileCheck
+  verified: FileCheck,
+  hash: Hash
 };
 
 export function getIconComponent(name: IconName): LucideIcon {

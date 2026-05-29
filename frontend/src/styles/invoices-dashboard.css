@@ -169,6 +169,13 @@
   justify-content: flex-end;
 }
 
+.pg-invoices-actions .pg-icon-btn {
+  min-width: 36px;
+  min-height: 36px;
+  width: 36px;
+  height: 36px;
+}
+
 .pg-invoices-action-btn {
   display: inline-flex;
   align-items: center;

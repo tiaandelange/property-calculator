@@ -1,18 +1,6 @@
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  ArrowLeft,
-  Calendar,
-  ChevronDown,
-  Download,
-  Eye,
-  Hash,
-  MoreVertical,
-  Save,
-  Send,
-  Trash2,
-  User
-} from "lucide-react";
 import { Link } from "react-router-dom";
+import { AppIcon, IconButton } from "../../components/icons";
 import {
   createPropertyInvoice,
   generateInvoicePdf,
@@ -388,7 +376,7 @@ export function InvoiceDetailPanel({
         {label}
       </label>
       <div className="pg-inv-editor__input-wrap">
-        <Calendar className="pg-inv-editor__input-icon" size={18} aria-hidden />
+        <AppIcon name="calendar" size="md" className="pg-inv-editor__input-icon" />
         <Input
           id={id}
           type="date"
@@ -405,21 +393,21 @@ export function InvoiceDetailPanel({
 
   const renderMoreMenu = () => (
     <div className="pg-inv-editor__more-wrap" ref={moreRef}>
-      <Button
-        type="button"
-        variant="ghost"
+      <IconButton
+        icon="more"
         aria-label="More actions"
+        variant="ghost"
+        size="md"
+        tooltip={false}
         aria-expanded={moreOpen}
         aria-haspopup="menu"
         onClick={() => setMoreOpen((o) => !o)}
-      >
-        <MoreVertical size={18} aria-hidden />
-      </Button>
+      />
       {moreOpen ? (
         <div className="pg-inv-editor__more-menu" role="menu">
           {activeId ? (
             <button type="button" className="pg-inv-editor__more-item" role="menuitem" disabled={pdfBusy} onClick={() => void downloadPdf()}>
-              <Download size={16} aria-hidden />
+              <AppIcon name="download" size="sm" />
               Download PDF
             </button>
           ) : null}
@@ -438,7 +426,7 @@ export function InvoiceDetailPanel({
                 setConfirmDelete("delete");
               }}
             >
-              <Trash2 size={16} aria-hidden />
+              <AppIcon name="delete" size="sm" />
               Delete invoice
             </button>
           ) : null}
@@ -484,7 +472,7 @@ export function InvoiceDetailPanel({
           <div className="pg-inv-editor__page-head-main">
             <div className="pg-inv-editor__back-row">
               <Link className="pg-inv-editor__back" to="/invoices" aria-label="Back to invoices">
-                <ArrowLeft size={18} aria-hidden />
+                <AppIcon name="back" size="md" />
               </Link>
               <nav className="pg-inv-editor__breadcrumb" aria-label="Breadcrumb">
                 <Link to="/invoices">Invoices</Link>
@@ -502,18 +490,18 @@ export function InvoiceDetailPanel({
           </div>
           <div className="pg-inv-editor__actions pg-inv-editor__actions--desktop">
             <Button type="button" variant="secondary" loading={pdfBusy} onClick={() => void exportPdf()}>
-              <Eye size={16} style={{ marginRight: 8 }} aria-hidden />
+              <AppIcon name="view" size="sm" style={{ marginRight: 8 }} />
               Preview
             </Button>
             {editable ? (
               <Button type="submit" variant="secondary" loading={saving} className="pg-inv-editor__btn-outline">
-                <Save size={16} style={{ marginRight: 8 }} aria-hidden />
+                <AppIcon name="save" size="sm" style={{ marginRight: 8 }} />
                 Save Draft
               </Button>
             ) : null}
             {editable && canMarkInvoiceSent(status) ? (
               <Button type="button" loading={sendBusy} onClick={() => setConfirmSend(true)}>
-                <Send size={16} style={{ marginRight: 8 }} aria-hidden />
+                <AppIcon name="send" size="sm" style={{ marginRight: 8 }} />
                 {invoiceSendButtonLabel()}
               </Button>
             ) : null}
@@ -523,7 +511,7 @@ export function InvoiceDetailPanel({
 
         <header className="pg-inv-editor__mobile-head">
           <Link className="pg-inv-editor__back" to="/invoices" aria-label="Back to invoices">
-            <ArrowLeft size={18} aria-hidden />
+            <AppIcon name="back" size="md" />
           </Link>
           <h1 className="pg-inv-editor__mobile-title">{pageTitle}</h1>
           {renderMoreMenu()}
@@ -552,10 +540,10 @@ export function InvoiceDetailPanel({
               <span className="pg-inv-editor__label">Tenant / Contact</span>
               <div className="pg-inv-editor__tenant-select" aria-label="Tenant">
                 <span className="pg-inv-editor__tenant-avatar" aria-hidden>
-                  <User size={16} />
+                  <AppIcon name="tenant" size="sm" />
                 </span>
                 <span className="pg-inv-editor__tenant-name">{toName}</span>
-                <ChevronDown size={18} className="pg-inv-editor__input-icon" aria-hidden />
+                <AppIcon name="chevronDown" size="md" className="pg-inv-editor__input-icon" />
               </div>
             </div>
 
@@ -567,7 +555,7 @@ export function InvoiceDetailPanel({
                 Invoice Number
               </label>
               <div className="pg-inv-editor__input-wrap">
-                <Hash className="pg-inv-editor__input-icon" size={18} aria-hidden />
+                <AppIcon name="hash" size="md" className="pg-inv-editor__input-icon" />
                 <Input id="inv-number" value={displayNumber} readOnly disabled aria-label="Invoice number" />
               </div>
             </div>
@@ -598,10 +586,10 @@ export function InvoiceDetailPanel({
               <span className="pg-inv-editor__label">Tenant / Contact</span>
               <div className="pg-inv-editor__tenant-select" style={{ marginTop: 8 }}>
                 <span className="pg-inv-editor__tenant-avatar" aria-hidden>
-                  <User size={16} />
+                  <AppIcon name="tenant" size="sm" />
                 </span>
                 <span className="pg-inv-editor__tenant-name">{toName}</span>
-                <ChevronDown size={18} className="pg-inv-editor__input-icon" aria-hidden />
+                <AppIcon name="chevronDown" size="md" className="pg-inv-editor__input-icon" />
               </div>
             </div>
 
@@ -703,10 +691,12 @@ export function InvoiceDetailPanel({
         <div className="pg-inv-editor__mobile-bar">
           {editable ? (
             <Button type="submit" variant="secondary" loading={saving} className="pg-inv-editor__btn-outline">
+              <AppIcon name="save" size="sm" style={{ marginRight: 8 }} />
               Save Draft
             </Button>
           ) : (
             <Button type="button" variant="secondary" loading={pdfBusy} onClick={() => void exportPdf()}>
+              <AppIcon name="view" size="sm" style={{ marginRight: 8 }} />
               Preview
             </Button>
           )}
