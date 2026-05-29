@@ -42,7 +42,7 @@ export function OwnedPropertiesReportsPage() {
                 Property reports generated from the Properties workspace.
               </div>
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                <Link className="pg-btn pg-btn-ghost" to="/invoices">Generate Portfolio Report</Link>
+                <Link className="pg-btn pg-btn-ghost" to="/owned-properties/reports">Generate Portfolio Report</Link>
                 <Link className="pg-btn pg-btn-ghost" to="/dashboard">My Reports</Link>
                 <button className="pg-btn pg-btn-secondary" type="button" onClick={() => void load()} disabled={loading}>
                   Refresh

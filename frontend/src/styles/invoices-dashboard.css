@@ -1,0 +1,331 @@
+/* Invoices workspace directory — mirrors leases dashboard patterns */
+
+.pg-container--invoices-dashboard {
+  max-width: none;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.pg-invoices {
+  --invoices-gap: var(--workspace-section-gap, clamp(14px, 1.4vw, 22px));
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: clamp(16px, 2vw, 28px) 0 12px;
+  color: var(--dash-text-primary, var(--text-primary));
+  box-sizing: border-box;
+  display: grid;
+  gap: var(--invoices-gap);
+}
+
+.pg-invoices-toolbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.pg-invoices-toolbar-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.pg-invoices-metrics {
+  display: grid;
+  gap: var(--invoices-gap);
+}
+
+.pg-invoices-metrics--desktop {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.pg-invoices-metrics--mobile {
+  display: none;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.pg-invoices-controls-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.pg-invoices-search {
+  flex: 1 1 220px;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 44px;
+  padding: 0 14px;
+  border-radius: 14px;
+  border: 1px solid var(--border-soft);
+  background: var(--surface);
+}
+
+.pg-invoices-controls-filters {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  flex: 0 1 auto;
+}
+
+.pg-invoices-search-icon {
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.pg-invoices-search-input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  outline: none;
+}
+
+.pg-invoices-select {
+  height: 44px;
+  padding: 0 12px;
+  border-radius: 14px;
+  border: 1px solid var(--border-soft);
+  background: var(--surface);
+  font: inherit;
+  color: inherit;
+}
+
+.pg-invoices-select--pill {
+  border-radius: 999px;
+}
+
+.pg-invoices-overdue-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.pg-invoices-table-wrap {
+  overflow-x: auto;
+  border-radius: 16px;
+  border: 1px solid var(--border-soft);
+  background: var(--surface);
+}
+
+.pg-invoices-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.pg-invoices-table th,
+.pg-invoices-table td {
+  padding: 12px 14px;
+  text-align: left;
+  border-bottom: 1px solid var(--border-soft);
+  vertical-align: middle;
+}
+
+.pg-invoices-table th {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.pg-invoices-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.pg-invoices-table tbody tr:hover td {
+  background: color-mix(in srgb, var(--primary) 4%, transparent);
+}
+
+.pg-invoices-link {
+  color: var(--primary);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.pg-invoices-link:hover {
+  text-decoration: underline;
+}
+
+.pg-invoices-num {
+  font-variant-numeric: tabular-nums;
+}
+
+.pg-invoices-actions {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.pg-invoices-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  border: 1px solid var(--border-soft);
+  background: var(--surface);
+  color: var(--text-primary);
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.pg-invoices-action-btn:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--primary) 35%, var(--border-soft));
+  color: var(--primary);
+}
+
+.pg-invoices-action-btn--danger:hover:not(:disabled) {
+  color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 35%, var(--border-soft));
+}
+
+.pg-invoices-action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pg-invoices-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid var(--border-soft);
+  white-space: nowrap;
+}
+
+.pg-invoices-badge--success {
+  color: var(--success);
+  background: color-mix(in srgb, var(--success) 12%, transparent);
+}
+
+.pg-invoices-badge--danger {
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+}
+
+.pg-invoices-badge--warning {
+  color: var(--warning);
+  background: color-mix(in srgb, var(--warning) 12%, transparent);
+}
+
+.pg-invoices-badge--muted {
+  color: var(--text-muted);
+  background: var(--surface-muted, color-mix(in srgb, var(--text-muted) 8%, transparent));
+}
+
+.pg-invoices-badge--neutral {
+  color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 10%, transparent);
+}
+
+.pg-invoices-empty {
+  padding: clamp(20px, 3vw, 32px);
+  text-align: center;
+}
+
+.pg-invoices-empty h2 {
+  margin: 0 0 8px;
+}
+
+.pg-invoices-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.pg-invoices-pagination-summary {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.pg-invoices-pagination-nav {
+  display: inline-flex;
+  gap: 6px;
+}
+
+.pg-invoices-page-btn {
+  min-width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid var(--border-soft);
+  background: var(--surface);
+  cursor: pointer;
+}
+
+.pg-invoices-page-btn--active {
+  background: color-mix(in srgb, var(--primary) 12%, var(--surface));
+  border-color: color-mix(in srgb, var(--primary) 35%, var(--border-soft));
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.pg-invoices-table-skeleton {
+  min-height: 240px;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--border-soft) 40%, transparent) 25%,
+    color-mix(in srgb, var(--border-soft) 70%, transparent) 50%,
+    color-mix(in srgb, var(--border-soft) 40%, transparent) 75%
+  );
+  background-size: 200% 100%;
+  animation: pg-invoices-shimmer 1.2s infinite;
+}
+
+@keyframes pg-invoices-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.pg-invoices-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 960px) {
+  .pg-invoices-metrics--desktop {
+    display: none;
+  }
+  .pg-invoices-metrics--mobile {
+    display: grid;
+  }
+  .pg-invoices-desktop-only {
+    display: none;
+  }
+}
+
+@media (max-width: 720px) {
+  .pg-invoices-table th:nth-child(n + 6),
+  .pg-invoices-table td:nth-child(n + 6) {
+    display: none;
+  }
+}

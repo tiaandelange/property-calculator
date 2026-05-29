@@ -87,6 +87,50 @@ const INVOICE_DETAIL_SELECT = `
   tenants ( id, first_name, last_name, email, phone )
 `;
 
+const INVOICE_DIRECTORY_SELECT = `
+  id,
+  user_id,
+  property_id,
+  tenant_id,
+  lease_id,
+  unit_id,
+  invoice_number,
+  invoice_type,
+  invoice_period,
+  invoice_date,
+  issue_date,
+  due_date,
+  status,
+  total,
+  total_amount,
+  balance_due,
+  paid_at,
+  created_at,
+  pdf_storage_key,
+  pdf_storage_bucket,
+  tenants ( id, first_name, last_name ),
+  properties ( id, name ),
+  property_units ( id, unit_label, unit_number ),
+  leases ( id, start_date, fixed_term_end_date, status )
+`;
+
+export async function listInvoicesDirectory(): Promise<Record<string, unknown>[]> {
+  const uid = await requireUserId();
+  const sb = getSupabase();
+  const { data, error } = await sb
+    .from("invoices")
+    .select(INVOICE_DIRECTORY_SELECT)
+    .eq("user_id", uid)
+    .order("due_date", { ascending: false, nullsFirst: false })
+    .order("created_at", { ascending: false });
+  if (error) throw toError(error);
+  return data ?? [];
+}
+
+export async function voidInvoice(id: string | number): Promise<Record<string, unknown>> {
+  return updateInvoice(id, { status: "VOID" });
+}
+
 export async function listInvoices(
   propertyId: string | number,
   filters?: {

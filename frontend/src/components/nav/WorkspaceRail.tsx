@@ -142,6 +142,7 @@ export function WorkspaceRail({ userRole }: WorkspaceRailProps) {
     { to: "/owned-properties/my-properties", label: "My properties" },
     { to: "/tenants", label: "Tenants" },
     { to: "/leases", label: "Leases" },
+    { to: "/invoices", label: "Invoices" },
     { to: "/financials", label: "Financials" },
     { to: "/documents", label: "Documents" },
     { to: "/owned-properties/reports", label: "Reports" }

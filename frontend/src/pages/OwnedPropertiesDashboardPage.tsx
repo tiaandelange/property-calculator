@@ -180,7 +180,7 @@ export function OwnedPropertiesDashboardPage() {
             <Button onClick={load} loading={loading}>Refresh</Button>
             <Link className="pg-btn pg-btn-secondary" to="/owned-properties/new">Add Property</Link>
             <Link className="pg-btn pg-btn-ghost" to="/financials">Add Income/Expense</Link>
-            <Link className="pg-btn pg-btn-ghost" to="/invoices">Generate Portfolio Report</Link>
+            <Link className="pg-btn pg-btn-ghost" to="/owned-properties/reports">Generate Portfolio Report</Link>
           </div>
         </div>
         {error ? <div className="pg-alert pg-alert-error" style={{ marginTop: 12 }}>{error}</div> : null}
@@ -351,7 +351,7 @@ export function OwnedPropertiesDashboardPage() {
                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
                       <Link className="pg-btn pg-btn-ghost" to={`/owned-properties/${p.id}`}>View</Link>
                       <Link className="pg-btn pg-btn-ghost" to={`/owned-properties/${p.id}?tab=financials`}>Financials</Link>
-                      <Link className="pg-btn pg-btn-ghost" to={`/owned-properties/${p.id}?tab=invoices`}>Invoices</Link>
+                      <Link className="pg-btn pg-btn-ghost" to={`/invoices?propertyId=${encodeURIComponent(String(p.id))}`}>Invoices</Link>
                       <Link className="pg-btn pg-btn-ghost" to={`/owned-properties/${p.id}?tab=documents`}>Documents</Link>
                     </div>
                   </div>

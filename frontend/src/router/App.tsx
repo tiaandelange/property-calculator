@@ -18,6 +18,7 @@ import { LeaseFormPage } from "../pages/LeaseFormPage";
 import { LeaseAgreementPage } from "../pages/LeaseAgreementPage";
 import { FinancialsListPage } from "../pages/FinancialsListPage";
 import { OwnedInvoicesPage } from "../pages/OwnedInvoicesPage";
+import { InvoicesListPage } from "../pages/InvoicesListPage";
 import { OwnedRecurringInvoicesPage } from "../pages/OwnedRecurringInvoicesPage";
 import { OwnedDocumentsPage } from "../pages/OwnedDocumentsPage";
 import { PropertyReportPage } from "../pages/PropertyReportPage";
@@ -180,7 +181,7 @@ export function App() {
         <Route path="/owned-properties/tenants" element={<RequireAuth><Navigate to="/tenants" replace /></RequireAuth>} />
         <Route path="/owned-properties/leases" element={<RequireAuth><Navigate to="/leases" replace /></RequireAuth>} />
         <Route path="/owned-properties/financials" element={<RequireAuth><Navigate to="/financials" replace /></RequireAuth>} />
-        <Route path="/owned-properties/invoices" element={<RequireAuth><Navigate to="/financials" replace /></RequireAuth>} />
+        <Route path="/owned-properties/invoices" element={<RequireAuth><Navigate to="/invoices" replace /></RequireAuth>} />
         <Route path="/owned-properties/documents" element={<RequireAuth><Navigate to="/documents" replace /></RequireAuth>} />
         <Route
           path="/owned-properties/recurring-invoices"
@@ -195,7 +196,7 @@ export function App() {
         <Route path="/leases/new" element={<RequireAuth><LeaseFormPage /></RequireAuth>} />
         <Route path="/leases/:id" element={<RequireAuth><LeaseAgreementPage /></RequireAuth>} />
         <Route path="/financials" element={<RequireAuth><FinancialsListPage /></RequireAuth>} />
-        <Route path="/invoices" element={<RequireAuth><Navigate to="/financials" replace /></RequireAuth>} />
+        <Route path="/invoices" element={<RequireAuth><InvoicesListPage /></RequireAuth>} />
         <Route path="/invoices/legacy" element={<RequireAuth><OwnedInvoicesPage /></RequireAuth>} />
         <Route path="/documents" element={<RequireAuth><OwnedDocumentsPage /></RequireAuth>} />
         <Route path="/tenants" element={<RequireAuth><TenantsListPage /></RequireAuth>} />

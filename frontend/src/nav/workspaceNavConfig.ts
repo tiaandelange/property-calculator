@@ -8,6 +8,7 @@ import {
   Home,
   LayoutDashboard,
   MessageSquare,
+  ReceiptText,
   Settings,
   Users,
 } from "lucide-react";
@@ -27,6 +28,7 @@ export const WORKSPACE_SIDEBAR_NAV: WorkspaceNavItem[] = [
   { id: "properties", label: "Properties", icon: Home, to: "/owned-properties/my-properties", bottomNav: true },
   { id: "tenants", label: "Tenants", icon: Users, to: "/tenants", bottomNav: true },
   { id: "leases", label: "Leases", icon: FileText, to: "/leases", bottomNav: true },
+  { id: "invoices", label: "Invoices", icon: ReceiptText, to: "/invoices" },
   { id: "financials", label: "Financials", icon: CreditCard, to: "/financials" },
   { id: "documents", label: "Documents", icon: File, to: "/documents" },
   { id: "reports", label: "Reports", icon: BarChart3, to: "/owned-properties/reports" },
@@ -50,7 +52,10 @@ export function isWorkspaceNavActive(pathname: string, item: WorkspaceNavItem): 
     );
   }
   if (item.id === "financials") {
-    return pathname.startsWith("/financials") || pathname.startsWith("/invoices");
+    return pathname.startsWith("/financials");
+  }
+  if (item.id === "invoices") {
+    return pathname === "/invoices" || pathname.startsWith("/invoices/");
   }
   if (item.id === "reports") {
     return pathname.includes("/owned-properties/reports");
@@ -66,7 +71,8 @@ export function workspacePageTitle(pathname: string): string {
   if (pathname.startsWith("/owned-properties/") && !pathname.includes("/reports")) return "Properties";
   if (pathname.startsWith("/tenants")) return "Tenants";
   if (pathname.startsWith("/leases")) return "Leases";
-  if (pathname.startsWith("/financials") || pathname.startsWith("/invoices")) return "Financials";
+  if (pathname.startsWith("/invoices")) return "Invoices";
+  if (pathname.startsWith("/financials")) return "Financials";
   if (pathname.includes("/owned-properties/reports")) return "Reports";
   if (pathname.startsWith("/documents")) return "Documents";
   if (pathname.startsWith("/settings")) return "Settings";

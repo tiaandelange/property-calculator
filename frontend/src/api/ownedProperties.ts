@@ -319,6 +319,12 @@ export async function listPropertyInvoices(propertyId: string | number) {
   return invoicesSupabase.listInvoices(propertyId);
 }
 
+export async function getInvoicesDirectory() {
+  assertSupabaseConfigured();
+  const { getInvoicesDirectory: load } = await import("../services/invoicesDirectorySupabase");
+  return load();
+}
+
 export async function getInvoice(invoiceId: string | number) {
   assertSupabaseConfigured();
   return invoicesSupabase.getInvoice(invoiceId);
@@ -342,6 +348,11 @@ export async function markInvoicePaid(invoiceId: string | number) {
 export async function hardDeleteInvoice(invoiceId: string | number) {
   assertSupabaseConfigured();
   return invoicesSupabase.deleteInvoice(invoiceId);
+}
+
+export async function voidInvoice(invoiceId: string | number) {
+  assertSupabaseConfigured();
+  return invoicesSupabase.voidInvoice(invoiceId);
 }
 
 /** Generate invoice PDF (Vercel + Storage when Supabase env is set). */
