@@ -2399,6 +2399,14 @@ textarea {
   color: var(--danger);
   font-weight: 600;
 }
+.pg-statement-credit-due {
+  color: var(--warning);
+  font-weight: 600;
+}
+.pg-statement-credit-paid {
+  color: var(--success);
+  font-weight: 600;
+}
 .pg-statement-row-actions {
   display: inline-flex;
   gap: 6px;

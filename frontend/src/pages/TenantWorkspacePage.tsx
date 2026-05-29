@@ -248,7 +248,14 @@ export function TenantWorkspacePage() {
                 />
               ) : null}
               {fin === "payments" ? <TenantPaymentsTable paidInvoices={paidInvoices} loading={loading} /> : null}
-              {fin === "ledger" ? <TenantLedgerPanel transactions={transactions} loading={loading} /> : null}
+              {fin === "ledger" ? (
+                <TenantLedgerPanel
+                  transactions={transactions}
+                  loading={loading}
+                  tenantId={id ?? ""}
+                  propertyId={propertyId}
+                />
+              ) : null}
             </>
           ) : null}
 

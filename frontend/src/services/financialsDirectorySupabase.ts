@@ -42,6 +42,9 @@ function mapStatementRow(
     sourceId: raw.sourceId != null ? String(raw.sourceId) : null,
     status: String(raw.status ?? ""),
     invoiceNumber: raw.invoiceNumber != null ? String(raw.invoiceNumber) : null,
+    invoiceId: raw.invoiceId != null ? String(raw.invoiceId) : null,
+    statementType: raw.statementType != null ? String(raw.statementType) : null,
+    tenantId: raw.tenantId != null ? String(raw.tenantId) : null,
     expenseCategory: raw.expenseCategory != null ? String(raw.expenseCategory) : null
   };
 }

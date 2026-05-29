@@ -40,6 +40,10 @@ export type TenantLedgerTransaction = {
   balance: number;
   source?: string;
   status?: string;
+  invoiceId?: string;
+  tenantId?: string;
+  statementType?: string;
+  reference?: string;
   raw?: Record<string, unknown>;
 };
 

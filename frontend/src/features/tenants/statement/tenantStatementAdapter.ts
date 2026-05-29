@@ -74,6 +74,7 @@ function normalizeTxnType(row: Record<string, unknown>): TenantLedgerTransaction
 
 function rowBelongsToTenant(
   row: Record<string, unknown>,
+  tenantId: string,
   tenantLeaseIds: Set<string>,
   singleTenantProperty: boolean
 ): boolean {
@@ -81,6 +82,8 @@ function rowBelongsToTenant(
   if (src === "EXPENSE") return false;
   if (src === "INVOICE") {
     const lid = row.leaseId != null ? String(row.leaseId) : "";
+    const tid = row.tenantId != null ? String(row.tenantId) : "";
+    if (tid !== "" && tid === String(tenantId)) return true;
     return lid !== "" && tenantLeaseIds.has(lid);
   }
   if (src === "INCOME") return singleTenantProperty;
@@ -105,6 +108,10 @@ function mapStatementRow(row: Record<string, unknown>): TenantLedgerTransaction 
     balance: Number(row.balance ?? 0),
     source: row.source != null ? String(row.source) : undefined,
     status: row.status != null ? String(row.status) : undefined,
+    invoiceId: row.invoiceId != null ? String(row.invoiceId) : undefined,
+    tenantId: row.tenantId != null ? String(row.tenantId) : undefined,
+    statementType: row.statementType != null ? String(row.statementType) : undefined,
+    reference: row.reference != null ? String(row.reference) : undefined,
     raw: row
   };
 }
@@ -135,7 +142,7 @@ export async function loadTenantFinancialBundle(opts: {
   for (const st of monthStatements) {
     const rows = (st?.statementRows ?? []) as Record<string, unknown>[];
     for (const r of rows) {
-      if (!rowBelongsToTenant(r, leaseSet, opts.singleTenantProperty)) continue;
+      if (!rowBelongsToTenant(r, opts.tenantId, leaseSet, opts.singleTenantProperty)) continue;
       const mapped = mapStatementRow(r);
       if (!mapped.date) continue;
       const d = parseYmd(mapped.date);

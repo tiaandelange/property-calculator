@@ -2,13 +2,20 @@ import { useMemo, useState, type CSSProperties } from "react";
 import {
   AlertCircle,
   CircleDollarSign,
+  ExternalLink,
   Filter,
   ReceiptText,
   Wallet
 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { IconContainer } from "../../../components/ui/IconContainer";
 import { Button } from "../../../components/ui/Button";
+import { tenantInvoiceEditorPath } from "../../invoices/invoiceRoutes";
+import {
+  invoiceIdFromStatementRow,
+  invoiceStatementCreditClass,
+  isInvoiceStatementRow
+} from "../../invoices/invoiceStatementUtils";
 import { fmtZar, paymentTermsNote } from "../statement/tenantStatementAdapter";
 import { formatDateShort, tenantInitials } from "../tenantDirectoryUtils";
 import type {
@@ -207,6 +214,7 @@ export function TenantStatementTabContent({
   rentDueDay: number | null;
   loading?: boolean;
 }) {
+  const navigate = useNavigate();
   const [filterOpen, setFilterOpen] = useState(false);
   const [typeFilter, setTypeFilter] = useState("ALL");
 
@@ -306,23 +314,62 @@ export function TenantStatementTabContent({
                     <th scope="col">Type</th>
                     <th scope="col">Amount</th>
                     <th scope="col">Balance</th>
+                    <th scope="col">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.map((row) => (
-                    <tr key={row.id}>
-                      <td>{formatDateShort(row.date)}</td>
-                      <td>{row.description || "—"}</td>
-                      <td>
-                        <TypeBadge type={row.type} />
-                      </td>
-                      <td style={{ color: amountColor(row.type, row.amount) }}>
-                        {row.amount < 0 ? "-" : ""}
-                        {fmtZar(Math.abs(row.amount))}
-                      </td>
-                      <td>{fmtZar(row.balance)}</td>
-                    </tr>
-                  ))}
+                  {filtered.map((row) => {
+                    const raw = row.raw ?? {};
+                    const showInvoiceView = isInvoiceStatementRow(raw) && !!invoiceIdFromStatementRow(raw);
+                    const invoiceCreditClass = isInvoiceStatementRow(raw)
+                      ? invoiceStatementCreditClass(row.status)
+                      : "";
+
+                    return (
+                      <tr key={row.id}>
+                        <td>{formatDateShort(row.date)}</td>
+                        <td>{row.description || "—"}</td>
+                        <td>
+                          <TypeBadge type={row.type} />
+                        </td>
+                        <td
+                          className={invoiceCreditClass}
+                          style={
+                            invoiceCreditClass ? undefined : { color: amountColor(row.type, row.amount) }
+                          }
+                        >
+                          {row.amount < 0 ? "-" : ""}
+                          {fmtZar(Math.abs(row.amount))}
+                        </td>
+                        <td>{fmtZar(row.balance)}</td>
+                        <td>
+                          {showInvoiceView ? (
+                            <button
+                              type="button"
+                              className="pg-btn pg-btn-ghost pg-btn-sm"
+                              style={{ display: "inline-flex", alignItems: "center", gap: 4 }}
+                              onClick={() =>
+                                navigate(
+                                  tenantInvoiceEditorPath(
+                                    summary.tenantId,
+                                    invoiceIdFromStatementRow(raw),
+                                    summary.propertyId
+                                  )
+                                )
+                              }
+                              aria-label="View invoice"
+                              title="View invoice"
+                            >
+                              <ExternalLink size={14} aria-hidden />
+                              View
+                            </button>
+                          ) : (
+                            "—"
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -485,11 +532,17 @@ export function TenantPaymentsTable({
 
 export function TenantLedgerPanel({
   transactions,
-  loading
+  loading,
+  tenantId,
+  propertyId
 }: {
   transactions: TenantLedgerTransaction[];
   loading?: boolean;
+  tenantId: string;
+  propertyId?: string | null;
 }) {
+  const navigate = useNavigate();
+
   if (loading) return <div className="pg-tstmt-card pg-tstmt-skeleton" />;
   if (!transactions.length) {
     return (
@@ -511,23 +564,63 @@ export function TenantLedgerPanel({
               <th scope="col">Type</th>
               <th scope="col">Amount</th>
               <th scope="col">Balance</th>
+              <th scope="col">Actions</th>
             </tr>
           </thead>
           <tbody>
-            {transactions.map((row) => (
-              <tr key={row.id}>
-                <td>{formatDateShort(row.date)}</td>
-                <td>{row.description || "—"}</td>
-                <td>
-                  <TypeBadge type={row.type} />
-                </td>
-                <td style={{ color: amountColor(row.type, row.amount) }}>
-                  {row.amount < 0 ? "-" : ""}
-                  {fmtZar(Math.abs(row.amount))}
-                </td>
-                <td>{fmtZar(row.balance)}</td>
-              </tr>
-            ))}
+            {transactions.map((row) => {
+              const raw = row.raw ?? {};
+              const showInvoiceView = isInvoiceStatementRow(raw) && !!invoiceIdFromStatementRow(raw);
+              const amountStyle = isInvoiceStatementRow(raw)
+                ? { color: undefined as string | undefined }
+                : { color: amountColor(row.type, row.amount) };
+              const invoiceCreditClass = isInvoiceStatementRow(raw)
+                ? invoiceStatementCreditClass(row.status)
+                : "";
+
+              return (
+                <tr key={row.id}>
+                  <td>{formatDateShort(row.date)}</td>
+                  <td>{row.description || "—"}</td>
+                  <td>
+                    <TypeBadge type={row.type} />
+                  </td>
+                  <td
+                    className={invoiceCreditClass}
+                    style={invoiceCreditClass ? undefined : amountStyle}
+                  >
+                    {row.amount < 0 ? "-" : ""}
+                    {fmtZar(Math.abs(row.amount))}
+                  </td>
+                  <td>{fmtZar(row.balance)}</td>
+                  <td>
+                    {showInvoiceView ? (
+                      <button
+                        type="button"
+                        className="pg-btn pg-btn-ghost pg-btn-sm"
+                        style={{ display: "inline-flex", alignItems: "center", gap: 4 }}
+                        onClick={() =>
+                          navigate(
+                            tenantInvoiceEditorPath(
+                              tenantId,
+                              invoiceIdFromStatementRow(raw),
+                              propertyId
+                            )
+                          )
+                        }
+                        aria-label="View invoice"
+                        title="View invoice"
+                      >
+                        <ExternalLink size={14} aria-hidden />
+                        View
+                      </button>
+                    ) : (
+                      "—"
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

@@ -1,6 +1,12 @@
 import { Fragment, useEffect, useMemo, useState, type MouseEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { BookOpen, Check, ChevronDown, ExternalLink, Pencil, Plus, Trash2, X } from "lucide-react";
+import { tenantInvoiceEditorPath } from "../../invoices/invoiceRoutes";
+import {
+  invoiceIdFromStatementRow,
+  invoiceStatementCreditClass,
+  tenantIdFromStatementRow
+} from "../../invoices/invoiceStatementUtils";
 import { getPropertyStatement } from "../../../api/ownedProperties";
 import { Card } from "../../../components/ui/Card";
 import { Input } from "../../../components/ui/Input";
@@ -37,10 +43,11 @@ type StatementDraft = {
 
 const INVOICE_STATUS_UI = [
   { value: "DRAFT", label: "Draft", api: "DRAFT" },
+  { value: "GENERATED", label: "Generated", api: "GENERATED" },
   { value: "SENT", label: "Sent", api: "SENT" },
-  { value: "DUE", label: "Due", api: "SENT" },
+  { value: "DUE", label: "Due", api: "DUE" },
   { value: "UNPAID", label: "Unpaid", api: "SENT" },
-  { value: "PARTIALLY_PAID", label: "Partially Paid", api: "SENT" },
+  { value: "PARTIALLY_PAID", label: "Partially Paid", api: "PARTIALLY_PAID" },
   { value: "PAID", label: "Paid", api: "PAID" },
   { value: "OVERDUE", label: "Overdue", api: "OVERDUE" },
   { value: "CANCELLED", label: "Cancelled", api: "CANCELLED" }
@@ -96,6 +103,9 @@ function invoiceUiStatus(raw: string): string {
   if (s === "OVERDUE") return "OVERDUE";
   if (s === "CANCELLED") return "CANCELLED";
   if (s === "DRAFT") return "DRAFT";
+  if (s === "GENERATED") return "GENERATED";
+  if (s === "DUE") return "DUE";
+  if (s === "PARTIALLY_PAID") return "PARTIALLY_PAID";
   return "SENT";
 }
 
@@ -584,13 +594,21 @@ export function WorkspaceStatementTab({
     setError("");
     try {
       if (r.source === "INVOICE" && sourceId) {
+        const invoiceId = invoiceIdFromStatementRow(r);
+        const tenantId = tenantIdFromStatementRow(r);
+        if (tenantId) {
+          navigate(tenantInvoiceEditorPath(tenantId, invoiceId, propertyId));
+          return;
+        }
         const inv = await getInvoice(sourceId);
         const invAny = inv as Record<string, unknown>;
         const invoiceAny = (invAny?.invoice ?? invAny) as Record<string, unknown>;
-        const invoiceId = String(invoiceAny?.id ?? sourceId);
-        const tenantId = String(invoiceAny?.tenantId ?? invoiceAny?.tenant_id ?? invAny?.tenantId ?? invAny?.tenant_id ?? "");
-        if (!tenantId) throw new Error("Tenant id was missing for this invoice.");
-        navigate(`/tenants/${tenantId}/invoices/${invoiceId}`);
+        const resolvedInvoiceId = String(invoiceAny?.id ?? sourceId);
+        const resolvedTenantId = String(
+          invoiceAny?.tenantId ?? invoiceAny?.tenant_id ?? invAny?.tenantId ?? invAny?.tenant_id ?? ""
+        );
+        if (!resolvedTenantId) throw new Error("Tenant id was missing for this invoice.");
+        navigate(tenantInvoiceEditorPath(resolvedTenantId, resolvedInvoiceId, propertyId));
         return;
       }
       if (isExpectedRentRow(r)) {
@@ -603,7 +621,7 @@ export function WorkspaceStatementTab({
         const invoiceAny = (invAny?.invoice ?? invAny) as Record<string, unknown>;
         const tenantId = String(invoiceAny?.tenantId ?? invoiceAny?.tenant_id ?? invAny?.tenantId ?? invAny?.tenant_id ?? "");
         if (!tenantId) throw new Error("Invoice created, but tenant id was missing.");
-        navigate(`/tenants/${tenantId}/invoices/${invoiceId}`);
+        navigate(tenantInvoiceEditorPath(tenantId, invoiceId, propertyId));
         return;
       }
       throw new Error("Invoice is not available for this line.");
@@ -706,7 +724,8 @@ export function WorkspaceStatementTab({
               </thead>
               <tbody>
                 {rows.map((r: Record<string, unknown>) => {
-                const creditClass = r.source === "INVOICE" && r.status !== "PAID" ? "pg-statement-credit-unpaid" : "";
+                const creditClass =
+                  r.source === "INVOICE" ? invoiceStatementCreditClass(String(r.status ?? "")) : "";
                 const sourceId = rowSourceId(r);
                 const rowKey = r.id != null ? String(r.id) : `${String(r.source)}-${String(r.date)}-${String(r.description)}`;
                 const editKey = sourceId ? statementRowKey(String(r.source), sourceId) : "";
@@ -912,7 +931,7 @@ export function WorkspaceStatementTab({
                                 title={
                                   invoiceActionEnabled(r)
                                     ? r.source === "INVOICE"
-                                      ? "Open invoice"
+                                      ? "View invoice"
                                       : "Create invoice"
                                     : "Invoice not available for this line"
                                 }
@@ -920,9 +939,13 @@ export function WorkspaceStatementTab({
                                   stopRowEvent(e);
                                   void openInvoiceForRow(r);
                                 }}
-                                aria-label="Create invoice"
+                                aria-label={r.source === "INVOICE" ? "View invoice" : "Create invoice"}
                               >
-                                <BookOpen size={16} aria-hidden />
+                                {r.source === "INVOICE" ? (
+                                  <ExternalLink size={16} aria-hidden />
+                                ) : (
+                                  <BookOpen size={16} aria-hidden />
+                                )}
                               </button>
                               <button
                                 type="button"

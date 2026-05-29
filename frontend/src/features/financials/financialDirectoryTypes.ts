@@ -12,6 +12,9 @@ export type FinancialStatementRow = {
   sourceId: string | null;
   status: string;
   invoiceNumber?: string | null;
+  invoiceId?: string | null;
+  statementType?: string | null;
+  tenantId?: string | null;
   expenseCategory?: string | null;
 };
 
