@@ -2336,6 +2336,10 @@ textarea {
   background: var(--surface);
 }
 
+.pg-statement-table-shell {
+  padding: var(--s-3);
+}
+
 .pg-statement-topbar {
   display: flex;
   align-items: center;
@@ -2755,7 +2759,7 @@ html[data-theme="light"] .pg-statement-table td {
   border-bottom-color: var(--border-soft);
 }
 html[data-theme="light"] .pg-statement-table th {
-  background: var(--surface-muted);
+  background: transparent;
 }
 html[data-theme="light"] .pg-statement-table tbody tr:hover td {
   background: color-mix(in srgb, var(--primary) 4%, transparent);

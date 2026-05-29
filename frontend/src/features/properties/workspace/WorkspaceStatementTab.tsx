@@ -617,6 +617,7 @@ export function WorkspaceStatementTab({
               </button>
             </div>
           </div>
+          <div className="pg-statement-table-shell">
           <div className="pg-tstmt-table-wrap">
             <table className="pg-tstmt-table pg-statement-table">
               <thead>
@@ -944,6 +945,7 @@ export function WorkspaceStatementTab({
                 </tr>
               </tfoot>
             </table>
+          </div>
           </div>
         </div>
       ) : null}
