@@ -120,11 +120,18 @@ export function ProplyticTableRow({
 
 type CellAlign = "left" | "right" | "center";
 
-function cellAlignClass(align?: CellAlign, numeric?: boolean, actions?: boolean) {
+function cellAlignClass(
+  align?: CellAlign,
+  numeric?: boolean,
+  actions?: boolean,
+  compact?: boolean,
+  flex?: boolean
+) {
   if (actions) return "pg-ptable__actions";
   if (numeric || align === "right") return "pg-ptable__num";
+  if (compact) return "pg-ptable__compact";
   if (align === "center") return "pg-ptable__center";
-  return undefined;
+  return flex === false ? undefined : "pg-ptable__flex";
 }
 
 export function ProplyticTableHeadCell({
@@ -133,14 +140,22 @@ export function ProplyticTableHeadCell({
   align,
   numeric,
   actions,
+  compact,
+  flex,
   ...props
 }: ThHTMLAttributes<HTMLTableCellElement> & {
   align?: CellAlign;
   numeric?: boolean;
   actions?: boolean;
+  compact?: boolean;
+  flex?: boolean;
 }) {
   return (
-    <th scope="col" className={cn(cellAlignClass(align, numeric, actions), className)} {...props}>
+    <th
+      scope="col"
+      className={cn(cellAlignClass(align, numeric, actions, compact, flex), className)}
+      {...props}
+    >
       {children}
     </th>
   );
@@ -152,14 +167,18 @@ export function ProplyticTableCell({
   align,
   numeric,
   actions,
+  compact,
+  flex,
   ...props
 }: TdHTMLAttributes<HTMLTableCellElement> & {
   align?: CellAlign;
   numeric?: boolean;
   actions?: boolean;
+  compact?: boolean;
+  flex?: boolean;
 }) {
   return (
-    <td className={cn(cellAlignClass(align, numeric, actions), className)} {...props}>
+    <td className={cn(cellAlignClass(align, numeric, actions, compact, flex), className)} {...props}>
       {children}
     </td>
   );

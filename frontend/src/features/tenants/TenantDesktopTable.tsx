@@ -46,11 +46,11 @@ export function TenantDesktopTable({
           <ProplyticTableRow>
             <ProplyticTableHeadCell>Tenant</ProplyticTableHeadCell>
             <ProplyticTableHeadCell>Property / Unit</ProplyticTableHeadCell>
-            <ProplyticTableHeadCell>Contact</ProplyticTableHeadCell>
+            <ProplyticTableHeadCell compact>Contact</ProplyticTableHeadCell>
             <ProplyticTableHeadCell numeric>Monthly Rent</ProplyticTableHeadCell>
-            <ProplyticTableHeadCell>Lease Term</ProplyticTableHeadCell>
-            <ProplyticTableHeadCell>Payment Status</ProplyticTableHeadCell>
-            <ProplyticTableHeadCell>Lease Status</ProplyticTableHeadCell>
+            <ProplyticTableHeadCell compact>Lease Term</ProplyticTableHeadCell>
+            <ProplyticTableHeadCell compact>Payment Status</ProplyticTableHeadCell>
+            <ProplyticTableHeadCell compact>Lease Status</ProplyticTableHeadCell>
             <ProplyticTableHeadCell actions>
               <span className="pg-ptable-sr-only">Actions</span>
             </ProplyticTableHeadCell>
@@ -79,7 +79,7 @@ export function TenantDesktopTable({
                   </div>
                 </div>
               </ProplyticTableCell>
-              <ProplyticTableCell>
+              <ProplyticTableCell compact>
                 <div className="pg-tenants-contact">{t.phone?.trim() || "No phone"}</div>
               </ProplyticTableCell>
               <ProplyticTableCell numeric>
@@ -89,7 +89,7 @@ export function TenantDesktopTable({
                   "—"
                 )}
               </ProplyticTableCell>
-              <ProplyticTableCell>
+              <ProplyticTableCell compact>
                 {t.leaseStartDate || t.leaseEndDate ? (
                   <div className="pg-tenants-term">
                     <div>{formatDateShort(t.leaseStartDate)}</div>
@@ -99,10 +99,10 @@ export function TenantDesktopTable({
                   <span className="pg-tenants-sub">No active lease</span>
                 )}
               </ProplyticTableCell>
-              <ProplyticTableCell>
+              <ProplyticTableCell compact>
                 <ProplyticStatusBadge status={t.paymentStatus} />
               </ProplyticTableCell>
-              <ProplyticTableCell>
+              <ProplyticTableCell compact>
                 <ProplyticStatusBadge status={t.leaseStatus} />
               </ProplyticTableCell>
               <ProplyticTableCell actions>

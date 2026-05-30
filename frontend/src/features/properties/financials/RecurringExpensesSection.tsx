@@ -102,10 +102,10 @@ export function RecurringExpensesSection({
               <ProplyticTableRow>
                 <ProplyticTableHeadCell>Expense name</ProplyticTableHeadCell>
                 <ProplyticTableHeadCell>Category</ProplyticTableHeadCell>
-                <ProplyticTableHeadCell>Frequency</ProplyticTableHeadCell>
+                <ProplyticTableHeadCell compact>Frequency</ProplyticTableHeadCell>
                 <ProplyticTableHeadCell numeric>Amount</ProplyticTableHeadCell>
-                <ProplyticTableHeadCell>Next due</ProplyticTableHeadCell>
-                <ProplyticTableHeadCell>Status</ProplyticTableHeadCell>
+                <ProplyticTableHeadCell compact>Next due</ProplyticTableHeadCell>
+                <ProplyticTableHeadCell compact>Status</ProplyticTableHeadCell>
                 <ProplyticTableHeadCell actions>
                   <span className="pg-ptable-sr-only">Actions</span>
                 </ProplyticTableHeadCell>
@@ -125,14 +125,14 @@ export function RecurringExpensesSection({
                       </div>
                     </ProplyticTableCell>
                     <ProplyticTableCell>{item.categoryLabel}</ProplyticTableCell>
-                    <ProplyticTableCell>
+                    <ProplyticTableCell compact>
                       <ProplyticStatusBadge status={item.frequency} label={formatFrequency(item.frequency)} />
                     </ProplyticTableCell>
                     <ProplyticTableCell numeric>
                       <ProplyticAmountCell tone="debit">{fmtZar(item.amount)}</ProplyticAmountCell>
                     </ProplyticTableCell>
-                    <ProplyticTableCell>{formatDate(item.nextDueDate)}</ProplyticTableCell>
-                    <ProplyticTableCell>
+                    <ProplyticTableCell compact>{formatDate(item.nextDueDate)}</ProplyticTableCell>
+                    <ProplyticTableCell compact>
                       <ProplyticStatusBadge
                         status={recurringStatusKey(item.status)}
                         label={item.status === "active" ? "Active" : "Paused"}

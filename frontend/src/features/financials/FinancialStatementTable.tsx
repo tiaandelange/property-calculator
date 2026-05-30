@@ -52,14 +52,14 @@ export function FinancialStatementTable({
       <ProplyticTable variant="financial" className="pg-fins-statement-table">
         <ProplyticTableHeader>
           <ProplyticTableRow>
-            <ProplyticTableHeadCell>Date</ProplyticTableHeadCell>
+            <ProplyticTableHeadCell compact>Date</ProplyticTableHeadCell>
             <ProplyticTableHeadCell>Property</ProplyticTableHeadCell>
-            <ProplyticTableHeadCell>Description</ProplyticTableHeadCell>
-            <ProplyticTableHeadCell>Type</ProplyticTableHeadCell>
+            <ProplyticTableHeadCell className="pg-ptable__flex-wide">Description</ProplyticTableHeadCell>
+            <ProplyticTableHeadCell compact>Type</ProplyticTableHeadCell>
             <ProplyticTableHeadCell numeric>Debit</ProplyticTableHeadCell>
             <ProplyticTableHeadCell numeric>Credit</ProplyticTableHeadCell>
             {showRunningBalance ? <ProplyticTableHeadCell numeric>Balance</ProplyticTableHeadCell> : null}
-            <ProplyticTableHeadCell>Source</ProplyticTableHeadCell>
+            <ProplyticTableHeadCell compact>Source</ProplyticTableHeadCell>
             <ProplyticTableHeadCell actions>
               <span className="pg-ptable-sr-only">Actions</span>
             </ProplyticTableHeadCell>
@@ -93,13 +93,13 @@ export function FinancialStatementTable({
 
             return (
               <ProplyticTableRow key={r.id}>
-                <ProplyticTableCell>{r.date}</ProplyticTableCell>
+                <ProplyticTableCell compact>{r.date}</ProplyticTableCell>
                 <ProplyticTableCell>
                   <Link className="pg-fins-name" to={`/owned-properties/${r.propertyId}?tab=financials&fin=statement`}>
                     {r.propertyName}
                   </Link>
                 </ProplyticTableCell>
-                <ProplyticTableCell style={{ minWidth: 160 }}>
+                <ProplyticTableCell className="pg-ptable__flex-wide">
                   {r.description}
                   {r.invoiceNumber ? (
                     <div className="pg-muted" style={{ fontSize: 12, marginTop: 4 }}>
@@ -107,7 +107,7 @@ export function FinancialStatementTable({
                     </div>
                   ) : null}
                 </ProplyticTableCell>
-                <ProplyticTableCell style={{ minWidth: 120 }}>
+                <ProplyticTableCell compact>
                   {r.source === "INVOICE"
                     ? invoiceStatementDisplayType(r as unknown as Record<string, unknown>)
                     : r.type}
@@ -127,7 +127,7 @@ export function FinancialStatementTable({
                     {r.balance != null ? <ProplyticAmountCell tone="balance">{fmtZar(r.balance)}</ProplyticAmountCell> : "—"}
                   </ProplyticTableCell>
                 ) : null}
-                <ProplyticTableCell>{r.source}</ProplyticTableCell>
+                <ProplyticTableCell compact>{r.source}</ProplyticTableCell>
                 <ProplyticTableCell actions>
                   <ProplyticTableRowActionsMenu actions={rowActions} />
                 </ProplyticTableCell>

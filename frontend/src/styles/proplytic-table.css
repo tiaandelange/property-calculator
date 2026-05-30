@@ -5,7 +5,7 @@
   background: var(--surface);
   border: 1px solid var(--border-soft);
   border-radius: 20px;
-  overflow: hidden;
+  overflow: visible;
   box-shadow: none;
 }
 
@@ -113,7 +113,7 @@
   .pg-ptable-wrap:not(.pg-ptable-wrap--scroll-x) .pg-leases-table,
   .pg-ptable-wrap:not(.pg-ptable-wrap--scroll-x) .pg-fins-statement-table,
   .pg-ptable-wrap:not(.pg-ptable-wrap--scroll-x) .pg-tstmt-table {
-    table-layout: fixed;
+    table-layout: auto;
   }
 }
 
@@ -148,6 +148,24 @@
 }
 
 @media (min-width: 768px) {
+  .pg-ptable-wrap:not(.pg-ptable-wrap--scroll-x) .pg-ptable th + th,
+  .pg-ptable-wrap:not(.pg-ptable-wrap--scroll-x) .pg-ptable td + td,
+  .pg-ptable-wrap:not(.pg-ptable-wrap--scroll-x) .pg-table th + th,
+  .pg-ptable-wrap:not(.pg-ptable-wrap--scroll-x) .pg-table td + td,
+  .pg-ptable-wrap:not(.pg-ptable-wrap--scroll-x) .pg-invoices-table th + th,
+  .pg-ptable-wrap:not(.pg-ptable-wrap--scroll-x) .pg-invoices-table td + td,
+  .pg-ptable-wrap:not(.pg-ptable-wrap--scroll-x) .pg-tenants-table th + th,
+  .pg-ptable-wrap:not(.pg-ptable-wrap--scroll-x) .pg-tenants-table td + td,
+  .pg-ptable-wrap:not(.pg-ptable-wrap--scroll-x) .pg-leases-table th + th,
+  .pg-ptable-wrap:not(.pg-ptable-wrap--scroll-x) .pg-leases-table td + td,
+  .pg-ptable-wrap:not(.pg-ptable-wrap--scroll-x) .pg-fins-statement-table th + th,
+  .pg-ptable-wrap:not(.pg-ptable-wrap--scroll-x) .pg-fins-statement-table td + td,
+  .pg-ptable-wrap:not(.pg-ptable-wrap--scroll-x) .pg-tstmt-table th + th,
+  .pg-ptable-wrap:not(.pg-ptable-wrap--scroll-x) .pg-tstmt-table td + td {
+    border-left: 1px solid color-mix(in srgb, var(--border-soft) 50%, transparent);
+    padding-left: 20px;
+  }
+
   .pg-ptable-wrap:not(.pg-ptable-wrap--scroll-x) .pg-ptable th,
   .pg-ptable-wrap:not(.pg-ptable-wrap--scroll-x) .pg-ptable td,
   .pg-ptable-wrap:not(.pg-ptable-wrap--scroll-x) .pg-table th,
@@ -231,6 +249,35 @@
   min-width: 0;
 }
 
+.pg-ptable__flex {
+  width: auto;
+  min-width: 0;
+  max-width: 22rem;
+}
+
+.pg-ptable__flex-wide {
+  width: auto;
+  min-width: 0;
+  max-width: 28rem;
+}
+
+.pg-ptable__compact {
+  width: 1%;
+  max-width: 10.5rem;
+  white-space: nowrap;
+  overflow-wrap: normal;
+  hyphens: none;
+}
+
+.pg-ptable td:has(> .pg-ptable-badge),
+.pg-ptable td:has(> .pg-applicant-fit),
+.pg-ptable td:has(> .pg-leases-status-stack),
+.pg-ptable td:has(> .pg-ptable-status-stack) {
+  width: 1%;
+  max-width: 11rem;
+  white-space: nowrap;
+}
+
 .pg-ptable-desc__main {
   font-size: inherit;
   font-weight: 500;
@@ -267,6 +314,8 @@
   overflow-wrap: normal;
   word-break: keep-all;
   hyphens: none;
+  width: 1%;
+  max-width: 9.5rem;
 }
 
 .pg-ptable__actions,
@@ -279,10 +328,13 @@
 .pg-pfin-row-actions {
   text-align: right;
   white-space: nowrap;
-  width: 92px;
-  max-width: 92px;
+  width: 1%;
+  min-width: 120px;
+  max-width: none;
+  padding-right: 18px;
   overflow: visible;
   hyphens: none;
+  vertical-align: middle;
 }
 
 .pg-ptable-actions,
@@ -313,6 +365,13 @@
   border: 1px solid var(--border-soft);
   background: var(--surface-elevated);
   box-shadow: var(--shadow-md);
+}
+
+.pg-ptable-row-actions-menu__panel--portal {
+  position: fixed;
+  top: auto;
+  right: auto;
+  z-index: 200;
 }
 
 .pg-ptable-row-actions-menu__item {

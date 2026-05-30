@@ -41,10 +41,10 @@ export function LeaseDesktopTable({
             <ProplyticTableHeadCell>Tenant</ProplyticTableHeadCell>
             <ProplyticTableHeadCell>Property</ProplyticTableHeadCell>
             <ProplyticTableHeadCell numeric>Monthly Rent</ProplyticTableHeadCell>
-            <ProplyticTableHeadCell>Lease Term</ProplyticTableHeadCell>
-            <ProplyticTableHeadCell>Rent Due</ProplyticTableHeadCell>
+            <ProplyticTableHeadCell compact>Lease Term</ProplyticTableHeadCell>
+            <ProplyticTableHeadCell compact>Rent Due</ProplyticTableHeadCell>
             <ProplyticTableHeadCell numeric>Deposit</ProplyticTableHeadCell>
-            <ProplyticTableHeadCell>Status</ProplyticTableHeadCell>
+            <ProplyticTableHeadCell compact>Status</ProplyticTableHeadCell>
             <ProplyticTableHeadCell actions>
               <span className="pg-ptable-sr-only">Actions</span>
             </ProplyticTableHeadCell>
@@ -85,7 +85,7 @@ export function LeaseDesktopTable({
                   "—"
                 )}
               </ProplyticTableCell>
-              <ProplyticTableCell>
+              <ProplyticTableCell compact>
                 {lease.startDate || lease.endDate ? (
                   <div className="pg-leases-term">
                     <div>{formatDateShort(lease.startDate)}</div>
@@ -95,7 +95,7 @@ export function LeaseDesktopTable({
                   <span className="pg-leases-sub">—</span>
                 )}
               </ProplyticTableCell>
-              <ProplyticTableCell>
+              <ProplyticTableCell compact>
                 <div className="pg-leases-due">{lease.rentDueDay != null ? `Day ${lease.rentDueDay}` : "—"}</div>
               </ProplyticTableCell>
               <ProplyticTableCell numeric>
@@ -105,7 +105,7 @@ export function LeaseDesktopTable({
                   "—"
                 )}
               </ProplyticTableCell>
-              <ProplyticTableCell>
+              <ProplyticTableCell compact>
                 <div className="pg-leases-status-stack">
                   <ProplyticStatusBadge status={lease.lifecycleStatus} />
                   <ProplyticStatusBadge status={lease.displayStatus} />

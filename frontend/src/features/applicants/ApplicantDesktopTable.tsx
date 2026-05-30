@@ -55,7 +55,7 @@ export function ApplicantDesktopTable({
             <ProplyticTableHeadCell>Applicant</ProplyticTableHeadCell>
             <ProplyticTableHeadCell>Email</ProplyticTableHeadCell>
             <ProplyticTableHeadCell numeric>Monthly income</ProplyticTableHeadCell>
-            <ProplyticTableHeadCell>Fit profile</ProplyticTableHeadCell>
+            <ProplyticTableHeadCell compact>Fit profile</ProplyticTableHeadCell>
             <ProplyticTableHeadCell>Property</ProplyticTableHeadCell>
             <ProplyticTableHeadCell actions>
               <span className="pg-ptable-sr-only">Actions</span>
@@ -79,7 +79,7 @@ export function ApplicantDesktopTable({
                   "—"
                 )}
               </ProplyticTableCell>
-              <ProplyticTableCell>
+              <ProplyticTableCell compact>
                 {item.fitScore != null ? <ApplicantFitBadge score={item.fitScore} /> : "—"}
               </ProplyticTableCell>
               <ProplyticTableCell>{item.propertyName || "—"}</ProplyticTableCell>

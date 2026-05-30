@@ -196,6 +196,14 @@
   background: transparent;
 }
 
+@media (min-width: 768px) {
+  .pg-tenants-list-panel,
+  .pg-leases-list-panel,
+  .pg-fins-statement-panel {
+    overflow: visible;
+  }
+}
+
 .pg-pfin-table {
   font-size: var(--type-table-cell);
 }

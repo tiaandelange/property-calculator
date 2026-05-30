@@ -1,4 +1,5 @@
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState, type CSSProperties } from "react";
+import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
 import { AppIcon } from "../icons";
 import type { IconName } from "../icons/iconRegistry";
@@ -22,6 +23,19 @@ function pickPrimaryAction(actions: ProplyticTableRowAction[]): ProplyticTableRo
     actions.find((action) => action.primary) ??
     actions.find((action) => action.icon === "edit") ??
     actions[0]
+  );
+}
+
+function ActionIconButton({ action }: { action: ProplyticTableRowAction }) {
+  return (
+    <IconButton
+      icon={action.icon}
+      aria-label={action.label}
+      href={action.href}
+      variant={action.destructive ? "danger-outline" : "outline"}
+      disabled={action.disabled}
+      onClick={action.onClick}
+    />
   );
 }
 
@@ -59,19 +73,53 @@ function MenuItem({ action, onSelect }: { action: ProplyticTableRowAction; onSel
   );
 }
 
+function useOverflowMenuPosition(open: boolean, triggerRef: React.RefObject<HTMLDivElement | null>) {
+  const [panelStyle, setPanelStyle] = useState<CSSProperties>({});
+
+  useEffect(() => {
+    if (!open) return;
+
+    const updatePosition = () => {
+      const trigger = triggerRef.current;
+      if (!trigger) return;
+      const rect = trigger.getBoundingClientRect();
+      setPanelStyle({
+        position: "fixed",
+        top: rect.bottom + 6,
+        left: rect.right,
+        transform: "translateX(-100%)"
+      });
+    };
+
+    updatePosition();
+    window.addEventListener("scroll", updatePosition, true);
+    window.addEventListener("resize", updatePosition);
+    return () => {
+      window.removeEventListener("scroll", updatePosition, true);
+      window.removeEventListener("resize", updatePosition);
+    };
+  }, [open, triggerRef]);
+
+  return panelStyle;
+}
+
 export function ProplyticTableRowActionsMenu({ actions }: { actions: ProplyticTableRowAction[] }) {
   const [open, setOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
   const menuId = useId();
+  const panelStyle = useOverflowMenuPosition(open, triggerRef);
+
   const primary = pickPrimaryAction(actions);
-  const overflow = primary ? actions.filter((action) => action.key !== primary.key) : [];
+  const overflow =
+    primary && actions.length >= 3 ? actions.filter((action) => action.key !== primary.key) : [];
 
   useEffect(() => {
     if (!open) return;
     const onDoc = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setOpen(false);
-      }
+      const target = event.target as Node;
+      if (triggerRef.current?.contains(target) || panelRef.current?.contains(target)) return;
+      setOpen(false);
     };
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") setOpen(false);
@@ -84,34 +132,32 @@ export function ProplyticTableRowActionsMenu({ actions }: { actions: ProplyticTa
     };
   }, [open]);
 
-  if (!primary) return null;
+  if (!actions.length) return null;
 
-  if (!overflow.length) {
+  if (actions.length === 1) {
     return (
       <ProplyticTableActions>
-        <IconButton
-          icon={primary.icon}
-          aria-label={primary.label}
-          href={primary.href}
-          variant={primary.destructive ? "danger-outline" : "outline"}
-          disabled={primary.disabled}
-          onClick={primary.onClick}
-        />
+        <ActionIconButton action={actions[0]} />
       </ProplyticTableActions>
     );
   }
 
+  if (actions.length === 2) {
+    return (
+      <ProplyticTableActions>
+        {actions.map((action) => (
+          <ActionIconButton key={action.key} action={action} />
+        ))}
+      </ProplyticTableActions>
+    );
+  }
+
+  if (!primary || !overflow.length) return null;
+
   return (
     <ProplyticTableActions>
-      <IconButton
-        icon={primary.icon}
-        aria-label={primary.label}
-        href={primary.href}
-        variant={primary.destructive ? "danger-outline" : "outline"}
-        disabled={primary.disabled}
-        onClick={primary.onClick}
-      />
-      <div className="pg-ptable-row-actions-menu" ref={menuRef}>
+      <ActionIconButton action={primary} />
+      <div className="pg-ptable-row-actions-menu" ref={triggerRef}>
         <IconButton
           icon="more"
           aria-label="More actions"
@@ -120,13 +166,22 @@ export function ProplyticTableRowActionsMenu({ actions }: { actions: ProplyticTa
           variant="outline"
           onClick={() => setOpen((value) => !value)}
         />
-        {open ? (
-          <div className="pg-ptable-row-actions-menu__panel" id={menuId} role="menu">
-            {overflow.map((action) => (
-              <MenuItem key={action.key} action={action} onSelect={() => setOpen(false)} />
-            ))}
-          </div>
-        ) : null}
+        {open
+          ? createPortal(
+              <div
+                ref={panelRef}
+                className="pg-ptable-row-actions-menu__panel pg-ptable-row-actions-menu__panel--portal"
+                id={menuId}
+                role="menu"
+                style={panelStyle}
+              >
+                {overflow.map((action) => (
+                  <MenuItem key={action.key} action={action} onSelect={() => setOpen(false)} />
+                ))}
+              </div>,
+              document.body
+            )
+          : null}
       </div>
     </ProplyticTableActions>
   );

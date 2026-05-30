@@ -94,10 +94,10 @@ export function InvoiceDesktopTable({
       <ProplyticTable variant="financial">
         <ProplyticTableHeader>
           <ProplyticTableRow>
-            <ProplyticTableHeadCell>Invoice #</ProplyticTableHeadCell>
-            <ProplyticTableHeadCell>Reference</ProplyticTableHeadCell>
+            <ProplyticTableHeadCell compact>Invoice #</ProplyticTableHeadCell>
+            <ProplyticTableHeadCell compact>Reference</ProplyticTableHeadCell>
             <ProplyticTableHeadCell>Tenant</ProplyticTableHeadCell>
-            <ProplyticTableHeadCell>Due Date</ProplyticTableHeadCell>
+            <ProplyticTableHeadCell compact>Due Date</ProplyticTableHeadCell>
             <ProplyticTableHeadCell numeric>Amount Due</ProplyticTableHeadCell>
             <ProplyticTableHeadCell actions>
               <span className="pg-ptable-sr-only">Actions</span>
@@ -112,12 +112,12 @@ export function InvoiceDesktopTable({
 
             return (
               <ProplyticTableRow key={row.id}>
-                <ProplyticTableCell>
+                <ProplyticTableCell compact>
                   <Link className="pg-invoices-link pg-invoices-num" to={viewHref}>
                     {row.invoiceNumber}
                   </Link>
                 </ProplyticTableCell>
-                <ProplyticTableCell>{row.leaseReference ?? "—"}</ProplyticTableCell>
+                <ProplyticTableCell compact>{row.leaseReference ?? "—"}</ProplyticTableCell>
                 <ProplyticTableCell>
                   {row.tenantId ? (
                     <Link className="pg-invoices-link" to={`/tenants/${row.tenantId}`}>
@@ -127,7 +127,7 @@ export function InvoiceDesktopTable({
                     row.tenantName
                   )}
                 </ProplyticTableCell>
-                <ProplyticTableCell>{formatDateShort(row.dueDate)}</ProplyticTableCell>
+                <ProplyticTableCell compact>{formatDateShort(row.dueDate)}</ProplyticTableCell>
                 <ProplyticTableCell numeric>
                   <ProplyticAmountCell tone="balance">{fmtZar(amountDue)}</ProplyticAmountCell>
                 </ProplyticTableCell>
