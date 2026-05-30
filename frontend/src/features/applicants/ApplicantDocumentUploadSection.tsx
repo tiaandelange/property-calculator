@@ -253,7 +253,9 @@ export function ApplicantDocumentUploadSection({
       </div>
 
       {!tenantId ? (
-        <p className="pg-muted pg-applicant-documents__hint">Submit your application details first to unlock document uploads.</p>
+        <p className="pg-muted pg-applicant-documents__hint">
+          Save your application details above to unlock document uploads.
+        </p>
       ) : null}
 
       {error ? <div className="pg-alert pg-alert-error">{error}</div> : null}

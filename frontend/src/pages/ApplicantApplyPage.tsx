@@ -25,7 +25,7 @@ export function ApplicantApplyPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
-  const [submitted, setSubmitted] = useState(false);
+  const [saved, setSaved] = useState(false);
   const [propertyName, setPropertyName] = useState("");
   const [propertyAddress, setPropertyAddress] = useState("");
   const [unitName, setUnitName] = useState<string | null>(null);
@@ -34,7 +34,7 @@ export function ApplicantApplyPage() {
   const [primary, setPrimary] = useState(emptyFieldValues(DEFAULT_APPLICANT_FORM_TEMPLATE));
   const [coApplicant, setCoApplicant] = useState(emptyFieldValues(DEFAULT_APPLICANT_FORM_TEMPLATE));
   const [coEnabled, setCoEnabled] = useState(false);
-  const [submittedTenantId, setSubmittedTenantId] = useState<string | null>(null);
+  const [tenantId, setTenantId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!token) {
@@ -71,9 +71,9 @@ export function ApplicantApplyPage() {
     };
   }, [token]);
 
-  const submit = async (e: FormEvent) => {
+  const saveApplication = async (e: FormEvent) => {
     e.preventDefault();
-    if (!token) return;
+    if (!token || saved) return;
     setSubmitting(true);
     setError("");
     try {
@@ -82,10 +82,10 @@ export function ApplicantApplyPage() {
         template,
         buildSubmissionPayload(template, primary, coEnabled, coApplicant)
       );
-      setSubmittedTenantId(result.tenantId);
-      setSubmitted(true);
+      setTenantId(result.tenantId);
+      setSaved(true);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Could not submit application.");
+      setError(err instanceof Error ? err.message : "Could not save application.");
     } finally {
       setSubmitting(false);
     }
@@ -100,19 +100,8 @@ export function ApplicantApplyPage() {
       <Container className="pg-applicant-apply-container">
         <Card className="pg-applicant-apply-card">
           {loading ? <p className="pg-muted">Loading application…</p> : null}
-          {!loading && submitted ? (
-            <div className="pg-applicant-apply-success">
-              <h1 className="pg-h2" style={{ marginTop: 0 }}>
-                Application submitted
-              </h1>
-              <p className="pg-muted">
-                Thank you. You can upload supporting documents below. The property owner will review your details and
-                contact you if needed.
-              </p>
-              <ApplicantDocumentUploadSection mode="public" tenantId={submittedTenantId} inviteToken={token} />
-            </div>
-          ) : null}
-          {!loading && !submitted && error && !propertyName ? (
+
+          {!loading && error && !propertyName ? (
             <div>
               <h1 className="pg-h2" style={{ marginTop: 0 }}>
                 Application unavailable
@@ -120,7 +109,8 @@ export function ApplicantApplyPage() {
               <p className="pg-muted">{error}</p>
             </div>
           ) : null}
-          {!loading && !submitted && propertyName ? (
+
+          {!loading && propertyName ? (
             <>
               <h1 className="pg-h2" style={{ marginTop: 0 }}>
                 {template.title}
@@ -136,11 +126,33 @@ export function ApplicantApplyPage() {
                 {propertyAddress ? ` · ${propertyAddress}` : ""}
                 {targetRent > 0 ? ` · Rent ${fmtZar(targetRent)}` : ""}
               </p>
+
+              {saved ? (
+                <div
+                  className="pg-alert"
+                  role="status"
+                  style={{
+                    marginBottom: 16,
+                    borderColor: "var(--success)",
+                    background: "var(--success-soft)",
+                    color: "var(--text-primary)"
+                  }}
+                >
+                  Application details saved. Upload your supporting documents below, then you&apos;re done.
+                </div>
+              ) : null}
+
               {error ? <div className="pg-alert pg-alert-error">{error}</div> : null}
-              <form onSubmit={submit}>
+
+              <form onSubmit={saveApplication}>
                 {template.allowCoApplicant ? (
                   <label className="pg-applicant-co-toggle">
-                    <input type="checkbox" checked={coEnabled} onChange={(e) => setCoEnabled(e.target.checked)} />
+                    <input
+                      type="checkbox"
+                      checked={coEnabled}
+                      disabled={saved}
+                      onChange={(e) => setCoEnabled(e.target.checked)}
+                    />
                     <span>Add second applicant</span>
                   </label>
                 ) : null}
@@ -152,6 +164,7 @@ export function ApplicantApplyPage() {
                       template={template}
                       values={primary}
                       onChange={setPrimary}
+                      disabled={saved}
                     />
                   </div>
                   {coEnabled ? (
@@ -163,19 +176,30 @@ export function ApplicantApplyPage() {
                         values={coApplicant}
                         onChange={setCoApplicant}
                         emailRequired={false}
+                        disabled={saved}
                       />
                     </div>
                   ) : null}
                 </div>
-                <p className="pg-muted pg-applicant-documents__hint" style={{ marginTop: 16 }}>
-                  After you submit, you can upload your ID, payslips, and bank statements on the next screen.
-                </p>
-                <div style={{ marginTop: 20 }}>
-                  <Button type="submit" loading={submitting}>
-                    Submit application
-                  </Button>
-                </div>
+
+                {!saved ? (
+                  <div style={{ marginTop: 20 }}>
+                    <Button type="submit" loading={submitting}>
+                      Save application details
+                    </Button>
+                    <p className="pg-muted pg-applicant-documents__hint" style={{ marginTop: 12, marginBottom: 0 }}>
+                      Save your details first to unlock document uploads on this page.
+                    </p>
+                  </div>
+                ) : null}
               </form>
+
+              <ApplicantDocumentUploadSection
+                mode="public"
+                tenantId={tenantId}
+                inviteToken={token}
+                disabled={!saved || !tenantId}
+              />
             </>
           ) : null}
         </Card>

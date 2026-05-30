@@ -1,5 +1,5 @@
-import { lazy, Suspense, type ReactElement, type ReactNode } from "react";
-import { Navigate, Route, Routes, useParams } from "react-router-dom";
+import { Suspense, type ReactElement, type ReactNode } from "react";
+import { Navigate, Route, Routes, useLocation, useParams } from "react-router-dom";
 import { AppChrome } from "../layouts/AppChrome";
 import { HomePage } from "../pages/HomePage";
 import { LoginPage } from "../pages/LoginPage";
@@ -8,93 +8,95 @@ import { SimplePage } from "../pages/SimplePage";
 import { SubscriptionPage } from "../pages/SubscriptionPage";
 import { SubscriptionResultPage } from "../pages/SubscriptionResultPage";
 import { RequireAuth } from "../components/auth/RequireAuth";
+import { RouteErrorBoundary } from "../components/ui/RouteErrorBoundary";
 import { RouteFallback } from "../components/ui/RouteFallback";
+import { lazyWithRetry } from "../lib/lazyWithRetry";
 
-const CalculatorHubPage = lazy(() =>
+const CalculatorHubPage = lazyWithRetry(() =>
   import("../pages/CalculatorHubPage").then((m) => ({ default: m.CalculatorHubPage }))
 );
-const CalculatorPage = lazy(() => import("../pages/CalculatorPage").then((m) => ({ default: m.CalculatorPage })));
-const DashboardPage = lazy(() => import("../pages/DashboardPage").then((m) => ({ default: m.DashboardPage })));
-const AccountPage = lazy(() => import("../pages/AccountPage").then((m) => ({ default: m.AccountPage })));
-const ApplicantApplyPage = lazy(() =>
+const CalculatorPage = lazyWithRetry(() => import("../pages/CalculatorPage").then((m) => ({ default: m.CalculatorPage })));
+const DashboardPage = lazyWithRetry(() => import("../pages/DashboardPage").then((m) => ({ default: m.DashboardPage })));
+const AccountPage = lazyWithRetry(() => import("../pages/AccountPage").then((m) => ({ default: m.AccountPage })));
+const ApplicantApplyPage = lazyWithRetry(() =>
   import("../pages/ApplicantApplyPage").then((m) => ({ default: m.ApplicantApplyPage }))
 );
-const OwnedPropertyFormPage = lazy(() =>
+const OwnedPropertyFormPage = lazyWithRetry(() =>
   import("../pages/OwnedPropertyFormPage").then((m) => ({ default: m.OwnedPropertyFormPage }))
 );
-const OwnedPropertyDetailPage = lazy(() =>
+const OwnedPropertyDetailPage = lazyWithRetry(() =>
   import("../pages/OwnedPropertyDetailPage").then((m) => ({ default: m.OwnedPropertyDetailPage }))
 );
-const OwnedLeasesPage = lazy(() => import("../pages/OwnedLeasesPage").then((m) => ({ default: m.OwnedLeasesPage })));
-const LeaseFormPage = lazy(() => import("../pages/LeaseFormPage").then((m) => ({ default: m.LeaseFormPage })));
-const LeaseDetailRedirect = lazy(() =>
+const OwnedLeasesPage = lazyWithRetry(() => import("../pages/OwnedLeasesPage").then((m) => ({ default: m.OwnedLeasesPage })));
+const LeaseFormPage = lazyWithRetry(() => import("../pages/LeaseFormPage").then((m) => ({ default: m.LeaseFormPage })));
+const LeaseDetailRedirect = lazyWithRetry(() =>
   import("../pages/LeaseDetailRedirect").then((m) => ({ default: m.LeaseDetailRedirect }))
 );
-const FinancialsListPage = lazy(() =>
+const FinancialsListPage = lazyWithRetry(() =>
   import("../pages/FinancialsListPage").then((m) => ({ default: m.FinancialsListPage }))
 );
-const OwnedInvoicesPage = lazy(() => import("../pages/OwnedInvoicesPage").then((m) => ({ default: m.OwnedInvoicesPage })));
-const InvoicesListPage = lazy(() => import("../pages/InvoicesListPage").then((m) => ({ default: m.InvoicesListPage })));
-const OwnedRecurringInvoicesPage = lazy(() =>
+const OwnedInvoicesPage = lazyWithRetry(() => import("../pages/OwnedInvoicesPage").then((m) => ({ default: m.OwnedInvoicesPage })));
+const InvoicesListPage = lazyWithRetry(() => import("../pages/InvoicesListPage").then((m) => ({ default: m.InvoicesListPage })));
+const OwnedRecurringInvoicesPage = lazyWithRetry(() =>
   import("../pages/OwnedRecurringInvoicesPage").then((m) => ({ default: m.OwnedRecurringInvoicesPage }))
 );
-const OwnedDocumentsPage = lazy(() =>
+const OwnedDocumentsPage = lazyWithRetry(() =>
   import("../pages/OwnedDocumentsPage").then((m) => ({ default: m.OwnedDocumentsPage }))
 );
-const PropertyReportPage = lazy(() =>
+const PropertyReportPage = lazyWithRetry(() =>
   import("../pages/PropertyReportPage").then((m) => ({ default: m.PropertyReportPage }))
 );
-const OwnedEquityMetricsPage = lazy(() =>
+const OwnedEquityMetricsPage = lazyWithRetry(() =>
   import("../pages/OwnedEquityMetricsPage").then((m) => ({ default: m.OwnedEquityMetricsPage }))
 );
-const OwnedLeaseMetricsPage = lazy(() =>
+const OwnedLeaseMetricsPage = lazyWithRetry(() =>
   import("../pages/OwnedLeaseMetricsPage").then((m) => ({ default: m.OwnedLeaseMetricsPage }))
 );
-const OwnedRentDueMetricsPage = lazy(() =>
+const OwnedRentDueMetricsPage = lazyWithRetry(() =>
   import("../pages/OwnedRentDueMetricsPage").then((m) => ({ default: m.OwnedRentDueMetricsPage }))
 );
-const OwnedDepositsMetricsPage = lazy(() =>
+const OwnedDepositsMetricsPage = lazyWithRetry(() =>
   import("../pages/OwnedDepositsMetricsPage").then((m) => ({ default: m.OwnedDepositsMetricsPage }))
 );
-const OwnedCashFlowMetricsPage = lazy(() =>
+const OwnedCashFlowMetricsPage = lazyWithRetry(() =>
   import("../pages/OwnedCashFlowMetricsPage").then((m) => ({ default: m.OwnedCashFlowMetricsPage }))
 );
-const OwnedPropertiesMyPropertiesPage = lazy(() =>
+const OwnedPropertiesMyPropertiesPage = lazyWithRetry(() =>
   import("../pages/OwnedPropertiesMyPropertiesPage").then((m) => ({ default: m.OwnedPropertiesMyPropertiesPage }))
 );
-const OwnedPropertiesPortfolioDashboardPage = lazy(() =>
+const OwnedPropertiesPortfolioDashboardPage = lazyWithRetry(() =>
   import("../pages/OwnedPropertiesPortfolioDashboardPage").then((m) => ({
     default: m.OwnedPropertiesPortfolioDashboardPage
   }))
 );
-const OwnedPropertiesReportsPage = lazy(() =>
+const OwnedPropertiesReportsPage = lazyWithRetry(() =>
   import("../pages/OwnedPropertiesReportsPage").then((m) => ({ default: m.OwnedPropertiesReportsPage }))
 );
-const TenantsListPage = lazy(() => import("../pages/TenantsListPage").then((m) => ({ default: m.TenantsListPage })));
-const TenantFormPage = lazy(() => import("../pages/TenantFormPage").then((m) => ({ default: m.TenantFormPage })));
-const TenantWorkspacePage = lazy(() =>
+const TenantsListPage = lazyWithRetry(() => import("../pages/TenantsListPage").then((m) => ({ default: m.TenantsListPage })));
+const TenantFormPage = lazyWithRetry(() => import("../pages/TenantFormPage").then((m) => ({ default: m.TenantFormPage })));
+const TenantWorkspacePage = lazyWithRetry(() =>
   import("../pages/TenantWorkspacePage").then((m) => ({ default: m.TenantWorkspacePage }))
 );
-const InvoiceDetailPage = lazy(() =>
+const InvoiceDetailPage = lazyWithRetry(() =>
   import("../pages/InvoiceDetailPage").then((m) => ({ default: m.InvoiceDetailPage }))
 );
-const LegacyTenantInvoiceRedirect = lazy(() =>
+const LegacyTenantInvoiceRedirect = lazyWithRetry(() =>
   import("../pages/InvoiceDetailPage").then((m) => ({ default: m.LegacyTenantInvoiceRedirect }))
 );
-const OwnedValuationsMetricsPage = lazy(() =>
+const OwnedValuationsMetricsPage = lazyWithRetry(() =>
   import("../pages/OwnedValuationsMetricsPage").then((m) => ({ default: m.OwnedValuationsMetricsPage }))
 );
-const OwnedBondsMetricsPage = lazy(() =>
+const OwnedBondsMetricsPage = lazyWithRetry(() =>
   import("../pages/OwnedBondsMetricsPage").then((m) => ({ default: m.OwnedBondsMetricsPage }))
 );
-const OwnedReturnsMetricsPage = lazy(() =>
+const OwnedReturnsMetricsPage = lazyWithRetry(() =>
   import("../pages/OwnedReturnsMetricsPage").then((m) => ({ default: m.OwnedReturnsMetricsPage }))
 );
-const OwnedExpensesMetricsPage = lazy(() =>
+const OwnedExpensesMetricsPage = lazyWithRetry(() =>
   import("../pages/OwnedExpensesMetricsPage").then((m) => ({ default: m.OwnedExpensesMetricsPage }))
 );
-const SettingsPage = lazy(() => import("../pages/SettingsPage").then((m) => ({ default: m.SettingsPage })));
-const AdminPanelPage = lazy(() => import("../pages/AdminPanelPage").then((m) => ({ default: m.AdminPanelPage })));
+const SettingsPage = lazyWithRetry(() => import("../pages/SettingsPage").then((m) => ({ default: m.SettingsPage })));
+const AdminPanelPage = lazyWithRetry(() => import("../pages/AdminPanelPage").then((m) => ({ default: m.AdminPanelPage })));
 
 function OwnedPropertyFinancialsRedirect() {
   const { id } = useParams();
@@ -102,7 +104,12 @@ function OwnedPropertyFinancialsRedirect() {
 }
 
 function Lazy({ children }: { children: ReactNode }) {
-  return <Suspense fallback={<RouteFallback />}>{children}</Suspense>;
+  const location = useLocation();
+  return (
+    <RouteErrorBoundary resetKey={location.pathname}>
+      <Suspense fallback={<RouteFallback />}>{children}</Suspense>
+    </RouteErrorBoundary>
+  );
 }
 
 function Auth({ children }: { children: ReactElement }) {

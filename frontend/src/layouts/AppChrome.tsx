@@ -93,7 +93,15 @@ export function AppChrome() {
         </div>
       );
     }
-    return null;
+    return (
+      <div className="pg-app pg-app--marketing-public">
+        <HomePublicHeader />
+        <main className="pg-main pg-main-marketing pg-main-marketing-site">
+          <RouteFallback />
+        </main>
+        <HomePublicFooter />
+      </div>
+    );
   }
 
   if (useWorkspaceChrome) {

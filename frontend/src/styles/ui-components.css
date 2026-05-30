@@ -1714,3 +1714,12 @@ html[data-density="compact"] .pg-app-form-modal-footer {
     font-size: 0.875rem;
   }
 }
+
+.pg-route-error {
+  max-width: 520px;
+  margin: 24px auto;
+  padding: 20px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}

@@ -34,13 +34,15 @@ export function ApplicantTemplateFields({
   template,
   values,
   onChange,
-  emailRequired = true
+  emailRequired = true,
+  disabled = false
 }: {
   prefix: string;
   template: ApplicantFormTemplate;
   values: ApplicantFieldValues;
   onChange: (next: ApplicantFieldValues) => void;
   emailRequired?: boolean;
+  disabled?: boolean;
 }) {
   const patch = (id: string, field: ApplicantFormFieldDef, value: string) => {
     onChange({ ...values, [id]: patchField(field, value) });
@@ -92,6 +94,7 @@ export function ApplicantTemplateFields({
                     inputMode={inputMode(field)}
                     autoComplete={`${prefix}-${field.id}`}
                     required={field.required && (field.type !== "email" || emailRequired)}
+                    disabled={disabled}
                     {...incomeProps(field)}
                   />
                 </Field>
@@ -109,6 +112,7 @@ export function ApplicantTemplateFields({
               inputMode={inputMode(field)}
               autoComplete={`${prefix}-${field.id}`}
               required={field.required && (field.type !== "email" || emailRequired)}
+              disabled={disabled}
               {...incomeProps(field)}
             />
           </Field>
