@@ -1495,6 +1495,14 @@ html[data-density="compact"] .pg-app-form-modal-footer {
     border-color 0.15s ease;
 }
 
+.pg-app-section-tabs__tab:hover,
+.pg-app-section-tabs__tab:focus,
+.pg-app-section-tabs__tab:focus-visible,
+.pg-app-section-tabs__tab.is-active,
+.pg-app-section-tabs__tab.is-active:hover {
+  text-decoration: none;
+}
+
 .pg-app-section-tabs__tab:hover:not(:disabled) {
   color: var(--text-primary);
 }

@@ -286,20 +286,24 @@ export function OwnedPropertyDetailPage() {
                   { key: "statement", label: "Statement" },
                   { key: "tenants", label: "Tenants" },
                   { key: "leases", label: "Leases" },
-                  { key: "documents", label: "Documents" },
-                  {
-                    key: "reports",
-                    label: "Generate report",
-                    to: `/owned-properties/${id}/report`,
-                    newTab: true
-                  }
+                  { key: "documents", label: "Documents" }
                 ]}
                 extraQueryForTab={{ financials: `fin=${encodeURIComponent(finSub)}` }}
                 style={{ marginBottom: 0 }}
               />
-              <ButtonLink href={`/owned-properties/${id}/edit`} variant="soft">
-                Edit Property
-              </ButtonLink>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
+                <ButtonLink
+                  href={`/owned-properties/${id}/report`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  variant="soft"
+                >
+                  Generate report
+                </ButtonLink>
+                <ButtonLink href={`/owned-properties/${id}/edit`} variant="soft">
+                  Edit Property
+                </ButtonLink>
+              </div>
             </div>
 
             <div className="pg-workspace-panel">
