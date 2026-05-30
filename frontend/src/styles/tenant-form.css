@@ -1,0 +1,84 @@
+/* Add / edit tenant form */
+
+.pg-tenant-form-page {
+  --app-page-max: 720px;
+}
+
+.pg-dashboard-shell .pg-tenant-form-page .pg-tenant-form-card.pg-card.pg-workspace-card {
+  padding: var(--workspace-card-pad);
+}
+
+.pg-tenant-form-applicant-banner {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid color-mix(in srgb, var(--primary) 24%, var(--border-soft));
+  border-radius: var(--workspace-inset-radius, 14px);
+  background: color-mix(in srgb, var(--primary) 6%, var(--surface));
+}
+
+.pg-tenant-form {
+  display: grid;
+  gap: 20px;
+}
+
+.pg-tenant-form__grid {
+  display: grid;
+  gap: 14px;
+}
+
+.pg-tenant-form__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  padding-top: 4px;
+}
+
+.pg-use-applicant-modal {
+  animation: pg-applicant-invite-modal-in 0.24s ease-out;
+}
+
+.pg-use-applicant-list {
+  display: grid;
+  gap: 8px;
+  max-height: min(360px, 50vh);
+  overflow: auto;
+  margin-top: 12px;
+}
+
+.pg-use-applicant-list__item {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md, 12px);
+  background: var(--surface-muted);
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.pg-use-applicant-list__item:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--primary) 30%, var(--border-soft));
+  background: color-mix(in srgb, var(--primary) 5%, var(--surface-muted));
+}
+
+.pg-use-applicant-list__item:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+.pg-use-applicant-list__name {
+  font-weight: var(--weight-semibold, 600);
+  font-size: var(--type-base);
+}
+
+.pg-use-applicant-list__meta {
+  font-size: 12px;
+  line-height: 1.4;
+}

@@ -184,6 +184,72 @@ export async function listApplicantApplicationDetailsByTenantIds(
   return map;
 }
 
+export async function fetchApplicantApplicationDetailsByTenantId(
+  tenantId: string
+): Promise<ApplicantApplicationRecord | null> {
+  await requireUserId();
+  const sb = getSupabase();
+  const { data: detail, error: detailErr } = await sb
+    .from("applicant_application_details")
+    .select(
+      "tenant_id, monthly_income, fit_score, target_rent, submitted_at, previous_residency, landlord_contact, time_rented, form_data, co_applicant, property_id"
+    )
+    .eq("tenant_id", tenantId)
+    .maybeSingle();
+  if (detailErr) throw toError(detailErr);
+  if (!detail) return null;
+
+  const { data: tenant, error: tenantErr } = await sb
+    .from("tenants")
+    .select("first_name, last_name, email, phone, applied_property_id")
+    .eq("id", tenantId)
+    .maybeSingle();
+  if (tenantErr) throw toError(tenantErr);
+  if (!tenant) return null;
+
+  const row = detail as Record<string, unknown>;
+  const t = tenant as Record<string, unknown>;
+  const formData = row.form_data as Record<string, unknown> | null;
+  const primaryRaw = (formData?.primary ?? {}) as Record<string, unknown>;
+  const firstName = String(t.first_name ?? primaryRaw.firstName ?? "");
+  const lastName = String(t.last_name ?? primaryRaw.lastName ?? "");
+
+  return {
+    tenantId,
+    firstName,
+    lastName,
+    fullName: `${firstName} ${lastName}`.trim(),
+    email: t.email != null ? String(t.email) : primaryRaw.email != null ? String(primaryRaw.email) : null,
+    phone: t.phone != null ? String(t.phone) : primaryRaw.phone != null ? String(primaryRaw.phone) : null,
+    propertyId:
+      t.applied_property_id != null
+        ? String(t.applied_property_id)
+        : row.property_id != null
+          ? String(row.property_id)
+          : null,
+    propertyName: null,
+    monthlyIncome: Number(row.monthly_income ?? 0),
+    fitScore: Number(row.fit_score ?? 0),
+    targetRent: Number(row.target_rent ?? 0),
+    submittedAt: row.submitted_at != null ? String(row.submitted_at) : null,
+    formData: formData
+      ? {
+          primary: primaryRaw as ApplicantSubmissionPayload["primary"],
+          coApplicantEnabled: Boolean(formData.coApplicantEnabled),
+          coApplicant: formData.coApplicant
+            ? (formData.coApplicant as ApplicantSubmissionPayload["coApplicant"])
+            : null,
+          template: formData.template
+            ? normalizeApplicantFormTemplate(formData.template)
+            : DEFAULT_APPLICANT_FORM_TEMPLATE
+        }
+      : null,
+    previousResidency: row.previous_residency != null ? String(row.previous_residency) : null,
+    landlordContact: row.landlord_contact != null ? String(row.landlord_contact) : null,
+    timeRented: row.time_rented != null ? String(row.time_rented) : null
+  };
+}
+
 export function applicantApplyUrl(token: string): string {
   if (typeof window !== "undefined") {
     return `${window.location.origin}/apply/${token}`;

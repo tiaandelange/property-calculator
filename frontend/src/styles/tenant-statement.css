@@ -469,3 +469,55 @@
     display: none;
   }
 }
+
+.pg-tstmt-applicant-card {
+  padding: var(--s-3);
+}
+
+.pg-tstmt-applicant-card__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.pg-tstmt-applicant-card__title {
+  margin: 0 0 4px;
+  font-size: var(--type-section-title-mobile, 1rem);
+  font-weight: var(--weight-semibold, 600);
+  color: var(--text-primary);
+}
+
+.pg-tstmt-applicant-card__desc {
+  margin: 0;
+  font-size: 13px;
+}
+
+.pg-tstmt-applicant-card__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 20px;
+  margin: 0;
+}
+
+.pg-tstmt-applicant-card__row dt {
+  margin: 0 0 2px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.pg-tstmt-applicant-card__row dd {
+  margin: 0;
+  font-size: var(--type-base);
+  color: var(--text-primary);
+}
+
+@media (max-width: 640px) {
+  .pg-tstmt-applicant-card__grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

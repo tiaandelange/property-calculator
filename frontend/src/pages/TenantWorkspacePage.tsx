@@ -19,6 +19,8 @@ import {
   TenantStatementTabContent,
   TenantSummaryCard
 } from "../features/tenants/workspace/TenantStatementPanels";
+import { TenantApplicantDetailsCard } from "../features/tenants/workspace/TenantApplicantDetailsCard";
+import { useTenantApplicantDetails } from "../features/tenants/workspace/useTenantApplicantDetails";
 import { useTenantWorkspaceData } from "../features/tenants/workspace/useTenantWorkspaceData";
 import { invoiceCreatePath, invoiceDetailPath } from "../features/invoices/invoiceRoutes";
 import type { TenantStatementPeriodKey } from "../features/tenants/statement/tenantStatementTypes";
@@ -63,6 +65,7 @@ export function TenantWorkspacePage() {
 
   const { ctx, summary, transactions, invoices, paidInvoices, loading, error, leaseStatus, reload } =
     useTenantWorkspaceData(id, periodKey);
+  const { record: applicantRecord, loading: applicantLoading } = useTenantApplicantDetails(id);
 
   const loadOverview = useCallback(async () => {
     if (!id) return;
@@ -203,6 +206,7 @@ export function TenantWorkspacePage() {
           {tab === "statement" ? (
             <>
               <TenantSummaryCard summary={summary} leaseStatus={leaseStatus} loading={loading} />
+              <TenantApplicantDetailsCard record={applicantRecord} loading={applicantLoading} />
 
               <div className="pg-tstmt-actions pg-tstmt-actions--mobile-only" style={{ marginTop: 0 }}>
                 <Button variant="secondary" loading={downloadBusy} onClick={() => void downloadStatement()} disabled={!propertyId}>
@@ -243,13 +247,16 @@ export function TenantWorkspacePage() {
           ) : null}
 
           {tab === "overview" ? (
-            <TenantOverviewPanel
+            <>
+              <TenantApplicantDetailsCard record={applicantRecord} loading={applicantLoading} />
+              <TenantOverviewPanel
               id={id}
               data={overview}
               loading={overviewLoading}
               onReload={loadOverview}
               navigate={navigate}
             />
+            </>
           ) : null}
 
           {tab === "settings" ? (
