@@ -1,0 +1,97 @@
+/**
+ * Workspace accent colour overrides (Settings → Appearance).
+ * Applied via html[data-accent] only while the signed-in workspace shell is active.
+ * Purple is the default token palette and needs no override.
+ */
+
+/* Dark workspace accents */
+html[data-accent="blue"]:not([data-theme="light"]) {
+  --primary: #3b82f6;
+  --primary-hover: #2563eb;
+  --primary-soft: rgba(59, 130, 246, 0.18);
+  --primary-border: rgba(59, 130, 246, 0.35);
+  --chart-line: #3b82f6;
+  --chart-fill: rgba(59, 130, 246, 0.22);
+}
+
+html[data-accent="green"]:not([data-theme="light"]) {
+  --primary: #22c55e;
+  --primary-hover: #16a34a;
+  --primary-soft: rgba(34, 197, 94, 0.16);
+  --primary-border: rgba(34, 197, 94, 0.35);
+  --chart-line: #22c55e;
+  --chart-fill: rgba(34, 197, 94, 0.2);
+}
+
+html[data-accent="orange"]:not([data-theme="light"]) {
+  --primary: #f97316;
+  --primary-hover: #ea580c;
+  --primary-soft: rgba(249, 115, 22, 0.16);
+  --primary-border: rgba(249, 115, 22, 0.35);
+  --chart-line: #f97316;
+  --chart-fill: rgba(249, 115, 22, 0.2);
+}
+
+html[data-accent="red"]:not([data-theme="light"]) {
+  --primary: #f87171;
+  --primary-hover: #ef4444;
+  --primary-soft: rgba(248, 113, 113, 0.16);
+  --primary-border: rgba(248, 113, 113, 0.35);
+  --chart-line: #f87171;
+  --chart-fill: rgba(248, 113, 113, 0.2);
+}
+
+html[data-accent="teal"]:not([data-theme="light"]) {
+  --primary: #14b8a6;
+  --primary-hover: #0d9488;
+  --primary-soft: rgba(20, 184, 166, 0.16);
+  --primary-border: rgba(20, 184, 166, 0.35);
+  --chart-line: #14b8a6;
+  --chart-fill: rgba(20, 184, 166, 0.2);
+}
+
+/* Light workspace accents */
+html[data-theme="light"][data-accent="blue"] {
+  --primary: #2563eb;
+  --primary-hover: #1d4ed8;
+  --primary-soft: #dbeafe;
+  --primary-border: #bfdbfe;
+  --chart-line: #2563eb;
+  --chart-fill: rgba(37, 99, 235, 0.14);
+}
+
+html[data-theme="light"][data-accent="green"] {
+  --primary: #16a34a;
+  --primary-hover: #15803d;
+  --primary-soft: #dcfce7;
+  --primary-border: #bbf7d0;
+  --chart-line: #16a34a;
+  --chart-fill: rgba(22, 163, 74, 0.14);
+}
+
+html[data-theme="light"][data-accent="orange"] {
+  --primary: #ea580c;
+  --primary-hover: #c2410c;
+  --primary-soft: #ffedd5;
+  --primary-border: #fed7aa;
+  --chart-line: #ea580c;
+  --chart-fill: rgba(234, 88, 12, 0.14);
+}
+
+html[data-theme="light"][data-accent="red"] {
+  --primary: #dc2626;
+  --primary-hover: #b91c1c;
+  --primary-soft: #fee2e2;
+  --primary-border: #fecaca;
+  --chart-line: #dc2626;
+  --chart-fill: rgba(220, 38, 38, 0.14);
+}
+
+html[data-theme="light"][data-accent="teal"] {
+  --primary: #0d9488;
+  --primary-hover: #0f766e;
+  --primary-soft: #ccfbf1;
+  --primary-border: #99f6e4;
+  --chart-line: #0d9488;
+  --chart-fill: rgba(13, 148, 136, 0.14);
+}

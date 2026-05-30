@@ -20,7 +20,7 @@ import {
   STATEMENT_FILTER_OPTIONS
 } from "./settingsDefaults";
 import type { AccentColor, ThemePreference, UserSettings } from "./settingsTypes";
-import { applyThemePreference } from "../../theme/uiColorScheme";
+import { previewWorkspaceAppearance } from "../../theme/workspaceAppearance";
 
 function initials(name: string | null | undefined, email: string): string {
   const n = (name ?? "").trim();
@@ -279,8 +279,6 @@ export function SettingsDashboard() {
       setRole(me.role ?? "USER");
       setSaved(settings);
       setDraft(settings);
-      applyThemePreference(settings.themePreference);
-      document.documentElement.setAttribute("data-density", settings.density);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Could not load settings.");
     } finally {
@@ -298,16 +296,26 @@ export function SettingsDashboard() {
   }, [saved, draft]);
 
   const patchDraft = (patch: Partial<UserSettings>) => {
-    setDraft((prev) => (prev ? { ...prev, ...patch } : prev));
-    if (patch.themePreference) applyThemePreference(patch.themePreference);
-    if (patch.density) document.documentElement.setAttribute("data-density", patch.density);
+    setDraft((prev) => {
+      if (!prev) return prev;
+      const next = { ...prev, ...patch };
+      previewWorkspaceAppearance({
+        themePreference: next.themePreference,
+        accentColor: next.accentColor,
+        density: next.density
+      });
+      return next;
+    });
   };
 
   const cancel = () => {
     if (saved) {
       setDraft(saved);
-      applyThemePreference(saved.themePreference);
-      document.documentElement.setAttribute("data-density", saved.density);
+      previewWorkspaceAppearance({
+        themePreference: saved.themePreference,
+        accentColor: saved.accentColor,
+        density: saved.density
+      });
     }
     setSuccess(false);
     setError("");
@@ -333,8 +341,11 @@ export function SettingsDashboard() {
       const updated = await upsertUserSettings(patch);
       setSaved(updated);
       setDraft(updated);
-      applyThemePreference(updated.themePreference);
-      document.documentElement.setAttribute("data-density", updated.density);
+      previewWorkspaceAppearance({
+        themePreference: updated.themePreference,
+        accentColor: updated.accentColor,
+        density: updated.density
+      });
       await refreshProfile();
       setSuccess(true);
       window.setTimeout(() => setSuccess(false), 4000);

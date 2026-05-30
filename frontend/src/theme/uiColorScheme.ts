@@ -22,8 +22,8 @@ export function resolveEffectiveUiColorScheme(pref: ThemePreference): UiColorSch
   return "dark";
 }
 
-/** Apply palette to `document.documentElement` and mirror preference to localStorage for first paint. */
-export function applyUiColorScheme(scheme: UiColorScheme): void {
+/** Apply palette to `document.documentElement`. */
+export function applyDocumentTheme(scheme: UiColorScheme): void {
   const html = document.documentElement;
   if (scheme === "light") {
     html.setAttribute("data-theme", "light");
@@ -32,9 +32,14 @@ export function applyUiColorScheme(scheme: UiColorScheme): void {
   }
 }
 
+/** Apply palette to `document.documentElement` and mirror preference to localStorage for first paint. */
+export function applyUiColorScheme(scheme: UiColorScheme): void {
+  applyDocumentTheme(scheme);
+}
+
 /** Apply theme preference (light/dark/system) immediately for preview. */
 export function applyThemePreference(pref: ThemePreference): void {
-  applyUiColorScheme(resolveEffectiveUiColorScheme(pref));
+  applyDocumentTheme(resolveEffectiveUiColorScheme(pref));
   try {
     localStorage.setItem(UI_COLOR_SCHEME_STORAGE_KEY, pref);
   } catch {

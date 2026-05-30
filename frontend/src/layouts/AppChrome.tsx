@@ -3,13 +3,14 @@ import { Outlet, useLocation } from "react-router-dom";
 import { AuthenticatedShell } from "./AuthenticatedShell";
 import { HomePublicFooter } from "../components/home/HomePublicFooter";
 import { HomePublicHeader } from "../components/home/HomePublicHeader";
+import { DEFAULT_USER_SETTINGS } from "../features/settings/settingsDefaults";
 import { isWorkspacePath } from "../utils/workspacePaths";
+import { applyDocumentTheme, readStoredThemePreference, resolveEffectiveUiColorScheme, subscribeToSystemTheme } from "../theme/uiColorScheme";
 import {
-  applyThemePreference,
-  readStoredThemePreference,
-  subscribeToSystemTheme,
-  type ThemePreference
-} from "../theme/uiColorScheme";
+  applyMarketingAppearance,
+  applyWorkspaceAppearance,
+  type WorkspaceAppearance
+} from "../theme/workspaceAppearance";
 import { useAuth } from "../contexts/AuthContext";
 import { getOrCreateUserSettings } from "../services/settingsSupabase";
 
@@ -17,16 +18,21 @@ type Me = {
   email?: string;
   role?: "USER" | "ADMIN";
   freeUsesRemaining?: number | null;
-  themePreference?: ThemePreference;
 } | null;
+
+function readInitialWorkspaceAppearance(): WorkspaceAppearance {
+  return {
+    themePreference: readStoredThemePreference() ?? DEFAULT_USER_SETTINGS.themePreference,
+    accentColor: DEFAULT_USER_SETTINGS.accentColor,
+    density: DEFAULT_USER_SETTINGS.density
+  };
+}
 
 export function AppChrome() {
   const location = useLocation();
   const { session, initializing, profile, profileLoading } = useAuth();
   const [me, setMe] = useState<Me>(null);
-  const [themePref, setThemePref] = useState<ThemePreference>(
-    () => readStoredThemePreference() ?? "system"
-  );
+  const [workspaceAppearance, setWorkspaceAppearance] = useState<WorkspaceAppearance>(readInitialWorkspaceAppearance);
 
   const useWorkspaceChrome = !initializing && Boolean(session) && isWorkspacePath(location.pathname);
   const isMarketingHome = location.pathname === "/";
@@ -46,22 +52,27 @@ export function AppChrome() {
     let cancelled = false;
 
     void (async () => {
-      let pref: ThemePreference = "system";
+      let appearance: WorkspaceAppearance = readInitialWorkspaceAppearance();
       try {
         const settings = await getOrCreateUserSettings();
-        pref = settings.themePreference;
+        appearance = {
+          themePreference: settings.themePreference,
+          accentColor: settings.accentColor,
+          density: settings.density
+        };
       } catch {
-        if (profile?.ui_color_scheme === "light") pref = "light";
-        else if (profile?.ui_color_scheme === "dark") pref = "dark";
+        if (profile?.ui_color_scheme === "light") {
+          appearance.themePreference = "light";
+        } else if (profile?.ui_color_scheme === "dark") {
+          appearance.themePreference = "dark";
+        }
       }
       if (cancelled) return;
-      setThemePref(pref);
-      applyThemePreference(pref);
+      setWorkspaceAppearance(appearance);
       setMe({
         email,
         role: profile?.role === "ADMIN" ? "ADMIN" : "USER",
-        freeUsesRemaining: profile?.free_uses_remaining ?? null,
-        themePreference: pref
+        freeUsesRemaining: profile?.free_uses_remaining ?? null
       });
     })();
 
@@ -71,13 +82,19 @@ export function AppChrome() {
   }, [session, profile, profileLoading]);
 
   useEffect(() => {
-    applyThemePreference(themePref);
-  }, [themePref]);
+    if (!session || !useWorkspaceChrome) {
+      applyMarketingAppearance();
+      return;
+    }
+    applyWorkspaceAppearance(workspaceAppearance);
+  }, [session, useWorkspaceChrome, workspaceAppearance]);
 
   useEffect(() => {
-    if (themePref !== "system") return;
-    return subscribeToSystemTheme(() => applyThemePreference("system"));
-  }, [themePref]);
+    if (!useWorkspaceChrome || workspaceAppearance.themePreference !== "system") return;
+    return subscribeToSystemTheme(() => {
+      applyDocumentTheme(resolveEffectiveUiColorScheme("system"));
+    });
+  }, [useWorkspaceChrome, workspaceAppearance.themePreference]);
 
   if (initializing) {
     return null;

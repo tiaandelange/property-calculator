@@ -46,7 +46,8 @@ vi.mock("../lib/supabaseClient", () => ({
 vi.mock("../services/settingsSupabase", () => ({
   getOrCreateUserSettings: vi.fn(() =>
     Promise.resolve({
-      themePreference: "system",
+      themePreference: "dark",
+      accentColor: "blue",
       density: "comfortable"
     })
   )
@@ -118,5 +119,46 @@ describe("AppChrome", () => {
       expect(within(screen.getByRole("banner")).getByRole("link", { name: /Proplytic — Home/i })).toBeInTheDocument();
     });
     expect(screen.getByRole("navigation", { name: /^Primary$/i })).toBeInTheDocument();
+  });
+
+  it("forces light marketing appearance on public routes", async () => {
+    sessionRef.current = { access_token: "test-at", user: { id: "u1", email: "user@test.example" } };
+    document.documentElement.setAttribute("data-theme", "dark");
+    document.documentElement.setAttribute("data-accent", "blue");
+
+    renderWithAuth(
+      <MemoryRouter initialEntries={["/"]}>
+        <Routes>
+          <Route element={<AppChrome />}>
+            <Route path="/" element={<div>Home</div>} />
+          </Route>
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(document.documentElement.getAttribute("data-theme")).toBe("light");
+      expect(document.documentElement.hasAttribute("data-accent")).toBe(false);
+    });
+  });
+
+  it("applies saved workspace appearance on dashboard routes", async () => {
+    sessionRef.current = { access_token: "test-at", user: { id: "u1", email: "user@test.example" } };
+
+    renderWithAuth(
+      <MemoryRouter initialEntries={["/owned-properties/dashboard"]}>
+        <Routes>
+          <Route element={<AppChrome />}>
+            <Route path="/owned-properties/dashboard" element={<div>Portfolio</div>} />
+          </Route>
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(document.documentElement.getAttribute("data-theme")).toBeNull();
+      expect(document.documentElement.getAttribute("data-accent")).toBe("blue");
+      expect(document.documentElement.getAttribute("data-density")).toBe("comfortable");
+    });
   });
 });
