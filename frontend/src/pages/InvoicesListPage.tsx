@@ -13,7 +13,9 @@ import {
   isInitialQueryLoad,
   isQueryRefreshing,
   queryKeys,
-  useInvoicesDirectoryQuery,
+  useInvoiceMetricsQuery,
+  useInvoicesListQuery,
+  usePropertyOptionsQuery,
   useWorkspaceId
 } from "../features/queries";
 import { InvoiceControlsBar } from "../features/invoices/InvoiceControlsBar";
@@ -50,28 +52,42 @@ export function InvoicesListPage() {
     dateTo: ""
   }));
 
-  const directoryParams = useMemo(
+  const filterParams = useMemo(
     () => ({
-      page,
-      pageSize: 20,
       q: filters.q,
       propertyId: filters.propertyId,
       status: filters.status,
       dateFrom: filters.dateFrom,
       dateTo: filters.dateTo
     }),
-    [page, filters]
+    [filters]
   );
 
-  const directoryQuery = useInvoicesDirectoryQuery(directoryParams);
+  const listParams = useMemo(
+    () => ({
+      page,
+      pageSize: 20,
+      ...filterParams
+    }),
+    [page, filterParams]
+  );
 
-  const pageItems = directoryQuery.data?.items ?? [];
-  const totalCount = directoryQuery.data?.totalCount ?? 0;
-  const metrics = directoryQuery.data?.metrics ?? EMPTY_METRICS;
-  const properties = directoryQuery.data?.properties ?? [];
-  const loading = isInitialQueryLoad(directoryQuery);
-  const refreshing = isQueryRefreshing(directoryQuery);
-  const error = directoryQuery.error ? propertyApiErrorMessage(directoryQuery.error) : "";
+  const metricsQuery = useInvoiceMetricsQuery(filterParams);
+  const listQuery = useInvoicesListQuery(listParams);
+  const propertyOptionsQuery = usePropertyOptionsQuery();
+
+  const pageItems = listQuery.data?.items ?? [];
+  const totalCount = listQuery.data?.totalCount ?? 0;
+  const metrics = metricsQuery.data ?? EMPTY_METRICS;
+  const properties = propertyOptionsQuery.data ?? [];
+  const loading = isInitialQueryLoad(listQuery);
+  const metricsLoading = isInitialQueryLoad(metricsQuery);
+  const refreshing = isQueryRefreshing(listQuery) || isQueryRefreshing(metricsQuery);
+  const error = listQuery.error
+    ? propertyApiErrorMessage(listQuery.error)
+    : metricsQuery.error
+      ? propertyApiErrorMessage(metricsQuery.error)
+      : "";
 
   useEffect(() => {
     setPage(1);
@@ -79,7 +95,8 @@ export function InvoicesListPage() {
 
   const refreshDirectory = () => {
     if (workspaceId) {
-      void queryClient.invalidateQueries({ queryKey: queryKeys.invoicesDirectory(workspaceId) });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.invoiceMetrics(workspaceId) });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.invoicesList(workspaceId) });
     }
   };
 
@@ -129,7 +146,7 @@ export function InvoicesListPage() {
             </div>
             <div className="pg-invoices-toolbar-actions pg-invoices-desktop-only">
               <QueryRefreshingIndicator active={refreshing} />
-              <Button onClick={refreshDirectory} loading={directoryQuery.isFetching && !loading}>
+              <Button onClick={refreshDirectory} loading={(listQuery.isFetching || metricsQuery.isFetching) && !loading}>
                 Refresh
               </Button>
             </div>
@@ -138,17 +155,20 @@ export function InvoicesListPage() {
           {error ? (
             <QueryErrorCard
               message={error}
-              onRetry={() => void directoryQuery.refetch()}
-              retrying={directoryQuery.isFetching}
+              onRetry={() => {
+                void listQuery.refetch();
+                void metricsQuery.refetch();
+              }}
+              retrying={listQuery.isFetching || metricsQuery.isFetching}
             />
           ) : null}
 
-          {loading ? <MetricCardsSkeletonRow count={4} /> : <InvoiceMetricCards metrics={metrics} />}
+          {metricsLoading ? <MetricCardsSkeletonRow count={4} /> : <InvoiceMetricCards metrics={metrics} />}
 
           <InvoiceControlsBar filters={filters} onChange={(next) => setFilters((prev) => ({ ...prev, ...next }))} properties={properties} />
 
           {!loading && !error && totalCount === 0 ? (
-            <section className="pg-invoices-empty pg-workspace-card" aria-busy={directoryQuery.isFetching}>
+            <section className="pg-invoices-empty pg-workspace-card" aria-busy={listQuery.isFetching}>
               <h2>No invoices found</h2>
               <p>
                 {!filters.q && filters.propertyId === "ALL" && filters.status === "ALL"

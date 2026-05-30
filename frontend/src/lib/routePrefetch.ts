@@ -2,7 +2,8 @@ import type { QueryClient } from "@tanstack/react-query";
 import {
   getFinancialsDirectory,
   getInvoice,
-  getInvoicesDirectory,
+  getInvoicesDirectoryList,
+  getInvoiceDirectoryMetrics,
   getLeasesDirectory,
   getPortfolioDashboardSummary,
   getProperty,
@@ -161,9 +162,15 @@ export function prefetchWorkspaceRoute(path: string, queryClient: QueryClient, w
       });
       break;
     case "invoices":
-      prefetchQueryDeduped(queryClient, `invoices-directory:${workspaceId}`, {
-        queryKey: queryKeys.invoicesDirectory(workspaceId, { page: 1, pageSize: 20 }),
-        queryFn: () => getInvoicesDirectory({ page: 1, pageSize: 20 }),
+      prefetchQueryDeduped(queryClient, `invoice-metrics:${workspaceId}`, {
+        queryKey: queryKeys.invoiceMetrics(workspaceId, {}),
+        queryFn: () => getInvoiceDirectoryMetrics({}),
+        staleTime: STALE_TIME_DIRECTORY_MS,
+        gcTime: GC_TIME_MS
+      });
+      prefetchQueryDeduped(queryClient, `invoices-list:${workspaceId}`, {
+        queryKey: queryKeys.invoicesList(workspaceId, { page: 1, pageSize: 20 }),
+        queryFn: () => getInvoicesDirectoryList({ page: 1, pageSize: 20 }),
         staleTime: STALE_TIME_DIRECTORY_MS,
         gcTime: GC_TIME_MS
       });

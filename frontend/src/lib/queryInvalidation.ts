@@ -17,6 +17,12 @@ function ws(workspaceId?: string): string | undefined {
   return workspaceId;
 }
 
+function invalidateInvoiceDirectoryQueries(qc: QueryClient, wid: string) {
+  void qc.invalidateQueries({ queryKey: ["invoice-metrics", wid] });
+  void qc.invalidateQueries({ queryKey: queryKeys.invoicesList(wid) });
+  void qc.invalidateQueries({ queryKey: queryKeys.invoicesDirectory(wid) });
+}
+
 /** Broad portfolio refresh — used by legacy invalidation event bridge. */
 export function invalidatePortfolioQueries(opts?: InvalidateOpts) {
   const qc = client(opts);
@@ -32,6 +38,7 @@ export function invalidatePortfolioQueries(opts?: InvalidateOpts) {
       { queryKey: ["tenants", wid] },
       { queryKey: ["leases", wid] },
       { queryKey: ["invoices", wid] },
+      { queryKey: ["invoice-metrics", wid] },
       { queryKey: ["financials", wid] },
       { queryKey: ["dashboard-summary", wid] },
       { queryKey: queryKeys.reports(wid) }
@@ -42,6 +49,7 @@ export function invalidatePortfolioQueries(opts?: InvalidateOpts) {
       { queryKey: ["tenants"] },
       { queryKey: ["leases"] },
       { queryKey: ["invoices"] },
+      { queryKey: ["invoice-metrics"] },
       { queryKey: ["financials"] },
       { queryKey: ["dashboard-summary"] },
       { queryKey: ["reports"] }
@@ -79,7 +87,7 @@ export function invalidatePropertyQueries(opts: InvalidateOpts & { propertyId: s
     void qc.invalidateQueries({ queryKey: queryKeys.propertiesDirectory(wid) });
     void qc.invalidateQueries({ queryKey: queryKeys.leasesDirectory(wid) });
     void qc.invalidateQueries({ queryKey: queryKeys.tenantsDirectory(wid) });
-    void qc.invalidateQueries({ queryKey: queryKeys.invoicesDirectory(wid) });
+    invalidateInvoiceDirectoryQueries(qc, wid);
   } else {
     void qc.invalidateQueries({ queryKey: ["properties"] });
     void qc.invalidateQueries({ queryKey: ["dashboard-summary"] });
@@ -98,7 +106,7 @@ export function invalidateLeaseQueries(opts: InvalidateOpts & { propertyId: stri
     void qc.invalidateQueries({ queryKey: queryKeys.propertiesDirectory(wid) });
     void qc.invalidateQueries({ queryKey: queryKeys.leasesDirectory(wid) });
     void qc.invalidateQueries({ queryKey: queryKeys.tenantsDirectory(wid) });
-    void qc.invalidateQueries({ queryKey: queryKeys.invoicesDirectory(wid) });
+    invalidateInvoiceDirectoryQueries(qc, wid);
   }
   if (opts.tenantId) {
     invalidateTenantQueries({ ...opts, tenantId: opts.tenantId });
@@ -114,7 +122,7 @@ export function invalidateInvoiceQueries(
     void qc.invalidateQueries({ queryKey: queryKeys.invoiceDetail(opts.invoiceId) });
   }
   if (wid) {
-    void qc.invalidateQueries({ queryKey: queryKeys.invoicesDirectory(wid) });
+    invalidateInvoiceDirectoryQueries(qc, wid);
     void qc.invalidateQueries({ queryKey: ["dashboard-summary", wid] });
     void qc.invalidateQueries({ queryKey: ["financials", wid] });
     invalidateWorkspaceNotifications({ ...opts, workspaceId: wid });

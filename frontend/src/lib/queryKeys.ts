@@ -49,6 +49,15 @@ export type InvoicesDirectoryParams = DirectoryPaginationParams & {
   dateTo?: string;
 };
 
+/** Invoice directory filters without pagination (metrics cache key). */
+export type InvoiceDirectoryFilterParams = {
+  q?: string;
+  propertyId?: string | null;
+  status?: string;
+  dateFrom?: string;
+  dateTo?: string;
+};
+
 export type TenantsDirectoryParams = DirectoryPaginationParams & TenantsDirectorySortParams;
 
 export type PropertyStatementParams = {
@@ -129,6 +138,29 @@ export const queryKeys = {
     ] as const,
   invoices: (workspaceId: string, filters: Record<string, unknown> = {}) =>
     ["invoices", workspaceId, filters] as const,
+  invoiceMetrics: (workspaceId: string, filters: InvoiceDirectoryFilterParams = {}) =>
+    [
+      "invoice-metrics",
+      workspaceId,
+      filters.q ?? "",
+      filters.propertyId ?? "ALL",
+      filters.status ?? "ALL",
+      filters.dateFrom ?? "",
+      filters.dateTo ?? ""
+    ] as const,
+  invoicesList: (workspaceId: string, params: InvoicesDirectoryParams = {}) =>
+    [
+      "invoices",
+      workspaceId,
+      params.page ?? 1,
+      params.pageSize ?? 20,
+      params.q ?? "",
+      params.propertyId ?? "ALL",
+      params.status ?? "ALL",
+      params.dateFrom ?? "",
+      params.dateTo ?? ""
+    ] as const,
+  /** @deprecated Prefer invoiceMetrics + invoicesList */
   invoicesDirectory: (workspaceId: string, params: InvoicesDirectoryParams = {}) =>
     ["invoices", workspaceId, "directory", params] as const,
   financialsDirectory: (workspaceId: string, params: FinancialsDirectoryParams) =>

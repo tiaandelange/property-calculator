@@ -2,105 +2,12 @@ import type { PostgrestError } from "@supabase/supabase-js";
 import { getSupabase } from "../lib/supabaseClient";
 import { snakeRowToCamel } from "../api/propertyRowMapping";
 import { dbToTenant, tenantToDb } from "../api/tenantRowMapping";
-import { buildTenantDirectory, computeApplicantDirectoryMetrics } from "../features/tenants/tenantDirectoryAdapter";
-import type { TenantDirectoryMetrics, TenantListItem } from "../features/tenants/tenantDirectoryTypes";
-import { matchesTenantDirectoryFilters, PAGE_SIZE, paginate } from "../features/tenants/tenantDirectoryUtils";
-
-function hasComplexTenantDirectoryFilters(opts?: TenantsDirectoryParams): boolean {
-  return (
-    (opts?.leaseStatus != null && opts.leaseStatus !== "ALL") ||
-    (opts?.paymentStatus != null && opts.paymentStatus !== "ALL")
-  );
-}
-
-function applyTenantsDirectorySqlFilters(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  query: any,
-  opts?: TenantsDirectoryParams
-) {
-  if (opts?.tab === "applicants") {
-    query = query.eq("status", "APPLICANT");
-  } else if (opts?.tab === "tenants") {
-    query = query.neq("status", "APPLICANT");
-  }
-  if (opts?.propertyId && opts.propertyId !== "ALL") {
-    query = query.eq("property_id", String(opts.propertyId));
-  }
-  const q = opts?.q?.trim();
-  if (q) {
-    const pattern = `%${q.replace(/%/g, "\\%")}%`;
-    query = query.or(`first_name.ilike.${pattern},last_name.ilike.${pattern},email.ilike.${pattern},phone.ilike.${pattern}`);
-  }
-  return query;
-}
-
-async function fetchLeasesAndInvoicesForTenants(uid: string, tenantIds: string[]) {
-  if (!tenantIds.length) {
-    return { leaseRows: [] as Record<string, unknown>[], invoiceRows: [] as Record<string, unknown>[] };
-  }
-  const sb = getSupabase();
-  const [leasesRes, invoicesRes] = await Promise.all([
-    sb
-      .from("leases")
-      .select(LEASE_SELECT_WITH_PROPERTY)
-      .eq("user_id", uid)
-      .in("tenant_id", tenantIds)
-      .order("created_at", { ascending: false }),
-    sb
-      .from("invoices")
-      .select("id, tenant_id, due_date, status, total, paid_at, property_id")
-      .eq("user_id", uid)
-      .in("tenant_id", tenantIds)
-  ]);
-  if (leasesRes.error) throw toError(leasesRes.error);
-  if (invoicesRes.error) throw toError(invoicesRes.error);
-  return {
-    leaseRows: (leasesRes.data ?? []) as Record<string, unknown>[],
-    invoiceRows: (invoicesRes.data ?? []) as Record<string, unknown>[]
-  };
-}
-
-async function enrichApplicantDetails(uid: string, items: TenantListItem[]): Promise<TenantListItem[]> {
-  const applicantIds = items
-    .filter((item) => String(item.tenantStatus ?? "").toUpperCase() === "APPLICANT")
-    .map((item) => item.id);
-  if (!applicantIds.length) return items;
-
-  const sb = getSupabase();
-  const { data: appRows, error: appErr } = await sb
-    .from("applicant_application_details")
-    .select("tenant_id, monthly_income, fit_score, target_rent, submitted_at")
-    .eq("user_id", uid)
-    .in("tenant_id", applicantIds);
-  if (appErr) throw toError(appErr);
-
-  const appByTenant = new Map(
-    (appRows ?? []).map((row) => {
-      const r = row as Record<string, unknown>;
-      return [
-        String(r.tenant_id ?? ""),
-        {
-          monthlyIncome: Number(r.monthly_income ?? 0),
-          fitScore: Number(r.fit_score ?? 0),
-          targetRent: Number(r.target_rent ?? 0),
-          submittedAt: r.submitted_at != null ? String(r.submitted_at) : null
-        }
-      ] as const;
-    })
-  );
-
-  return items.map((item) => {
-    const app = appByTenant.get(item.id);
-    if (!app) return item;
-    return {
-      ...item,
-      monthlyIncome: app.monthlyIncome,
-      fitScore: app.fitScore,
-      targetRent: app.targetRent,
-      applicationSubmittedAt: app.submittedAt
-    };
-  });
-}
+import type {
+  ApplicantDirectoryMetrics,
+  TenantDirectoryMetrics,
+  TenantListItem
+} from "../features/tenants/tenantDirectoryTypes";
+import { PAGE_SIZE } from "../features/tenants/tenantDirectoryUtils";
 import type { TenantsDirectoryParams } from "../lib/queryKeys";
 import { leaseDisplayStatus } from "../utils/leaseDisplay";
 
@@ -159,92 +66,88 @@ const TENANT_LEASE_SELECT = `
   created_at
 `;
 
-const LEASE_SELECT_WITH_PROPERTY = `
-  *,
-  properties ( id, name, address_line1, address_line2, suburb, city )
-`;
+function mapTenantDirectoryItem(raw: Record<string, unknown>): TenantListItem {
+  return {
+    id: String(raw.id ?? ""),
+    firstName: String(raw.firstName ?? ""),
+    lastName: String(raw.lastName ?? ""),
+    fullName: String(raw.fullName ?? ""),
+    email: raw.email != null ? String(raw.email) : null,
+    phone: raw.phone != null ? String(raw.phone) : null,
+    avatarUrl: null,
+    tenantStatus: raw.tenantStatus != null ? String(raw.tenantStatus) : null,
+    propertyId: raw.propertyId != null ? String(raw.propertyId) : null,
+    propertyName: raw.propertyName != null ? String(raw.propertyName) : null,
+    propertyAddress: raw.propertyAddress != null ? String(raw.propertyAddress) : null,
+    unitNumber: raw.unitNumber != null ? String(raw.unitNumber) : null,
+    leaseId: raw.leaseId != null ? String(raw.leaseId) : null,
+    monthlyRent: raw.monthlyRent != null ? Number(raw.monthlyRent) : null,
+    leaseStartDate: raw.leaseStartDate != null ? String(raw.leaseStartDate) : null,
+    leaseEndDate: raw.leaseEndDate != null ? String(raw.leaseEndDate) : null,
+    leaseStatus: raw.leaseStatus != null ? String(raw.leaseStatus) : null,
+    leaseDisplayStatus: raw.leaseDisplayStatus != null ? String(raw.leaseDisplayStatus) : null,
+    paymentStatus: raw.paymentStatus != null ? (String(raw.paymentStatus) as TenantListItem["paymentStatus"]) : null,
+    outstandingAmount: raw.outstandingAmount != null ? Number(raw.outstandingAmount) : null,
+    lastPaymentDate: raw.lastPaymentDate != null ? String(raw.lastPaymentDate) : null,
+    nextPaymentDueDate: raw.nextPaymentDueDate != null ? String(raw.nextPaymentDueDate) : null,
+    monthlyIncome: raw.monthlyIncome != null ? Number(raw.monthlyIncome) : null,
+    fitScore: raw.fitScore != null ? Number(raw.fitScore) : null,
+    targetRent: raw.targetRent != null ? Number(raw.targetRent) : null,
+    applicationSubmittedAt: raw.applicationSubmittedAt != null ? String(raw.applicationSubmittedAt) : null
+  };
+}
 
 /**
- * Tenants directory: tenants + leases + open invoices for list UI (RLS-scoped).
- * Returns one page of items when pagination params are supplied.
+ * Tenants directory via single RPC (server-side filter/sort/pagination).
  */
 export async function listTenantsDirectory(opts?: TenantsDirectoryParams): Promise<{
   items: TenantListItem[];
   metrics: TenantDirectoryMetrics;
-  applicantMetrics: ReturnType<typeof computeApplicantDirectoryMetrics>;
+  applicantMetrics: ApplicantDirectoryMetrics;
   totalCount: number;
 }> {
-  const uid = await requireUserId();
+  await requireUserId();
   const sb = getSupabase();
   const page = Math.max(1, opts?.page ?? 1);
   const pageSize = Math.max(1, opts?.pageSize ?? PAGE_SIZE);
-  const complexFilters = hasComplexTenantDirectoryFilters(opts);
-
-  let tenantQuery = sb
-    .from("tenants")
-    .select(TENANT_SELECT_WITH_PROPERTY, complexFilters ? undefined : { count: "exact" })
-    .eq("user_id", uid)
-    .order("created_at", { ascending: false });
-  tenantQuery = applyTenantsDirectorySqlFilters(tenantQuery, opts);
-
-  if (complexFilters) {
-    const { data: tenantRows, error: tErr } = await tenantQuery;
-    if (tErr) throw toError(tErr);
-    const rows = (tenantRows ?? []) as Record<string, unknown>[];
-    const tenantIds = rows.map((r) => String((r as { id: string }).id)).filter(Boolean);
-    if (!tenantIds.length) {
-      const empty = buildTenantDirectory([], [], []);
-      return { ...empty, applicantMetrics: computeApplicantDirectoryMetrics([]), totalCount: 0 };
-    }
-    const { leaseRows, invoiceRows } = await fetchLeasesAndInvoicesForTenants(uid, tenantIds);
-    const directory = buildTenantDirectory(rows, leaseRows, invoiceRows);
-    let items = await enrichApplicantDetails(uid, directory.items);
-    const metricsItems = items;
-    const filtered = items.filter((item) => matchesTenantDirectoryFilters(item, opts ?? {}));
-    const { slice, totalCount } = paginate(filtered, page, pageSize);
-    return {
-      items: slice,
-      metrics: directory.metrics,
-      applicantMetrics: computeApplicantDirectoryMetrics(metricsItems),
-      totalCount
-    };
-  }
-
   const offset = (page - 1) * pageSize;
-  const [allTenantsRes, pageTenantsRes] = await Promise.all([
-    applyTenantsDirectorySqlFilters(
-      sb.from("tenants").select(TENANT_SELECT_WITH_PROPERTY).eq("user_id", uid).order("created_at", { ascending: false }),
-      opts
-    ),
-    tenantQuery.range(offset, offset + pageSize - 1)
-  ]);
-  if (allTenantsRes.error) throw toError(allTenantsRes.error);
-  if (pageTenantsRes.error) throw toError(pageTenantsRes.error);
+  const propertyId = opts?.propertyId && opts.propertyId !== "ALL" ? String(opts.propertyId) : null;
 
-  const allRows = (allTenantsRes.data ?? []) as Record<string, unknown>[];
-  const pageRows = (pageTenantsRes.data ?? []) as Record<string, unknown>[];
-  const allIds = allRows.map((r) => String((r as { id: string }).id)).filter(Boolean);
-  const pageIds = new Set(pageRows.map((r) => String((r as { id: string }).id)).filter(Boolean));
-
-  if (!allIds.length) {
-    const empty = buildTenantDirectory([], [], []);
-    return { ...empty, applicantMetrics: computeApplicantDirectoryMetrics([]), totalCount: 0 };
+  const { data, error } = await sb.rpc("get_tenants_directory", {
+    p_limit: pageSize,
+    p_offset: offset,
+    p_search: opts?.q?.trim() || null,
+    p_property_id: propertyId,
+    p_lease_status: opts?.leaseStatus && opts.leaseStatus !== "ALL" ? opts.leaseStatus : null,
+    p_payment_status: opts?.paymentStatus && opts.paymentStatus !== "ALL" ? opts.paymentStatus : null,
+    p_tab: opts?.tab ?? "tenants"
+  });
+  if (error) throw toError(error);
+  if (data == null || typeof data !== "object" || Array.isArray(data)) {
+    throw new Error("Empty tenants directory response.");
   }
 
-  const { leaseRows, invoiceRows } = await fetchLeasesAndInvoicesForTenants(uid, allIds);
-  const metricsDirectory = buildTenantDirectory(allRows, leaseRows, invoiceRows);
-  const metricsItems = await enrichApplicantDetails(uid, metricsDirectory.items);
-
-  const pageLeases = leaseRows.filter((r) => pageIds.has(String((r as { tenant_id: string }).tenant_id)));
-  const pageInvoices = invoiceRows.filter((r) => pageIds.has(String((r as { tenant_id: string }).tenant_id)));
-  const pageDirectory = buildTenantDirectory(pageRows, pageLeases, pageInvoices);
-  const pageItems = await enrichApplicantDetails(uid, pageDirectory.items);
+  const payload = data as Record<string, unknown>;
+  const rawItems = (payload.items ?? []) as Record<string, unknown>[];
+  const rawMetrics = (payload.metrics ?? {}) as Record<string, unknown>;
+  const rawApplicantMetrics = (payload.applicantMetrics ?? {}) as Record<string, unknown>;
 
   return {
-    items: pageItems,
-    metrics: metricsDirectory.metrics,
-    applicantMetrics: computeApplicantDirectoryMetrics(metricsItems),
-    totalCount: pageTenantsRes.count ?? pageItems.length
+    items: rawItems.map(mapTenantDirectoryItem),
+    metrics: {
+      totalTenants: Number(rawMetrics.totalTenants ?? 0),
+      activeLeases: Number(rawMetrics.activeLeases ?? 0),
+      pendingPaymentsTotal: Number(rawMetrics.pendingPaymentsTotal ?? 0),
+      pendingPaymentsCount: Number(rawMetrics.pendingPaymentsCount ?? 0),
+      renewalsDue: Number(rawMetrics.renewalsDue ?? 0)
+    },
+    applicantMetrics: {
+      totalApplicants: Number(rawApplicantMetrics.totalApplicants ?? 0),
+      awaitingProperty: Number(rawApplicantMetrics.awaitingProperty ?? 0),
+      linkedToProperty: Number(rawApplicantMetrics.linkedToProperty ?? 0),
+      readyForLease: Number(rawApplicantMetrics.readyForLease ?? 0)
+    },
+    totalCount: Number(payload.totalCount ?? 0)
   };
 }
 

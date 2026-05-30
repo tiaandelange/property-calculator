@@ -1,7 +1,8 @@
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   getFinancialsDirectory,
-  getInvoicesDirectory,
+  getInvoicesDirectoryList,
+  getInvoiceDirectoryMetrics,
   getLeasesDirectory,
   getPortfolioDashboardSummary,
   getProperties,
@@ -25,6 +26,7 @@ import type {
   DashboardSummaryParams,
   FinancialsDirectoryParams,
   InvoicesDirectoryParams,
+  InvoiceDirectoryFilterParams,
   LeasesDirectoryParams,
   PropertiesDirectoryParams,
   TenantsDirectoryParams
@@ -105,13 +107,44 @@ export function useLeasesDirectoryQuery(params: LeasesDirectoryParams = {}) {
   });
 }
 
+export function useInvoiceMetricsQuery(filters: InvoiceDirectoryFilterParams = {}) {
+  const workspaceId = useWorkspaceId();
+  return useQuery({
+    queryKey: workspaceId
+      ? queryKeys.invoiceMetrics(workspaceId, filters)
+      : ["invoice-metrics", "anonymous", filters],
+    queryFn: () => getInvoiceDirectoryMetrics(filters),
+    enabled: Boolean(workspaceId),
+    staleTime: STALE_TIME_DIRECTORY_MS,
+    gcTime: GC_TIME_MS
+  });
+}
+
+export function useInvoicesListQuery(params: InvoicesDirectoryParams = {}) {
+  const workspaceId = useWorkspaceId();
+  return useQuery({
+    queryKey: workspaceId
+      ? queryKeys.invoicesList(workspaceId, params)
+      : ["invoices", "anonymous", params],
+    queryFn: () => getInvoicesDirectoryList(params),
+    enabled: Boolean(workspaceId),
+    staleTime: STALE_TIME_DIRECTORY_MS,
+    gcTime: GC_TIME_MS,
+    placeholderData: keepPreviousData
+  });
+}
+
+/** @deprecated Use useInvoiceMetricsQuery + useInvoicesListQuery */
 export function useInvoicesDirectoryQuery(params: InvoicesDirectoryParams = {}) {
   const workspaceId = useWorkspaceId();
   return useQuery({
     queryKey: workspaceId
       ? queryKeys.invoicesDirectory(workspaceId, params)
       : ["invoices", "directory", "anonymous", params],
-    queryFn: () => getInvoicesDirectory(params),
+    queryFn: () =>
+      Promise.all([getInvoicesDirectoryList(params), getInvoiceDirectoryMetrics(params)]).then(
+        ([list, metrics]) => ({ ...list, metrics, properties: [] as Array<{ id: string; name: string }> })
+      ),
     enabled: Boolean(workspaceId),
     staleTime: STALE_TIME_DIRECTORY_MS,
     gcTime: GC_TIME_MS,

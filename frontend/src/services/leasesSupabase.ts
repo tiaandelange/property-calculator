@@ -2,13 +2,8 @@ import type { PostgrestError } from "@supabase/supabase-js";
 import { getSupabase } from "../lib/supabaseClient";
 import { snakeRowToCamel } from "../api/propertyRowMapping";
 import { dbToLease } from "../api/leaseRowMapping";
-import { buildLeaseDirectory } from "../features/leases/leaseDirectoryAdapter";
-import {
-  applyLeaseLifecycleSqlFilter,
-  applyLeaseSearchSqlFilter,
-  hasLeaseSearchQuery,
-  LEASE_METRICS_SELECT
-} from "../features/leases/leaseDirectoryFilterUtils";
+import type { LeaseDirectoryMetrics, LeaseListItem } from "../features/leases/leaseDirectoryTypes";
+import { PAGE_SIZE as LEASE_DIRECTORY_PAGE_SIZE } from "../features/leases/leaseDirectoryUtils";
 import { isCurrentLeaseStatus } from "../utils/leaseDisplay";
 import {
   derivePropertyOccupancy,
@@ -89,7 +84,7 @@ function buildLeaseBundle(leases: Record<string, unknown>[]): PropertyLeasesBund
   return { currentLeases, currentLease, historicalLeases, leases, historicalLeaseSummaries };
 }
 
-/** All leases for the signed-in user (directory / leases page). */
+/** All leases for the signed-in user (legacy helper — prefer get_leases_directory RPC). */
 export async function listLeasesDirectoryRows(): Promise<Record<string, unknown>[]> {
   const uid = await requireUserId();
   const sb = getSupabase();
@@ -111,83 +106,72 @@ export type LeasesDirectoryQueryOpts = {
   leaseType?: string;
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function applyLeasesDirectoryBaseFilters(query: any, opts?: LeasesDirectoryQueryOpts) {
-  if (opts?.propertyId && opts.propertyId !== "ALL") {
-    query = query.eq("property_id", String(opts.propertyId));
-  }
-  if (opts?.leaseType && opts.leaseType !== "ALL") {
-    query = query.eq("lease_type", String(opts.leaseType).toUpperCase());
-  }
-  query = applyLeaseLifecycleSqlFilter(query, opts?.status);
-  query = applyLeaseSearchSqlFilter(query, opts?.q);
-  return query;
-}
-
 export type LeasesDirectoryListResult = {
-  rows: Record<string, unknown>[];
+  items: LeaseListItem[];
+  metrics: LeaseDirectoryMetrics;
   totalCount: number;
-  metricsRows: Record<string, unknown>[];
 };
 
-/** Leases directory with server-side pagination and filtered-set metrics. */
+function mapLeaseDirectoryItem(raw: Record<string, unknown>): LeaseListItem {
+  return {
+    id: String(raw.id ?? ""),
+    propertyId: String(raw.propertyId ?? ""),
+    propertyName: String(raw.propertyName ?? "Unknown property"),
+    propertyAddress: raw.propertyAddress != null ? String(raw.propertyAddress) : "",
+    tenantId: String(raw.tenantId ?? ""),
+    tenantName: String(raw.tenantName ?? "Unknown tenant"),
+    tenantEmail: raw.tenantEmail != null ? String(raw.tenantEmail) : null,
+    tenantPhone: raw.tenantPhone != null ? String(raw.tenantPhone) : null,
+    monthlyRent: raw.monthlyRent != null ? Number(raw.monthlyRent) : null,
+    depositAmount: raw.depositAmount != null ? Number(raw.depositAmount) : null,
+    rentDueDay: raw.rentDueDay != null ? Number(raw.rentDueDay) : null,
+    leaseType: String(raw.leaseType ?? "FIXED_TERM"),
+    leaseTypeLabel: String(raw.leaseTypeLabel ?? "Fixed term"),
+    startDate: raw.startDate != null ? String(raw.startDate) : null,
+    endDate: raw.endDate != null ? String(raw.endDate) : null,
+    displayStatus: String(raw.displayStatus ?? raw.status ?? ""),
+    lifecycleStatus: String(raw.lifecycleStatus ?? ""),
+    isCancellable: Boolean(raw.isCancellable)
+  };
+}
+
+/** Leases directory via single RPC (server-side filter/search/pagination). */
 export async function listLeasesDirectoryFilteredRows(
   opts?: LeasesDirectoryQueryOpts
 ): Promise<LeasesDirectoryListResult> {
-  const uid = await requireUserId();
+  await requireUserId();
   const sb = getSupabase();
   const page = Math.max(1, opts?.page ?? 1);
-  const pageSize = Math.max(1, opts?.pageSize ?? 6);
+  const pageSize = Math.max(1, opts?.pageSize ?? LEASE_DIRECTORY_PAGE_SIZE);
   const offset = (page - 1) * pageSize;
-  const searchActive = hasLeaseSearchQuery(opts?.q);
+  const propertyId = opts?.propertyId && opts.propertyId !== "ALL" ? String(opts.propertyId) : null;
 
-  let metricsQuery = sb.from("leases").select(LEASE_METRICS_SELECT).eq("user_id", uid);
-  let pageQuery = sb
-    .from("leases")
-    .select(LEASE_DIRECTORY_SELECT, { count: "exact" })
-    .eq("user_id", uid)
-    .order("created_at", { ascending: false });
-
-  metricsQuery = applyLeasesDirectoryBaseFilters(metricsQuery, opts);
-  pageQuery = applyLeasesDirectoryBaseFilters(pageQuery, opts);
-
-  if (!searchActive) {
-    pageQuery = pageQuery.range(offset, offset + pageSize - 1);
+  const { data, error } = await sb.rpc("get_leases_directory", {
+    p_limit: pageSize,
+    p_offset: offset,
+    p_search: opts?.q?.trim() || null,
+    p_property_id: propertyId,
+    p_status: opts?.status && opts.status !== "ALL" ? opts.status : null,
+    p_lease_type: opts?.leaseType && opts.leaseType !== "ALL" ? opts.leaseType : null
+  });
+  if (error) throw toError(error);
+  if (data == null || typeof data !== "object" || Array.isArray(data)) {
+    throw new Error("Empty leases directory response.");
   }
 
-  const [metricsRes, pageRes] = await Promise.all([metricsQuery, pageQuery]);
-  if (metricsRes.error) throw toError(metricsRes.error);
-  if (pageRes.error) throw toError(pageRes.error);
-
-  const metricsRows = (metricsRes.data ?? []).map((row) => dbToLease(row as Record<string, unknown>));
-  let rows = (pageRes.data ?? []).map((row) => dbToLease(row as Record<string, unknown>));
-
-  if (searchActive) {
-    const { items } = buildLeaseDirectory(metricsRows);
-    const q = opts!.q!.trim().toLowerCase();
-    const match = (item: (typeof items)[number]) => {
-      const hay = `${item.tenantName} ${item.tenantEmail ?? ""} ${item.propertyName} ${item.propertyAddress} ${item.displayStatus}`.toLowerCase();
-      return hay.includes(q);
-    };
-    const filteredItems = items.filter(match);
-    const totalCount = filteredItems.length;
-    const pageSlice = filteredItems.slice(offset, offset + pageSize);
-    const idOrder = new Map(pageSlice.map((item, i) => [item.id, i]));
-    const matchingIds = new Set(filteredItems.map((item) => item.id));
-    rows = metricsRows
-      .filter((r) => idOrder.has(String(r.id)))
-      .sort((a, b) => (idOrder.get(String(a.id)) ?? 0) - (idOrder.get(String(b.id)) ?? 0));
-    return {
-      rows,
-      totalCount,
-      metricsRows: metricsRows.filter((r) => matchingIds.has(String(r.id)))
-    };
-  }
+  const payload = data as Record<string, unknown>;
+  const rawItems = (payload.items ?? []) as Record<string, unknown>[];
+  const rawMetrics = (payload.metrics ?? {}) as Record<string, unknown>;
 
   return {
-    rows,
-    totalCount: pageRes.count ?? rows.length,
-    metricsRows
+    items: rawItems.map(mapLeaseDirectoryItem),
+    metrics: {
+      totalLeases: Number(rawMetrics.totalLeases ?? 0),
+      activeLeases: Number(rawMetrics.activeLeases ?? 0),
+      monthlyRentRoll: Number(rawMetrics.monthlyRentRoll ?? 0),
+      renewalsDue: Number(rawMetrics.renewalsDue ?? 0)
+    },
+    totalCount: Number(payload.totalCount ?? 0)
   };
 }
 

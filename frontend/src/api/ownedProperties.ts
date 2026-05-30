@@ -4,7 +4,6 @@ import * as propertyUnitsSupabase from "../services/propertyUnitsSupabase";
 import * as tenantUnitLinksSupabase from "../services/tenantUnitLinksSupabase";
 import * as tenantsSupabase from "../services/tenantsSupabase";
 import * as leasesSupabase from "../services/leasesSupabase";
-import { buildLeaseDirectory } from "../features/leases/leaseDirectoryAdapter";
 import { PAGE_SIZE as LEASE_PAGE_SIZE } from "../features/leases/leaseDirectoryUtils";
 import type { LeasesDirectoryParams, PropertiesDirectoryParams, TenantsDirectoryParams } from "../lib/queryKeys";
 import type { FinancialsDirectoryQueryOpts } from "../services/financialsDirectorySupabase";
@@ -130,7 +129,7 @@ export async function getTenantsDirectory(params?: TenantsDirectoryParams) {
 
 export async function getLeasesDirectory(params?: LeasesDirectoryParams) {
   assertSupabaseConfigured();
-  const pageResult = await leasesSupabase.listLeasesDirectoryFilteredRows({
+  return leasesSupabase.listLeasesDirectoryFilteredRows({
     page: params?.page,
     pageSize: params?.pageSize ?? LEASE_PAGE_SIZE,
     q: params?.q,
@@ -138,9 +137,6 @@ export async function getLeasesDirectory(params?: LeasesDirectoryParams) {
     status: params?.status,
     leaseType: params?.leaseType
   });
-  const { items } = buildLeaseDirectory(pageResult.rows);
-  const { metrics } = buildLeaseDirectory(pageResult.metricsRows);
-  return { items, metrics, totalCount: pageResult.totalCount };
 }
 
 export async function createTenant(payload: Record<string, unknown>) {
@@ -347,6 +343,21 @@ export async function listPropertyInvoices(
   return invoicesSupabase.listInvoices(propertyId, filters);
 }
 
+export async function getInvoiceDirectoryMetrics(
+  params?: import("../lib/queryKeys").InvoiceDirectoryFilterParams
+) {
+  assertSupabaseConfigured();
+  const { getInvoiceDirectoryMetrics: load } = await import("../services/invoicesDirectorySupabase");
+  return load(params);
+}
+
+export async function getInvoicesDirectoryList(params?: InvoicesDirectoryQueryOpts) {
+  assertSupabaseConfigured();
+  const { getInvoicesDirectoryList: load } = await import("../services/invoicesDirectorySupabase");
+  return load(params);
+}
+
+/** @deprecated Use getInvoicesDirectoryList + getInvoiceDirectoryMetrics */
 export async function getInvoicesDirectory(params?: InvoicesDirectoryQueryOpts) {
   assertSupabaseConfigured();
   const { getInvoicesDirectory: load } = await import("../services/invoicesDirectorySupabase");

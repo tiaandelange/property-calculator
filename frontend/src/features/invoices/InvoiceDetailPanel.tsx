@@ -13,7 +13,9 @@ import {
   voidInvoice
 } from "../../api/ownedProperties";
 import { fetchPdfBlob, triggerPdfFileDownload } from "../../api/pdfBlob";
-import { fetchMe } from "../../api/user";
+import { queryKeys } from "../../lib/queryKeys";
+import { STALE_TIME_PROPERTIES_MS } from "../../lib/queryClient";
+import { useProfileQuery } from "../queries";
 import { invalidatePropertyWorkspace } from "../properties/invalidate";
 import { openInvoicePdfExport, invoicePdfWasStored } from "./invoicePdfExport";
 import { Button } from "../../components/ui/Button";
@@ -42,8 +44,6 @@ import {
 } from "./invoiceLineItemUtils";
 import { dueDateFromIssueDate, mapPropertyTenantRow, type PropertyTenantOption } from "./invoiceEditorUtils";
 import { invoiceStatementPath } from "./invoiceRoutes";
-import { queryKeys } from "../../lib/queryKeys";
-import { STALE_TIME_PROPERTIES_MS } from "../../lib/queryClient";
 import {
   INVOICE_SEND_EMAIL_COMING_SOON,
   INVOICE_SEND_MODAL_MESSAGE,
@@ -102,6 +102,8 @@ export function InvoiceDetailPanel({
   onDeleted?: () => void;
 }) {
   const queryClient = useQueryClient();
+  const needsProfileFromCache = invoicePaymentDetails == null;
+  const profileQuery = useProfileQuery({ enabled: needsProfileFromCache });
   const [activeId, setActiveId] = useState<string | undefined>(initialInvoiceId);
   const [propertyId, setPropertyId] = useState(bootstrapPropertyId ?? "");
   const [tenantId, setTenantId] = useState(bootstrapTenantId ?? "");
@@ -150,16 +152,11 @@ export function InvoiceDetailPanel({
       setPaymentDetails(invoicePaymentDetails);
       return;
     }
-    void (async () => {
-      try {
-        const me = await fetchMe();
-        setFromName(String(me.name ?? me.email ?? "Proplytic"));
-        setPaymentDetails(me.invoicePaymentDetails ?? null);
-      } catch {
-        /* profile optional for view */
-      }
-    })();
-  }, [invoicePaymentDetails]);
+    const me = profileQuery.data;
+    if (!me) return;
+    setFromName(String(me.name ?? me.email ?? "Proplytic"));
+    setPaymentDetails(me.invoicePaymentDetails ?? null);
+  }, [invoicePaymentDetails, profileQuery.data]);
 
   useEffect(() => {
     if (!moreOpen) return;
