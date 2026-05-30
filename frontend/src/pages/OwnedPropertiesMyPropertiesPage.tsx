@@ -1,12 +1,13 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Helmet } from "react-helmet-async";
+import { useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "react-router-dom";
 import { AppListPage } from "../components/ui/AppPage";
 import { Grid } from "../components/ui/Grid";
 import { Card } from "../components/ui/Card";
 import { Button, ButtonLink } from "../components/ui/Button";
-import { getProperties } from "../api/ownedProperties";
-import { usePropertyWorkspaceRefresh } from "../features/properties/usePropertyWorkspaceRefresh";
+import { isInitialQueryLoad, queryKeys, usePropertiesQuery, useWorkspaceId } from "../features/queries";
+import { prefetchPropertyDetail } from "../lib/routePrefetch";
 import { StatusPill } from "../components/ui/DashboardKit";
 
 function occupancyDisplay(p: {
@@ -46,33 +47,23 @@ function displayType(t: string | null | undefined) {
 
 export function OwnedPropertiesMyPropertiesPage() {
   const { search } = useLocation();
-  const [rows, setRows] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const queryClient = useQueryClient();
+  const workspaceId = useWorkspaceId();
+  const propertiesQuery = usePropertiesQuery();
+  const rows = (propertiesQuery.data ?? []) as any[];
+  const loading = isInitialQueryLoad(propertiesQuery);
+  const error = propertiesQuery.error
+    ? (propertiesQuery.error as Error).message ?? "Failed to load properties."
+    : "";
   const [q, setQ] = useState("");
   const [type, setType] = useState<string>("ALL");
   const [status, setStatus] = useState<string>(new URLSearchParams(search).get("filter") ?? "ALL");
   const [sort, setSort] = useState<string>(new URLSearchParams(search).get("sort") ?? "RECENT");
   const [view, setView] = useState<"cards" | "list">((new URLSearchParams(search).get("view") as any) ?? "cards");
 
-  const load = async () => {
-    setLoading(true);
-    setError("");
-    try {
-      setRows(await getProperties());
-    } catch (e: any) {
-      console.error("[MyProperties] Load failed", e);
-      setError(e?.message ?? e?.response?.data?.message ?? "Failed to load properties.");
-    } finally {
-      setLoading(false);
-    }
+  const warmProperty = (propertyId: string) => {
+    prefetchPropertyDetail(propertyId, queryClient, workspaceId ?? null);
   };
-
-  useEffect(() => {
-    void load();
-  }, []);
-
-  usePropertyWorkspaceRefresh({ onRefresh: () => void load() });
 
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
@@ -119,7 +110,16 @@ export function OwnedPropertiesMyPropertiesPage() {
       <Helmet><title>My Properties | The Property Guy</title></Helmet>
         <div style={{ display: "flex", justifyContent: "flex-end", gap: 12, flexWrap: "wrap", alignItems: "center", marginTop: 8 }}>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <Button onClick={load} loading={loading}>Refresh</Button>
+            <Button
+              onClick={() => {
+                if (workspaceId) {
+                  void queryClient.invalidateQueries({ queryKey: queryKeys.properties(workspaceId) });
+                }
+              }}
+              loading={propertiesQuery.isFetching && !loading}
+            >
+              Refresh
+            </Button>
             <ButtonLink href="/owned-properties/new" variant="primary">Add Property</ButtonLink>
           </div>
         </div>
@@ -207,7 +207,14 @@ export function OwnedPropertiesMyPropertiesPage() {
                           <div>Monthly cash flow: <strong style={{ color: cash >= 0 ? "var(--success)" : "var(--danger)" }}>R {cash.toLocaleString()}</strong></div>
                         </div>
                         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                          <ButtonLink href={`/owned-properties/${p.id}`} variant="ghost">View</ButtonLink>
+                          <ButtonLink
+                            href={`/owned-properties/${p.id}`}
+                            variant="ghost"
+                            onMouseEnter={() => warmProperty(String(p.id))}
+                            onFocus={() => warmProperty(String(p.id))}
+                          >
+                            View
+                          </ButtonLink>
                           <ButtonLink href={`/owned-properties/${p.id}?tab=financials`} variant="ghost">Financials</ButtonLink>
                           <ButtonLink href={`/owned-properties/${p.id}?tab=leases`} variant="ghost">Leases</ButtonLink>
                           <ButtonLink href={`/owned-properties/${p.id}?tab=documents`} variant="ghost">Documents</ButtonLink>
@@ -274,7 +281,14 @@ export function OwnedPropertiesMyPropertiesPage() {
                     </div>
                   ) : null}
                   <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
-                    <ButtonLink href={`/owned-properties/${p.id}`} variant="ghost">View</ButtonLink>
+                    <ButtonLink
+                      href={`/owned-properties/${p.id}`}
+                      variant="ghost"
+                      onMouseEnter={() => warmProperty(String(p.id))}
+                      onFocus={() => warmProperty(String(p.id))}
+                    >
+                      View
+                    </ButtonLink>
                     <ButtonLink href={`/owned-properties/${p.id}?tab=financials`} variant="ghost">Financials</ButtonLink>
                     <ButtonLink href={`/owned-properties/${p.id}?tab=leases`} variant="ghost">Leases</ButtonLink>
                     <ButtonLink href={`/owned-properties/${p.id}?tab=documents`} variant="ghost">Documents</ButtonLink>

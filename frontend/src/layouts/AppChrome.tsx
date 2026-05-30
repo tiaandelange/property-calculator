@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import { AuthenticatedShell } from "./AuthenticatedShell";
 import { HomePublicFooter } from "../components/home/HomePublicFooter";
@@ -12,7 +12,7 @@ import {
   type WorkspaceAppearance
 } from "../theme/workspaceAppearance";
 import { useAuth } from "../contexts/AuthContext";
-import { getOrCreateUserSettings } from "../services/settingsSupabase";
+import { useSettingsQuery } from "../features/queries";
 
 type Me = {
   email?: string;
@@ -31,54 +31,40 @@ function readInitialWorkspaceAppearance(): WorkspaceAppearance {
 export function AppChrome() {
   const location = useLocation();
   const { session, initializing, profile, profileLoading } = useAuth();
+  const settingsQuery = useSettingsQuery();
   const [me, setMe] = useState<Me>(null);
-  const [workspaceAppearance, setWorkspaceAppearance] = useState<WorkspaceAppearance>(readInitialWorkspaceAppearance);
 
   const useWorkspaceChrome = !initializing && Boolean(session) && isWorkspacePath(location.pathname);
   const isMarketingHome = location.pathname === "/";
   const isMarketingCalculatorsShell =
     location.pathname === "/calculators" || /^\/calculators\/.+/.test(location.pathname);
 
+  const workspaceAppearance = useMemo((): WorkspaceAppearance => {
+    if (settingsQuery.data) {
+      return {
+        themePreference: settingsQuery.data.themePreference,
+        accentColor: settingsQuery.data.accentColor,
+        density: settingsQuery.data.density
+      };
+    }
+    const initial = readInitialWorkspaceAppearance();
+    if (profile?.ui_color_scheme === "light") initial.themePreference = "light";
+    else if (profile?.ui_color_scheme === "dark") initial.themePreference = "dark";
+    return initial;
+  }, [settingsQuery.data, profile?.ui_color_scheme]);
+
   useEffect(() => {
     if (!session) {
       setMe(null);
       return;
     }
+    if (!profile && profileLoading) return;
     const email = session.user.email ?? "";
-    if (!profile && profileLoading) {
-      return;
-    }
-
-    let cancelled = false;
-
-    void (async () => {
-      let appearance: WorkspaceAppearance = readInitialWorkspaceAppearance();
-      try {
-        const settings = await getOrCreateUserSettings();
-        appearance = {
-          themePreference: settings.themePreference,
-          accentColor: settings.accentColor,
-          density: settings.density
-        };
-      } catch {
-        if (profile?.ui_color_scheme === "light") {
-          appearance.themePreference = "light";
-        } else if (profile?.ui_color_scheme === "dark") {
-          appearance.themePreference = "dark";
-        }
-      }
-      if (cancelled) return;
-      setWorkspaceAppearance(appearance);
-      setMe({
-        email,
-        role: profile?.role === "ADMIN" ? "ADMIN" : "USER",
-        freeUsesRemaining: profile?.free_uses_remaining ?? null
-      });
-    })();
-
-    return () => {
-      cancelled = true;
-    };
+    setMe({
+      email,
+      role: profile?.role === "ADMIN" ? "ADMIN" : "USER",
+      freeUsesRemaining: profile?.free_uses_remaining ?? null
+    });
   }, [session, profile, profileLoading]);
 
   useEffect(() => {

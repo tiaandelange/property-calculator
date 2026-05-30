@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.105.4",
+    "@tanstack/react-query": "^5.100.14",
     "chart.js": "^4.4.6",
     "lucide-react": "^1.16.0",
     "pdfmake": "^0.2.15",

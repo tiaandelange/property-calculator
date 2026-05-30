@@ -1,23 +1,25 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Helmet } from "react-helmet-async";
+import { useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { AppDetailPage } from "../components/ui/AppPage";
 import { Card } from "../components/ui/Card";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
 import { ButtonLink } from "../components/ui/Button";
-import {
-  cancelLease,
-  createPropertyIncome,
-  deleteLease,
-  getProperty,
-  getPropertyTenants,
-  getPropertyStatement,
-  getPropertyWorkspaceReports,
-  getPortfolioDashboardSummary
-} from "../api/ownedProperties";
+import { cancelLease, createPropertyIncome, deleteLease } from "../api/ownedProperties";
 import { WorkspaceTabs } from "../components/workspace/WorkspaceTabs";
+import {
+  invalidatePropertyQueries,
+  isInitialQueryLoad,
+  useDashboardSummaryQuery,
+  usePropertyInvoicesQuery,
+  usePropertyQuery,
+  usePropertyReportsQuery,
+  usePropertyStatementQuery,
+  usePropertyTenantsQuery,
+  useWorkspaceId
+} from "../features/queries";
 import { invalidatePropertyWorkspace } from "../features/properties/invalidate";
-import { usePropertyWorkspaceRefresh } from "../features/properties/usePropertyWorkspaceRefresh";
 import { WorkspaceFinancialsTab } from "../features/properties/workspace/WorkspaceFinancialsTab";
 import { WorkspaceOverviewTab } from "../features/properties/workspace/WorkspaceOverviewTab";
 import { WorkspaceStatementTab } from "../features/properties/workspace/WorkspaceStatementTab";
@@ -49,13 +51,8 @@ export function OwnedPropertyDetailPage() {
   const { id } = useParams();
   const { search } = useLocation();
   const navigate = useNavigate();
-  const [data, setData] = useState<any>(null);
-  const [error, setError] = useState("");
-  const [perf, setPerf] = useState<any>(null);
-  const [stmt, setStmt] = useState<any>(null);
-  const [stmtLoading, setStmtLoading] = useState(false);
-  const [reportsCatalog, setReportsCatalog] = useState<any>(null);
-  const [reportsLoading, setReportsLoading] = useState(false);
+  const queryClient = useQueryClient();
+  const workspaceId = useWorkspaceId();
   const [leaseDeleteTarget, setLeaseDeleteTarget] = useState<{ id: string | number; label: string } | null>(null);
   const [leaseCancelTarget, setLeaseCancelTarget] = useState<any>(null);
   const [leaseActionLoading, setLeaseActionLoading] = useState(false);
@@ -73,9 +70,46 @@ export function OwnedPropertyDetailPage() {
           : tabRaw;
   const finSub = useMemo(() => new URLSearchParams(search).get("fin") ?? "statement", [search]);
   const highlightLeaseId = useMemo(() => new URLSearchParams(search).get("leaseId"), [search]);
-  const prevTabRef = useRef<string | null>(null);
-  /** Ignore out-of-order responses when multiple loadAll() runs overlap (fixes stale Overview after Financials edits). */
-  const loadSeqRef = useRef(0);
+  const summaryMonth = useMemo(() => localCalendarMonth(), [id]);
+
+  const needsTenants = tab === "leases" || tab === "tenants" || tab === "overview";
+  const needsStatement = tab === "overview" || tab === "financials";
+  const needsDashboard = tab === "overview";
+  const needsInvoices = tab === "financials";
+  const needsReports = tab === "reports";
+
+  const propertyQuery = usePropertyQuery(id, { includeInvoices: false });
+  const tenantsQuery = usePropertyTenantsQuery(id, { enabled: needsTenants });
+  const invoicesQuery = usePropertyInvoicesQuery(id, { enabled: needsInvoices });
+  const statementQuery = usePropertyStatementQuery(
+    id,
+    { month: summaryMonth, includeExpected: true },
+    { enabled: needsStatement }
+  );
+  const dashboardQuery = useDashboardSummaryQuery(
+    { propertyId: id ?? null, month: summaryMonth },
+    { enabled: needsDashboard && Boolean(id) }
+  );
+  const reportsQuery = usePropertyReportsQuery(id, { enabled: needsReports });
+
+  const data = useMemo((): any => {
+    if (!propertyQuery.data) return null;
+    return {
+      ...(propertyQuery.data as Record<string, unknown>),
+      tenants: tenantsQuery.data ?? [],
+      invoices: needsInvoices ? (invoicesQuery.data ?? []) : []
+    };
+  }, [propertyQuery.data, tenantsQuery.data, invoicesQuery.data, needsInvoices]);
+
+  const perf = dashboardQuery.data ?? null;
+  const stmt = statementQuery.data ?? null;
+  const reportsCatalog = reportsQuery.data ?? null;
+  const error = propertyQuery.error
+    ? ((propertyQuery.error as Error).message ?? "Failed to load property.")
+    : "";
+  const loading = isInitialQueryLoad(propertyQuery);
+  const stmtLoading = needsStatement && statementQuery.isFetching && !statementQuery.data;
+  const reportsLoading = needsReports && isInitialQueryLoad(reportsQuery);
 
   const currentLeases = useMemo(() => {
     if (!data) return [];
@@ -119,73 +153,12 @@ export function OwnedPropertyDetailPage() {
     return line || data.name || "";
   }, [data]);
 
-  const loadAll = useCallback(async () => {
+  const refreshAfterMutation = async () => {
     if (!id) return;
-    const seq = ++loadSeqRef.current;
-    try {
-      setError("");
-      setStmtLoading(true);
-      const summaryMonth = localCalendarMonth();
-      const ledgerOutcomePromise = getPropertyStatement(id, { bustCache: true, month: summaryMonth }).then(
-        (ledger) => ({ ok: true as const, ledger }),
-        () => ({ ok: false as const })
-      );
-      const dashboardPropertyId = id ?? null;
-      const dashPromise = getPortfolioDashboardSummary({
-        propertyId: dashboardPropertyId,
-        month: summaryMonth,
-        bustCache: true
-      });
-      const [prop, dash, ledgerOutcome, propTenants] = await Promise.all([
-        getProperty(id, { bustCache: true, month: summaryMonth }),
-        dashPromise,
-        ledgerOutcomePromise,
-        getPropertyTenants(id)
-      ]);
-      if (seq !== loadSeqRef.current) return;
-      setData({ ...prop, tenants: propTenants });
-      setPerf(dash);
-      setStmt((prev: any) => (ledgerOutcome.ok ? ledgerOutcome.ledger : prev));
-    } catch (e: any) {
-      if (seq !== loadSeqRef.current) return;
-      setError(e?.response?.data?.message ?? e?.message ?? "Failed to load property.");
-    } finally {
-      if (seq === loadSeqRef.current) setStmtLoading(false);
-    }
-  }, [id]);
-
-  useEffect(() => {
-    prevTabRef.current = null;
-  }, [id]);
-
-  useEffect(() => {
-    void loadAll();
-  }, [loadAll]);
-
-  useEffect(() => {
-    if (!id) return;
-    const prev = prevTabRef.current;
-    prevTabRef.current = tab;
-    if (tab === "overview" && prev !== null && prev !== "overview") {
-      void loadAll();
-    }
-  }, [id, tab, loadAll]);
-
-  useEffect(() => {
-    if (!id || tab !== "reports") return;
-    setReportsLoading(true);
-    void (async () => {
-      try {
-        setReportsCatalog(await getPropertyWorkspaceReports(id));
-      } catch {
-        setReportsCatalog(null);
-      } finally {
-        setReportsLoading(false);
-      }
-    })();
-  }, [id, tab]);
-
-  usePropertyWorkspaceRefresh({ propertyId: id, onRefresh: () => void loadAll() });
+    invalidatePropertyQueries({ workspaceId, propertyId: id });
+    invalidatePropertyWorkspace(id);
+    await queryClient.invalidateQueries({ queryKey: ["property", id] });
+  };
 
   useEffect(() => {
     if (!highlightLeaseId || !data) return;
@@ -200,11 +173,6 @@ export function OwnedPropertyDetailPage() {
     }, leaseHistoryOpen ? 100 : 0);
     return () => window.clearTimeout(timer);
   }, [tab, highlightLeaseId, data, leaseHistoryOpen]);
-
-  const refreshAfterMutation = async () => {
-    await loadAll();
-    if (id) invalidatePropertyWorkspace(id);
-  };
 
   const confirmHardDeleteLease = async () => {
     if (!leaseDeleteTarget) return;
@@ -436,7 +404,7 @@ export function OwnedPropertyDetailPage() {
                       <div className="pg-muted">Loading catalog…</div>
                     ) : (reportsCatalog?.reports ?? []).length ? (
                       <ul style={{ margin: 0, paddingLeft: 0, listStyle: "none", display: "grid", gap: 10 }}>
-                        {reportsCatalog.reports.map((r: any) => (
+                        {(reportsCatalog?.reports ?? []).map((r: any) => (
                           <li key={r.id} className="pg-workspace-inset">
                             <div style={{ fontWeight: 600 }}>{r.title}</div>
                             <div className="pg-muted" style={{ fontSize: 13, marginTop: 4 }}>

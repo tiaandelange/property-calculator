@@ -137,11 +137,18 @@ export async function loadTenantFinancialBundle(opts: {
   const period = resolveStatementPeriod(opts.periodKey, opts.leaseStartDate);
   const leaseSet = new Set(opts.tenantLeaseIds.map(String));
 
-  const monthStatements = await Promise.all(
+  const statementsPromise = Promise.all(
     period.months.map((month) =>
       getPropertyStatement(opts.propertyId, { month, bustCache: opts.bustCache }).catch(() => null)
     )
   );
+  const invoicesPromise = listPropertyInvoices(opts.propertyId, {
+    tenantId: opts.tenantId,
+    includeLineItems: false,
+    attachDownloadUrls: false
+  });
+
+  const [monthStatements, invRaw] = await Promise.all([statementsPromise, invoicesPromise]);
 
   const rowById = new Map<string, TenantLedgerTransaction>();
   for (const st of monthStatements) {
@@ -161,10 +168,7 @@ export async function loadTenantFinancialBundle(opts: {
     return cmp !== 0 ? cmp : a.id.localeCompare(b.id);
   });
 
-  const invRaw = await listPropertyInvoices(opts.propertyId);
-  const invoices: TenantInvoiceListItem[] = (invRaw as Record<string, unknown>[])
-    .filter((inv) => String(inv.tenantId ?? "") === String(opts.tenantId))
-    .map((inv) => ({
+  const invoices: TenantInvoiceListItem[] = (invRaw as Record<string, unknown>[]).map((inv) => ({
       id: String(inv.id),
       invoiceNumber: String(inv.invoiceNumber ?? inv.id),
       status: String(inv.status ?? "DRAFT"),

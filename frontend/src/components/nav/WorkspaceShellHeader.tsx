@@ -3,9 +3,9 @@ import { ProplyticLogo } from "../brand/ProplyticLogo";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
+import { usePropertyOptionsQuery, usePropertyQuery } from "../../features/queries";
 import { workspacePageTitle } from "../../nav/workspaceNavConfig";
 import { PortfolioDashboardFilters } from "./portfolio/PortfolioDashboardFilters";
-import { getProperties, getProperty } from "../../api/ownedProperties";
 
 function titleizeEnum(v: string): string {
   const t = v.replace(/_/g, " ").toLowerCase();
@@ -38,8 +38,8 @@ export function WorkspaceShellHeader({ mobile = false }: { mobile?: boolean }) {
   const userMenuRef = useRef<HTMLDivElement | null>(null);
   const [propertyMenuOpen, setPropertyMenuOpen] = useState(false);
   const propertyMenuRef = useRef<HTMLDivElement | null>(null);
-  const [propertyCtx, setPropertyCtx] = useState<null | { id: string; name: string; typeLabel: string | null }>(null);
-  const [propertyOptions, setPropertyOptions] = useState<Array<{ id: string; name: string; typeLabel: string | null }>>([]);
+
+  const propertyOptionsQuery = usePropertyOptionsQuery();
 
   useEffect(() => {
     if (!userMenuOpen) return;
@@ -71,51 +71,34 @@ export function WorkspaceShellHeader({ mobile = false }: { mobile?: boolean }) {
   }, [pathname]);
 
   const showPropertySwitcher = Boolean(propertyIdFromPath);
+  const propertyDetailQuery = usePropertyQuery(propertyIdFromPath ?? undefined, { includeInvoices: false });
 
-  useEffect(() => {
-    let cancelled = false;
-    async function loadPropertyContext() {
-      if (!propertyIdFromPath) {
-        setPropertyCtx(null);
-        setPropertyOptions([]);
-        return;
-      }
-      try {
-        const [props, current] = await Promise.all([
-          getProperties().catch(() => []),
-          getProperty(propertyIdFromPath).catch(() => null)
-        ]);
-        if (cancelled) return;
-        const opt = (props as any[]).map((p) => ({
-          id: String(p.id),
-          name: String(p.name ?? "Property"),
-          typeLabel: propertyTypeLabel(p as Record<string, unknown>)
-        }));
-        setPropertyOptions(opt);
-        if (current) {
-          setPropertyCtx({
-            id: String((current as any).id ?? propertyIdFromPath),
-            name: String((current as any).name ?? "Property"),
-            typeLabel: propertyTypeLabel(current as Record<string, unknown>)
-          });
-        } else {
-          const fallback = opt.find((p) => p.id === propertyIdFromPath) ?? null;
-          setPropertyCtx(
-            fallback
-              ? { id: fallback.id, name: fallback.name, typeLabel: fallback.typeLabel }
-              : { id: propertyIdFromPath, name: "Property", typeLabel: null }
-          );
-        }
-      } catch {
-        if (cancelled) return;
-        setPropertyCtx({ id: propertyIdFromPath, name: "Property", typeLabel: null });
-      }
+  const propertyOptions = useMemo(
+    () =>
+      (propertyOptionsQuery.data ?? []).map((p) => ({
+        id: p.id,
+        name: p.name,
+        typeLabel: null as string | null
+      })),
+    [propertyOptionsQuery.data]
+  );
+
+  const propertyCtx = useMemo(() => {
+    if (!propertyIdFromPath) return null;
+    const current = propertyDetailQuery.data as Record<string, unknown> | undefined;
+    const fallback = propertyOptions.find((p) => p.id === propertyIdFromPath) ?? null;
+    if (current) {
+      return {
+        id: String(current.id ?? propertyIdFromPath),
+        name: String(current.name ?? "Property"),
+        typeLabel: propertyTypeLabel(current)
+      };
     }
-    void loadPropertyContext();
-    return () => {
-      cancelled = true;
-    };
-  }, [propertyIdFromPath]);
+    if (fallback) {
+      return { id: fallback.id, name: fallback.name, typeLabel: fallback.typeLabel };
+    }
+    return { id: propertyIdFromPath, name: "Property", typeLabel: null as string | null };
+  }, [propertyDetailQuery.data, propertyIdFromPath, propertyOptions]);
 
   const userLabel = useMemo(
     () => displayUserName(session?.user?.email, profile?.full_name),

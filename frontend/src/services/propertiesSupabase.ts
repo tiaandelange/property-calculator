@@ -77,36 +77,52 @@ async function enrichPropertyListItems(uid: string, items: PropertyListItem[]): 
   const sb = getSupabase();
   const ids = items.map((p) => String(p.id));
 
-  const { data: leaseRows, error: leaseErr } = await sb
-    .from("leases")
-    .select("property_id, status, monthly_rent, fixed_term_end_date")
-    .eq("user_id", uid)
-    .in("property_id", ids);
+  const [leaseResult, recurringResult, bondResult, unitResult] = await Promise.all([
+    sb
+      .from("leases")
+      .select("property_id, status, monthly_rent, fixed_term_end_date")
+      .eq("user_id", uid)
+      .in("property_id", ids),
+    sb
+      .from("expense_entries")
+      .select(
+        "id, property_id, category, description, amount, expense_date, is_recurring, status, recurring_schedule_parent_id"
+      )
+      .eq("user_id", uid)
+      .in("property_id", ids)
+      .eq("is_recurring", true)
+      .is("recurring_schedule_parent_id", null)
+      .neq("status", "ARCHIVED"),
+    sb
+      .from("property_additional_bonds")
+      .select(
+        "id, property_id, description, outstanding_balance, monthly_payment, annual_interest_rate_percent, bond_term_years, bond_start_date, bond_remaining_term_months"
+      )
+      .eq("user_id", uid)
+      .eq("is_active", true)
+      .in("property_id", ids),
+    sb
+      .from("property_units")
+      .select("property_id")
+      .eq("user_id", uid)
+      .eq("is_active", true)
+      .in("property_id", ids)
+  ]);
+
+  const { data: leaseRows, error: leaseErr } = leaseResult;
   if (leaseErr) throw toError(leaseErr);
   const leasesByProperty = groupRowsByPropertyId(
     (leaseRows ?? []).map((row) => snakeRowToCamel(row as Record<string, unknown>) as Record<string, unknown>)
   );
   const leaseCounts = countCurrentLeasesByProperty(leaseRows ?? []);
 
-  const { data: recurringRows, error: recurringErr } = await sb
-    .from("expense_entries")
-    .select("*")
-    .eq("user_id", uid)
-    .in("property_id", ids)
-    .eq("is_recurring", true)
-    .is("recurring_schedule_parent_id", null)
-    .neq("status", "ARCHIVED");
+  const { data: recurringRows, error: recurringErr } = recurringResult;
   if (recurringErr) throw toError(recurringErr);
   const recurringByProperty = groupRowsByPropertyId((recurringRows ?? []).map((row) => dbToExpense(row as Record<string, unknown>)));
 
   const additionalBondByProperty = new Map<string, number>();
   type AdditionalBondRow = Parameters<typeof mapAdditionalBondPayments>[0][number];
-  const { data: additionalBondRows, error: bondErr } = await sb
-    .from("property_additional_bonds")
-    .select("*")
-    .eq("user_id", uid)
-    .eq("is_active", true)
-    .in("property_id", ids);
+  const { data: additionalBondRows, error: bondErr } = bondResult;
   if (!bondErr && additionalBondRows) {
     const bondsGrouped = new Map<string, AdditionalBondRow[]>();
     for (const row of additionalBondRows as Record<string, unknown>[]) {
@@ -135,12 +151,7 @@ async function enrichPropertyListItems(uid: string, items: PropertyListItem[]): 
   }
 
   const unitCounts = new Map<string, number>();
-  const { data: unitRows, error: unitErr } = await sb
-    .from("property_units")
-    .select("property_id")
-    .eq("user_id", uid)
-    .eq("is_active", true)
-    .in("property_id", ids);
+  const { data: unitRows, error: unitErr } = unitResult;
   if (!unitErr && unitRows) {
     for (const row of unitRows) {
       const pid = String((row as { property_id: string }).property_id);
@@ -188,6 +199,24 @@ async function enrichPropertyListItems(uid: string, items: PropertyListItem[]): 
   });
 }
 
+export type PropertyOption = { id: string; name: string };
+
+/** Lightweight id/name list for filter dropdowns and shell switchers (no enrichment queries). */
+export async function listPropertyOptions(): Promise<PropertyOption[]> {
+  const uid = await requireUserId();
+  const sb = getSupabase();
+  const { data, error } = await sb
+    .from("properties")
+    .select("id, name")
+    .eq("user_id", uid)
+    .order("created_at", { ascending: false });
+  if (error) throw toError(error);
+  return (data ?? []).map((row) => ({
+    id: String((row as { id: string }).id),
+    name: String((row as { name?: string }).name ?? "Property")
+  }));
+}
+
 export async function listProperties(_params?: { month?: string }): Promise<PropertyListItem[]> {
   const uid = await requireUserId();
   const sb = getSupabase();
@@ -204,7 +233,7 @@ export async function listProperties(_params?: { month?: string }): Promise<Prop
 /** Fetches one property by id for the signed-in user. */
 export async function getProperty(
   id: string | number,
-  _opts?: { bustCache?: boolean; month?: string }
+  opts?: { bustCache?: boolean; month?: string; includeInvoices?: boolean }
 ): Promise<Record<string, unknown>> {
   const uid = await requireUserId();
   const sb = getSupabase();
@@ -219,18 +248,24 @@ export async function getProperty(
     throw new Error("Property not found");
   }
   const base = dbToProperty(data as Record<string, unknown>, "detail");
+  const includeInvoices = opts?.includeInvoices !== false;
+
+  const unitsPromise = propertyUnitsSupabase.listPropertyUnits(String(id)).catch(() => [] as Awaited<
+    ReturnType<typeof propertyUnitsSupabase.listPropertyUnits>
+  >);
+  const leaseBundlePromise = leasesSupabase.listLeasesForProperty(String(id));
+  const invoicesPromise = includeInvoices
+    ? invoicesSupabase.listInvoices(String(id), { attachDownloadUrls: false })
+    : Promise.resolve([] as Record<string, unknown>[]);
+
+  const [units, leaseBundle, invoices] = await Promise.all([unitsPromise, leaseBundlePromise, invoicesPromise]);
+
   let activeUnitCount: number | undefined;
-  try {
-    const units = await propertyUnitsSupabase.listPropertyUnits(String(id));
-    const n = units.filter((u) => u.isActive !== false).length;
-    if (n > 0) activeUnitCount = n;
-  } catch {
-    /* property_units table may not exist yet */
-  }
-  const leaseBundle = await leasesSupabase.listLeasesForProperty(String(id));
+  const n = units.filter((u) => u.isActive !== false).length;
+  if (n > 0) activeUnitCount = n;
+
   const merged = leasesSupabase.mergeLeaseBundleIntoPropertyDetail(base, leaseBundle, { activeUnitCount });
-  const invoices = await invoicesSupabase.listInvoices(String(id));
-  return { ...merged, invoices };
+  return includeInvoices ? { ...merged, invoices } : merged;
 }
 
 /** Inserts a property with `user_id = auth.uid()`. */

@@ -82,6 +82,29 @@ const INVOICE_LIST_SELECT = `
   invoice_line_items (*)
 `;
 
+/** Property/tenant workspace lists — summary columns only (no line items). */
+const INVOICE_PROPERTY_LIST_SELECT = `
+  id,
+  property_id,
+  tenant_id,
+  lease_id,
+  unit_id,
+  invoice_number,
+  invoice_type,
+  invoice_period,
+  invoice_date,
+  issue_date,
+  due_date,
+  status,
+  total,
+  total_amount,
+  balance_due,
+  paid_at,
+  created_at,
+  pdf_storage_key,
+  pdf_storage_bucket
+`;
+
 const INVOICE_DETAIL_SELECT = `
   *,
   invoice_line_items (*),
@@ -118,17 +141,69 @@ const INVOICE_DIRECTORY_SELECT = `
   leases ( id, start_date, fixed_term_end_date, status, lease_reference )
 `;
 
-export async function listInvoicesDirectory(): Promise<Record<string, unknown>[]> {
+export type InvoicesDirectoryListFilters = {
+  propertyId?: string | null;
+  status?: string | null;
+  dateFrom?: string | null;
+  dateTo?: string | null;
+  q?: string | null;
+  limit?: number;
+  offset?: number;
+};
+
+export async function listInvoicesDirectory(
+  filters?: InvoicesDirectoryListFilters
+): Promise<{ rows: Record<string, unknown>[]; totalCount: number; metricsRows?: Record<string, unknown>[] }> {
   const uid = await requireUserId();
   const sb = getSupabase();
-  const { data, error } = await sb
-    .from("invoices")
-    .select(INVOICE_DIRECTORY_SELECT)
-    .eq("user_id", uid)
+
+  let metricsQuery = sb.from("invoices").select(
+    "id, property_id, tenant_id, lease_id, invoice_number, status, due_date, total, total_amount, balance_due, paid_at, invoice_date"
+  ).eq("user_id", uid);
+  if (filters?.propertyId) metricsQuery = metricsQuery.eq("property_id", filters.propertyId);
+  if (filters?.status) metricsQuery = metricsQuery.eq("status", String(filters.status).toUpperCase());
+  if (filters?.dateFrom) metricsQuery = metricsQuery.gte("due_date", filters.dateFrom);
+  if (filters?.dateTo) metricsQuery = metricsQuery.lte("due_date", filters.dateTo);
+
+  let pageQuery = sb.from("invoices").select(INVOICE_DIRECTORY_SELECT, { count: "exact" }).eq("user_id", uid);
+  if (filters?.propertyId) pageQuery = pageQuery.eq("property_id", filters.propertyId);
+  if (filters?.status) pageQuery = pageQuery.eq("status", String(filters.status).toUpperCase());
+  if (filters?.dateFrom) pageQuery = pageQuery.gte("due_date", filters.dateFrom);
+  if (filters?.dateTo) pageQuery = pageQuery.lte("due_date", filters.dateTo);
+  pageQuery = pageQuery
     .order("due_date", { ascending: false, nullsFirst: false })
     .order("created_at", { ascending: false });
-  if (error) throw toError(error);
-  return data ?? [];
+
+  if (filters?.limit != null && filters.offset != null) {
+    pageQuery = pageQuery.range(filters.offset, filters.offset + filters.limit - 1);
+  }
+
+  const [metricsRes, pageRes] = await Promise.all([metricsQuery, pageQuery]);
+  if (metricsRes.error) throw toError(metricsRes.error);
+  if (pageRes.error) throw toError(pageRes.error);
+
+  let metricsRows = (metricsRes.data ?? []) as Record<string, unknown>[];
+  let rows = (pageRes.data ?? []) as Record<string, unknown>[];
+
+  const q = filters?.q?.trim().toLowerCase();
+  if (q) {
+    const match = (row: Record<string, unknown>) => {
+      const tenant = row.tenants as Record<string, unknown> | null;
+      const property = row.properties as Record<string, unknown> | null;
+      const hay = `${row.invoice_number ?? ""} ${tenant?.first_name ?? ""} ${tenant?.last_name ?? ""} ${property?.name ?? ""} ${row.status ?? ""}`.toLowerCase();
+      return hay.includes(q);
+    };
+    metricsRows = metricsRows.filter(match);
+    rows = rows.filter(match);
+  }
+
+  const totalCount = q ? metricsRows.length : (pageRes.count ?? rows.length);
+
+  if (q && filters?.limit != null && filters.offset != null) {
+    rows = metricsRows.slice(filters.offset, filters.offset + filters.limit);
+  }
+
+  return { rows, totalCount, metricsRows: q ? metricsRows : undefined };
 }
 
 export async function voidInvoice(id: string | number): Promise<Record<string, unknown>> {
@@ -144,13 +219,18 @@ export async function listInvoices(
     status?: string | string[];
     invoiceType?: string;
     invoicePeriod?: string;
+    /** When false, skips Storage signed-URL generation (faster list views). Default true. */
+    attachDownloadUrls?: boolean;
+    /** When false, omits line items from the select (faster list views). Default true. */
+    includeLineItems?: boolean;
   }
 ): Promise<Record<string, unknown>[]> {
   await requireUserId();
   const sb = getSupabase();
+  const selectCols = filters?.includeLineItems === false ? INVOICE_PROPERTY_LIST_SELECT : INVOICE_LIST_SELECT;
   let query = sb
     .from("invoices")
-    .select(INVOICE_LIST_SELECT)
+    .select(selectCols)
     .eq("property_id", String(propertyId));
   if (filters?.tenantId) query = query.eq("tenant_id", filters.tenantId);
   if (filters?.leaseId) query = query.eq("lease_id", filters.leaseId);
@@ -163,7 +243,10 @@ export async function listInvoices(
   }
   const { data, error } = await query.order("created_at", { ascending: false });
   if (error) throw toError(error);
-  const mapped = (data ?? []).map((r) => dbInvoiceBundleToClient(r as Record<string, unknown>));
+  const mapped = (data ?? []).map((r) =>
+    dbInvoiceBundleToClient(r as unknown as Record<string, unknown>)
+  );
+  if (filters?.attachDownloadUrls === false) return mapped;
   return Promise.all(mapped.map((row) => attachSignedPdfDownloadUrl(row)));
 }
 

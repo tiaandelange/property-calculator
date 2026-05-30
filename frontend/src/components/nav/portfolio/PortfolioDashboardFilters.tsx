@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { SlidersHorizontal } from "lucide-react";
 import { Button } from "../../ui/Button";
 import { useLocation, useNavigate } from "react-router-dom";
-import { getProperties } from "../../../api/ownedProperties";
+import { usePropertyOptionsQuery } from "../../../features/queries";
 
 const TYPE_OPTIONS: Array<{ id: string; label: string }> = [
   { id: "LONG_TERM_RENTAL", label: "Long-Term Rental" },
@@ -63,7 +63,8 @@ export function PortfolioDashboardFilters({ className, buttonClassName }: Props)
   const navigate = useNavigate();
   const { search } = useLocation();
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [properties, setProperties] = useState<any[]>([]);
+  const propertyOptionsQuery = usePropertyOptionsQuery();
+  const properties = propertyOptionsQuery.data ?? [];
   const wrapRef = useRef<HTMLDivElement | null>(null);
 
   const selectedTypes = useMemo(() => parseTypesParam(search), [search]);
@@ -79,21 +80,6 @@ export function PortfolioDashboardFilters({ className, buttonClassName }: Props)
   }, [monthChoices, month]);
 
   const filterActive = propertyId != null || selectedTypes.length > 0;
-
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      try {
-        const rows = await getProperties();
-        if (!cancelled) setProperties(rows);
-      } catch {
-        if (!cancelled) setProperties([]);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   useEffect(() => {
     if (!filtersOpen) return;

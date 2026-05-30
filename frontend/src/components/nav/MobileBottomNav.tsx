@@ -1,9 +1,14 @@
 import { Link, useLocation } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { AppIcon } from "../../components/icons";
+import { useWorkspaceId } from "../../features/queries/useWorkspaceId";
+import { prefetchWorkspaceRoute } from "../../lib/routePrefetch";
 import { isWorkspaceNavActive, WORKSPACE_MOBILE_BOTTOM_NAV } from "../../nav/workspaceNavConfig";
 
 export function MobileBottomNav() {
   const { pathname } = useLocation();
+  const queryClient = useQueryClient();
+  const workspaceId = useWorkspaceId();
 
   return (
     <nav className="pg-dashboard-bottom-nav" aria-label="Primary mobile navigation">
@@ -15,6 +20,8 @@ export function MobileBottomNav() {
             to={item.to!}
             className={`pg-dashboard-bottom-nav-item${active ? " pg-dashboard-bottom-nav-item--active" : ""}`}
             aria-current={active ? "page" : undefined}
+            onMouseEnter={() => prefetchWorkspaceRoute(item.to!, queryClient, workspaceId ?? null)}
+            onFocus={() => prefetchWorkspaceRoute(item.to!, queryClient, workspaceId ?? null)}
           >
             <AppIcon name={item.icon} size="xl" strokeWidth={active ? 2.25 : 2} />
             <span>{item.label}</span>

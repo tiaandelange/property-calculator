@@ -1,12 +1,19 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Helmet } from "react-helmet-async";
+import { useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "react-router-dom";
 import { AppListPage } from "../components/ui/AppPage";
 import { Button, ButtonLink } from "../components/ui/Button";
 import { EmptyState } from "../components/ui/DashboardKit";
-import { getPortfolioDashboardSummary, getProperties, getTenants } from "../api/ownedProperties";
-import { PROPERTY_DATA_INVALIDATION } from "../features/properties/invalidate";
 import { useAuth } from "../contexts/AuthContext";
+import {
+  isInitialQueryLoad,
+  queryKeys,
+  useDashboardSummaryQuery,
+  usePropertiesQuery,
+  useTenantsListQuery,
+  useWorkspaceId
+} from "../features/queries";
 import { PortfolioMetricCard } from "../features/portfolio-dashboard/PortfolioMetricCard";
 import { PortfolioOverviewChart } from "../features/portfolio-dashboard/PortfolioOverviewChart";
 import { RecentActivityPanel } from "../features/portfolio-dashboard/RecentActivityPanel";
@@ -49,72 +56,49 @@ function parsePropertyParam(search: string): string | number | null {
 
 export function OwnedPropertiesPortfolioDashboardPage() {
   const { search } = useLocation();
+  const queryClient = useQueryClient();
+  const workspaceId = useWorkspaceId();
   const { session, profile } = useAuth();
-  const [data, setData] = useState<Record<string, unknown> | null>(null);
-  const [properties, setProperties] = useState<Record<string, unknown>[]>([]);
-  const [tenantCount, setTenantCount] = useState(0);
-  const [loading, setLoading] = useState(false);
-  const [propertiesLoading, setPropertiesLoading] = useState(false);
-  const [error, setError] = useState("");
+  const selectedTypes = useMemo(() => parseTypesParam(search), [search]);
+  const month = useMemo(
+    () => parseMonthParam(search) ?? new Date().toISOString().slice(0, 7),
+    [search]
+  );
+  const propertyId = useMemo(() => parsePropertyParam(search), [search]);
   const [chartRange, setChartRange] = useState<PortfolioChartRange>("THIS_YEAR");
-  const [selectedTypes, setSelectedTypes] = useState<string[]>(() => parseTypesParam(search));
-  const [month, setMonth] = useState<string | null>(() => parseMonthParam(search) ?? new Date().toISOString().slice(0, 7));
-  const [propertyId, setPropertyId] = useState<string | number | null>(() => parsePropertyParam(search));
   const desktopLayout = usePortfolioDesktopLayout();
 
-  const load = async (types = selectedTypes, nextMonth = month, nextPropertyId = propertyId) => {
-    setLoading(true);
-    setError("");
-    try {
-      const res = await getPortfolioDashboardSummary({ propertyTypes: types, month: nextMonth, propertyId: nextPropertyId });
-      setData(res as Record<string, unknown>);
-    } catch (e: unknown) {
-      console.error("[PortfolioDashboard] load failed", e);
-      const err = e as { response?: { data?: { message?: string } }; message?: string };
-      setError(err?.response?.data?.message ?? err?.message ?? "Failed to load portfolio dashboard.");
-    } finally {
-      setLoading(false);
-    }
+  const summaryQuery = useDashboardSummaryQuery({
+    propertyTypes: selectedTypes,
+    month,
+    propertyId
+  });
+  const propertiesQuery = usePropertiesQuery();
+  const tenantsQuery = useTenantsListQuery();
+
+  const data = (summaryQuery.data ?? null) as Record<string, unknown> | null;
+  const properties = (propertiesQuery.data ?? []) as Record<string, unknown>[];
+  const tenantCount = Array.isArray(tenantsQuery.data) ? tenantsQuery.data.length : 0;
+  const loading = isInitialQueryLoad(summaryQuery);
+  const propertiesLoading = isInitialQueryLoad(propertiesQuery);
+  const error = summaryQuery.error
+    ? ((summaryQuery.error as { response?: { data?: { message?: string } }; message?: string })?.response?.data
+        ?.message ??
+        (summaryQuery.error instanceof Error ? summaryQuery.error.message : "Failed to load portfolio dashboard."))
+    : "";
+
+  const refreshDashboard = () => {
+    if (!workspaceId) return;
+    void queryClient.invalidateQueries({
+      queryKey: queryKeys.dashboardSummary(workspaceId, {
+        propertyTypes: selectedTypes,
+        month,
+        propertyId
+      })
+    });
+    void queryClient.invalidateQueries({ queryKey: queryKeys.properties(workspaceId) });
+    void queryClient.invalidateQueries({ queryKey: queryKeys.tenants(workspaceId, { list: true }) });
   };
-
-  const loadProperties = async () => {
-    setPropertiesLoading(true);
-    try {
-      const [props, tenants] = await Promise.all([getProperties(), getTenants().catch(() => [])]);
-      setProperties(props as Record<string, unknown>[]);
-      setTenantCount(Array.isArray(tenants) ? tenants.length : 0);
-    } catch (e) {
-      console.warn("[PortfolioDashboard] properties list failed", e);
-      setProperties([]);
-      setTenantCount(0);
-    } finally {
-      setPropertiesLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    void load();
-    void loadProperties();
-  }, []);
-
-  useEffect(() => {
-    const next = parseTypesParam(search);
-    setSelectedTypes(next);
-    const nextMonth = parseMonthParam(search) ?? month;
-    const nextPropertyId = parsePropertyParam(search);
-    if (nextMonth) setMonth(nextMonth);
-    setPropertyId(nextPropertyId);
-    void load(next, nextMonth, nextPropertyId);
-  }, [search]);
-
-  useEffect(() => {
-    const handler = () => {
-      void load(selectedTypes, month, propertyId);
-      void loadProperties();
-    };
-    window.addEventListener(PROPERTY_DATA_INVALIDATION, handler);
-    return () => window.removeEventListener(PROPERTY_DATA_INVALIDATION, handler);
-  }, [selectedTypes, month, propertyId]);
 
   const k = (data?.kpis ?? {}) as Record<string, unknown>;
   const hasProperties = Number((k.totalProperties as { value?: number })?.value ?? data?.totalProperties ?? 0) > 0;
@@ -401,7 +385,7 @@ export function OwnedPropertiesPortfolioDashboardPage() {
           <div className="pg-pdash-toolbar">
             <div />
             <div className="pg-pdash-toolbar-actions">
-              <Button onClick={() => load()} loading={loading}>
+              <Button onClick={refreshDashboard} loading={summaryQuery.isFetching && !loading}>
                 Refresh
               </Button>
               <ButtonLink href="/owned-properties/new" variant="soft">

@@ -2,8 +2,10 @@ import type { PostgrestError } from "@supabase/supabase-js";
 import { getSupabase } from "../lib/supabaseClient";
 import { snakeRowToCamel } from "../api/propertyRowMapping";
 import { dbToTenant, tenantToDb } from "../api/tenantRowMapping";
-import { buildTenantDirectory } from "../features/tenants/tenantDirectoryAdapter";
+import { buildTenantDirectory, computeApplicantDirectoryMetrics } from "../features/tenants/tenantDirectoryAdapter";
 import type { TenantDirectoryMetrics, TenantListItem } from "../features/tenants/tenantDirectoryTypes";
+import { matchesTenantDirectoryFilters, PAGE_SIZE, paginate } from "../features/tenants/tenantDirectoryUtils";
+import type { TenantsDirectoryParams } from "../lib/queryKeys";
 import { leaseDisplayStatus } from "../utils/leaseDisplay";
 
 const ACTIVE_LEASE = ["ACTIVE", "MONTH_TO_MONTH"] as const;
@@ -45,6 +47,22 @@ const TENANT_SELECT_WITH_PROPERTY = `
   applied_property:properties!tenants_applied_property_id_fkey ( id, name, address_line1, address_line2, suburb, city )
 `;
 
+const TENANT_LEASE_SELECT = `
+  id,
+  user_id,
+  tenant_id,
+  property_id,
+  unit_id,
+  status,
+  start_date,
+  fixed_term_end_date,
+  monthly_rent,
+  rent_due_day,
+  lease_type,
+  lease_reference,
+  created_at
+`;
+
 const LEASE_SELECT_WITH_PROPERTY = `
   *,
   properties ( id, name, address_line1, address_line2, suburb, city )
@@ -52,26 +70,36 @@ const LEASE_SELECT_WITH_PROPERTY = `
 
 /**
  * Tenants directory: tenants + leases + open invoices for list UI (RLS-scoped).
+ * Returns one page of items when pagination params are supplied.
  */
-export async function listTenantsDirectory(): Promise<{
+export async function listTenantsDirectory(opts?: TenantsDirectoryParams): Promise<{
   items: TenantListItem[];
   metrics: TenantDirectoryMetrics;
+  applicantMetrics: ReturnType<typeof computeApplicantDirectoryMetrics>;
+  totalCount: number;
 }> {
   const uid = await requireUserId();
   const sb = getSupabase();
 
-  const { data: tenantRows, error: tErr } = await sb
+  let tenantQuery = sb
     .from("tenants")
     .select(TENANT_SELECT_WITH_PROPERTY)
     .eq("user_id", uid)
     .order("created_at", { ascending: false });
+
+  if (opts?.propertyId && opts.propertyId !== "ALL") {
+    tenantQuery = tenantQuery.eq("property_id", String(opts.propertyId));
+  }
+
+  const { data: tenantRows, error: tErr } = await tenantQuery;
   if (tErr) throw toError(tErr);
 
   const rows = (tenantRows ?? []) as Record<string, unknown>[];
   const tenantIds = rows.map((r) => String((r as { id: string }).id)).filter(Boolean);
 
   if (!tenantIds.length) {
-    return buildTenantDirectory([], [], []);
+    const empty = buildTenantDirectory([], [], []);
+    return { ...empty, applicantMetrics: computeApplicantDirectoryMetrics([]), totalCount: 0 };
   }
 
   const [leasesRes, invoicesRes] = await Promise.all([
@@ -101,36 +129,32 @@ export async function listTenantsDirectory(): Promise<{
     .filter((item) => String(item.tenantStatus ?? "").toUpperCase() === "APPLICANT")
     .map((item) => item.id);
 
-  if (!applicantIds.length) {
-    return directory;
-  }
+  let items = directory.items;
+  if (applicantIds.length) {
+    const { data: appRows, error: appErr } = await sb
+      .from("applicant_application_details")
+      .select("tenant_id, monthly_income, fit_score, target_rent, submitted_at")
+      .eq("user_id", uid)
+      .in("tenant_id", applicantIds);
 
-  const { data: appRows, error: appErr } = await sb
-    .from("applicant_application_details")
-    .select("tenant_id, monthly_income, fit_score, target_rent, submitted_at")
-    .eq("user_id", uid)
-    .in("tenant_id", applicantIds);
+    if (appErr) throw toError(appErr);
 
-  if (appErr) throw toError(appErr);
+    const appByTenant = new Map(
+      (appRows ?? []).map((row) => {
+        const r = row as Record<string, unknown>;
+        return [
+          String(r.tenant_id ?? ""),
+          {
+            monthlyIncome: Number(r.monthly_income ?? 0),
+            fitScore: Number(r.fit_score ?? 0),
+            targetRent: Number(r.target_rent ?? 0),
+            submittedAt: r.submitted_at != null ? String(r.submitted_at) : null
+          }
+        ] as const;
+      })
+    );
 
-  const appByTenant = new Map(
-    (appRows ?? []).map((row) => {
-      const r = row as Record<string, unknown>;
-      return [
-        String(r.tenant_id ?? ""),
-        {
-          monthlyIncome: Number(r.monthly_income ?? 0),
-          fitScore: Number(r.fit_score ?? 0),
-          targetRent: Number(r.target_rent ?? 0),
-          submittedAt: r.submitted_at != null ? String(r.submitted_at) : null
-        }
-      ] as const;
-    })
-  );
-
-  return {
-    ...directory,
-    items: directory.items.map((item) => {
+    items = directory.items.map((item) => {
       const app = appByTenant.get(item.id);
       if (!app) return item;
       return {
@@ -140,7 +164,19 @@ export async function listTenantsDirectory(): Promise<{
         targetRent: app.targetRent,
         applicationSubmittedAt: app.submittedAt
       };
-    })
+    });
+  }
+
+  const filtered = items.filter((item) => matchesTenantDirectoryFilters(item, opts ?? {}));
+  const page = Math.max(1, opts?.page ?? 1);
+  const pageSize = Math.max(1, opts?.pageSize ?? PAGE_SIZE);
+  const { slice, totalCount } = paginate(filtered, page, pageSize);
+
+  return {
+    items: slice,
+    metrics: directory.metrics,
+    applicantMetrics: computeApplicantDirectoryMetrics(items),
+    totalCount
   };
 }
 
@@ -276,28 +312,31 @@ export async function getTenant(
 ): Promise<{ tenant: Record<string, unknown>; currentLease: Record<string, unknown> | null }> {
   const uid = await requireUserId();
   const sb = getSupabase();
-  const { data: row, error } = await sb
-    .from("tenants")
-    .select(TENANT_SELECT_WITH_PROPERTY)
-    .eq("id", String(id))
-    .maybeSingle();
+  const tenantId = String(id);
+
+  const [tenantRes, leaseRes] = await Promise.all([
+    sb.from("tenants").select(TENANT_SELECT_WITH_PROPERTY).eq("id", tenantId).maybeSingle(),
+    sb
+      .from("leases")
+      .select(TENANT_LEASE_SELECT)
+      .eq("user_id", uid)
+      .eq("tenant_id", tenantId)
+      .order("created_at", { ascending: false })
+  ]);
+
+  const { data: row, error } = tenantRes;
   if (error) throw toError(error);
   if (!row) throw new Error("Tenant not found.");
 
-  const { data: leaseRows, error: lErr } = await sb
-    .from("leases")
-    .select("*")
-    .eq("user_id", uid)
-    .eq("tenant_id", String(id))
-    .order("created_at", { ascending: false });
-  if (lErr) throw toError(lErr);
+  if (leaseRes.error) throw toError(leaseRes.error);
+  const leaseRows = leaseRes.data ?? [];
 
-  const leasesCamel = (leaseRows ?? []).map((lr) => {
+  const leasesCamel = leaseRows.map((lr) => {
     const flat = snakeRowToCamel(lr as Record<string, unknown>) as Record<string, unknown>;
     return { ...flat, displayStatus: String(flat.status ?? "") };
   });
 
-  const current = (leaseRows ?? []).find((lr) => isCurrentLeaseStatus((lr as { status: string }).status)) ?? null;
+  const current = leaseRows.find((lr) => isCurrentLeaseStatus((lr as { status: string }).status)) ?? null;
 
   const tenant = { ...dbToTenant(row as Record<string, unknown>), leases: leasesCamel };
 

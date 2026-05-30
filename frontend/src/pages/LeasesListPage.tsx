@@ -1,14 +1,22 @@
 import { useEffect, useMemo, useState } from "react";
 import { Helmet } from "react-helmet-async";
-import { cancelLease as cancelLeaseApi, hardDeleteLease, getLeasesDirectory, getProperties, propertyApiErrorMessage } from "../api/ownedProperties";
-import { PROPERTY_DATA_INVALIDATION, invalidatePropertyWorkspace } from "../features/properties/invalidate";
+import { useQueryClient } from "@tanstack/react-query";
+import { cancelLease as cancelLeaseApi, hardDeleteLease, propertyApiErrorMessage } from "../api/ownedProperties";
+import { invalidatePropertyWorkspace } from "../features/properties/invalidate";
+import {
+  invalidateLeaseQueries,
+  isInitialQueryLoad,
+  queryKeys,
+  useLeasesDirectoryQuery,
+  usePropertyOptionsQuery,
+  useWorkspaceId
+} from "../features/queries";
 import { LeaseControlsBar } from "../features/leases/LeaseControlsBar";
 import { LeaseDesktopTable } from "../features/leases/LeaseDesktopTable";
 import { LeaseMetricCards } from "../features/leases/LeaseMetricCards";
 import { LeaseMobileList } from "../features/leases/LeaseMobileCard";
 import { LeasePagination } from "../features/leases/LeasePagination";
 import type { LeaseDirectoryMetrics, LeaseFilters, LeaseListItem } from "../features/leases/leaseDirectoryTypes";
-import { paginate } from "../features/leases/leaseDirectoryUtils";
 import { AppListPage } from "../components/ui/AppPage";
 import { Button, ButtonLink } from "../components/ui/Button";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
@@ -21,24 +29,9 @@ const EMPTY_METRICS: LeaseDirectoryMetrics = {
   renewalsDue: 0
 };
 
-function matchesFilters(item: LeaseListItem, filters: LeaseFilters): boolean {
-  const q = filters.q.trim().toLowerCase();
-  if (q) {
-    const hay = `${item.tenantName} ${item.tenantEmail ?? ""} ${item.propertyName} ${item.propertyAddress} ${item.displayStatus}`.toLowerCase();
-    if (!hay.includes(q)) return false;
-  }
-  if (filters.propertyId !== "ALL" && item.propertyId !== filters.propertyId) return false;
-  if (filters.status !== "ALL" && item.lifecycleStatus !== filters.status) return false;
-  if (filters.leaseType !== "ALL" && item.leaseType.toUpperCase() !== filters.leaseType) return false;
-  return true;
-}
-
 export function LeasesListPage() {
-  const [items, setItems] = useState<LeaseListItem[]>([]);
-  const [metrics, setMetrics] = useState<LeaseDirectoryMetrics>(EMPTY_METRICS);
-  const [properties, setProperties] = useState<Array<{ id: string; name: string }>>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const queryClient = useQueryClient();
+  const workspaceId = useWorkspaceId();
   const [page, setPage] = useState(1);
   const [filters, setFilters] = useState<LeaseFilters>({
     q: "",
@@ -46,65 +39,45 @@ export function LeasesListPage() {
     status: "ALL",
     leaseType: "ALL"
   });
+
+  const directoryParams = useMemo(
+    () => ({
+      page,
+      pageSize: 6,
+      q: filters.q,
+      propertyId: filters.propertyId,
+      status: filters.status,
+      leaseType: filters.leaseType
+    }),
+    [page, filters]
+  );
+
+  const directoryQuery = useLeasesDirectoryQuery(directoryParams);
+  const propertyOptionsQuery = usePropertyOptionsQuery();
+
+  const pageItems = directoryQuery.data?.items ?? [];
+  const totalCount = directoryQuery.data?.totalCount ?? 0;
+  const metrics = directoryQuery.data?.metrics ?? EMPTY_METRICS;
+  const properties = propertyOptionsQuery.data ?? [];
+  const loading = isInitialQueryLoad(directoryQuery);
+  const error = directoryQuery.error ? propertyApiErrorMessage(directoryQuery.error) : "";
   const [deleteLeaseId, setDeleteLeaseId] = useState<string | null>(null);
   const [cancelLeaseItem, setCancelLeaseItem] = useState<LeaseListItem | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [actionError, setActionError] = useState("");
 
-  const load = async () => {
-    setLoading(true);
-    setError("");
-    try {
-      const [directory, props] = await Promise.all([
-        getLeasesDirectory(),
-        getProperties().catch(() => [])
-      ]);
-      setItems(directory.items);
-      setMetrics(directory.metrics);
-      setProperties(
-        (props as Array<Record<string, unknown>>).map((p) => ({
-          id: String(p.id),
-          name: String(p.name ?? "Property")
-        }))
-      );
-    } catch (e: unknown) {
-      console.error("[LeasesList] Load failed", e);
-      setError(propertyApiErrorMessage(e));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    void load();
-  }, []);
-
-  useEffect(() => {
-    const handler = () => void load();
-    window.addEventListener(PROPERTY_DATA_INVALIDATION, handler);
-    return () => window.removeEventListener(PROPERTY_DATA_INVALIDATION, handler);
-  }, []);
-
   useEffect(() => {
     setPage(1);
   }, [filters.q, filters.propertyId, filters.status, filters.leaseType]);
 
-  const filtered = useMemo(
-    () =>
-      items
-        .filter((l) => matchesFilters(l, filters))
-        .sort((a, b) => new Date(String(b.startDate ?? 0)).getTime() - new Date(String(a.startDate ?? 0)).getTime()),
-    [items, filters]
-  );
-
-  const { slice: pageItems, totalPages } = useMemo(() => paginate(filtered, page), [filtered, page]);
-
-  useEffect(() => {
-    if (page > totalPages) setPage(totalPages);
-  }, [page, totalPages]);
-
   const patchFilters = (next: Partial<LeaseFilters>) => {
     setFilters((prev) => ({ ...prev, ...next }));
+  };
+
+  const refreshDirectory = () => {
+    if (workspaceId) {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.leasesDirectory(workspaceId) });
+    }
   };
 
   const confirmCancelLease = async (payload: { cancellationDate: string; cancellationReason?: string }) => {
@@ -117,9 +90,13 @@ export function LeasesListPage() {
         cancellationReason: payload.cancellationReason,
         cancelledBy: "LANDLORD"
       });
+      invalidateLeaseQueries({
+        workspaceId,
+        propertyId: cancelLeaseItem.propertyId,
+        tenantId: cancelLeaseItem.tenantId
+      });
       invalidatePropertyWorkspace(cancelLeaseItem.propertyId);
       setCancelLeaseItem(null);
-      await load();
     } catch (e: unknown) {
       setActionError(propertyApiErrorMessage(e));
     } finally {
@@ -129,14 +106,20 @@ export function LeasesListPage() {
 
   const confirmDeleteLease = async () => {
     if (!deleteLeaseId) return;
-    const lease = items.find((l) => l.id === deleteLeaseId);
+    const lease = pageItems.find((l) => l.id === deleteLeaseId) ?? directoryQuery.data?.items.find((l) => l.id === deleteLeaseId);
     setActionLoading(true);
     setActionError("");
     try {
       await hardDeleteLease(deleteLeaseId);
-      if (lease?.propertyId) invalidatePropertyWorkspace(lease.propertyId);
+      if (lease?.propertyId) {
+        invalidateLeaseQueries({
+          workspaceId,
+          propertyId: lease.propertyId,
+          tenantId: lease.tenantId
+        });
+        invalidatePropertyWorkspace(lease.propertyId);
+      }
       setDeleteLeaseId(null);
-      await load();
     } catch (e: unknown) {
       setActionError(propertyApiErrorMessage(e));
     } finally {
@@ -144,7 +127,10 @@ export function LeasesListPage() {
     }
   };
 
-  const deleteLeaseItem = deleteLeaseId ? items.find((l) => l.id === deleteLeaseId) : null;
+  const deleteLeaseItem = deleteLeaseId
+    ? (pageItems.find((l) => l.id === deleteLeaseId) ??
+      directoryQuery.data?.items.find((l) => l.id === deleteLeaseId))
+    : null;
 
   return (
     <>
@@ -154,7 +140,7 @@ export function LeasesListPage() {
         </Helmet>
           <div className="pg-leases-toolbar">
             <div className="pg-leases-toolbar-actions pg-leases-desktop-only">
-              <Button onClick={() => load()} loading={loading}>
+              <Button onClick={refreshDirectory} loading={directoryQuery.isFetching && !loading}>
                 Refresh
               </Button>
             </div>
@@ -162,15 +148,15 @@ export function LeasesListPage() {
 
           {error ? <div className="pg-alert pg-alert-error">{error}</div> : null}
 
-          <LeaseMetricCards metrics={metrics} loading={loading && !items.length} />
+          <LeaseMetricCards metrics={metrics} loading={loading} />
 
           <LeaseControlsBar filters={filters} onChange={patchFilters} properties={properties} />
 
-          {!loading && filtered.length === 0 ? (
-            <section className="pg-leases-empty pg-workspace-card" aria-busy={loading}>
+          {!loading && totalCount === 0 ? (
+            <section className="pg-leases-empty pg-workspace-card" aria-busy={directoryQuery.isFetching}>
               <h2>No leases found</h2>
               <p>
-                {items.length === 0
+                {totalCount === 0 && !filters.q && filters.propertyId === "ALL"
                   ? "Create your first lease to link a tenant to a property."
                   : "Try adjusting your search or filters."}
               </p>
@@ -180,12 +166,12 @@ export function LeasesListPage() {
             </section>
           ) : (
             <>
-              <section className="pg-leases-list-panel pg-workspace-card pg-leases-desktop-only" aria-busy={loading}>
+              <section className="pg-leases-list-panel pg-workspace-card pg-leases-desktop-only" aria-busy={directoryQuery.isFetching}>
                 <LeaseDesktopTable
                   items={pageItems}
                   loading={loading}
                   onCancelLease={(id) => {
-                    const lease = items.find((l) => l.id === id);
+                    const lease = pageItems.find((l) => l.id === id);
                     if (lease?.isCancellable) {
                       setActionError("");
                       setCancelLeaseItem(lease);
@@ -196,14 +182,14 @@ export function LeasesListPage() {
                     setDeleteLeaseId(id);
                   }}
                 />
-                <LeasePagination page={page} totalItems={filtered.length} onPageChange={setPage} />
+                <LeasePagination page={page} totalItems={totalCount} onPageChange={setPage} />
               </section>
-              <div className="pg-leases-mobile-only pg-workspace-card-stack" aria-busy={loading}>
+              <div className="pg-leases-mobile-only pg-workspace-card-stack" aria-busy={directoryQuery.isFetching}>
                 <LeaseMobileList
                   items={pageItems}
                   loading={loading}
                   onCancelLease={(id) => {
-                    const lease = items.find((l) => l.id === id);
+                    const lease = pageItems.find((l) => l.id === id);
                     if (lease?.isCancellable) {
                       setActionError("");
                       setCancelLeaseItem(lease);
@@ -215,7 +201,7 @@ export function LeasesListPage() {
                   }}
                 />
                 <section className="pg-workspace-card pg-leases-pagination-panel">
-                  <LeasePagination page={page} totalItems={filtered.length} onPageChange={setPage} />
+                  <LeasePagination page={page} totalItems={totalCount} onPageChange={setPage} />
                 </section>
               </div>
             </>

@@ -1,24 +1,25 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Helmet } from "react-helmet-async";
+import { useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import {
   generateInvoicePdf,
-  getInvoicesDirectory,
   hardDeleteInvoice,
   propertyApiErrorMessage
 } from "../api/ownedProperties";
 import { openInvoicePdfExport } from "../features/invoices/invoicePdfExport";
-import { PROPERTY_DATA_INVALIDATION } from "../features/properties/invalidate";
+import {
+  invalidateInvoiceQueries,
+  isInitialQueryLoad,
+  queryKeys,
+  useInvoicesDirectoryQuery,
+  useWorkspaceId
+} from "../features/queries";
 import { InvoiceControlsBar } from "../features/invoices/InvoiceControlsBar";
 import { InvoiceDesktopTable } from "../features/invoices/InvoiceDesktopTable";
 import { InvoiceMetricCards } from "../features/invoices/InvoiceMetricCards";
 import { InvoicePagination } from "../features/invoices/InvoicePagination";
 import type { InvoiceDirectoryFilters, InvoiceDirectoryMetrics, InvoiceDirectoryRow } from "../features/invoices/invoiceDirectoryTypes";
-import {
-  computeInvoiceMetrics,
-  matchesInvoiceFilters,
-  paginate
-} from "../features/invoices/invoiceDirectoryUtils";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
 import { AppListPage } from "../components/ui/AppPage";
 import { Button, ButtonLink } from "../components/ui/Button";
@@ -31,12 +32,9 @@ const EMPTY_METRICS: InvoiceDirectoryMetrics = {
 };
 
 export function InvoicesListPage() {
+  const queryClient = useQueryClient();
+  const workspaceId = useWorkspaceId();
   const [searchParams] = useSearchParams();
-  const [items, setItems] = useState<InvoiceDirectoryRow[]>([]);
-  const [metrics, setMetrics] = useState<InvoiceDirectoryMetrics>(EMPTY_METRICS);
-  const [properties, setProperties] = useState<Array<{ id: string; name: string }>>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
   const [page, setPage] = useState(1);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<InvoiceDirectoryRow | null>(null);
@@ -48,44 +46,37 @@ export function InvoicesListPage() {
     dateTo: ""
   }));
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError("");
-    try {
-      const res = await getInvoicesDirectory();
-      setItems(res.items);
-      setMetrics(res.metrics);
-      setProperties(res.properties);
-    } catch (e: unknown) {
-      setError(propertyApiErrorMessage(e));
-      setItems([]);
-      setMetrics(EMPTY_METRICS);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const directoryParams = useMemo(
+    () => ({
+      page,
+      pageSize: 20,
+      q: filters.q,
+      propertyId: filters.propertyId,
+      status: filters.status,
+      dateFrom: filters.dateFrom,
+      dateTo: filters.dateTo
+    }),
+    [page, filters]
+  );
 
-  useEffect(() => {
-    void load();
-  }, [load]);
+  const directoryQuery = useInvoicesDirectoryQuery(directoryParams);
 
-  useEffect(() => {
-    const handler = () => void load();
-    window.addEventListener(PROPERTY_DATA_INVALIDATION, handler);
-    return () => window.removeEventListener(PROPERTY_DATA_INVALIDATION, handler);
-  }, [load]);
+  const pageItems = directoryQuery.data?.items ?? [];
+  const totalCount = directoryQuery.data?.totalCount ?? 0;
+  const metrics = directoryQuery.data?.metrics ?? EMPTY_METRICS;
+  const properties = directoryQuery.data?.properties ?? [];
+  const loading = isInitialQueryLoad(directoryQuery);
+  const error = directoryQuery.error ? propertyApiErrorMessage(directoryQuery.error) : "";
 
   useEffect(() => {
     setPage(1);
   }, [filters.q, filters.propertyId, filters.status, filters.dateFrom, filters.dateTo]);
 
-  const filtered = useMemo(() => items.filter((row) => matchesInvoiceFilters(row, filters)), [items, filters]);
-  const filteredMetrics = useMemo(() => computeInvoiceMetrics(filtered), [filtered]);
-  const { slice: pageItems, totalPages } = useMemo(() => paginate(filtered, page), [filtered, page]);
-
-  useEffect(() => {
-    if (page > totalPages) setPage(totalPages);
-  }, [page, totalPages]);
+  const refreshDirectory = () => {
+    if (workspaceId) {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.invoicesDirectory(workspaceId) });
+    }
+  };
 
   async function exportPdf(row: InvoiceDirectoryRow) {
     setBusyId(row.id);
@@ -102,24 +93,20 @@ export function InvoicesListPage() {
   async function confirmInvoiceDelete() {
     if (!confirmDelete) return;
     setBusyId(confirmDelete.id);
-    setError("");
     try {
       await hardDeleteInvoice(confirmDelete.id);
+      invalidateInvoiceQueries({
+        workspaceId,
+        propertyId: confirmDelete.propertyId,
+        tenantId: confirmDelete.tenantId
+      });
       setConfirmDelete(null);
-      await load();
     } catch (e: unknown) {
-      setError(propertyApiErrorMessage(e));
+      window.alert(propertyApiErrorMessage(e));
     } finally {
       setBusyId(null);
     }
   }
-
-  const hasActiveFilters =
-    filters.q.trim() !== "" ||
-    filters.propertyId !== "ALL" ||
-    filters.status !== "ALL" ||
-    filters.dateFrom !== "" ||
-    filters.dateTo !== "";
 
   return (
     <>
@@ -135,7 +122,7 @@ export function InvoicesListPage() {
               </p>
             </div>
             <div className="pg-invoices-toolbar-actions pg-invoices-desktop-only">
-              <Button onClick={() => void load()} loading={loading}>
+              <Button onClick={refreshDirectory} loading={directoryQuery.isFetching && !loading}>
                 Refresh
               </Button>
             </div>
@@ -143,15 +130,15 @@ export function InvoicesListPage() {
 
           {error ? <div className="pg-alert pg-alert-error">{error}</div> : null}
 
-          <InvoiceMetricCards metrics={!hasActiveFilters ? metrics : filteredMetrics} loading={loading && !items.length} />
+          <InvoiceMetricCards metrics={metrics} loading={loading} />
 
           <InvoiceControlsBar filters={filters} onChange={(next) => setFilters((prev) => ({ ...prev, ...next }))} properties={properties} />
 
-          {!loading && filtered.length === 0 ? (
-            <section className="pg-invoices-empty pg-workspace-card" aria-busy={loading}>
+          {!loading && totalCount === 0 ? (
+            <section className="pg-invoices-empty pg-workspace-card" aria-busy={directoryQuery.isFetching}>
               <h2>No invoices found</h2>
               <p>
-                {items.length === 0
+                {!filters.q && filters.propertyId === "ALL" && filters.status === "ALL"
                   ? "Invoices from active leases are generated automatically, or create one from a property lease."
                   : "Try adjusting your search or filters."}
               </p>
@@ -168,7 +155,7 @@ export function InvoicesListPage() {
                 onExportPdf={(row) => void exportPdf(row)}
                 onDelete={(row) => setConfirmDelete(row)}
               />
-              <InvoicePagination page={page} totalItems={filtered.length} onPageChange={setPage} />
+              <InvoicePagination page={page} totalItems={totalCount} onPageChange={setPage} />
             </>
           )}
       </AppListPage>

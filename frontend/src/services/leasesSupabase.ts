@@ -95,6 +95,37 @@ export async function listLeasesDirectoryRows(): Promise<Record<string, unknown>
   return (data ?? []).map((row) => dbToLease(row as Record<string, unknown>));
 }
 
+export type LeasesDirectoryQueryOpts = {
+  page?: number;
+  pageSize?: number;
+  q?: string;
+  propertyId?: string | null;
+  status?: string;
+  leaseType?: string;
+};
+
+/** Leases directory fetch with optional SQL-level filters (pagination applied in API layer). */
+export async function listLeasesDirectoryFilteredRows(opts?: LeasesDirectoryQueryOpts): Promise<Record<string, unknown>[]> {
+  const uid = await requireUserId();
+  const sb = getSupabase();
+  let query = sb
+    .from("leases")
+    .select(LEASE_DIRECTORY_SELECT)
+    .eq("user_id", uid)
+    .order("created_at", { ascending: false });
+
+  if (opts?.propertyId && opts.propertyId !== "ALL") {
+    query = query.eq("property_id", String(opts.propertyId));
+  }
+  if (opts?.leaseType && opts.leaseType !== "ALL") {
+    query = query.eq("lease_type", String(opts.leaseType).toUpperCase());
+  }
+
+  const { data, error } = await query;
+  if (error) throw toError(error);
+  return (data ?? []).map((row) => dbToLease(row as Record<string, unknown>));
+}
+
 /** Same envelope as `GET /api/properties/:propertyId/leases`. RLS enforces ownership. */
 export async function listLeasesForProperty(propertyId: string | number): Promise<PropertyLeasesBundle> {
   await requireUserId();

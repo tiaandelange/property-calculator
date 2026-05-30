@@ -1,19 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
 import { Helmet } from "react-helmet-async";
+import { useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import { AppListPage } from "../components/ui/AppPage";
 import { AppSectionTabs } from "../components/ui/AppSectionTabs";
 import { Button, ButtonLink } from "../components/ui/Button";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
-import { deleteTenant, getProperties, getTenantsDirectory } from "../api/ownedProperties";
-import { PROPERTY_DATA_INVALIDATION } from "../features/properties/invalidate";
+import { deleteTenant } from "../api/ownedProperties";
 import { ApplicantDetailModal } from "../features/applicants/ApplicantDetailModal";
 import { ApplicantDesktopTable } from "../features/applicants/ApplicantDesktopTable";
 import { ApplicantInviteModal } from "../features/applicants/ApplicantInviteCard";
 import {
-  computeApplicantDirectoryMetrics,
-  computeTenantDirectoryMetrics,
-  isApplicantListItem
+  computeApplicantDirectoryMetrics
 } from "../features/tenants/tenantDirectoryAdapter";
 import { ApplicantMetricCards, TenantMetricCards } from "../features/tenants/TenantMetricCards";
 import { TenantControlsBar, type TenantFilters } from "../features/tenants/TenantControlsBar";
@@ -21,7 +19,15 @@ import { TenantDesktopTable } from "../features/tenants/TenantDesktopTable";
 import { TenantMobileList } from "../features/tenants/TenantMobileCard";
 import { TenantPagination } from "../features/tenants/TenantPagination";
 import type { TenantDirectoryMetrics, TenantListItem } from "../features/tenants/tenantDirectoryTypes";
-import { PAGE_SIZE, paginate } from "../features/tenants/tenantDirectoryUtils";
+import { PAGE_SIZE } from "../features/tenants/tenantDirectoryUtils";
+import {
+  invalidateTenantQueries,
+  isInitialQueryLoad,
+  queryKeys,
+  usePropertyOptionsQuery,
+  useTenantsDirectoryQuery,
+  useWorkspaceId
+} from "../features/queries";
 
 const EMPTY_TENANT_METRICS: TenantDirectoryMetrics = {
   totalTenants: 0,
@@ -31,32 +37,19 @@ const EMPTY_TENANT_METRICS: TenantDirectoryMetrics = {
   renewalsDue: 0
 };
 
-function matchesFilters(item: TenantListItem, filters: TenantFilters): boolean {
-  const q = filters.q.trim().toLowerCase();
-  if (q) {
-    const hay = `${item.fullName} ${item.email ?? ""} ${item.phone ?? ""} ${item.propertyName ?? ""} ${item.propertyAddress ?? ""}`.toLowerCase();
-    if (!hay.includes(q)) return false;
-  }
-  if (filters.propertyId !== "ALL" && item.propertyId !== filters.propertyId) return false;
-  if (filters.leaseStatus !== "ALL" && item.leaseStatus !== filters.leaseStatus) return false;
-  if (filters.paymentStatus !== "ALL" && item.paymentStatus !== filters.paymentStatus) return false;
-  return true;
-}
-
 export function TenantsListPage() {
+  const queryClient = useQueryClient();
+  const workspaceId = useWorkspaceId();
   const [searchParams] = useSearchParams();
   const activeTab = searchParams.get("tab") === "applicants" ? "applicants" : "tenants";
   const isApplicants = activeTab === "applicants";
 
-  const [items, setItems] = useState<TenantListItem[]>([]);
-  const [properties, setProperties] = useState<Array<{ id: string; name: string }>>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
   const [page, setPage] = useState(1);
   const [showInviteCard, setShowInviteCard] = useState(false);
   const [viewApplicantId, setViewApplicantId] = useState<string | null>(null);
   const [deleteApplicant, setDeleteApplicant] = useState<TenantListItem | null>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
+  const [actionError, setActionError] = useState("");
   const [filters, setFilters] = useState<TenantFilters>({
     q: "",
     propertyId: "ALL",
@@ -64,92 +57,70 @@ export function TenantsListPage() {
     paymentStatus: "ALL"
   });
 
-  const load = async () => {
-    setLoading(true);
-    setError("");
-    try {
-      const [directory, props] = await Promise.all([
-        getTenantsDirectory(),
-        getProperties().catch(() => [])
-      ]);
-      setItems(directory.items);
-      setProperties(
-        (props as Array<Record<string, unknown>>).map((p) => ({
-          id: String(p.id),
-          name: String(p.name ?? "Property")
-        }))
-      );
-    } catch (e: unknown) {
-      console.error("[TenantsList] Load failed", e);
-      const err = e as { response?: { data?: { message?: string } }; message?: string };
-      setError(err?.response?.data?.message ?? err?.message ?? "Failed to load tenants.");
-    } finally {
-      setLoading(false);
-    }
-  };
+  const directoryParams = useMemo(
+    () => ({
+      page,
+      pageSize: PAGE_SIZE,
+      q: filters.q,
+      propertyId: filters.propertyId,
+      leaseStatus: filters.leaseStatus,
+      paymentStatus: filters.paymentStatus,
+      tab: activeTab as "tenants" | "applicants"
+    }),
+    [page, filters, activeTab]
+  );
 
-  useEffect(() => {
-    void load();
-  }, []);
+  const directoryQuery = useTenantsDirectoryQuery(directoryParams);
+  const propertyOptionsQuery = usePropertyOptionsQuery();
 
-  useEffect(() => {
-    const handler = () => void load();
-    window.addEventListener(PROPERTY_DATA_INVALIDATION, handler);
-    return () => window.removeEventListener(PROPERTY_DATA_INVALIDATION, handler);
-  }, []);
+  const pageItems = directoryQuery.data?.items ?? [];
+  const totalCount = directoryQuery.data?.totalCount ?? 0;
+  const tenantMetrics = directoryQuery.data?.metrics ?? EMPTY_TENANT_METRICS;
+  const applicantMetrics = directoryQuery.data?.applicantMetrics ?? computeApplicantDirectoryMetrics([]);
+  const properties = propertyOptionsQuery.data ?? [];
+  const loading = isInitialQueryLoad(directoryQuery);
 
   useEffect(() => {
     setPage(1);
   }, [filters.q, filters.propertyId, filters.leaseStatus, filters.paymentStatus, activeTab]);
 
+  const error =
+    directoryQuery.error instanceof Error
+      ? directoryQuery.error.message
+      : directoryQuery.error
+        ? "Failed to load tenants."
+        : "";
+
   useEffect(() => {
     if (!isApplicants) setShowInviteCard(false);
   }, [isApplicants]);
-
-  const scopedItems = useMemo(
-    () => items.filter((item) => (isApplicants ? isApplicantListItem(item) : !isApplicantListItem(item))),
-    [items, isApplicants]
-  );
-
-  const tenantMetrics = useMemo(
-    () => computeTenantDirectoryMetrics(items.filter((item) => !isApplicantListItem(item))),
-    [items]
-  );
-
-  const applicantMetrics = useMemo(() => computeApplicantDirectoryMetrics(items), [items]);
-
-  const filtered = useMemo(
-    () => scopedItems.filter((t) => matchesFilters(t, filters)).sort((a, b) => a.lastName.localeCompare(b.lastName)),
-    [scopedItems, filters]
-  );
-
-  const { slice: pageItems, totalPages } = useMemo(
-    () => paginate(filtered, page, PAGE_SIZE),
-    [filtered, page]
-  );
-
-  useEffect(() => {
-    if (page > totalPages) setPage(totalPages);
-  }, [page, totalPages]);
 
   const patchFilters = (next: Partial<TenantFilters>) => {
     setFilters((prev) => ({ ...prev, ...next }));
   };
 
+  const refreshDirectory = () => {
+    if (workspaceId) {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.tenantsDirectory(workspaceId) });
+    }
+  };
+
   const confirmDeleteApplicant = async () => {
     if (!deleteApplicant) return;
     setDeleteBusy(true);
-    setError("");
+    setActionError("");
     try {
       await deleteTenant(deleteApplicant.id);
+      invalidateTenantQueries({ workspaceId, tenantId: deleteApplicant.id });
       setDeleteApplicant(null);
-      await load();
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Failed to delete applicant.");
+      setActionError(e instanceof Error ? e.message : "Failed to delete applicant.");
     } finally {
       setDeleteBusy(false);
     }
   };
+
+  const displayError = actionError || error;
 
   return (
     <AppListPage contentClassName="pg-tenants">
@@ -157,7 +128,7 @@ export function TenantsListPage() {
         <title>{isApplicants ? "Applicants" : "Tenants"} | The Property Guy</title>
       </Helmet>
 
-      {error ? <div className="pg-alert pg-alert-error">{error}</div> : null}
+      {displayError ? <div className="pg-alert pg-alert-error">{displayError}</div> : null}
 
       <div className="pg-tenants-section-head">
         <AppSectionTabs
@@ -184,9 +155,9 @@ export function TenantsListPage() {
       </div>
 
       {isApplicants ? (
-        <ApplicantMetricCards metrics={applicantMetrics} loading={loading && !items.length} />
+        <ApplicantMetricCards metrics={applicantMetrics} loading={loading} />
       ) : (
-        <TenantMetricCards metrics={tenantMetrics || EMPTY_TENANT_METRICS} loading={loading && !items.length} />
+        <TenantMetricCards metrics={tenantMetrics || EMPTY_TENANT_METRICS} loading={loading} />
       )}
 
       <TenantControlsBar
@@ -200,11 +171,11 @@ export function TenantsListPage() {
         }
       />
 
-      {!loading && filtered.length === 0 ? (
-        <section className="pg-tenants-empty pg-workspace-card" aria-busy={loading}>
+      {!loading && totalCount === 0 ? (
+        <section className="pg-tenants-empty pg-workspace-card" aria-busy={directoryQuery.isFetching}>
           <h2>{isApplicants ? "No applicants found" : "No tenants found"}</h2>
           <p>
-            {scopedItems.length === 0
+            {totalCount === 0
               ? isApplicants
                 ? "Share an application link to collect applicant details."
                 : "Add your first tenant to start tracking leases and rent."
@@ -223,41 +194,37 @@ export function TenantsListPage() {
       ) : (
         <>
           {isApplicants ? (
-            <section className="pg-tenants-list-panel pg-workspace-card pg-tenants-desktop-only" aria-busy={loading}>
+            <section className="pg-tenants-list-panel pg-workspace-card pg-tenants-desktop-only" aria-busy={directoryQuery.isFetching}>
               <ApplicantDesktopTable
                 items={pageItems}
                 loading={loading}
                 onView={(item) => setViewApplicantId(item.id)}
                 onDelete={(item) => setDeleteApplicant(item)}
               />
-              <TenantPagination page={page} totalItems={filtered.length} onPageChange={setPage} />
+              <TenantPagination page={page} totalItems={totalCount} onPageChange={setPage} />
             </section>
           ) : (
-            <section className="pg-tenants-list-panel pg-workspace-card pg-tenants-desktop-only" aria-busy={loading}>
+            <section className="pg-tenants-list-panel pg-workspace-card pg-tenants-desktop-only" aria-busy={directoryQuery.isFetching}>
               <TenantDesktopTable items={pageItems} loading={loading} />
-              <TenantPagination page={page} totalItems={filtered.length} onPageChange={setPage} />
+              <TenantPagination page={page} totalItems={totalCount} onPageChange={setPage} />
             </section>
           )}
-          <div className="pg-tenants-mobile-only pg-workspace-card-stack" aria-busy={loading}>
+          <div className="pg-tenants-mobile-only pg-workspace-card-stack" aria-busy={directoryQuery.isFetching}>
             <TenantMobileList items={pageItems} loading={loading} />
             <section className="pg-workspace-card pg-tenants-pagination-panel">
-              <TenantPagination page={page} totalItems={filtered.length} onPageChange={setPage} />
+              <TenantPagination page={page} totalItems={totalCount} onPageChange={setPage} />
             </section>
           </div>
         </>
       )}
 
-      <ApplicantInviteModal
-        open={showInviteCard}
-        onOpenChange={setShowInviteCard}
-        properties={properties}
-      />
+      <ApplicantInviteModal open={showInviteCard} onOpenChange={setShowInviteCard} properties={properties} />
 
       <ApplicantDetailModal
         tenantId={viewApplicantId}
         open={viewApplicantId != null}
         onClose={() => setViewApplicantId(null)}
-        onSaved={() => void load()}
+        onSaved={refreshDirectory}
       />
 
       <ConfirmDialog

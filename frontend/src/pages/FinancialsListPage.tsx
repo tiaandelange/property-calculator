@@ -1,19 +1,20 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Helmet } from "react-helmet-async";
+import { useQueryClient } from "@tanstack/react-query";
 import { useLocation, useSearchParams } from "react-router-dom";
-import { getFinancialsDirectory, propertyApiErrorMessage } from "../api/ownedProperties";
-import { PROPERTY_DATA_INVALIDATION } from "../features/properties/invalidate";
+import { propertyApiErrorMessage } from "../api/ownedProperties";
+import {
+  isInitialQueryLoad,
+  queryKeys,
+  useFinancialsDirectoryQuery,
+  useWorkspaceId
+} from "../features/queries";
 import { FinancialControlsBar } from "../features/financials/FinancialControlsBar";
 import { FinancialPagination } from "../features/financials/FinancialPagination";
 import { FinancialStatementTable } from "../features/financials/FinancialStatementTable";
 import { FinancialYtdSummary } from "../features/financials/FinancialYtdSummary";
-import type { FinancialFilters, FinancialStatementRow } from "../features/financials/financialDirectoryTypes";
-import {
-  computeYtdTotals,
-  localCalendarMonth,
-  matchesFinancialFilters,
-  paginate
-} from "../features/financials/financialDirectoryUtils";
+import type { FinancialFilters } from "../features/financials/financialDirectoryTypes";
+import { FINANCIALS_PAGE_SIZE, localCalendarMonth } from "../features/financials/financialDirectoryUtils";
 import { AppListPage } from "../components/ui/AppPage";
 import { Button, ButtonLink } from "../components/ui/Button";
 
@@ -23,12 +24,10 @@ function parsePropertyIdFromSearch(search: string): string {
 }
 
 export function FinancialsListPage() {
+  const queryClient = useQueryClient();
+  const workspaceId = useWorkspaceId();
   const { search } = useLocation();
   const [, setSearchParams] = useSearchParams();
-  const [items, setItems] = useState<FinancialStatementRow[]>([]);
-  const [properties, setProperties] = useState<Array<{ id: string; name: string }>>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
   const [page, setPage] = useState(1);
   const [filters, setFilters] = useState<FinancialFilters>(() => ({
     q: "",
@@ -37,41 +36,38 @@ export function FinancialsListPage() {
     source: "ALL"
   }));
 
-  const load = useCallback(async (nextFilters = filters) => {
-    setLoading(true);
-    setError("");
-    try {
-      const res = await getFinancialsDirectory({
-        month: nextFilters.month,
-        propertyId: nextFilters.propertyId === "ALL" ? null : nextFilters.propertyId
-      });
-      setItems(res.items);
-      setProperties(res.properties);
-    } catch (e: unknown) {
-      console.error("[FinancialsList] load failed", e);
-      setError(propertyApiErrorMessage(e));
-      setItems([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [filters]);
+  const directoryParams = useMemo(
+    () => ({
+      month: filters.month,
+      propertyId: filters.propertyId === "ALL" ? null : filters.propertyId,
+      page,
+      pageSize: FINANCIALS_PAGE_SIZE,
+      q: filters.q,
+      source: filters.source
+    }),
+    [filters.month, filters.propertyId, filters.q, filters.source, page]
+  );
 
-  useEffect(() => {
-    void load();
-  }, [filters.month, filters.propertyId]);
-
-  useEffect(() => {
-    const handler = () => void load();
-    window.addEventListener(PROPERTY_DATA_INVALIDATION, handler);
-    return () => window.removeEventListener(PROPERTY_DATA_INVALIDATION, handler);
-  }, [load]);
+  const directoryQuery = useFinancialsDirectoryQuery(directoryParams);
+  const pageItems = directoryQuery.data?.items ?? [];
+  const totalCount = directoryQuery.data?.totalCount ?? 0;
+  const properties = directoryQuery.data?.properties ?? [];
+  const ytd = directoryQuery.data?.ytd ?? {
+    year: new Date().getFullYear(),
+    revenue: 0,
+    expenses: 0,
+    net: 0,
+    periodLabel: ""
+  };
+  const loading = isInitialQueryLoad(directoryQuery);
+  const error = directoryQuery.error ? propertyApiErrorMessage(directoryQuery.error) : "";
 
   useEffect(() => {
     const pid = parsePropertyIdFromSearch(search);
     if (pid !== filters.propertyId) {
       setFilters((prev) => ({ ...prev, propertyId: pid }));
     }
-  }, [search]);
+  }, [search, filters.propertyId]);
 
   useEffect(() => {
     setPage(1);
@@ -89,22 +85,13 @@ export function FinancialsListPage() {
     });
   };
 
-  const filtered = useMemo(
-    () => items.filter((row) => matchesFinancialFilters(row, filters)),
-    [items, filters]
-  );
-
-  const ytd = useMemo(() => {
-    const scope =
-      filters.propertyId === "ALL" ? filtered : filtered.filter((r) => r.propertyId === filters.propertyId);
-    return computeYtdTotals(scope);
-  }, [filtered, filters.propertyId]);
-
-  const { slice: pageItems, totalPages } = useMemo(() => paginate(filtered, page), [filtered, page]);
-
-  useEffect(() => {
-    if (page > totalPages) setPage(totalPages);
-  }, [page, totalPages]);
+  const refreshDirectory = () => {
+    if (workspaceId) {
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.financialsDirectory(workspaceId, directoryParams)
+      });
+    }
+  };
 
   const showRunningBalance = filters.propertyId !== "ALL";
 
@@ -121,7 +108,7 @@ export function FinancialsListPage() {
               </p>
             </div>
             <div className="pg-fins-toolbar-actions pg-fins-desktop-only">
-              <Button onClick={() => void load()} loading={loading}>
+              <Button onClick={refreshDirectory} loading={directoryQuery.isFetching && !loading}>
                 Refresh
               </Button>
             </div>
@@ -147,14 +134,14 @@ export function FinancialsListPage() {
               periodLabel={ytd.periodLabel}
               revenue={ytd.revenue}
               expenses={ytd.expenses}
-              cashFlow={ytd.cashFlow}
+              cashFlow={ytd.net}
             />
 
-            {!loading && filtered.length === 0 ? (
+            {!loading && totalCount === 0 ? (
               <div className="pg-fins-empty">
                 <h2>No ledger entries</h2>
                 <p>
-                  {items.length === 0
+                  {properties.length === 0
                     ? "Add properties and record income or expenses on a property workspace."
                     : "Try another month, property, or search term."}
                 </p>
@@ -171,7 +158,7 @@ export function FinancialsListPage() {
             ) : (
               <>
                 <FinancialStatementTable items={pageItems} loading={loading} showRunningBalance={showRunningBalance} />
-                <FinancialPagination page={page} totalItems={filtered.length} onPageChange={setPage} />
+                <FinancialPagination page={page} totalItems={totalCount} onPageChange={setPage} />
               </>
             )}
           </section>

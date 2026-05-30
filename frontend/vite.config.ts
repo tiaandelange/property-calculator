@@ -21,6 +21,19 @@ export default defineConfig({
       zod: path.resolve(__dirname, "node_modules/zod")
     }
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes("node_modules")) return;
+          if (id.includes("chart.js") || id.includes("react-chartjs-2")) return "charts";
+          if (id.includes("@tanstack/react-query")) return "react-query";
+          if (id.includes("react-router") || id.includes("react-router-dom")) return "router";
+          if (id.includes("lucide-react")) return "icons";
+        }
+      }
+    }
+  },
   test: {
     environment: "jsdom",
     globals: true,

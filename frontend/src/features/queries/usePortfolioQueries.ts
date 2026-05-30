@@ -1,0 +1,162 @@
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  getFinancialsDirectory,
+  getInvoicesDirectory,
+  getLeasesDirectory,
+  getPortfolioDashboardSummary,
+  getProperties,
+  getProperty,
+  getPropertyOptions,
+  getTenants,
+  getTenantsDirectory
+} from "../../api/ownedProperties";
+import { getOrCreateUserSettings } from "../../services/settingsSupabase";
+import {
+  GC_TIME_MS,
+  STALE_TIME_DASHBOARD_MS,
+  STALE_TIME_DIRECTORY_MS,
+  STALE_TIME_METADATA_MS,
+  STALE_TIME_PROPERTIES_MS,
+  STALE_TIME_PROPERTY_OPTIONS_MS,
+  STALE_TIME_STATEMENT_MS
+} from "../../lib/queryClient";
+import type {
+  DashboardSummaryParams,
+  FinancialsDirectoryParams,
+  InvoicesDirectoryParams,
+  LeasesDirectoryParams,
+  TenantsDirectoryParams
+} from "../../lib/queryKeys";
+import { queryKeys } from "../../lib/queryKeys";
+import { useWorkspaceId } from "./useWorkspaceId";
+
+export function useSettingsQuery() {
+  const workspaceId = useWorkspaceId();
+  return useQuery({
+    queryKey: workspaceId ? queryKeys.settings(workspaceId) : ["settings", "anonymous"],
+    queryFn: getOrCreateUserSettings,
+    enabled: Boolean(workspaceId),
+    staleTime: STALE_TIME_METADATA_MS,
+    gcTime: GC_TIME_MS
+  });
+}
+
+export function usePropertyOptionsQuery() {
+  const workspaceId = useWorkspaceId();
+  return useQuery({
+    queryKey: workspaceId ? queryKeys.propertyOptions(workspaceId) : ["properties", "options", "anonymous"],
+    queryFn: getPropertyOptions,
+    enabled: Boolean(workspaceId),
+    staleTime: STALE_TIME_PROPERTY_OPTIONS_MS,
+    gcTime: GC_TIME_MS
+  });
+}
+
+export function usePropertiesQuery(month?: string | null) {
+  const workspaceId = useWorkspaceId();
+  const filters = { month: month ?? null };
+  return useQuery({
+    queryKey: workspaceId ? queryKeys.properties(workspaceId, filters) : ["properties", "anonymous"],
+    queryFn: () => getProperties(month ? { month } : undefined),
+    enabled: Boolean(workspaceId),
+    staleTime: STALE_TIME_PROPERTIES_MS,
+    gcTime: GC_TIME_MS
+  });
+}
+
+export function useTenantsDirectoryQuery(params: TenantsDirectoryParams = {}) {
+  const workspaceId = useWorkspaceId();
+  return useQuery({
+    queryKey: workspaceId ? queryKeys.tenantsDirectory(workspaceId, params) : ["tenants", "directory", "anonymous", params],
+    queryFn: () => getTenantsDirectory(params),
+    enabled: Boolean(workspaceId),
+    staleTime: STALE_TIME_DIRECTORY_MS,
+    gcTime: GC_TIME_MS
+  });
+}
+
+export function useLeasesDirectoryQuery(params: LeasesDirectoryParams = {}) {
+  const workspaceId = useWorkspaceId();
+  return useQuery({
+    queryKey: workspaceId ? queryKeys.leasesDirectory(workspaceId, params) : ["leases", "directory", "anonymous", params],
+    queryFn: () => getLeasesDirectory(params),
+    enabled: Boolean(workspaceId),
+    staleTime: STALE_TIME_DIRECTORY_MS,
+    gcTime: GC_TIME_MS
+  });
+}
+
+export function useInvoicesDirectoryQuery(params: InvoicesDirectoryParams = {}) {
+  const workspaceId = useWorkspaceId();
+  return useQuery({
+    queryKey: workspaceId
+      ? queryKeys.invoicesDirectory(workspaceId, params)
+      : ["invoices", "directory", "anonymous", params],
+    queryFn: () => getInvoicesDirectory(params),
+    enabled: Boolean(workspaceId),
+    staleTime: STALE_TIME_DIRECTORY_MS,
+    gcTime: GC_TIME_MS
+  });
+}
+
+export function useFinancialsDirectoryQuery(params: FinancialsDirectoryParams) {
+  const workspaceId = useWorkspaceId();
+  return useQuery({
+    queryKey: workspaceId
+      ? queryKeys.financialsDirectory(workspaceId, params)
+      : ["financials", "anonymous", params.month, params.propertyId ?? "ALL"],
+    queryFn: () => getFinancialsDirectory(params),
+    enabled: Boolean(workspaceId),
+    staleTime: STALE_TIME_STATEMENT_MS,
+    gcTime: GC_TIME_MS
+  });
+}
+
+export function useDashboardSummaryQuery(params: DashboardSummaryParams, opts?: { enabled?: boolean }) {
+  const workspaceId = useWorkspaceId();
+  return useQuery({
+    queryKey: workspaceId
+      ? queryKeys.dashboardSummary(workspaceId, params)
+      : ["dashboard-summary", "anonymous", params],
+    queryFn: () => getPortfolioDashboardSummary(params),
+    enabled: Boolean(workspaceId) && (opts?.enabled !== false),
+    staleTime: STALE_TIME_DASHBOARD_MS,
+    gcTime: GC_TIME_MS
+  });
+}
+
+export function useTenantsListQuery() {
+  const workspaceId = useWorkspaceId();
+  return useQuery({
+    queryKey: workspaceId ? queryKeys.tenants(workspaceId, { list: true }) : ["tenants", "list", "anonymous"],
+    queryFn: () => getTenants().catch(() => []),
+    enabled: Boolean(workspaceId),
+    staleTime: STALE_TIME_DIRECTORY_MS,
+    gcTime: GC_TIME_MS
+  });
+}
+
+export function usePropertyQuery(
+  propertyId: string | undefined,
+  opts?: { includeInvoices?: boolean; enabled?: boolean }
+) {
+  const workspaceId = useWorkspaceId();
+  const includeInvoices = opts?.includeInvoices !== false;
+  const variant = includeInvoices ? "full" : "core";
+  return useQuery({
+    queryKey: propertyId ? queryKeys.property(propertyId, variant) : ["property", "anonymous"],
+    queryFn: () => getProperty(propertyId!, { includeInvoices }),
+    enabled: Boolean(workspaceId && propertyId) && (opts?.enabled !== false),
+    staleTime: STALE_TIME_PROPERTIES_MS,
+    gcTime: GC_TIME_MS
+  });
+}
+
+/** True when loading and no cached data yet — use for skeletons only. */
+export function isInitialQueryLoad(query: { isLoading: boolean; isFetching: boolean; data: unknown }): boolean {
+  return query.isLoading && query.data === undefined;
+}
+
+export function useInvalidateQueries() {
+  return useQueryClient();
+}

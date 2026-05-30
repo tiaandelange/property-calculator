@@ -1,20 +1,25 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { AppIcon } from "../../components/icons";
 import { ProplyticLogo } from "../brand/ProplyticLogo";
 import { useAuth } from "../../contexts/AuthContext";
+import { prefetchWorkspaceRoute } from "../../lib/routePrefetch";
+import { useWorkspaceId } from "../../features/queries/useWorkspaceId";
 import { isWorkspaceNavActive, WORKSPACE_SIDEBAR_NAV, type WorkspaceNavItem } from "../../nav/workspaceNavConfig";
 
 function SidebarLink({
   item,
   active,
   collapsed,
-  onClick
+  onClick,
+  onWarm
 }: {
   item: WorkspaceNavItem;
   active: boolean;
   collapsed: boolean;
   onClick?: () => void;
+  onWarm?: () => void;
 }) {
   const className = [
     "pg-dashboard-sidebar-link",
@@ -39,7 +44,13 @@ function SidebarLink({
         {label}
       </button>
     ) : (
-      <Link to={item.to} className={className} aria-current={active ? "page" : undefined}>
+      <Link
+        to={item.to}
+        className={className}
+        aria-current={active ? "page" : undefined}
+        onMouseEnter={onWarm}
+        onFocus={onWarm}
+      >
         {icon}
         {label}
       </Link>
@@ -69,6 +80,13 @@ export function DashboardSidebar({
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const { signOut } = useAuth();
+  const queryClient = useQueryClient();
+  const workspaceId = useWorkspaceId();
+
+  const warmRoute = (to?: string) => {
+    if (!to) return;
+    prefetchWorkspaceRoute(to, queryClient, workspaceId ?? null);
+  };
 
   const logout = async () => {
     await signOut();
@@ -103,7 +121,7 @@ export function DashboardSidebar({
             const active = !item.disabled && isWorkspaceNavActive(pathname, item);
             return (
               <li key={item.id}>
-                <SidebarLink item={item} active={active} collapsed={collapsed} />
+                <SidebarLink item={item} active={active} collapsed={collapsed} onWarm={() => warmRoute(item.to)} />
               </li>
             );
           })}

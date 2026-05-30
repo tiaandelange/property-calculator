@@ -1,0 +1,105 @@
+export type PropertiesListFilters = { month?: string | null };
+
+export type DashboardSummaryParams = {
+  propertyTypes?: string[];
+  month?: string | null;
+  propertyId?: string | number | null;
+  portfolioIrrHorizonYears?: number | null;
+};
+
+export type FinancialsDirectoryParams = {
+  month: string;
+  propertyId: string | null;
+  page?: number;
+  pageSize?: number;
+  q?: string;
+  source?: string;
+};
+
+export type DirectoryPaginationParams = {
+  page?: number;
+  pageSize?: number;
+  q?: string;
+  propertyId?: string | null;
+};
+
+export type LeasesDirectoryParams = DirectoryPaginationParams & {
+  status?: string;
+  leaseType?: string;
+};
+
+export type InvoicesDirectoryParams = DirectoryPaginationParams & {
+  status?: string;
+  dateFrom?: string;
+  dateTo?: string;
+};
+
+export type TenantsDirectoryParams = DirectoryPaginationParams & {
+  leaseStatus?: string;
+  paymentStatus?: string;
+  tab?: "tenants" | "applicants";
+};
+
+export type PropertyStatementParams = {
+  month: string;
+  includeExpected?: boolean;
+};
+
+function sortedTypesKey(types?: string[]): string {
+  if (!types?.length) return "all";
+  return [...types].sort().join(",");
+}
+
+function normalizeDashboardParams(params: DashboardSummaryParams) {
+  return {
+    month: params.month?.trim() || null,
+    propertyId: params.propertyId != null && String(params.propertyId).trim() !== "" ? String(params.propertyId) : null,
+    types: sortedTypesKey(params.propertyTypes),
+    irr: params.portfolioIrrHorizonYears ?? null
+  };
+}
+
+/** Stable TanStack Query keys scoped by workspace (signed-in user id). */
+export const queryKeys = {
+  profile: (userId: string) => ["profile", userId] as const,
+  settings: (workspaceId: string) => ["settings", workspaceId] as const,
+  properties: (workspaceId: string, filters: PropertiesListFilters = {}) =>
+    ["properties", workspaceId, filters.month ?? "current"] as const,
+  propertyOptions: (workspaceId: string) => ["properties", workspaceId, "options"] as const,
+  property: (propertyId: string, variant: "core" | "full" = "full") => ["property", propertyId, variant] as const,
+  propertyTenants: (propertyId: string) => ["property", propertyId, "tenants"] as const,
+  propertyInvoices: (propertyId: string) => ["property", propertyId, "invoices"] as const,
+  propertyReports: (propertyId: string) => ["property", propertyId, "reports"] as const,
+  propertyUnits: (propertyId: string) => ["property-units", propertyId] as const,
+  leases: (workspaceId: string, filters: Record<string, unknown> = {}) =>
+    ["leases", workspaceId, filters] as const,
+  propertyLeases: (propertyId: string) => ["leases", "property", propertyId] as const,
+  tenants: (workspaceId: string, filters: Record<string, unknown> = {}) =>
+    ["tenants", workspaceId, filters] as const,
+  tenantsDirectory: (workspaceId: string, params: TenantsDirectoryParams = {}) =>
+    ["tenants", workspaceId, "directory", params] as const,
+  leasesDirectory: (workspaceId: string, params: LeasesDirectoryParams = {}) =>
+    ["leases", workspaceId, "directory", params] as const,
+  invoices: (workspaceId: string, filters: Record<string, unknown> = {}) =>
+    ["invoices", workspaceId, filters] as const,
+  invoicesDirectory: (workspaceId: string, params: InvoicesDirectoryParams = {}) =>
+    ["invoices", workspaceId, "directory", params] as const,
+  financialsDirectory: (workspaceId: string, params: FinancialsDirectoryParams) =>
+    [
+      "financials",
+      workspaceId,
+      params.month,
+      params.propertyId ?? "ALL",
+      params.page ?? 1,
+      params.pageSize ?? 25,
+      params.q ?? "",
+      params.source ?? "ALL"
+    ] as const,
+  propertyStatement: (propertyId: string, params: PropertyStatementParams) =>
+    ["property-statement", propertyId, params.month, params.includeExpected !== false] as const,
+  tenantStatement: (tenantId: string, periodKey: string) => ["tenant-statement", tenantId, periodKey] as const,
+  dashboardSummary: (workspaceId: string, params: DashboardSummaryParams) =>
+    ["dashboard-summary", workspaceId, normalizeDashboardParams(params)] as const,
+  reports: (workspaceId: string) => ["reports", workspaceId] as const,
+  tenant: (tenantId: string) => ["tenant", tenantId] as const
+};

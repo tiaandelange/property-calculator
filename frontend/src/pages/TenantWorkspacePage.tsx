@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Download, MoreVertical, Plus } from "lucide-react";
@@ -6,7 +6,8 @@ import { AppDetailPage } from "../components/ui/AppPage";
 import { AppSectionTabs } from "../components/ui/AppSectionTabs";
 import { Button, ButtonLink } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
-import { cancelLease, deleteTenant, getTenant } from "../api/ownedProperties";
+import { cancelLease, deleteTenant } from "../api/ownedProperties";
+import { invalidateTenantQueries, useWorkspaceId } from "../features/queries";
 import { fetchPdfBlob, isAbsoluteHttpUrl, openPdfBlobInNewTab } from "../api/pdfBlob";
 import { generateReportViaVercel } from "../services/reportsVercel";
 import { useMediaQuery } from "../hooks/useMediaQuery";
@@ -60,30 +61,19 @@ export function TenantWorkspacePage() {
   const [downloadError, setDownloadError] = useState("");
   const [invoiceOverlay, setInvoiceOverlay] = useState(false);
   const [overlayInvoiceId, setOverlayInvoiceId] = useState<string | undefined>(undefined);
-  const [overview, setOverview] = useState<{ tenant: Record<string, unknown>; currentLease: Record<string, unknown> | null } | null>(null);
-  const [overviewLoading, setOverviewLoading] = useState(false);
 
-  const { ctx, summary, transactions, invoices, paidInvoices, loading, error, leaseStatus, reload } =
-    useTenantWorkspaceData(id, periodKey);
+  const needsFinancials = tab === "statement";
+  const workspaceId = useWorkspaceId();
+  const { ctx, summary, transactions, invoices, paidInvoices, loading, error, leaseStatus, reload, tenantOverview, overviewLoading } =
+    useTenantWorkspaceData(id, periodKey, { loadFinancials: needsFinancials });
   const { record: applicantRecord, loading: applicantLoading } = useTenantApplicantDetails(id);
 
-  const loadOverview = useCallback(async () => {
-    if (!id) return;
-    setOverviewLoading(true);
-    try {
-      setOverview(await getTenant(id));
-    } catch {
-      setOverview(null);
-    } finally {
-      setOverviewLoading(false);
-    }
-  }, [id]);
-
-  useEffect(() => {
-    if (tab === "overview") void loadOverview();
-  }, [tab, loadOverview]);
-
-  const tenantName = summary?.tenantName ?? "Tenant";
+  const tenantName = useMemo(() => {
+    if (summary?.tenantName) return summary.tenantName;
+    const t = tenantOverview?.tenant;
+    if (!t) return "Tenant";
+    return `${String(t.firstName ?? "").trim()} ${String(t.lastName ?? "").trim()}`.trim() || "Tenant";
+  }, [summary?.tenantName, tenantOverview?.tenant]);
   const propertyId = ctx?.propertyId ?? "";
   const propertyName = ctx?.propertyName ?? "Property";
 
@@ -251,10 +241,11 @@ export function TenantWorkspacePage() {
               <TenantApplicantDetailsCard record={applicantRecord} loading={applicantLoading} />
               <TenantOverviewPanel
               id={id}
-              data={overview}
+              data={tenantOverview}
               loading={overviewLoading}
-              onReload={loadOverview}
+              onReload={() => void reload()}
               navigate={navigate}
+              workspaceId={workspaceId}
             />
             </>
           ) : null}
@@ -313,13 +304,15 @@ function TenantOverviewPanel({
   data,
   loading,
   onReload,
-  navigate
+  navigate,
+  workspaceId
 }: {
   id?: string;
   data: { tenant: Record<string, unknown>; currentLease: Record<string, unknown> | null } | null;
   loading: boolean;
   onReload: () => void;
   navigate: (path: string) => void;
+  workspaceId?: string;
 }) {
   const tenant = data?.tenant;
   const currentLease = data?.currentLease;
@@ -334,6 +327,7 @@ function TenantOverviewPanel({
       cancellationReason,
       cancelledBy: "LANDLORD"
     });
+    if (id) invalidateTenantQueries({ workspaceId, tenantId: id });
     onReload();
   };
 

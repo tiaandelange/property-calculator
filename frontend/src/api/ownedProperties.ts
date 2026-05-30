@@ -5,6 +5,11 @@ import * as tenantUnitLinksSupabase from "../services/tenantUnitLinksSupabase";
 import * as tenantsSupabase from "../services/tenantsSupabase";
 import * as leasesSupabase from "../services/leasesSupabase";
 import { buildLeaseDirectory } from "../features/leases/leaseDirectoryAdapter";
+import { paginate, PAGE_SIZE as LEASE_PAGE_SIZE } from "../features/leases/leaseDirectoryUtils";
+import type { LeaseListItem } from "../features/leases/leaseDirectoryTypes";
+import type { LeasesDirectoryParams, TenantsDirectoryParams } from "../lib/queryKeys";
+import type { FinancialsDirectoryQueryOpts } from "../services/financialsDirectorySupabase";
+import type { InvoicesDirectoryQueryOpts } from "../services/invoicesDirectorySupabase";
 import * as financialsSupabase from "../services/financialsSupabase";
 import * as financialsDirectorySupabase from "../services/financialsDirectorySupabase";
 import * as invoicesSupabase from "../services/invoicesSupabase";
@@ -31,6 +36,12 @@ export async function getProperties(params?: { month?: string }) {
   return propertiesSupabase.listProperties(params);
 }
 
+/** Id/name only — for filter dropdowns and property switchers. */
+export async function getPropertyOptions() {
+  assertSupabaseConfigured();
+  return propertiesSupabase.listPropertyOptions();
+}
+
 export async function getPortfolioDashboardSummary(params?: {
   propertyTypes?: string[];
   propertyId?: string | number | null;
@@ -55,7 +66,7 @@ export async function createProperty(payload: Record<string, unknown>) {
 
 export async function getProperty(
   id: string | number,
-  opts?: { bustCache?: boolean; month?: string }
+  opts?: { bustCache?: boolean; month?: string; includeInvoices?: boolean }
 ) {
   assertSupabaseConfigured();
   return propertiesSupabase.getProperty(id, opts);
@@ -107,15 +118,32 @@ export async function getTenants() {
   return tenantsSupabase.listTenants();
 }
 
-export async function getTenantsDirectory() {
+export async function getTenantsDirectory(params?: TenantsDirectoryParams) {
   assertSupabaseConfigured();
-  return tenantsSupabase.listTenantsDirectory();
+  return tenantsSupabase.listTenantsDirectory(params);
 }
 
-export async function getLeasesDirectory() {
+function matchesLeaseDirectoryFilters(item: LeaseListItem, filters: LeasesDirectoryParams): boolean {
+  const q = (filters.q ?? "").trim().toLowerCase();
+  if (q) {
+    const hay = `${item.tenantName} ${item.tenantEmail ?? ""} ${item.propertyName} ${item.propertyAddress} ${item.displayStatus}`.toLowerCase();
+    if (!hay.includes(q)) return false;
+  }
+  if (filters.propertyId && filters.propertyId !== "ALL" && item.propertyId !== filters.propertyId) return false;
+  if (filters.status && filters.status !== "ALL" && item.lifecycleStatus !== filters.status) return false;
+  if (filters.leaseType && filters.leaseType !== "ALL" && item.leaseType.toUpperCase() !== filters.leaseType) return false;
+  return true;
+}
+
+export async function getLeasesDirectory(params?: LeasesDirectoryParams) {
   assertSupabaseConfigured();
-  const rows = await leasesSupabase.listLeasesDirectoryRows();
-  return buildLeaseDirectory(rows);
+  const rows = await leasesSupabase.listLeasesDirectoryFilteredRows(params);
+  const { items, metrics } = buildLeaseDirectory(rows);
+  const filtered = items.filter((item) => matchesLeaseDirectoryFilters(item, params ?? {}));
+  const page = Math.max(1, params?.page ?? 1);
+  const pageSize = Math.max(1, params?.pageSize ?? LEASE_PAGE_SIZE);
+  const { slice, totalCount } = paginate(filtered, page, pageSize);
+  return { items: slice, metrics, totalCount };
 }
 
 export async function createTenant(payload: Record<string, unknown>) {
@@ -249,7 +277,7 @@ export async function getPropertyFinancials(
   return financialsSupabase.getPropertyFinancials(propertyId, opts);
 }
 
-export async function getFinancialsDirectory(opts?: { month?: string; propertyId?: string | null }) {
+export async function getFinancialsDirectory(opts?: FinancialsDirectoryQueryOpts) {
   assertSupabaseConfigured();
   return financialsDirectorySupabase.getFinancialsDirectory(opts);
 }
@@ -314,15 +342,18 @@ export async function hardDeletePropertyIncome(incomeId: string | number) {
   return financialsSupabase.hardDeleteIncome(incomeId);
 }
 
-export async function listPropertyInvoices(propertyId: string | number) {
+export async function listPropertyInvoices(
+  propertyId: string | number,
+  filters?: Parameters<typeof invoicesSupabase.listInvoices>[1]
+) {
   assertSupabaseConfigured();
-  return invoicesSupabase.listInvoices(propertyId);
+  return invoicesSupabase.listInvoices(propertyId, filters);
 }
 
-export async function getInvoicesDirectory() {
+export async function getInvoicesDirectory(params?: InvoicesDirectoryQueryOpts) {
   assertSupabaseConfigured();
   const { getInvoicesDirectory: load } = await import("../services/invoicesDirectorySupabase");
-  return load();
+  return load(params);
 }
 
 export async function getInvoice(invoiceId: string | number) {

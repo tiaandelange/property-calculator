@@ -1,8 +1,9 @@
-import { listProperties } from "./propertiesSupabase";
+import { listPropertyOptions } from "./propertiesSupabase";
 import { listInvoicesDirectory } from "./invoicesSupabase";
 import { mapInvoiceDirectoryRow } from "../features/invoices/invoiceDirectoryAdapter";
 import type { InvoicesDirectoryResult } from "../features/invoices/invoiceDirectoryTypes";
-import { computeInvoiceMetrics } from "../features/invoices/invoiceDirectoryUtils";
+import { computeInvoiceMetrics, INVOICE_PAGE_SIZE } from "../features/invoices/invoiceDirectoryUtils";
+import type { InvoicesDirectoryParams } from "../lib/queryKeys";
 
 const EMPTY_METRICS = {
   totalOutstanding: 0,
@@ -11,17 +12,43 @@ const EMPTY_METRICS = {
   paidThisMonth: 0
 };
 
-/** Portfolio-wide invoice directory from global `public.invoices` (RLS: user_id). */
-export async function getInvoicesDirectory(): Promise<InvoicesDirectoryResult> {
-  const [rawRows, props] = await Promise.all([listInvoicesDirectory(), listProperties()]);
-  const items = rawRows.map((row) => mapInvoiceDirectoryRow(row as Record<string, unknown>));
-  const properties = props.map((p) => ({
-    id: String(p.id),
-    name: String(p.name ?? "Property")
-  }));
+export type InvoicesDirectoryQueryOpts = InvoicesDirectoryParams;
+
+/** Portfolio-wide invoice directory with server-side pagination. */
+export async function getInvoicesDirectory(
+  opts?: InvoicesDirectoryQueryOpts
+): Promise<InvoicesDirectoryResult & { totalCount: number }> {
+  const page = Math.max(1, opts?.page ?? 1);
+  const pageSize = Math.max(1, opts?.pageSize ?? INVOICE_PAGE_SIZE);
+  const offset = (page - 1) * pageSize;
+
+  const filters = {
+    propertyId: opts?.propertyId && opts.propertyId !== "ALL" ? String(opts.propertyId) : null,
+    status: opts?.status && opts.status !== "ALL" ? String(opts.status) : null,
+    dateFrom: opts?.dateFrom?.trim() || null,
+    dateTo: opts?.dateTo?.trim() || null,
+    q: opts?.q?.trim() || null,
+    limit: pageSize,
+    offset
+  };
+
+  const [pageResult, props] = await Promise.all([
+    listInvoicesDirectory(filters),
+    listPropertyOptions()
+  ]);
+
+  const pageItems = pageResult.rows.map((row) => mapInvoiceDirectoryRow(row as Record<string, unknown>));
+
+  const metricsRows =
+    pageResult.metricsRows?.map((row) => mapInvoiceDirectoryRow(row as Record<string, unknown>)) ?? pageItems;
+
   return {
-    items,
-    metrics: computeInvoiceMetrics(items),
-    properties
+    items: pageItems,
+    totalCount: pageResult.totalCount,
+    metrics: computeInvoiceMetrics(metricsRows),
+    properties: props.map((p) => ({
+      id: String(p.id),
+      name: String(p.name ?? "Property")
+    }))
   };
 }

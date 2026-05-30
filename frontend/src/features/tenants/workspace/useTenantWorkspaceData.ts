@@ -1,6 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { getTenant } from "../../../api/ownedProperties";
-import { fetchMe } from "../../../api/user";
+import { useMemo } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   buildTenantStatementSummary,
   deriveTenantLeaseStatusFromData,
@@ -13,6 +12,10 @@ import type {
   TenantLedgerTransaction,
   TenantStatementSummary
 } from "../statement/tenantStatementTypes";
+import { GC_TIME_MS, STALE_TIME_STATEMENT_MS } from "../../../lib/queryClient";
+import { queryKeys } from "../../../lib/queryKeys";
+import { useProfileQuery, useTenantQuery } from "../../queries/useWorkspaceQueries";
+import { useWorkspaceId } from "../../queries/useWorkspaceId";
 
 export type TenantWorkspaceContext = {
   tenantId: string;
@@ -28,115 +31,145 @@ export type TenantWorkspaceContext = {
   invoicePaymentDetails: unknown;
 };
 
-export function useTenantWorkspaceData(tenantId: string | undefined, periodKey: TenantStatementPeriodKey) {
-  const [ctx, setCtx] = useState<TenantWorkspaceContext | null>(null);
-  const [summary, setSummary] = useState<TenantStatementSummary | null>(null);
-  const [transactions, setTransactions] = useState<TenantLedgerTransaction[]>([]);
-  const [invoices, setInvoices] = useState<TenantInvoiceListItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [leaseStatus, setLeaseStatus] = useState("inactive");
-  const [paymentStatus, setPaymentStatus] = useState("pending");
+function tenantContextFromQueries(
+  tenantId: string,
+  tenantPayload: { tenant: Record<string, unknown>; currentLease: Record<string, unknown> | null },
+  profile: { name?: string | null; email?: string; invoicePaymentDetails?: unknown } | undefined
+): TenantWorkspaceContext | null {
+  const { tenant, currentLease } = tenantPayload;
+  const property = (tenant.property ?? null) as Record<string, unknown> | null;
+  const propertyId =
+    property?.id != null ? String(property.id) : tenant.propertyId != null ? String(tenant.propertyId) : "";
+  if (!propertyId) return null;
 
-  const reload = useCallback(async () => {
-    if (!tenantId) return;
-    setLoading(true);
-    setError("");
-    try {
-      const [{ tenant, currentLease }, me] = await Promise.all([getTenant(tenantId), fetchMe()]);
-      const property = (tenant.property ?? null) as Record<string, unknown> | null;
-      const propertyId = property?.id != null ? String(property.id) : tenant.propertyId != null ? String(tenant.propertyId) : "";
-      if (!propertyId) {
-        setError("This tenant is not linked to a property. Link a property to view financials.");
-        setCtx(null);
-        setSummary(null);
-        setTransactions([]);
-        setInvoices([]);
-        return;
-      }
+  const leases = (tenant.leases ?? []) as Record<string, unknown>[];
+  const tenantLeaseIds = leases.map((l) => String(l.id)).filter(Boolean);
+  if (currentLease?.id) {
+    const lid = String(currentLease.id);
+    if (!tenantLeaseIds.includes(lid)) tenantLeaseIds.push(lid);
+  }
 
-      const leases = (tenant.leases ?? []) as Record<string, unknown>[];
-      const tenantLeaseIds = leases.map((l) => String(l.id)).filter(Boolean);
-      if (currentLease?.id) {
-        const lid = String(currentLease.id);
-        if (!tenantLeaseIds.includes(lid)) tenantLeaseIds.push(lid);
-      }
+  const propertyName = property?.name != null ? String(property.name) : "Property";
+  const unitRaw = property?.unitLabel ?? property?.unitNumber ?? property?.unit;
+  const unitLabel = unitRaw ? `${String(unitRaw)}, ${propertyName}` : propertyName;
 
-      const propertyName = property?.name != null ? String(property.name) : "Property";
-      const unitRaw = property?.unitLabel ?? property?.unitNumber ?? property?.unit;
-      const unitLabel = unitRaw ? `${String(unitRaw)}, ${propertyName}` : propertyName;
+  const rentDueDay =
+    currentLease?.rentDueDay != null && Number.isFinite(Number(currentLease.rentDueDay))
+      ? Number(currentLease.rentDueDay)
+      : null;
 
-      /** Income rows on the property statement are not tenant-scoped in the API; omit unless one lease. */
-      const singleTenantProperty = tenantLeaseIds.length <= 1;
+  return {
+    tenantId,
+    tenant,
+    currentLease,
+    propertyId,
+    propertyName,
+    unitLabel,
+    tenantLeaseIds,
+    singleTenantProperty: tenantLeaseIds.length <= 1,
+    rentDueDay,
+    profileName: String(profile?.name ?? profile?.email ?? "Proplytic"),
+    invoicePaymentDetails: profile?.invoicePaymentDetails ?? null
+  };
+}
 
-      const bundle = await loadTenantFinancialBundle({
-        propertyId,
-        tenantId,
-        tenantLeaseIds,
+export function useTenantWorkspaceData(
+  tenantId: string | undefined,
+  periodKey: TenantStatementPeriodKey,
+  opts?: { loadFinancials?: boolean }
+) {
+  const loadFinancials = opts?.loadFinancials !== false;
+  const workspaceId = useWorkspaceId();
+  const queryClient = useQueryClient();
+
+  const tenantQuery = useTenantQuery(tenantId);
+  const profileQuery = useProfileQuery();
+
+  const tenantPayload = tenantQuery.data;
+  const ctxBase = useMemo(() => {
+    if (!tenantId || !tenantPayload) return null;
+    return tenantContextFromQueries(tenantId, tenantPayload, profileQuery.data);
+  }, [tenantId, tenantPayload, profileQuery.data]);
+
+  const financialQuery = useQuery({
+    queryKey:
+      tenantId && ctxBase?.propertyId
+        ? queryKeys.tenantStatement(tenantId, periodKey)
+        : ["tenant-statement", "anonymous"],
+    queryFn: () =>
+      loadTenantFinancialBundle({
+        propertyId: ctxBase!.propertyId,
+        tenantId: tenantId!,
+        tenantLeaseIds: ctxBase!.tenantLeaseIds,
         periodKey,
-        leaseStartDate: currentLease?.startDate != null ? String(currentLease.startDate) : null,
-        singleTenantProperty
-      });
+        leaseStartDate:
+          ctxBase!.currentLease?.startDate != null ? String(ctxBase!.currentLease.startDate) : null,
+        singleTenantProperty: ctxBase!.singleTenantProperty
+      }),
+    enabled: Boolean(workspaceId && tenantId && ctxBase?.propertyId && loadFinancials),
+    staleTime: STALE_TIME_STATEMENT_MS,
+    gcTime: GC_TIME_MS
+  });
 
-      const tenantName = `${String(tenant.firstName ?? "").trim()} ${String(tenant.lastName ?? "").trim()}`.trim() || "Tenant";
-      const lStatus = deriveTenantLeaseStatusFromData(currentLease, bundle.invoices);
-      const pStatus = deriveTenantPaymentStatus(bundle.invoices);
-      setLeaseStatus(lStatus);
-      setPaymentStatus(pStatus);
+  const loading =
+    (tenantQuery.isLoading && !tenantQuery.data) ||
+    (loadFinancials && financialQuery.isLoading && !financialQuery.data);
+  const error = tenantQuery.error
+    ? tenantQuery.error instanceof Error
+      ? tenantQuery.error.message
+      : "Failed to load tenant."
+    : financialQuery.error
+      ? financialQuery.error instanceof Error
+        ? financialQuery.error.message
+        : "Failed to load tenant statement."
+      : ctxBase === null && tenantPayload
+        ? "This tenant is not linked to a property. Link a property to view financials."
+        : "";
 
-      const rentDueDay =
-        currentLease?.rentDueDay != null && Number.isFinite(Number(currentLease.rentDueDay))
-          ? Number(currentLease.rentDueDay)
-          : null;
+  const ctx = ctxBase;
+  const bundle = financialQuery.data;
 
-      const built = buildTenantStatementSummary({
-        tenantId,
-        tenantName,
-        propertyId,
-        propertyName,
-        unitName: unitLabel,
-        tenantStatus: String(tenant.status ?? ""),
-        period: bundle.period,
-        transactions: bundle.transactions,
-        invoices: bundle.invoices,
-        rentDueDay
-      });
+  const summary = useMemo((): TenantStatementSummary | null => {
+    if (!ctx || !bundle || !tenantId) return null;
+    const tenantName =
+      `${String(ctx.tenant.firstName ?? "").trim()} ${String(ctx.tenant.lastName ?? "").trim()}`.trim() || "Tenant";
+    return buildTenantStatementSummary({
+      tenantId,
+      tenantName,
+      propertyId: ctx.propertyId,
+      propertyName: ctx.propertyName,
+      unitName: ctx.unitLabel,
+      tenantStatus: String(ctx.tenant.status ?? ""),
+      period: bundle.period,
+      transactions: bundle.transactions,
+      invoices: bundle.invoices,
+      rentDueDay: ctx.rentDueDay
+    });
+  }, [ctx, bundle, tenantId]);
 
-      setCtx({
-        tenantId,
-        tenant,
-        currentLease,
-        propertyId,
-        propertyName,
-        unitLabel,
-        tenantLeaseIds,
-        singleTenantProperty,
-        rentDueDay,
-        profileName: String(me.name ?? me.email ?? "Proplytic"),
-        invoicePaymentDetails: me.invoicePaymentDetails ?? null
-      });
-      setSummary(built);
-      setTransactions(bundle.transactions);
-      setInvoices(bundle.invoices);
-    } catch (e: unknown) {
-      console.error("[TenantWorkspace] load failed", e);
-      const msg =
-        (e as { response?: { data?: { message?: string } } })?.response?.data?.message ??
-        (e instanceof Error ? e.message : "Failed to load tenant statement.");
-      setError(msg);
-    } finally {
-      setLoading(false);
-    }
-  }, [tenantId, periodKey]);
+  const transactions = bundle?.transactions ?? [];
+  const invoices = bundle?.invoices ?? [];
 
-  useEffect(() => {
-    void reload();
-  }, [reload]);
+  const leaseStatus = useMemo(() => {
+    if (!ctx) return "inactive";
+    return deriveTenantLeaseStatusFromData(ctx.currentLease, invoices);
+  }, [ctx, invoices]);
+
+  const paymentStatus = useMemo(() => deriveTenantPaymentStatus(invoices), [invoices]);
 
   const paidInvoices = useMemo(
     () => invoices.filter((i) => String(i.status).toUpperCase() === "PAID"),
     [invoices]
   );
+
+  const reload = async () => {
+    if (!tenantId) return;
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: queryKeys.tenant(tenantId) }),
+      queryClient.invalidateQueries({ queryKey: ["tenant-statement", tenantId] }),
+      workspaceId ? queryClient.invalidateQueries({ queryKey: queryKeys.profile(workspaceId) }) : Promise.resolve()
+    ]);
+  };
 
   return {
     ctx,
@@ -148,6 +181,8 @@ export function useTenantWorkspaceData(tenantId: string | undefined, periodKey: 
     error,
     leaseStatus,
     paymentStatus,
-    reload
+    reload,
+    tenantOverview: tenantPayload ?? null,
+    overviewLoading: tenantQuery.isLoading && !tenantQuery.data
   };
 }

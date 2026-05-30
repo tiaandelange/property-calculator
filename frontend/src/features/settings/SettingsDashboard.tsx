@@ -1,8 +1,8 @@
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { AppIcon, type IconName } from "../../components/icons";
 import { AppPage, AppPageContent, AppPageHeader, AppPageSubtitle, AppPageTitle } from "../../components/ui/AppPage";
-import { fetchMe } from "../../api/user";
 import { Button, ButtonLink } from "../../components/ui/Button";
 import { Field, Input } from "../../components/ui/Input";
 import { AppCard, AppCardDescription, AppCardHeader, AppCardTitle } from "../../components/ui/AppCard";
@@ -11,11 +11,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { useMediaQuery } from "../../hooks/useMediaQuery";
 import { supabase } from "../../lib/supabaseClient";
 import { updateProfile } from "../../services/profileSupabase";
-import {
-  getOrCreateUserSettings,
-  upsertUserSettings,
-  validateUserSettings
-} from "../../services/settingsSupabase";
+import { upsertUserSettings, validateUserSettings } from "../../services/settingsSupabase";
 import {
   EXPENSE_CATEGORY_OPTIONS,
   STATEMENT_FILTER_OPTIONS
@@ -23,6 +19,7 @@ import {
 import { ApplicantFormTemplateSettingsCard } from "../applicants/ApplicantFormTemplateSettingsCard";
 import type { AccentColor, ThemePreference, UserSettings } from "./settingsTypes";
 import { previewWorkspaceAppearance } from "../../theme/workspaceAppearance";
+import { invalidateSettingsQueries, queryKeys, useProfileQuery, useSettingsQuery, useWorkspaceId } from "../queries";
 
 function initials(name: string | null | undefined, email: string): string {
   const n = (name ?? "").trim();
@@ -202,6 +199,8 @@ function EditProfileModal({
   onSaved: (name: string) => void;
 }) {
   const { refreshProfile } = useAuth();
+  const queryClient = useQueryClient();
+  const workspaceId = useWorkspaceId();
   const [name, setName] = useState(initialName);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -217,6 +216,9 @@ function EditProfileModal({
     try {
       await updateProfile({ fullName: name.trim() || null });
       await refreshProfile();
+      if (workspaceId) {
+        queryClient.invalidateQueries({ queryKey: queryKeys.profile(workspaceId) });
+      }
       onSaved(name.trim());
       onClose();
     } catch (ex: unknown) {
@@ -259,9 +261,12 @@ function EditProfileModal({
 export function SettingsDashboard() {
   const isMobile = useMediaQuery("(max-width: 768px)");
   const { refreshProfile } = useAuth();
+  const queryClient = useQueryClient();
+  const workspaceId = useWorkspaceId();
+  const settingsQuery = useSettingsQuery();
+  const profileQuery = useProfileQuery();
   const [saved, setSaved] = useState<UserSettings | null>(null);
   const [draft, setDraft] = useState<UserSettings | null>(null);
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
@@ -271,26 +276,30 @@ export function SettingsDashboard() {
   const [editProfileOpen, setEditProfileOpen] = useState(false);
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError("");
-    try {
-      const [me, settings] = await Promise.all([fetchMe(), getOrCreateUserSettings()]);
-      setEmail(me.email);
-      setFullName(me.name ?? "");
-      setRole(me.role ?? "USER");
-      setSaved(settings);
-      setDraft(settings);
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Could not load settings.");
-    } finally {
-      setLoading(false);
+  useEffect(() => {
+    if (settingsQuery.data) {
+      setSaved(settingsQuery.data);
+      setDraft(settingsQuery.data);
     }
-  }, []);
+  }, [settingsQuery.data]);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    if (profileQuery.data) {
+      setEmail(profileQuery.data.email);
+      setFullName(profileQuery.data.name ?? "");
+      setRole(profileQuery.data.role ?? "USER");
+    }
+  }, [profileQuery.data]);
+
+  const loading = (settingsQuery.isLoading && !settingsQuery.data) || (profileQuery.isLoading && !profileQuery.data);
+
+  useEffect(() => {
+    if (settingsQuery.error) {
+      setError(settingsQuery.error instanceof Error ? settingsQuery.error.message : "Could not load settings.");
+    } else if (profileQuery.error) {
+      setError(profileQuery.error instanceof Error ? profileQuery.error.message : "Could not load profile.");
+    }
+  }, [settingsQuery.error, profileQuery.error]);
 
   useEffect(() => {
     if (loading || !draft) return;
@@ -352,6 +361,10 @@ export function SettingsDashboard() {
       const updated = await upsertUserSettings(patch);
       setSaved(updated);
       setDraft(updated);
+      if (workspaceId) {
+        queryClient.setQueryData(queryKeys.settings(workspaceId), updated);
+        invalidateSettingsQueries({ workspaceId });
+      }
       previewWorkspaceAppearance({
         themePreference: updated.themePreference,
         accentColor: updated.accentColor,
@@ -391,7 +404,14 @@ export function SettingsDashboard() {
       <AppPage variant="settings" className="pg-settings-page">
         <AppPageContent>
           <div className="pg-alert pg-alert-error">{error}</div>
-          <Button onClick={() => void load()}>Retry</Button>
+          <Button
+            onClick={() => {
+              void settingsQuery.refetch();
+              void profileQuery.refetch();
+            }}
+          >
+            Retry
+          </Button>
         </AppPageContent>
       </AppPage>
     );

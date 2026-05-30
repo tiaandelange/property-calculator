@@ -54,9 +54,35 @@ export function leaseStatusLabel(status: TenantLeaseStatus | null | undefined): 
 
 export const PAGE_SIZE = 6;
 
-export function paginate<T>(items: T[], page: number, pageSize = PAGE_SIZE): { slice: T[]; totalPages: number } {
-  const totalPages = Math.max(1, Math.ceil(items.length / pageSize));
+export function paginate<T>(items: T[], page: number, pageSize = PAGE_SIZE): { slice: T[]; totalPages: number; totalCount: number } {
+  const totalCount = items.length;
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
   const safePage = Math.min(Math.max(1, page), totalPages);
   const start = (safePage - 1) * pageSize;
-  return { slice: items.slice(start, start + pageSize), totalPages };
+  return { slice: items.slice(start, start + pageSize), totalPages, totalCount };
+}
+
+export function matchesTenantDirectoryFilters(
+  item: TenantListItem,
+  filters: {
+    q?: string;
+    propertyId?: string | null;
+    leaseStatus?: string;
+    paymentStatus?: string;
+    tab?: "tenants" | "applicants";
+  }
+): boolean {
+  const isApplicant = String(item.tenantStatus ?? "").toUpperCase() === "APPLICANT";
+  if (filters.tab === "applicants" && !isApplicant) return false;
+  if (filters.tab === "tenants" && isApplicant) return false;
+
+  const q = (filters.q ?? "").trim().toLowerCase();
+  if (q) {
+    const hay = `${item.fullName} ${item.email ?? ""} ${item.phone ?? ""} ${item.propertyName ?? ""} ${item.propertyAddress ?? ""}`.toLowerCase();
+    if (!hay.includes(q)) return false;
+  }
+  if (filters.propertyId && filters.propertyId !== "ALL" && item.propertyId !== filters.propertyId) return false;
+  if (filters.leaseStatus && filters.leaseStatus !== "ALL" && item.leaseStatus !== filters.leaseStatus) return false;
+  if (filters.paymentStatus && filters.paymentStatus !== "ALL" && item.paymentStatus !== filters.paymentStatus) return false;
+  return true;
 }
