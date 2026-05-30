@@ -168,7 +168,7 @@
 .pg-leases-table tbody td,
 .pg-pfin-table th,
 .pg-pfin-table td {
-  padding: 11px 14px;
+  padding: 11px 10px;
   font-size: var(--type-table-cell);
 }
 
@@ -194,14 +194,6 @@
 .pg-tenants-table tbody tr:hover,
 .pg-leases-table tbody tr:hover {
   background: transparent;
-}
-
-@media (min-width: 768px) {
-  .pg-tenants-list-panel,
-  .pg-leases-list-panel,
-  .pg-fins-statement-panel {
-    overflow: visible;
-  }
 }
 
 .pg-pfin-table {
