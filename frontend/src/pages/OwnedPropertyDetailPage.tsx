@@ -20,6 +20,7 @@ import {
   useWorkspaceId
 } from "../features/queries";
 import { invalidatePropertyWorkspace } from "../features/properties/invalidate";
+import { prefetchPropertyWorkspaceTabs } from "../lib/routePrefetch";
 import { WorkspaceFinancialsTab } from "../features/properties/workspace/WorkspaceFinancialsTab";
 import { WorkspaceOverviewTab } from "../features/properties/workspace/WorkspaceOverviewTab";
 import { WorkspaceStatementTab } from "../features/properties/workspace/WorkspaceStatementTab";
@@ -110,6 +111,17 @@ export function OwnedPropertyDetailPage() {
   const loading = isInitialQueryLoad(propertyQuery);
   const stmtLoading = needsStatement && statementQuery.isFetching && !statementQuery.data;
   const reportsLoading = needsReports && isInitialQueryLoad(reportsQuery);
+
+  useEffect(() => {
+    if (!id || !workspaceId || !propertyQuery.data) return;
+    prefetchPropertyWorkspaceTabs({
+      propertyId: id,
+      workspaceId,
+      queryClient,
+      summaryMonth,
+      activeTab: tab
+    });
+  }, [id, workspaceId, propertyQuery.data, summaryMonth, tab, queryClient]);
 
   const currentLeases = useMemo(() => {
     if (!data) return [];

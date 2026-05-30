@@ -101,5 +101,6 @@ export const queryKeys = {
   dashboardSummary: (workspaceId: string, params: DashboardSummaryParams) =>
     ["dashboard-summary", workspaceId, normalizeDashboardParams(params)] as const,
   reports: (workspaceId: string) => ["reports", workspaceId] as const,
-  tenant: (tenantId: string) => ["tenant", tenantId] as const
+  tenant: (tenantId: string) => ["tenant", tenantId] as const,
+  invoiceDetail: (invoiceId: string) => ["invoice", invoiceId] as const
 };

@@ -7,7 +7,7 @@ import { Grid } from "../components/ui/Grid";
 import { Card } from "../components/ui/Card";
 import { Button, ButtonLink } from "../components/ui/Button";
 import { isInitialQueryLoad, queryKeys, usePropertiesQuery, useWorkspaceId } from "../features/queries";
-import { prefetchPropertyDetail } from "../lib/routePrefetch";
+import { prefetchPropertyFromList, listWarmHandlers } from "../lib/routePrefetch";
 import { StatusPill } from "../components/ui/DashboardKit";
 
 function occupancyDisplay(p: {
@@ -62,8 +62,9 @@ export function OwnedPropertiesMyPropertiesPage() {
   const [view, setView] = useState<"cards" | "list">((new URLSearchParams(search).get("view") as any) ?? "cards");
 
   const warmProperty = (propertyId: string) => {
-    prefetchPropertyDetail(propertyId, queryClient, workspaceId ?? null);
+    prefetchPropertyFromList(propertyId, queryClient, workspaceId ?? null);
   };
+  const propertyWarmProps = (propertyId: string) => listWarmHandlers(() => warmProperty(propertyId));
 
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
@@ -185,7 +186,7 @@ export function OwnedPropertiesMyPropertiesPage() {
                   const cash = Number(p.monthlyCashFlowAfterDebtService ?? p.netCashFlow ?? 0);
                   const noi = Number(p.monthlyNOI ?? 0);
                   return (
-                    <div key={p.id} className="pg-workspace-inset">
+                    <div key={p.id} className="pg-workspace-inset" {...propertyWarmProps(String(p.id))}>
                       <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "start" }}>
                         <div style={{ minWidth: 260 }}>
                           <div style={{ display: "flex", gap: 10, alignItems: "baseline", flexWrap: "wrap" }}>
@@ -210,8 +211,7 @@ export function OwnedPropertiesMyPropertiesPage() {
                           <ButtonLink
                             href={`/owned-properties/${p.id}`}
                             variant="ghost"
-                            onMouseEnter={() => warmProperty(String(p.id))}
-                            onFocus={() => warmProperty(String(p.id))}
+                            {...propertyWarmProps(String(p.id))}
                           >
                             View
                           </ButtonLink>
@@ -253,7 +253,7 @@ export function OwnedPropertiesMyPropertiesPage() {
               const cash = Number(p.monthlyCashFlowAfterDebtService ?? p.netCashFlow ?? 0);
               const noi = Number(p.monthlyNOI ?? 0);
               return (
-                <div key={p.id} className="pg-property-card pg-workspace-card">
+                <div key={p.id} className="pg-property-card pg-workspace-card" {...propertyWarmProps(String(p.id))}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start" }}>
                     <div>
                       <h3 style={{ margin: 0 }}>{p.name}</h3>
@@ -284,8 +284,7 @@ export function OwnedPropertiesMyPropertiesPage() {
                     <ButtonLink
                       href={`/owned-properties/${p.id}`}
                       variant="ghost"
-                      onMouseEnter={() => warmProperty(String(p.id))}
-                      onFocus={() => warmProperty(String(p.id))}
+                      {...propertyWarmProps(String(p.id))}
                     >
                       View
                     </ButtonLink>

@@ -98,9 +98,14 @@ export function invalidateLeaseQueries(opts: InvalidateOpts & { propertyId: stri
   }
 }
 
-export function invalidateInvoiceQueries(opts: InvalidateOpts & { propertyId?: string; tenantId?: string }) {
+export function invalidateInvoiceQueries(
+  opts: InvalidateOpts & { propertyId?: string; tenantId?: string; invoiceId?: string }
+) {
   const qc = client(opts);
   const wid = ws(opts.workspaceId);
+  if (opts.invoiceId) {
+    void qc.invalidateQueries({ queryKey: queryKeys.invoiceDetail(opts.invoiceId) });
+  }
   if (wid) {
     void qc.invalidateQueries({ queryKey: queryKeys.invoicesDirectory(wid) });
     void qc.invalidateQueries({ queryKey: ["dashboard-summary", wid] });

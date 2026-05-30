@@ -1,8 +1,31 @@
 import type { QueryClient } from "@tanstack/react-query";
-import { getFinancialsDirectory, getInvoicesDirectory, getLeasesDirectory, getPropertyOptions, getTenantsDirectory } from "../api/ownedProperties";
+import {
+  getFinancialsDirectory,
+  getInvoice,
+  getInvoicesDirectory,
+  getLeasesDirectory,
+  getPortfolioDashboardSummary,
+  getProperty,
+  getPropertyStatement,
+  getPropertyTenants,
+  getPropertyOptions,
+  getTenantsDirectory,
+  listPropertyInvoices,
+  listPropertyUnits
+} from "../api/ownedProperties";
+import { fetchMe } from "../api/user";
 import { FINANCIALS_PAGE_SIZE, localCalendarMonth } from "../features/financials/financialDirectoryUtils";
+import { getOrCreateUserSettings } from "../services/settingsSupabase";
 import { queryKeys } from "../lib/queryKeys";
-import { STALE_TIME_DIRECTORY_MS, STALE_TIME_PROPERTY_OPTIONS_MS, STALE_TIME_PROPERTIES_MS, STALE_TIME_STATEMENT_MS } from "./queryClient";
+import {
+  GC_TIME_MS,
+  STALE_TIME_DASHBOARD_MS,
+  STALE_TIME_DIRECTORY_MS,
+  STALE_TIME_METADATA_MS,
+  STALE_TIME_PROPERTIES_MS,
+  STALE_TIME_PROPERTY_OPTIONS_MS,
+  STALE_TIME_STATEMENT_MS
+} from "./queryClient";
 
 type RoutePrefetchTarget =
   | "dashboard"
@@ -12,7 +35,8 @@ type RoutePrefetchTarget =
   | "invoices"
   | "financials"
   | "settings"
-  | "property-detail";
+  | "property-detail"
+  | "invoice-detail";
 
 const routeChunkLoaders: Record<RoutePrefetchTarget, () => Promise<unknown>> = {
   dashboard: () => import("../pages/OwnedPropertiesPortfolioDashboardPage"),
@@ -22,7 +46,8 @@ const routeChunkLoaders: Record<RoutePrefetchTarget, () => Promise<unknown>> = {
   invoices: () => import("../pages/InvoicesListPage"),
   financials: () => import("../pages/FinancialsListPage"),
   settings: () => import("../pages/SettingsPage"),
-  "property-detail": () => import("../pages/OwnedPropertyDetailPage")
+  "property-detail": () => import("../pages/OwnedPropertyDetailPage"),
+  "invoice-detail": () => import("../pages/InvoiceDetailPage")
 };
 
 const navTargetByPath: Array<{ prefix: string; target: RoutePrefetchTarget }> = [
@@ -36,20 +61,58 @@ const navTargetByPath: Array<{ prefix: string; target: RoutePrefetchTarget }> = 
   { prefix: "/settings", target: "settings" }
 ];
 
+const prefetchedChunks = new Set<string>();
+const inflightPrefetches = new Map<string, Promise<unknown>>();
+
+function dedupedPrefetch(key: string, run: () => Promise<unknown>): void {
+  if (inflightPrefetches.has(key)) return;
+  const promise = run().finally(() => {
+    inflightPrefetches.delete(key);
+  });
+  inflightPrefetches.set(key, promise);
+}
+
+function prefetchQueryDeduped(
+  queryClient: QueryClient,
+  key: string,
+  options: Parameters<QueryClient["prefetchQuery"]>[0]
+): void {
+  dedupedPrefetch(key, () => queryClient.prefetchQuery(options));
+}
+
 export function routePrefetchTarget(path: string): RoutePrefetchTarget | null {
   if (/^\/owned-properties\/[^/]+$/.test(path) && !path.includes("dashboard") && !path.includes("reports")) {
     return "property-detail";
+  }
+  if (/^\/invoices\/[^/]+$/.test(path) && !path.endsWith("/new")) {
+    return "invoice-detail";
   }
   const hit = navTargetByPath.find((entry) => path === entry.prefix || path.startsWith(`${entry.prefix}/`));
   return hit?.target ?? null;
 }
 
-const prefetchedChunks = new Set<string>();
-
 export function prefetchRouteChunk(target: RoutePrefetchTarget): void {
   if (prefetchedChunks.has(target)) return;
   prefetchedChunks.add(target);
   void routeChunkLoaders[target]();
+}
+
+/** Shared hover/focus/touch handlers for nav links — one prefetch burst per interaction type. */
+export function navWarmHandlers(
+  path: string,
+  queryClient: QueryClient,
+  workspaceId: string | null
+): {
+  onMouseEnter: () => void;
+  onFocus: () => void;
+  onTouchStart: () => void;
+} {
+  const warm = () => prefetchWorkspaceRoute(path, queryClient, workspaceId);
+  return {
+    onMouseEnter: warm,
+    onFocus: warm,
+    onTouchStart: warm
+  };
 }
 
 export function prefetchWorkspaceRoute(path: string, queryClient: QueryClient, workspaceId: string | null): void {
@@ -59,41 +122,54 @@ export function prefetchWorkspaceRoute(path: string, queryClient: QueryClient, w
   if (!workspaceId) return;
 
   switch (target) {
+    case "dashboard":
+      prefetchQueryDeduped(queryClient, `dashboard:${workspaceId}`, {
+        queryKey: queryKeys.dashboardSummary(workspaceId, { month: localCalendarMonth(), propertyId: null }),
+        queryFn: () => getPortfolioDashboardSummary({ month: localCalendarMonth(), propertyId: null }),
+        staleTime: STALE_TIME_DASHBOARD_MS,
+        gcTime: GC_TIME_MS
+      });
+      break;
     case "properties":
-      void queryClient.prefetchQuery({
+      prefetchQueryDeduped(queryClient, `property-options:${workspaceId}`, {
         queryKey: queryKeys.propertyOptions(workspaceId),
         queryFn: getPropertyOptions,
-        staleTime: STALE_TIME_PROPERTY_OPTIONS_MS
+        staleTime: STALE_TIME_PROPERTY_OPTIONS_MS,
+        gcTime: GC_TIME_MS
       });
-      void queryClient.prefetchQuery({
+      prefetchQueryDeduped(queryClient, `properties:${workspaceId}`, {
         queryKey: queryKeys.properties(workspaceId, {}),
         queryFn: () => import("../api/ownedProperties").then((m) => m.getProperties()),
-        staleTime: STALE_TIME_PROPERTIES_MS
+        staleTime: STALE_TIME_PROPERTIES_MS,
+        gcTime: GC_TIME_MS
       });
       break;
     case "tenants":
-      void queryClient.prefetchQuery({
+      prefetchQueryDeduped(queryClient, `tenants-directory:${workspaceId}`, {
         queryKey: queryKeys.tenantsDirectory(workspaceId, { page: 1, pageSize: 6, tab: "tenants" }),
         queryFn: () => getTenantsDirectory({ page: 1, pageSize: 6, tab: "tenants" }),
-        staleTime: STALE_TIME_DIRECTORY_MS
+        staleTime: STALE_TIME_DIRECTORY_MS,
+        gcTime: GC_TIME_MS
       });
       break;
     case "leases":
-      void queryClient.prefetchQuery({
+      prefetchQueryDeduped(queryClient, `leases-directory:${workspaceId}`, {
         queryKey: queryKeys.leasesDirectory(workspaceId, { page: 1, pageSize: 6 }),
         queryFn: () => getLeasesDirectory({ page: 1, pageSize: 6 }),
-        staleTime: STALE_TIME_DIRECTORY_MS
+        staleTime: STALE_TIME_DIRECTORY_MS,
+        gcTime: GC_TIME_MS
       });
       break;
     case "invoices":
-      void queryClient.prefetchQuery({
+      prefetchQueryDeduped(queryClient, `invoices-directory:${workspaceId}`, {
         queryKey: queryKeys.invoicesDirectory(workspaceId, { page: 1, pageSize: 20 }),
         queryFn: () => getInvoicesDirectory({ page: 1, pageSize: 20 }),
-        staleTime: STALE_TIME_DIRECTORY_MS
+        staleTime: STALE_TIME_DIRECTORY_MS,
+        gcTime: GC_TIME_MS
       });
       break;
     case "financials":
-      void queryClient.prefetchQuery({
+      prefetchQueryDeduped(queryClient, `financials-directory:${workspaceId}`, {
         queryKey: queryKeys.financialsDirectory(workspaceId, {
           month: localCalendarMonth(),
           propertyId: null,
@@ -109,27 +185,153 @@ export function prefetchWorkspaceRoute(path: string, queryClient: QueryClient, w
             page: 1,
             pageSize: FINANCIALS_PAGE_SIZE
           }),
-        staleTime: STALE_TIME_STATEMENT_MS
+        staleTime: STALE_TIME_STATEMENT_MS,
+        gcTime: GC_TIME_MS
       });
       break;
     case "settings":
-      void queryClient.prefetchQuery({
-        queryKey: queryKeys.settings(workspaceId),
-        queryFn: () => import("../services/settingsSupabase").then((m) => m.getOrCreateUserSettings()),
-        staleTime: STALE_TIME_PROPERTY_OPTIONS_MS
-      });
+      prefetchAuthWorkspace(queryClient, workspaceId);
       break;
     default:
       break;
   }
 }
 
-export function prefetchPropertyDetail(propertyId: string, queryClient: QueryClient, workspaceId: string | null): void {
+/** After sign-in: warm settings + profile (respects stale cache; invalidation still refetches). */
+export function prefetchAuthWorkspace(queryClient: QueryClient, workspaceId: string): void {
+  prefetchQueryDeduped(queryClient, `settings:${workspaceId}`, {
+    queryKey: queryKeys.settings(workspaceId),
+    queryFn: getOrCreateUserSettings,
+    staleTime: STALE_TIME_METADATA_MS,
+    gcTime: GC_TIME_MS
+  });
+  prefetchQueryDeduped(queryClient, `profile:${workspaceId}`, {
+    queryKey: queryKeys.profile(workspaceId),
+    queryFn: fetchMe,
+    staleTime: STALE_TIME_METADATA_MS,
+    gcTime: GC_TIME_MS
+  });
+}
+
+/** Property list/card hover — core property, units, dashboard summary only (no statement ledger). */
+export function prefetchPropertyFromList(
+  propertyId: string,
+  queryClient: QueryClient,
+  workspaceId: string | null,
+  summaryMonth = localCalendarMonth()
+): void {
   prefetchRouteChunk("property-detail");
   if (!workspaceId || !propertyId) return;
-  void queryClient.prefetchQuery({
+
+  prefetchQueryDeduped(queryClient, `property:core:${propertyId}`, {
     queryKey: queryKeys.property(propertyId, "core"),
-    queryFn: () => import("../api/ownedProperties").then((m) => m.getProperty(propertyId, { includeInvoices: false })),
-    staleTime: STALE_TIME_PROPERTIES_MS
+    queryFn: () => getProperty(propertyId, { includeInvoices: false }),
+    staleTime: STALE_TIME_PROPERTIES_MS,
+    gcTime: GC_TIME_MS
   });
+  prefetchQueryDeduped(queryClient, `property-units:${propertyId}`, {
+    queryKey: queryKeys.propertyUnits(propertyId),
+    queryFn: () => listPropertyUnits(propertyId),
+    staleTime: STALE_TIME_PROPERTIES_MS,
+    gcTime: GC_TIME_MS
+  });
+  prefetchQueryDeduped(queryClient, `property-dashboard:${propertyId}:${summaryMonth}`, {
+    queryKey: queryKeys.dashboardSummary(workspaceId, { propertyId, month: summaryMonth }),
+    queryFn: () => getPortfolioDashboardSummary({ propertyId, month: summaryMonth }),
+    staleTime: STALE_TIME_DASHBOARD_MS,
+    gcTime: GC_TIME_MS
+  });
+}
+
+/** Background tab warm after property detail core is ready — skips keys already loading for active tab. */
+export function prefetchPropertyWorkspaceTabs(opts: {
+  propertyId: string;
+  workspaceId: string;
+  queryClient: QueryClient;
+  summaryMonth: string;
+  activeTab: string;
+}): void {
+  const { propertyId, workspaceId, queryClient, summaryMonth, activeTab } = opts;
+  const schedule =
+    typeof requestIdleCallback !== "undefined"
+      ? (fn: () => void) => requestIdleCallback(fn, { timeout: 2000 })
+      : (fn: () => void) => window.setTimeout(fn, 150);
+
+  schedule(() => {
+    if (activeTab !== "tenants" && activeTab !== "leases") {
+      prefetchQueryDeduped(queryClient, `property-tenants:${propertyId}`, {
+        queryKey: queryKeys.propertyTenants(propertyId),
+        queryFn: () => getPropertyTenants(propertyId),
+        staleTime: STALE_TIME_PROPERTIES_MS,
+        gcTime: GC_TIME_MS
+      });
+    }
+
+    if (activeTab !== "overview" && activeTab !== "financials") {
+      prefetchQueryDeduped(queryClient, `property-statement:${propertyId}:${summaryMonth}`, {
+        queryKey: queryKeys.propertyStatement(propertyId, { month: summaryMonth, includeExpected: true }),
+        queryFn: () => getPropertyStatement(propertyId, { month: summaryMonth, includeExpected: true }),
+        staleTime: STALE_TIME_STATEMENT_MS,
+        gcTime: GC_TIME_MS
+      });
+    }
+
+    if (activeTab !== "overview") {
+      prefetchQueryDeduped(queryClient, `property-dashboard:${propertyId}:${summaryMonth}`, {
+        queryKey: queryKeys.dashboardSummary(workspaceId, { propertyId, month: summaryMonth }),
+        queryFn: () => getPortfolioDashboardSummary({ propertyId, month: summaryMonth }),
+        staleTime: STALE_TIME_DASHBOARD_MS,
+        gcTime: GC_TIME_MS
+      });
+    }
+
+    if (activeTab !== "financials") {
+      prefetchQueryDeduped(queryClient, `property-invoices:${propertyId}`, {
+        queryKey: queryKeys.propertyInvoices(propertyId),
+        queryFn: () =>
+          listPropertyInvoices(propertyId, {
+            includeLineItems: true,
+            attachDownloadUrls: false
+          }),
+        staleTime: STALE_TIME_STATEMENT_MS,
+        gcTime: GC_TIME_MS
+      });
+    }
+  });
+}
+
+/** Invoice row hover — detail route + invoice record only (no PDF generation). */
+export function prefetchInvoiceDetail(
+  invoiceId: string,
+  queryClient: QueryClient,
+  workspaceId: string | null
+): void {
+  if (!invoiceId || invoiceId === "new") return;
+  prefetchRouteChunk("invoice-detail");
+  if (!workspaceId) return;
+  prefetchQueryDeduped(queryClient, `invoice:${invoiceId}`, {
+    queryKey: queryKeys.invoiceDetail(invoiceId),
+    queryFn: () => getInvoice(invoiceId),
+    staleTime: STALE_TIME_PROPERTIES_MS,
+    gcTime: GC_TIME_MS
+  });
+}
+
+/** @deprecated Use prefetchPropertyFromList */
+export function prefetchPropertyDetail(propertyId: string, queryClient: QueryClient, workspaceId: string | null): void {
+  prefetchPropertyFromList(propertyId, queryClient, workspaceId);
+}
+
+export function listWarmHandlers(
+  warm: () => void
+): {
+  onMouseEnter: () => void;
+  onFocus: () => void;
+  onTouchStart: () => void;
+} {
+  return {
+    onMouseEnter: warm,
+    onFocus: warm,
+    onTouchStart: warm
+  };
 }

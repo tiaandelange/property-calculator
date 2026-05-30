@@ -1,5 +1,6 @@
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { AppIcon, IconButton } from "../../components/icons";
 import {
   createPropertyInvoice,
@@ -41,6 +42,8 @@ import {
 } from "./invoiceLineItemUtils";
 import { dueDateFromIssueDate, mapPropertyTenantRow, type PropertyTenantOption } from "./invoiceEditorUtils";
 import { invoiceStatementPath } from "./invoiceRoutes";
+import { queryKeys } from "../../lib/queryKeys";
+import { STALE_TIME_PROPERTIES_MS } from "../../lib/queryClient";
 import {
   INVOICE_SEND_EMAIL_COMING_SOON,
   INVOICE_SEND_MODAL_MESSAGE,
@@ -98,6 +101,7 @@ export function InvoiceDetailPanel({
   onCancel?: () => void;
   onDeleted?: () => void;
 }) {
+  const queryClient = useQueryClient();
   const [activeId, setActiveId] = useState<string | undefined>(initialInvoiceId);
   const [propertyId, setPropertyId] = useState(bootstrapPropertyId ?? "");
   const [tenantId, setTenantId] = useState(bootstrapTenantId ?? "");
@@ -198,7 +202,11 @@ export function InvoiceDetailPanel({
     setLoading(true);
     setError("");
     try {
-      const inv = await getInvoice(id);
+      const inv = await queryClient.fetchQuery({
+        queryKey: queryKeys.invoiceDetail(id),
+        queryFn: () => getInvoice(id),
+        staleTime: STALE_TIME_PROPERTIES_MS
+      });
       setActiveId(String(inv.id));
       setPropertyId(String(inv.propertyId ?? ""));
       setTenantId(String(inv.tenantId ?? inv.primaryTenantId ?? ""));
@@ -232,7 +240,7 @@ export function InvoiceDetailPanel({
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [queryClient]);
 
   useEffect(() => {
     if (activeId) {

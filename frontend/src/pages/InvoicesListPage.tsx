@@ -23,6 +23,7 @@ import type { InvoiceDirectoryFilters, InvoiceDirectoryMetrics, InvoiceDirectory
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
 import { AppListPage } from "../components/ui/AppPage";
 import { Button, ButtonLink } from "../components/ui/Button";
+import { listWarmHandlers, prefetchInvoiceDetail } from "../lib/routePrefetch";
 
 const EMPTY_METRICS: InvoiceDirectoryMetrics = {
   totalOutstanding: 0,
@@ -97,6 +98,7 @@ export function InvoicesListPage() {
       await hardDeleteInvoice(confirmDelete.id);
       invalidateInvoiceQueries({
         workspaceId,
+        invoiceId: confirmDelete.id,
         propertyId: confirmDelete.propertyId,
         tenantId: confirmDelete.tenantId
       });
@@ -154,6 +156,9 @@ export function InvoicesListPage() {
                 busyId={busyId}
                 onExportPdf={(row) => void exportPdf(row)}
                 onDelete={(row) => setConfirmDelete(row)}
+                rowWarmProps={(row) =>
+                  listWarmHandlers(() => prefetchInvoiceDetail(row.id, queryClient, workspaceId ?? null))
+                }
               />
               <InvoicePagination page={page} totalItems={totalCount} onPageChange={setPage} />
             </>

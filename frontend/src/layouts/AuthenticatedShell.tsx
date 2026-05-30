@@ -1,5 +1,8 @@
-import React from "react";
+import React, { useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { DashboardShell } from "../components/nav/DashboardShell";
+import { useAuth } from "../contexts/AuthContext";
+import { prefetchAuthWorkspace } from "../lib/routePrefetch";
 
 export function AuthenticatedShell({
   children,
@@ -8,5 +11,14 @@ export function AuthenticatedShell({
   children: React.ReactNode;
   userRole?: "USER" | "ADMIN" | null;
 }) {
+  const { session } = useAuth();
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    const workspaceId = session?.user?.id;
+    if (!workspaceId) return;
+    prefetchAuthWorkspace(queryClient, workspaceId);
+  }, [session?.user?.id, queryClient]);
+
   return <DashboardShell>{children}</DashboardShell>;
 }

@@ -25,13 +25,19 @@ export function InvoiceDesktopTable({
   loading,
   busyId,
   onExportPdf,
-  onDelete
+  onDelete,
+  rowWarmProps
 }: {
   items: InvoiceDirectoryRow[];
   loading?: boolean;
   busyId?: string | null;
   onExportPdf: (row: InvoiceDirectoryRow) => void;
   onDelete: (row: InvoiceDirectoryRow) => void;
+  rowWarmProps?: (row: InvoiceDirectoryRow) => {
+    onMouseEnter: () => void;
+    onFocus: () => void;
+    onTouchStart: () => void;
+  };
 }) {
   const isMobile = useMediaQuery("(max-width: 767px)");
 
@@ -49,7 +55,7 @@ export function InvoiceDesktopTable({
           const rowBusy = busyId === row.id;
           const amountDue = row.balanceDue > 0 ? row.balanceDue : row.total;
           return (
-            <li key={row.id}>
+            <li key={row.id} {...(rowWarmProps ? rowWarmProps(row) : {})}>
               <ProplyticMobileRowCard
                 title={
                   <Link className="pg-invoices-link" to={viewHref}>
@@ -108,8 +114,10 @@ export function InvoiceDesktopTable({
             const rowBusy = busyId === row.id;
             const amountDue = row.balanceDue > 0 ? row.balanceDue : row.total;
 
+            const warm = rowWarmProps?.(row);
+
             return (
-              <ProplyticTableRow key={row.id}>
+              <ProplyticTableRow key={row.id} {...(warm ?? {})}>
                 <ProplyticTableCell columnType="reference">
                   <Link className="pg-invoices-link pg-invoices-num" to={viewHref}>
                     {row.invoiceNumber}

@@ -1,8 +1,11 @@
 import { useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { AppIcon, IconButton } from "../../components/icons";
 import { ProplyticLogo } from "../brand/ProplyticLogo";
 import { useAuth } from "../../contexts/AuthContext";
+import { useWorkspaceId } from "../../features/queries/useWorkspaceId";
+import { navWarmHandlers } from "../../lib/routePrefetch";
 import { isWorkspaceNavActive, WORKSPACE_SIDEBAR_NAV } from "../../nav/workspaceNavConfig";
 
 type Props = {
@@ -14,6 +17,8 @@ export function MobileWorkspaceMenu({ open, onClose }: Props) {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const { signOut } = useAuth();
+  const queryClient = useQueryClient();
+  const workspaceId = useWorkspaceId();
 
   useEffect(() => {
     if (!open) return;
@@ -60,12 +65,14 @@ export function MobileWorkspaceMenu({ open, onClose }: Props) {
                   </li>
                 );
               }
+              const warm = navWarmHandlers(item.to, queryClient, workspaceId ?? null);
               return (
                 <li key={item.id}>
                   <Link
                     to={item.to}
                     className={`pg-dashboard-mobile-menu-link${active ? " pg-dashboard-mobile-menu-link--active" : ""}`}
                     onClick={onClose}
+                    {...warm}
                   >
                     <AppIcon name={item.icon} size="lg" />
                     {item.label}
