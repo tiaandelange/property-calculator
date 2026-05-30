@@ -1,5 +1,6 @@
 export {
   ProplyticTable,
+  ProplyticTableShell,
   ProplyticTableWrap,
   ProplyticTableHeader,
   ProplyticTableBody,
@@ -14,6 +15,11 @@ export {
 } from "./ProplyticTable";
 
 export { ProplyticStatusBadge } from "./ProplyticStatusBadge";
-export { ProplyticAmountCell, ProplyticDateCell, type ProplyticAmountTone } from "./ProplyticTableCells";
+export {
+  ProplyticAmountCell,
+  ProplyticDateCell,
+  ProplyticDescriptionCell,
+  type ProplyticAmountTone
+} from "./ProplyticTableCells";
 export { ProplyticMobileRowCard, ProplyticMobileRowList, type ProplyticMobileField } from "./ProplyticMobileRowCard";
 export { proplyticStatusLabel, proplyticStatusVariant, normalizeStatusKey } from "./tableStatusMap";

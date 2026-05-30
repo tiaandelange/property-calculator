@@ -1,0 +1,162 @@
+/**
+ * Table shell flattening — one visible card border (table wrap), no nested card boxes.
+ */
+
+/* List / directory panels: table wrap is the card */
+.pg-dashboard-shell .pg-tenants-list-panel.pg-workspace-card,
+.pg-dashboard-shell .pg-leases-list-panel.pg-workspace-card,
+.pg-dashboard-shell .pg-fins-statement-panel.pg-workspace-card,
+.pg-dashboard-shell section.pg-workspace-card:has(> .pg-ptable-wrap),
+.pg-dashboard-shell section.pg-workspace-card:has(> .pg-ptable-shell) {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  border-radius: 0;
+  padding: 0;
+}
+
+.pg-fins-statement-panel .pg-fins-panel-head {
+  margin-bottom: 12px;
+}
+
+.pg-fins-statement-panel .pg-pfin-metrics,
+.pg-fins-statement-panel .pg-fins-ytd-row {
+  margin-bottom: 16px;
+}
+
+/* Reports list panel */
+.pg-pfin-section:has(.pg-ptable-wrap) {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+  border-radius: 0;
+}
+
+.pg-pfin-section:has(.pg-ptable-wrap) > .pg-pfin-section__head,
+.pg-pfin-section:has(.pg-ptable-wrap) > header.pg-pfin-section__head {
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-bottom: 1px solid var(--border-soft);
+  border-radius: 20px 20px 0 0;
+  padding: 16px 20px;
+  margin-bottom: 0;
+}
+
+.pg-pfin-section:has(.pg-ptable-wrap) > .pg-ptable-wrap {
+  border-top: none;
+  border-radius: 0 0 20px 20px;
+}
+
+.pg-pfin-section:has(.pg-ptable-wrap):not(:has(> .pg-pfin-section__head)):not(:has(> header)) > .pg-ptable-wrap {
+  border-top: 1px solid var(--border-soft);
+  border-radius: 20px;
+}
+
+/* Legacy wrappers — no second border */
+.pg-invoices-table-wrap,
+.pg-tenants-table-wrap,
+.pg-leases-table-wrap {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+}
+
+.pg-statement-wrap:not(.pg-ptable-wrap) {
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: 20px;
+  overflow: hidden;
+}
+
+/* Description + tenant cells inside tables */
+.pg-ptable .pg-tenants-name,
+.pg-ptable .pg-leases-name,
+.pg-ptable .pg-invoices-link,
+.pg-ptable .pg-fins-name {
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+.pg-ptable .pg-tenants-property strong,
+.pg-ptable .pg-leases-tenant strong {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.pg-ptable .pg-tenants-sub,
+.pg-ptable .pg-leases-sub,
+.pg-ptable .pg-invoices-sub {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.pg-ptable .pg-tenants-avatar,
+.pg-ptable .pg-leases-avatar {
+  width: 32px;
+  height: 32px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.pg-ptable .pg-tenants-cell-tenant {
+  gap: 10px;
+}
+
+/* Reports list panel */
+.pg-dashboard-shell .pg-tenants-list-panel.pg-workspace-card:has(> .pg-ptable-wrap) {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+}
+
+.pg-invoices-table-wrap,
+.pg-tenants-table-wrap,
+.pg-leases-table-wrap,
+.pg-pfin-table-wrap:not(.pg-ptable-wrap) {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.pg-invoices-table th,
+.pg-invoices-table td,
+.pg-tenants-table thead th,
+.pg-tenants-table tbody td,
+.pg-leases-table thead th,
+.pg-leases-table tbody td,
+.pg-pfin-table th,
+.pg-pfin-table td {
+  padding: 11px 14px;
+  font-size: var(--type-table-cell);
+}
+
+.pg-invoices-table th,
+.pg-tenants-table thead th,
+.pg-leases-table thead th,
+.pg-pfin-table th {
+  font-size: var(--type-table-header);
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  background: var(--surface);
+}
+
+.pg-invoices-table tbody tr:hover td,
+.pg-tenants-table tbody tr:hover td,
+.pg-leases-table tbody tr:hover td,
+.pg-pfin-table tbody tr:hover td {
+  background: var(--surface-muted);
+}
+
+.pg-tenants-table tbody tr:hover,
+.pg-leases-table tbody tr:hover {
+  background: transparent;
+}
+
+.pg-pfin-table {
+  font-size: var(--type-table-cell);
+}

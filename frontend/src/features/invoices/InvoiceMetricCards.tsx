@@ -1,4 +1,4 @@
-import { PortfolioMetricCard } from "../portfolio-dashboard/PortfolioMetricCard";
+import { WorkspaceMetricCard, WorkspaceMetricsRow } from "../../components/workspace/WorkspaceMetricCard";
 import { fmtZar } from "./invoiceDirectoryUtils";
 import type { InvoiceDirectoryMetrics } from "./invoiceDirectoryTypes";
 
@@ -10,47 +10,35 @@ export function InvoiceMetricCards({
   loading?: boolean;
 }) {
   return (
-    <>
-      <div className="pg-invoices-metrics pg-invoices-metrics--desktop">
-        <PortfolioMetricCard
-          label="Total Outstanding"
-          value={loading ? "…" : fmtZar(metrics.totalOutstanding)}
-          changeText="Unpaid invoice balance"
-          changeTone={metrics.totalOutstanding > 0 ? "neutral" : "up"}
-          icon="wallet"
-          iconAccent="info"
-        />
-        <PortfolioMetricCard
-          label="Due This Month"
-          value={loading ? "…" : fmtZar(metrics.dueThisMonth)}
-          changeText="Due in current month"
-          changeTone="neutral"
-          icon="calendar"
-          iconAccent="warning"
-        />
-        <PortfolioMetricCard
-          label="Overdue"
-          value={loading ? "…" : fmtZar(metrics.overdue)}
-          changeText="Past due and unpaid"
-          changeTone={metrics.overdue > 0 ? "neutral" : "up"}
-          icon="warning"
-          iconAccent="danger"
-        />
-        <PortfolioMetricCard
-          label="Paid This Month"
-          value={loading ? "…" : fmtZar(metrics.paidThisMonth)}
-          changeText="Paid invoices"
-          changeTone="up"
-          icon="success"
-          iconAccent="success"
-        />
-      </div>
-      <div className="pg-invoices-metrics pg-invoices-metrics--mobile">
-        <PortfolioMetricCard label="Outstanding" value={loading ? "…" : fmtZar(metrics.totalOutstanding)} icon="wallet" iconAccent="info" compact />
-        <PortfolioMetricCard label="Due month" value={loading ? "…" : fmtZar(metrics.dueThisMonth)} icon="calendar" iconAccent="warning" compact />
-        <PortfolioMetricCard label="Overdue" value={loading ? "…" : fmtZar(metrics.overdue)} icon="warning" iconAccent="danger" compact />
-        <PortfolioMetricCard label="Paid month" value={loading ? "…" : fmtZar(metrics.paidThisMonth)} icon="success" iconAccent="success" compact />
-      </div>
-    </>
+    <WorkspaceMetricsRow>
+      <WorkspaceMetricCard
+        label="Total Outstanding"
+        value={loading ? "…" : fmtZar(metrics.totalOutstanding)}
+        helper="Unpaid invoice balance"
+        icon="wallet"
+        accent="info"
+      />
+      <WorkspaceMetricCard
+        label="Due This Month"
+        value={loading ? "…" : fmtZar(metrics.dueThisMonth)}
+        helper="Due in current month"
+        icon="calendar"
+        accent="warning"
+      />
+      <WorkspaceMetricCard
+        label="Overdue"
+        value={loading ? "…" : fmtZar(metrics.overdue)}
+        helper="Past due and unpaid"
+        icon="warning"
+        accent="danger"
+      />
+      <WorkspaceMetricCard
+        label="Paid This Month"
+        value={loading ? "…" : fmtZar(metrics.paidThisMonth)}
+        helper="Paid invoices"
+        icon="success"
+        accent="success"
+      />
+    </WorkspaceMetricsRow>
   );
 }

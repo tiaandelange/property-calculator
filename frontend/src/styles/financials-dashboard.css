@@ -1,18 +1,11 @@
 /* Portfolio financials directory (statement-style) */
 
-.pg-container--financials-dashboard {
-  max-width: none;
-  padding-left: 0;
-  padding-right: 0;
-}
-
 .pg-fins {
-  --fins-gap: var(--workspace-section-gap, clamp(14px, 1.4vw, 22px));
+  --fins-gap: var(--workspace-section-gap, clamp(20px, 2vw, 24px));
   width: 100%;
   max-width: none;
   margin: 0;
-  padding: clamp(16px, 2vw, 28px) 0 12px;
-  color: var(--dash-text-primary, var(--text-primary));
+  color: var(--text-primary);
   box-sizing: border-box;
 }
 

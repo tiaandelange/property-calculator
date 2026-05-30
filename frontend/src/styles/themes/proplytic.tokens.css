@@ -67,7 +67,7 @@
   --type-card-title: var(--type-body);
   --type-card-description: var(--type-base);
   --type-table-header: var(--type-xs);
-  --type-table-cell: var(--type-base);
+  --type-table-cell: var(--type-sm);
   --type-metric-label: var(--type-sm);
   --type-metric-value: var(--type-3xl);
   --type-metric-value-mobile: var(--type-2xl);

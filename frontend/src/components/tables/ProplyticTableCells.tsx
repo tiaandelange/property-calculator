@@ -21,3 +21,20 @@ export function ProplyticAmountCell({
 export function ProplyticDateCell({ children }: { children: ReactNode }) {
   return <span className="pg-ptable-date">{children}</span>;
 }
+
+export function ProplyticDescriptionCell({
+  main,
+  sub,
+  title
+}: {
+  main: ReactNode;
+  sub?: ReactNode;
+  title?: string;
+}) {
+  return (
+    <div className="pg-ptable-desc" title={title}>
+      <div className="pg-ptable-desc__main">{main}</div>
+      {sub ? <div className="pg-ptable-desc__sub">{sub}</div> : null}
+    </div>
+  );
+}

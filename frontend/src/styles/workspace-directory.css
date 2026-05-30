@@ -1,0 +1,11 @@
+/**
+ * Sidebar directory pages — align rhythm with property financials tab.
+ */
+
+.pg-app-page--list .pg-pfin-metrics {
+  margin-bottom: 4px;
+}
+
+.pg-app-page--list .pg-fins-statement-panel .pg-pfin-metrics {
+  margin-bottom: 16px;
+}

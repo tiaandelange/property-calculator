@@ -16,6 +16,36 @@ function variantClass(variant: ProplyticTableVariant) {
   return `pg-ptable--${variant}`;
 }
 
+export function ProplyticTableShell({
+  title,
+  actions,
+  children,
+  className,
+  ...props
+}: HTMLAttributes<HTMLDivElement> & {
+  title?: ReactNode;
+  actions?: ReactNode;
+}) {
+  return (
+    <div className={cn("pg-ptable-shell", className)} {...props}>
+      {title || actions ? (
+        <header className="pg-ptable-shell__header">
+          {title ? <h2 className="pg-ptable-shell__title">{title}</h2> : null}
+          {actions ? (
+            <div
+              className="pg-ptable-shell__actions"
+              style={!title ? { marginLeft: "auto" } : undefined}
+            >
+              {actions}
+            </div>
+          ) : null}
+        </header>
+      ) : null}
+      {children}
+    </div>
+  );
+}
+
 export function ProplyticTableWrap({
   children,
   className,

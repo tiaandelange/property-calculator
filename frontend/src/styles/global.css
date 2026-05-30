@@ -1,6 +1,7 @@
 @import "./themes/proplytic.tokens.css";
 @import "./proplytic-typography.css";
 @import "./app-page.css";
+@import "./workspace-directory.css";
 @import "./workspace-accent.css";
 @import "./ui-components.css";
 @import "./proplytic-buttons.css";
@@ -16,6 +17,7 @@
 @import "./workspace-cards.css";
 @import "./property-form.css";
 @import "./property-financials.css";
+@import "./proplytic-table-overrides.css";
 @import "./tenant-statement.css";
 @import "./settings-dashboard.css";
 
@@ -5334,4 +5336,47 @@ html[data-theme="light"] .pg-color-scheme-switch[data-on="false"] .pg-color-sche
 
 .pg-home-ph-avatar-initials {
   line-height: 1;
+}
+
+/* Proplytic table cascade — wins over legacy statement/dashboard rules above */
+.pg-statement-wrap {
+  border-radius: 20px;
+  box-shadow: none;
+}
+
+.pg-statement-table {
+  font-size: var(--type-table-cell);
+}
+
+.pg-statement-table th,
+.pg-statement-table td {
+  padding: 11px 14px;
+}
+
+.pg-statement-table th {
+  font-size: var(--type-table-header);
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  background: var(--surface);
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+
+.pg-statement-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.pg-statement-table tbody tr:hover td,
+html[data-theme="light"] .pg-statement-table tbody tr:hover td {
+  background: var(--surface-muted);
+}
+
+.pg-statement-table tbody tr:hover td.pg-statement-table__actions {
+  background: var(--surface-muted);
+}
+
+html[data-theme="light"] .pg-statement-table th {
+  background: var(--surface);
 }

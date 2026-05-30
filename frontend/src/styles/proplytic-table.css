@@ -1,4 +1,53 @@
-/* Universal Proplytic table system — theme tokens only */
+/* Universal Proplytic table system — singular card surface, theme tokens only */
+
+.pg-ptable-shell {
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: none;
+}
+
+.pg-ptable-shell__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 16px;
+  padding: 16px 20px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.pg-ptable-shell__title {
+  margin: 0;
+  font-size: var(--type-section-title-mobile);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-heading);
+  letter-spacing: var(--tracking-section);
+  color: var(--text-primary);
+}
+
+@media (min-width: 768px) {
+  .pg-ptable-shell__title {
+    font-size: var(--type-section-title);
+  }
+}
+
+.pg-ptable-shell__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.pg-ptable-shell > .pg-ptable-wrap {
+  border: none;
+  border-radius: 0;
+  background: transparent;
+}
 
 .pg-ptable-wrap,
 .pg-table-wrap,
@@ -10,9 +59,12 @@
 .pg-tstmt-table-wrap {
   width: 100%;
   overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
   background: var(--surface);
   border: 1px solid var(--border-soft);
-  border-radius: 18px;
+  border-radius: 20px;
+  box-shadow: none;
 }
 
 .pg-ptable,
@@ -26,8 +78,11 @@
 .pg-fins-statement-table {
   width: 100%;
   border-collapse: collapse;
+  border-spacing: 0;
   font-size: var(--type-table-cell);
+  line-height: 1.4;
   color: var(--text-primary);
+  background: var(--surface);
 }
 
 .pg-ptable th,
@@ -45,11 +100,16 @@
 .pg-statement-table th,
 .pg-statement-table td,
 .pg-tstmt-table th,
-.pg-tstmt-table td {
-  padding: 12px 14px;
+.pg-tstmt-table td,
+.pg-fins-statement-table th,
+.pg-fins-statement-table td {
+  padding: 11px 14px;
   text-align: left;
   border-bottom: 1px solid var(--border-soft);
+  border-left: none;
+  border-right: none;
   vertical-align: middle;
+  background: var(--surface);
 }
 
 .pg-ptable th,
@@ -59,14 +119,17 @@
 .pg-tenants-table th,
 .pg-leases-table th,
 .pg-statement-table th,
-.pg-tstmt-table th {
+.pg-tstmt-table th,
+.pg-fins-statement-table th {
   font-size: var(--type-table-header);
   font-weight: var(--weight-semibold);
-  letter-spacing: var(--tracking-table);
+  letter-spacing: 0.03em;
   text-transform: uppercase;
   color: var(--text-muted);
-  background: var(--surface-muted);
+  background: var(--surface);
   white-space: nowrap;
+  padding-top: 10px;
+  padding-bottom: 10px;
 }
 
 .pg-ptable tbody tr:last-child td,
@@ -76,7 +139,8 @@
 .pg-tenants-table tbody tr:last-child td,
 .pg-leases-table tbody tr:last-child td,
 .pg-statement-table tbody tr:last-child td,
-.pg-tstmt-table tbody tr:last-child td {
+.pg-tstmt-table tbody tr:last-child td,
+.pg-fins-statement-table tbody tr:last-child td {
   border-bottom: none;
 }
 
@@ -87,8 +151,45 @@
 .pg-tenants-table tbody tr:hover td,
 .pg-leases-table tbody tr:hover td,
 .pg-statement-table tbody tr:hover td,
-.pg-tstmt-table tbody tr:hover td {
+.pg-tstmt-table tbody tr:hover td,
+.pg-fins-statement-table tbody tr:hover td {
   background: var(--surface-muted);
+}
+
+.pg-ptable tbody tr.pg-ptable__row--interactive:hover td,
+.pg-ptable tbody tr.pg-ptable__row--selected td {
+  background: var(--primary-soft);
+}
+
+.pg-ptable-desc {
+  min-width: 0;
+}
+
+.pg-ptable-desc__main {
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.35;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pg-ptable-desc__sub {
+  margin-top: 2px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pg-ptable-date {
+  font-size: var(--type-table-cell);
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .pg-ptable__num,
@@ -158,8 +259,10 @@ html[data-density="compact"] .pg-invoices-table td,
 html[data-density="compact"] .pg-tenants-table th,
 html[data-density="compact"] .pg-tenants-table td,
 html[data-density="compact"] .pg-leases-table th,
-html[data-density="compact"] .pg-leases-table td {
-  padding: 8px 10px;
+html[data-density="compact"] .pg-leases-table td,
+html[data-density="compact"] .pg-fins-statement-table th,
+html[data-density="compact"] .pg-fins-statement-table td {
+  padding: 8px 12px;
 }
 
 html[data-density="compact"] .pg-ptable,
@@ -175,8 +278,9 @@ html[data-density="compact"] .pg-tstmt-table {
 
 /* Amount tones (financial) */
 .pg-ptable-amount {
-  font-weight: 600;
+  font-weight: 500;
   font-variant-numeric: tabular-nums;
+  font-size: var(--type-table-cell);
 }
 
 .pg-ptable-amount--debit {
@@ -210,50 +314,44 @@ html[data-density="compact"] .pg-tstmt-table {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 22px;
-  padding: 2px 10px;
+  min-height: 20px;
+  padding: 3px 8px;
   border-radius: 999px;
   font-size: 11px;
   font-weight: 600;
   line-height: 1.2;
   white-space: nowrap;
-  border: 1px solid transparent;
+  border: none;
 }
 
 .pg-ptable-badge--success {
   color: var(--success);
   background: var(--success-soft);
-  border-color: color-mix(in srgb, var(--success) 24%, transparent);
 }
 
 .pg-ptable-badge--warning {
   color: var(--warning);
   background: var(--warning-soft);
-  border-color: color-mix(in srgb, var(--warning) 24%, transparent);
 }
 
 .pg-ptable-badge--danger {
   color: var(--danger);
   background: var(--danger-soft);
-  border-color: color-mix(in srgb, var(--danger) 24%, transparent);
 }
 
 .pg-ptable-badge--primary {
   color: var(--primary);
   background: var(--primary-soft);
-  border-color: color-mix(in srgb, var(--primary) 24%, transparent);
 }
 
 .pg-ptable-badge--info {
   color: var(--info);
   background: var(--info-soft);
-  border-color: color-mix(in srgb, var(--info) 24%, transparent);
 }
 
 .pg-ptable-badge--neutral {
   color: var(--text-secondary);
   background: var(--surface-muted);
-  border-color: var(--border-soft);
 }
 
 /* Legacy pfin badges → map to ptable badges */
@@ -373,21 +471,44 @@ html[data-density="compact"] .pg-tstmt-table {
   animation: pg-ptable-shimmer 1.2s ease-in-out infinite;
 }
 
-/* Mobile row cards */
+/* Table row icons — compact vs metric cards */
+.pg-ptable .pg-icon-container--sm,
+.pg-ptable .pg-icon-box.pg-icon-container--sm {
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+}
+
+.pg-ptable .pg-icon-container--sm .pg-icon-container__svg {
+  width: 15px;
+  height: 15px;
+}
+
+/* Mobile row cards — single outer card, internal separators */
 .pg-ptable-mobile-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 0;
   list-style: none;
   margin: 0;
   padding: 0;
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: 20px;
+  overflow: hidden;
 }
 
 .pg-ptable-mobile-card {
-  background: var(--surface);
-  border: 1px solid var(--border-soft);
-  border-radius: 16px;
-  padding: 14px 16px;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  border-bottom: 1px solid var(--border-soft);
+  padding: 12px 16px;
+}
+
+.pg-ptable-mobile-list > .pg-ptable-mobile-card:last-child,
+.pg-ptable-mobile-list > li:last-child .pg-ptable-mobile-card {
+  border-bottom: none;
 }
 
 .pg-ptable-mobile-card__head {
@@ -399,14 +520,16 @@ html[data-density="compact"] .pg-tstmt-table {
 }
 
 .pg-ptable-mobile-card__title {
-  font-weight: 600;
+  font-weight: 500;
   color: var(--text-primary);
-  font-size: 0.9375rem;
+  font-size: 13px;
+  line-height: 1.35;
 }
 
 .pg-ptable-mobile-card__subtitle {
-  margin-top: 4px;
-  font-size: 0.8125rem;
+  margin-top: 2px;
+  font-size: 12px;
+  line-height: 1.4;
   color: var(--text-muted);
 }
 
@@ -429,7 +552,7 @@ html[data-density="compact"] .pg-tstmt-table {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  font-size: 0.8125rem;
+  font-size: 12px;
 }
 
 .pg-ptable-mobile-card__field dt {

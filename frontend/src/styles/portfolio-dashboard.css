@@ -1,21 +1,13 @@
 /* Portfolio dashboard content (signed-in workspace) */
 
-/* Let the dashboard control its own max-width (parent .pg-container is 1200px). */
-.pg-container--portfolio-dashboard {
-  max-width: none;
-  padding-left: 0;
-  padding-right: 0;
-}
-
 .pg-pdash {
-  --pdash-gap: var(--workspace-section-gap, clamp(14px, 1.4vw, 24px));
+  --pdash-gap: var(--workspace-section-gap, clamp(20px, 2vw, 24px));
   --pdash-card-pad: var(--workspace-card-pad, clamp(18px, 1.5vw, 24px));
   --pdash-chart-h: 300px;
   width: 100%;
   max-width: none;
   margin: 0;
-  padding: clamp(20px, 2vw, 32px) 0 8px;
-  color: var(--dash-text-primary, var(--text-primary));
+  color: var(--text-primary);
   box-sizing: border-box;
 }
 

@@ -1,4 +1,4 @@
-import { PortfolioMetricCard } from "../portfolio-dashboard/PortfolioMetricCard";
+import { WorkspaceMetricCard, WorkspaceMetricsRow } from "../../components/workspace/WorkspaceMetricCard";
 import { fmtZar } from "./leaseDirectoryUtils";
 import type { LeaseDirectoryMetrics } from "./leaseDirectoryTypes";
 
@@ -10,47 +10,35 @@ export function LeaseMetricCards({
   loading?: boolean;
 }) {
   return (
-    <>
-      <div className="pg-leases-metrics pg-leases-metrics--desktop">
-        <PortfolioMetricCard
-          label="Total Leases"
-          value={loading ? "…" : metrics.totalLeases.toLocaleString()}
-          changeText="All lease records"
-          changeTone="neutral"
-          icon="leases"
-          iconAccent="primary"
-        />
-        <PortfolioMetricCard
-          label="Active Leases"
-          value={loading ? "…" : metrics.activeLeases.toLocaleString()}
-          changeText="Currently active"
-          changeTone="up"
-          icon="properties"
-          iconAccent="success"
-        />
-        <PortfolioMetricCard
-          label="Monthly Rent Roll"
-          value={loading ? "…" : fmtZar(metrics.monthlyRentRoll)}
-          changeText="Active leases combined"
-          changeTone="neutral"
-          icon="wallet"
-          iconAccent="info"
-        />
-        <PortfolioMetricCard
-          label="Renewals Due"
-          value={loading ? "…" : metrics.renewalsDue.toLocaleString()}
-          changeText="Next 30 days"
-          changeTone={metrics.renewalsDue > 0 ? "neutral" : "up"}
-          icon="calendar"
-          iconAccent="warning"
-        />
-      </div>
-      <div className="pg-leases-metrics pg-leases-metrics--mobile">
-        <PortfolioMetricCard label="Total" value={loading ? "…" : metrics.totalLeases.toLocaleString()} icon="leases" iconAccent="primary" compact />
-        <PortfolioMetricCard label="Active" value={loading ? "…" : metrics.activeLeases.toLocaleString()} icon="properties" iconAccent="success" compact />
-        <PortfolioMetricCard label="Rent roll" value={loading ? "…" : fmtZar(metrics.monthlyRentRoll)} icon="wallet" iconAccent="info" compact />
-        <PortfolioMetricCard label="Renewals" value={loading ? "…" : metrics.renewalsDue.toLocaleString()} changeText="30 days" changeTone="neutral" icon="calendar" iconAccent="warning" compact />
-      </div>
-    </>
+    <WorkspaceMetricsRow>
+      <WorkspaceMetricCard
+        label="Total Leases"
+        value={loading ? "…" : metrics.totalLeases.toLocaleString()}
+        helper="All lease records"
+        icon="leases"
+        accent="primary"
+      />
+      <WorkspaceMetricCard
+        label="Active Leases"
+        value={loading ? "…" : metrics.activeLeases.toLocaleString()}
+        helper="Currently active"
+        icon="properties"
+        accent="success"
+      />
+      <WorkspaceMetricCard
+        label="Monthly Rent Roll"
+        value={loading ? "…" : fmtZar(metrics.monthlyRentRoll)}
+        helper="Active leases combined"
+        icon="wallet"
+        accent="info"
+      />
+      <WorkspaceMetricCard
+        label="Renewals Due"
+        value={loading ? "…" : metrics.renewalsDue.toLocaleString()}
+        helper="Next 30 days"
+        icon="calendar"
+        accent="warning"
+      />
+    </WorkspaceMetricsRow>
   );
 }
