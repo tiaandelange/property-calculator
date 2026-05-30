@@ -1,12 +1,15 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { AppModal } from "../../components/ui/AppModal";
 import { Button } from "../../components/ui/Button";
 import { Field } from "../../components/ui/Input";
+import { unitDisplayLabel } from "../properties/link-tenants/unitTenantLinkUtils";
+import type { PropertyUnitDraft } from "../properties/units/propertyUnitTypes";
 import {
   applicantApplyUrl,
   getOrCreateApplicantInvite
 } from "../../services/applicantApplicationsSupabase";
+import { listPropertyUnits } from "../../services/propertyUnitsSupabase";
 
 export function ApplicantInviteModal({
   open,
@@ -18,29 +21,80 @@ export function ApplicantInviteModal({
   properties: Array<{ id: string; name: string }>;
 }) {
   const [propertyId, setPropertyId] = useState("");
+  const [unitId, setUnitId] = useState("");
+  const [units, setUnits] = useState<PropertyUnitDraft[]>([]);
+  const [unitsLoading, setUnitsLoading] = useState(false);
   const [token, setToken] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
 
+  const activeUnits = useMemo(
+    () => units.filter((u) => u.isActive !== false).sort((a, b) => a.sortOrder - b.sortOrder),
+    [units]
+  );
+  const showUnitField = activeUnits.length > 0;
+  const inviteReady = Boolean(propertyId && (!showUnitField || unitId));
+
   useEffect(() => {
     if (open) return;
     setPropertyId("");
+    setUnitId("");
+    setUnits([]);
     setToken("");
     setError("");
     setCopied(false);
     setLoading(false);
+    setUnitsLoading(false);
   }, [open]);
 
   useEffect(() => {
     if (!open || !propertyId) {
+      setUnits([]);
+      setUnitId("");
+      return;
+    }
+
+    let cancelled = false;
+    setUnitsLoading(true);
+    setError("");
+    void listPropertyUnits(propertyId)
+      .then((rows) => {
+        if (cancelled) return;
+        setUnits(rows);
+        const active = rows.filter((u) => u.isActive !== false);
+        if (active.length === 1 && active[0]?.id) {
+          setUnitId(active[0].id);
+        } else {
+          setUnitId("");
+        }
+      })
+      .catch((e: unknown) => {
+        if (!cancelled) {
+          setUnits([]);
+          setUnitId("");
+          setError(e instanceof Error ? e.message : "Failed to load property units.");
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setUnitsLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [open, propertyId]);
+
+  useEffect(() => {
+    if (!open || !inviteReady) {
       setToken("");
       return;
     }
+
     let cancelled = false;
     setLoading(true);
     setError("");
-    void getOrCreateApplicantInvite(propertyId)
+    void getOrCreateApplicantInvite(propertyId, showUnitField ? unitId : null)
       .then((invite) => {
         if (!cancelled) setToken(invite.token);
       })
@@ -50,10 +104,11 @@ export function ApplicantInviteModal({
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
+
     return () => {
       cancelled = true;
     };
-  }, [open, propertyId]);
+  }, [open, propertyId, unitId, inviteReady, showUnitField]);
 
   const shareUrl = token ? applicantApplyUrl(token) : "";
 
@@ -81,7 +136,7 @@ export function ApplicantInviteModal({
           <Button type="button" variant="soft" onClick={() => onOpenChange(false)}>
             Close
           </Button>
-          <Button type="button" disabled={!propertyId || !token || loading} onClick={() => void copyLink()}>
+          <Button type="button" disabled={!inviteReady || !token || loading} onClick={() => void copyLink()}>
             {copied ? "Copied" : "Copy link"}
           </Button>
         </div>
@@ -111,7 +166,33 @@ export function ApplicantInviteModal({
         </Field>
       </div>
 
+      {propertyId && showUnitField ? (
+        <div className="pg-applicant-invite-modal__row">
+          <Field label="Unit">
+            <select
+              className="pg-tenants-select"
+              value={unitId}
+              onChange={(e) => setUnitId(e.target.value)}
+              disabled={unitsLoading}
+              aria-label="Select unit for applicant link"
+              required
+            >
+              <option value="">{unitsLoading ? "Loading units…" : "Select unit…"}</option>
+              {activeUnits.map((u) => (
+                <option key={u.id ?? u.clientId} value={u.id ?? ""}>
+                  {unitDisplayLabel(u)}
+                </option>
+              ))}
+            </select>
+          </Field>
+        </div>
+      ) : null}
+
       {loading ? <p className="pg-muted">Preparing link…</p> : null}
+
+      {propertyId && showUnitField && !unitId && !unitsLoading ? (
+        <p className="pg-muted">Select a unit to generate the application link.</p>
+      ) : null}
 
       {shareUrl ? (
         <p className="pg-applicant-invite-modal__url pg-muted" aria-live="polite">
