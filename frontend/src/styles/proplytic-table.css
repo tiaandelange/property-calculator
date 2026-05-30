@@ -432,10 +432,14 @@
   width: 1%;
   white-space: nowrap;
   overflow: visible;
-  text-align: right;
   padding-left: 10px;
   padding-right: 14px;
   vertical-align: middle;
+}
+
+.pg-ptable thead th.pg-ptable-col--actions,
+.pg-ptable thead th.pg-ptable__actions {
+  text-align: right;
 }
 
 .pg-ptable-col--actions:has(.pg-ptable-actions--count-1),
@@ -554,9 +558,9 @@
 .pg-fins-row-actions,
 .pg-pfin-row-actions {
   display: flex;
-  flex-direction: row-reverse;
+  flex-direction: row;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: flex-end;
   gap: 4px;
   width: 100%;
   box-sizing: border-box;

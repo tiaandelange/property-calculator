@@ -60,7 +60,6 @@ export function proplyticTableCellAlign(
   if (align) return align;
   if (columnType === "currency" || columnType === "number") return "right";
   if (legacyNumeric) return "right";
-  if (columnType === "actions") return "right";
   if (columnType === "icon") return "center";
   return undefined;
 }

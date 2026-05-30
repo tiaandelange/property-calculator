@@ -176,14 +176,19 @@ export function ProplyticTableHeadCell({
   ...props
 }: ThHTMLAttributes<HTMLTableCellElement> & ProplyticTableCellProps) {
   const cellProps = { align, columnType, numeric, actions, compact, flex };
+  const isActions = actions || columnType === "actions";
 
   return (
     <th
       scope="col"
-      className={cn(resolveCellClass(cellProps), resolveCellAlign(cellProps), className)}
+      className={cn(
+        resolveCellClass(cellProps),
+        isActions ? "pg-ptable-col--align-right" : resolveCellAlign(cellProps),
+        className
+      )}
       {...props}
     >
-      {actions || columnType === "actions" ? (children ?? "Actions") : children}
+      {isActions ? (children ?? "Actions") : children}
     </th>
   );
 }
