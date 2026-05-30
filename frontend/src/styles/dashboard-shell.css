@@ -2,12 +2,17 @@
 
 .pg-dashboard-shell {
   --dash-sidebar-w: 260px;
+  --dash-sidebar-w-collapsed: 72px;
   --dash-bottom-nav-h: 72px;
   --dash-mobile-topbar-h: 56px;
   min-height: 100vh;
   display: flex;
   background: var(--dash-page-bg, var(--background));
   color: var(--dash-text-primary, var(--text));
+}
+
+.pg-dashboard-shell--sidebar-collapsed {
+  --dash-sidebar-w: var(--dash-sidebar-w-collapsed);
 }
 
 .pg-dashboard-sidebar {
@@ -22,10 +27,32 @@
   z-index: 40;
   background: var(--dash-sidebar-bg, var(--surface));
   border-right: 1px solid var(--dash-border, var(--border));
+  transition: width 0.22s ease;
 }
 
 .pg-dashboard-sidebar-brand {
-  padding: 20px 20px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 20px 16px 16px;
+  min-height: 72px;
+  box-sizing: border-box;
+}
+
+.pg-dashboard-sidebar-collapse-btn {
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.pg-dashboard-sidebar--collapsed .pg-dashboard-sidebar-brand {
+  justify-content: center;
+  padding: 16px 8px 12px;
+  min-height: 64px;
+}
+
+.pg-dashboard-sidebar--collapsed .pg-dashboard-sidebar-collapse-btn {
+  margin-left: 0;
 }
 
 .pg-dashboard-sidebar-logo {
@@ -107,12 +134,43 @@
   color: var(--dash-text-primary, var(--text));
 }
 
+.pg-dashboard-sidebar--collapsed .pg-dashboard-sidebar-nav,
+.pg-dashboard-sidebar--collapsed .pg-dashboard-sidebar-footer {
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
+.pg-dashboard-sidebar--collapsed .pg-dashboard-sidebar-link {
+  justify-content: center;
+  gap: 0;
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
+.pg-dashboard-sidebar--collapsed .pg-dashboard-sidebar-link-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.pg-dashboard-sidebar--collapsed .pg-workspace-rail-tooltip-wrap {
+  width: 100%;
+  justify-content: center;
+}
+
 .pg-dashboard-shell-main {
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+  transition: margin-left 0.22s ease;
 }
 
 .pg-dashboard-shell-mobile-bar {

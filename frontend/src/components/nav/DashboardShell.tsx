@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { IconButton } from "../../components/icons";
+import { useDashboardSidebarCollapsed } from "../../hooks/useDashboardSidebarCollapsed";
 import { DashboardSidebar } from "./DashboardSidebar";
 import { MobileBottomNav } from "./MobileBottomNav";
 import { MobileWorkspaceMenu } from "./MobileWorkspaceMenu";
@@ -7,10 +8,13 @@ import { WorkspaceShellHeader } from "./WorkspaceShellHeader";
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useDashboardSidebarCollapsed();
 
   return (
-    <div className="pg-dashboard-shell">
-      <DashboardSidebar />
+    <div
+      className={`pg-dashboard-shell${sidebarCollapsed ? " pg-dashboard-shell--sidebar-collapsed" : ""}`}
+    >
+      <DashboardSidebar collapsed={sidebarCollapsed} onCollapsedChange={setSidebarCollapsed} />
       <div className="pg-dashboard-shell-main">
         <div className="pg-dashboard-shell-mobile-bar">
           <IconButton

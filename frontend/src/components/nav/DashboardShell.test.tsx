@@ -56,4 +56,14 @@ describe("DashboardShell", () => {
     fireEvent.keyDown(window, { key: "Escape" });
     expect(screen.queryByRole("dialog", { name: /navigation menu/i })).not.toBeInTheDocument();
   });
+
+  it("collapses and expands the desktop sidebar", () => {
+    renderShell();
+    const collapse = screen.getByRole("button", { name: /collapse sidebar/i });
+    fireEvent.click(collapse);
+    expect(screen.getByRole("button", { name: /expand sidebar/i })).toBeInTheDocument();
+    expect(document.querySelector(".pg-dashboard-shell--sidebar-collapsed")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /expand sidebar/i }));
+    expect(screen.getByRole("button", { name: /collapse sidebar/i })).toBeInTheDocument();
+  });
 });
