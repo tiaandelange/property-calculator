@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import {
   ProplyticAmountCell,
+  ProplyticDescriptionCell,
   ProplyticTable,
   ProplyticTableBody,
   ProplyticTableCell,
@@ -52,15 +53,15 @@ export function FinancialStatementTable({
       <ProplyticTable variant="financial" className="pg-fins-statement-table">
         <ProplyticTableHeader>
           <ProplyticTableRow>
-            <ProplyticTableHeadCell compact>Date</ProplyticTableHeadCell>
-            <ProplyticTableHeadCell>Property</ProplyticTableHeadCell>
-            <ProplyticTableHeadCell className="pg-ptable__flex-wide">Description</ProplyticTableHeadCell>
-            <ProplyticTableHeadCell compact>Type</ProplyticTableHeadCell>
-            <ProplyticTableHeadCell numeric>Debit</ProplyticTableHeadCell>
-            <ProplyticTableHeadCell numeric>Credit</ProplyticTableHeadCell>
-            {showRunningBalance ? <ProplyticTableHeadCell numeric>Balance</ProplyticTableHeadCell> : null}
-            <ProplyticTableHeadCell compact>Source</ProplyticTableHeadCell>
-            <ProplyticTableHeadCell actions />
+            <ProplyticTableHeadCell columnType="date">Date</ProplyticTableHeadCell>
+            <ProplyticTableHeadCell columnType="text">Property</ProplyticTableHeadCell>
+            <ProplyticTableHeadCell columnType="description">Description</ProplyticTableHeadCell>
+            <ProplyticTableHeadCell columnType="reference">Type</ProplyticTableHeadCell>
+            <ProplyticTableHeadCell columnType="currency">Debit</ProplyticTableHeadCell>
+            <ProplyticTableHeadCell columnType="currency">Credit</ProplyticTableHeadCell>
+            {showRunningBalance ? <ProplyticTableHeadCell columnType="currency">Balance</ProplyticTableHeadCell> : null}
+            <ProplyticTableHeadCell columnType="reference">Source</ProplyticTableHeadCell>
+            <ProplyticTableHeadCell columnType="actions" />
           </ProplyticTableRow>
         </ProplyticTableHeader>
         <ProplyticTableBody>
@@ -91,29 +92,28 @@ export function FinancialStatementTable({
 
             return (
               <ProplyticTableRow key={r.id}>
-                <ProplyticTableCell compact>{r.date}</ProplyticTableCell>
-                <ProplyticTableCell>
+                <ProplyticTableCell columnType="date">{r.date}</ProplyticTableCell>
+                <ProplyticTableCell columnType="text">
                   <Link className="pg-fins-name" to={`/owned-properties/${r.propertyId}?tab=financials&fin=statement`}>
                     {r.propertyName}
                   </Link>
                 </ProplyticTableCell>
-                <ProplyticTableCell className="pg-ptable__flex-wide">
-                  {r.description}
-                  {r.invoiceNumber ? (
-                    <div className="pg-muted" style={{ fontSize: 12, marginTop: 4 }}>
-                      Invoice {r.invoiceNumber}
-                    </div>
-                  ) : null}
+                <ProplyticTableCell columnType="description">
+                  <ProplyticDescriptionCell
+                    main={r.description}
+                    sub={r.invoiceNumber ? `Invoice ${r.invoiceNumber}` : undefined}
+                    title={r.description}
+                  />
                 </ProplyticTableCell>
-                <ProplyticTableCell compact>
+                <ProplyticTableCell columnType="reference">
                   {r.source === "INVOICE"
                     ? invoiceStatementDisplayType(r as unknown as Record<string, unknown>)
                     : r.type}
                 </ProplyticTableCell>
-                <ProplyticTableCell numeric>
+                <ProplyticTableCell columnType="currency">
                   {r.debit != null ? <ProplyticAmountCell tone="debit">{fmtZar(r.debit)}</ProplyticAmountCell> : "—"}
                 </ProplyticTableCell>
-                <ProplyticTableCell numeric>
+                <ProplyticTableCell columnType="currency">
                   {r.credit != null ? (
                     <ProplyticAmountCell tone={creditTone(r)}>{fmtZar(r.credit)}</ProplyticAmountCell>
                   ) : (
@@ -121,12 +121,12 @@ export function FinancialStatementTable({
                   )}
                 </ProplyticTableCell>
                 {showRunningBalance ? (
-                  <ProplyticTableCell numeric>
+                  <ProplyticTableCell columnType="currency">
                     {r.balance != null ? <ProplyticAmountCell tone="balance">{fmtZar(r.balance)}</ProplyticAmountCell> : "—"}
                   </ProplyticTableCell>
                 ) : null}
-                <ProplyticTableCell compact>{r.source}</ProplyticTableCell>
-                <ProplyticTableCell actions>
+                <ProplyticTableCell columnType="reference">{r.source}</ProplyticTableCell>
+                <ProplyticTableCell columnType="actions">
                   <ProplyticTableRowActionsMenu actions={rowActions} />
                 </ProplyticTableCell>
               </ProplyticTableRow>

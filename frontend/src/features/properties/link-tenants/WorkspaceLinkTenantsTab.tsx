@@ -84,17 +84,17 @@ function LeaseOccupancyTable({
       <ProplyticTable>
         <ProplyticTableHeader>
           <ProplyticTableRow>
-            <ProplyticTableHeadCell>Tenant</ProplyticTableHeadCell>
-            <ProplyticTableHeadCell>Role</ProplyticTableHeadCell>
-            <ProplyticTableHeadCell>Lease</ProplyticTableHeadCell>
-            <ProplyticTableHeadCell numeric>Rent</ProplyticTableHeadCell>
+            <ProplyticTableHeadCell columnType="text">Tenant</ProplyticTableHeadCell>
+            <ProplyticTableHeadCell columnType="reference">Role</ProplyticTableHeadCell>
+            <ProplyticTableHeadCell columnType="status">Lease</ProplyticTableHeadCell>
+            <ProplyticTableHeadCell columnType="currency">Rent</ProplyticTableHeadCell>
           </ProplyticTableRow>
         </ProplyticTableHeader>
         <ProplyticTableBody>
           {occupancy.flatMap((lease) =>
             lease.tenants.map((t) => (
               <ProplyticTableRow key={`${lease.leaseId}-${t.tenantId}`}>
-                <ProplyticTableCell>
+                <ProplyticTableCell columnType="text">
                   <Link className="pg-link" to={`/tenants/${t.tenantId}`}>
                     {t.firstName} {t.lastName}
                   </Link>
@@ -104,14 +104,14 @@ function LeaseOccupancyTable({
                     </span>
                   ) : null}
                 </ProplyticTableCell>
-                <ProplyticTableCell>{roleLabel(t.role)}</ProplyticTableCell>
-                <ProplyticTableCell>
+                <ProplyticTableCell columnType="reference">{roleLabel(t.role)}</ProplyticTableCell>
+                <ProplyticTableCell columnType="status">
                   <ProplyticStatusBadge status={lease.displayStatus} />
                   <div className="pg-muted" style={{ fontSize: 12, marginTop: 4 }}>
                     Lease #{lease.leaseId.slice(0, 8)}
                   </div>
                 </ProplyticTableCell>
-                <ProplyticTableCell numeric>
+                <ProplyticTableCell columnType="currency">
                   <ProplyticAmountCell>
                     {t.rentShareAmount != null ? fmtZar(t.rentShareAmount) : fmtZar(lease.monthlyRent)}/mo
                   </ProplyticAmountCell>

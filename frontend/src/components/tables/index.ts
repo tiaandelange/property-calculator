@@ -11,8 +11,16 @@ export {
   ProplyticTableEmptyState,
   ProplyticTableSkeleton,
   stopTableRowEvent,
-  type ProplyticTableVariant
+  type ProplyticTableVariant,
+  type ProplyticTableLayout,
+  type ProplyticTableColumnType
 } from "./ProplyticTable";
+
+export {
+  proplyticTableColumnClass,
+  proplyticTableCellAlign,
+  type ProplyticTableColumnMeta
+} from "./proplyticTableColumnTypes";
 
 export { ProplyticStatusBadge } from "./ProplyticStatusBadge";
 export {

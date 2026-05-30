@@ -168,7 +168,7 @@
 .pg-leases-table tbody td,
 .pg-pfin-table th,
 .pg-pfin-table td {
-  padding: 11px 10px;
+  padding: 10px 12px;
   font-size: var(--type-table-cell);
 }
 

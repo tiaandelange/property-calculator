@@ -70,13 +70,13 @@ export function OwnedPropertiesReportsPage() {
               <ProplyticTableSkeleton rows={5} />
             ) : rows.length ? (
               <ProplyticTableWrap responsive>
-                <ProplyticTable style={{ minWidth: 860 }}>
+                <ProplyticTable>
                   <ProplyticTableHeader>
                     <ProplyticTableRow>
-                      <ProplyticTableHeadCell>Generated</ProplyticTableHeadCell>
-                      <ProplyticTableHeadCell>Property</ProplyticTableHeadCell>
-                      <ProplyticTableHeadCell>File</ProplyticTableHeadCell>
-                      <ProplyticTableHeadCell actions />
+                      <ProplyticTableHeadCell columnType="date">Generated</ProplyticTableHeadCell>
+                      <ProplyticTableHeadCell columnType="text">Property</ProplyticTableHeadCell>
+                      <ProplyticTableHeadCell columnType="text">File</ProplyticTableHeadCell>
+                      <ProplyticTableHeadCell columnType="actions" />
                     </ProplyticTableRow>
                   </ProplyticTableHeader>
                   <ProplyticTableBody>
@@ -85,19 +85,19 @@ export function OwnedPropertiesReportsPage() {
                       const when = dt && !Number.isNaN(dt.getTime()) ? dt.toLocaleString() : r.createdAt || "—";
                       return (
                         <ProplyticTableRow key={r.id}>
-                          <ProplyticTableCell>
+                          <ProplyticTableCell columnType="date">
                             <div style={{ fontWeight: 700 }}>{when}</div>
                             <div className="pg-tenants-sub">{r.id}</div>
                           </ProplyticTableCell>
-                          <ProplyticTableCell>
+                          <ProplyticTableCell columnType="text">
                             <strong>{r.propertyName || "Property"}</strong>
                             <div className="pg-tenants-sub">{r.propertyId ?? "—"}</div>
                           </ProplyticTableCell>
-                          <ProplyticTableCell>
+                          <ProplyticTableCell columnType="text">
                             <div style={{ fontWeight: 700 }}>{r.fileName}</div>
                             <div className="pg-tenants-sub">{r.storageBucket ?? "—"}</div>
                           </ProplyticTableCell>
-                          <ProplyticTableCell actions>
+                          <ProplyticTableCell columnType="actions">
                             <ProplyticTableRowActionsMenu
                               actions={[
                                 {

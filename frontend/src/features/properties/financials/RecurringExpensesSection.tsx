@@ -100,13 +100,13 @@ export function RecurringExpensesSection({
           <ProplyticTable variant="financial">
             <ProplyticTableHeader>
               <ProplyticTableRow>
-                <ProplyticTableHeadCell>Expense name</ProplyticTableHeadCell>
-                <ProplyticTableHeadCell>Category</ProplyticTableHeadCell>
-                <ProplyticTableHeadCell compact>Frequency</ProplyticTableHeadCell>
-                <ProplyticTableHeadCell numeric>Amount</ProplyticTableHeadCell>
-                <ProplyticTableHeadCell compact>Next due</ProplyticTableHeadCell>
-                <ProplyticTableHeadCell compact>Status</ProplyticTableHeadCell>
-                <ProplyticTableHeadCell actions />
+                <ProplyticTableHeadCell columnType="text">Expense name</ProplyticTableHeadCell>
+                <ProplyticTableHeadCell columnType="reference">Category</ProplyticTableHeadCell>
+                <ProplyticTableHeadCell columnType="status">Frequency</ProplyticTableHeadCell>
+                <ProplyticTableHeadCell columnType="currency">Amount</ProplyticTableHeadCell>
+                <ProplyticTableHeadCell columnType="date">Next due</ProplyticTableHeadCell>
+                <ProplyticTableHeadCell columnType="status">Status</ProplyticTableHeadCell>
+                <ProplyticTableHeadCell columnType="actions" />
               </ProplyticTableRow>
             </ProplyticTableHeader>
             <ProplyticTableBody>
@@ -114,7 +114,7 @@ export function RecurringExpensesSection({
                 const Icon = CATEGORY_ICONS[item.categoryLabel] ?? Receipt;
                 return (
                   <ProplyticTableRow key={String(item.id)}>
-                    <ProplyticTableCell>
+                    <ProplyticTableCell columnType="text">
                       <div className="pg-pfin-expense-name">
                         <span className="pg-pfin-expense-icon" aria-hidden>
                           <Icon size={16} />
@@ -122,21 +122,21 @@ export function RecurringExpensesSection({
                         <span>{item.name}</span>
                       </div>
                     </ProplyticTableCell>
-                    <ProplyticTableCell>{item.categoryLabel}</ProplyticTableCell>
-                    <ProplyticTableCell compact>
+                    <ProplyticTableCell columnType="reference">{item.categoryLabel}</ProplyticTableCell>
+                    <ProplyticTableCell columnType="status">
                       <ProplyticStatusBadge status={item.frequency} label={formatFrequency(item.frequency)} />
                     </ProplyticTableCell>
-                    <ProplyticTableCell numeric>
+                    <ProplyticTableCell columnType="currency">
                       <ProplyticAmountCell tone="debit">{fmtZar(item.amount)}</ProplyticAmountCell>
                     </ProplyticTableCell>
-                    <ProplyticTableCell compact>{formatDate(item.nextDueDate)}</ProplyticTableCell>
-                    <ProplyticTableCell compact>
+                    <ProplyticTableCell columnType="date">{formatDate(item.nextDueDate)}</ProplyticTableCell>
+                    <ProplyticTableCell columnType="status">
                       <ProplyticStatusBadge
                         status={recurringStatusKey(item.status)}
                         label={item.status === "active" ? "Active" : "Paused"}
                       />
                     </ProplyticTableCell>
-                    <ProplyticTableCell actions>
+                    <ProplyticTableCell columnType="actions">
                       <ProplyticTableRowActionsMenu
                         actions={[
                           {

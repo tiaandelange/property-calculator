@@ -94,12 +94,12 @@ export function InvoiceDesktopTable({
       <ProplyticTable variant="financial">
         <ProplyticTableHeader>
           <ProplyticTableRow>
-            <ProplyticTableHeadCell compact>Invoice #</ProplyticTableHeadCell>
-            <ProplyticTableHeadCell compact>Reference</ProplyticTableHeadCell>
-            <ProplyticTableHeadCell>Tenant</ProplyticTableHeadCell>
-            <ProplyticTableHeadCell compact>Due Date</ProplyticTableHeadCell>
-            <ProplyticTableHeadCell numeric>Amount Due</ProplyticTableHeadCell>
-            <ProplyticTableHeadCell actions />
+            <ProplyticTableHeadCell columnType="reference">Invoice #</ProplyticTableHeadCell>
+            <ProplyticTableHeadCell columnType="reference">Reference</ProplyticTableHeadCell>
+            <ProplyticTableHeadCell columnType="text">Tenant</ProplyticTableHeadCell>
+            <ProplyticTableHeadCell columnType="date">Due Date</ProplyticTableHeadCell>
+            <ProplyticTableHeadCell columnType="currency">Amount Due</ProplyticTableHeadCell>
+            <ProplyticTableHeadCell columnType="actions" />
           </ProplyticTableRow>
         </ProplyticTableHeader>
         <ProplyticTableBody>
@@ -110,13 +110,13 @@ export function InvoiceDesktopTable({
 
             return (
               <ProplyticTableRow key={row.id}>
-                <ProplyticTableCell compact>
+                <ProplyticTableCell columnType="reference">
                   <Link className="pg-invoices-link pg-invoices-num" to={viewHref}>
                     {row.invoiceNumber}
                   </Link>
                 </ProplyticTableCell>
-                <ProplyticTableCell compact>{row.leaseReference ?? "—"}</ProplyticTableCell>
-                <ProplyticTableCell>
+                <ProplyticTableCell columnType="reference">{row.leaseReference ?? "—"}</ProplyticTableCell>
+                <ProplyticTableCell columnType="text">
                   {row.tenantId ? (
                     <Link className="pg-invoices-link" to={`/tenants/${row.tenantId}`}>
                       {row.tenantName}
@@ -125,11 +125,11 @@ export function InvoiceDesktopTable({
                     row.tenantName
                   )}
                 </ProplyticTableCell>
-                <ProplyticTableCell compact>{formatDateShort(row.dueDate)}</ProplyticTableCell>
-                <ProplyticTableCell numeric>
+                <ProplyticTableCell columnType="date">{formatDateShort(row.dueDate)}</ProplyticTableCell>
+                <ProplyticTableCell columnType="currency">
                   <ProplyticAmountCell tone="balance">{fmtZar(amountDue)}</ProplyticAmountCell>
                 </ProplyticTableCell>
-                <ProplyticTableCell actions>
+                <ProplyticTableCell columnType="actions">
                   <ProplyticTableRowActionsMenu
                     actions={[
                       {

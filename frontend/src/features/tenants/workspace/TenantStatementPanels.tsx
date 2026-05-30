@@ -458,28 +458,28 @@ export function TenantInvoicesTable({
         <ProplyticTable variant="financial">
           <ProplyticTableHeader>
             <ProplyticTableRow>
-              <ProplyticTableHeadCell>Invoice</ProplyticTableHeadCell>
-              <ProplyticTableHeadCell>Date</ProplyticTableHeadCell>
-              <ProplyticTableHeadCell>Due</ProplyticTableHeadCell>
-              <ProplyticTableHeadCell>Status</ProplyticTableHeadCell>
-              <ProplyticTableHeadCell numeric>Total</ProplyticTableHeadCell>
-              <ProplyticTableHeadCell actions />
+              <ProplyticTableHeadCell columnType="reference">Invoice</ProplyticTableHeadCell>
+              <ProplyticTableHeadCell columnType="date">Date</ProplyticTableHeadCell>
+              <ProplyticTableHeadCell columnType="date">Due</ProplyticTableHeadCell>
+              <ProplyticTableHeadCell columnType="status">Status</ProplyticTableHeadCell>
+              <ProplyticTableHeadCell columnType="currency">Total</ProplyticTableHeadCell>
+              <ProplyticTableHeadCell columnType="actions" />
             </ProplyticTableRow>
           </ProplyticTableHeader>
           <ProplyticTableBody>
             {invoices.map((inv) => (
               <ProplyticTableRow key={inv.id}>
-                <ProplyticTableCell>{inv.invoiceNumber}</ProplyticTableCell>
-                <ProplyticTableCell>{formatDateShort(inv.invoiceDate)}</ProplyticTableCell>
-                <ProplyticTableCell>{formatDateShort(inv.dueDate)}</ProplyticTableCell>
-                <ProplyticTableCell>
+                <ProplyticTableCell columnType="reference">{inv.invoiceNumber}</ProplyticTableCell>
+                <ProplyticTableCell columnType="date">{formatDateShort(inv.invoiceDate)}</ProplyticTableCell>
+                <ProplyticTableCell columnType="date">{formatDateShort(inv.dueDate)}</ProplyticTableCell>
+                <ProplyticTableCell columnType="status">
                   <ProplyticStatusBadge status={inv.status} />
                 </ProplyticTableCell>
-                <ProplyticTableCell numeric>
+                <ProplyticTableCell columnType="currency">
                   <ProplyticAmountCell>{fmtZar(inv.total)}</ProplyticAmountCell>
                 </ProplyticTableCell>
-                <ProplyticTableCell actions>
-                  <ProplyticTableActions>
+                <ProplyticTableCell columnType="actions">
+                  <ProplyticTableActions className="pg-ptable-actions--count-1">
                     <IconButton icon="open" aria-label="View invoice" href={invoiceDetailPath(inv.id)} variant="outline" />
                   </ProplyticTableActions>
                 </ProplyticTableCell>
@@ -513,17 +513,17 @@ export function TenantPaymentsTable({
         <ProplyticTable variant="financial">
           <ProplyticTableHeader>
             <ProplyticTableRow>
-              <ProplyticTableHeadCell>Date</ProplyticTableHeadCell>
-              <ProplyticTableHeadCell>Invoice</ProplyticTableHeadCell>
-              <ProplyticTableHeadCell numeric>Amount</ProplyticTableHeadCell>
+              <ProplyticTableHeadCell columnType="date">Date</ProplyticTableHeadCell>
+              <ProplyticTableHeadCell columnType="reference">Invoice</ProplyticTableHeadCell>
+              <ProplyticTableHeadCell columnType="currency">Amount</ProplyticTableHeadCell>
             </ProplyticTableRow>
           </ProplyticTableHeader>
           <ProplyticTableBody>
             {paidInvoices.map((inv) => (
               <ProplyticTableRow key={inv.id}>
-                <ProplyticTableCell>{formatDateShort(inv.paidAt ?? inv.invoiceDate)}</ProplyticTableCell>
-                <ProplyticTableCell>{inv.invoiceNumber}</ProplyticTableCell>
-                <ProplyticTableCell numeric>
+                <ProplyticTableCell columnType="date">{formatDateShort(inv.paidAt ?? inv.invoiceDate)}</ProplyticTableCell>
+                <ProplyticTableCell columnType="reference">{inv.invoiceNumber}</ProplyticTableCell>
+                <ProplyticTableCell columnType="currency">
                   <ProplyticAmountCell tone="credit-paid">{fmtZar(inv.total)}</ProplyticAmountCell>
                 </ProplyticTableCell>
               </ProplyticTableRow>

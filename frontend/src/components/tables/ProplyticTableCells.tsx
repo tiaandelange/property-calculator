@@ -33,8 +33,8 @@ export function ProplyticDescriptionCell({
 }) {
   return (
     <div className="pg-ptable-desc" title={title}>
-      <div className="pg-ptable-desc__main">{main}</div>
-      {sub ? <div className="pg-ptable-desc__sub">{sub}</div> : null}
+      <div className="pg-ptable-desc__main pg-ptable-desc__main--clamp">{main}</div>
+      {sub ? <div className="pg-ptable-desc__sub pg-ptable-desc__sub--clamp">{sub}</div> : null}
     </div>
   );
 }

@@ -3,7 +3,6 @@ import {
   ProplyticAmountCell,
   ProplyticStatusBadge,
   ProplyticTable,
-  ProplyticTableActions,
   ProplyticTableBody,
   ProplyticTableCell,
   ProplyticTableHeadCell,
@@ -38,20 +37,20 @@ export function LeaseDesktopTable({
       <ProplyticTable>
         <ProplyticTableHeader>
           <ProplyticTableRow>
-            <ProplyticTableHeadCell>Tenant</ProplyticTableHeadCell>
-            <ProplyticTableHeadCell>Property</ProplyticTableHeadCell>
-            <ProplyticTableHeadCell numeric>Monthly Rent</ProplyticTableHeadCell>
-            <ProplyticTableHeadCell compact>Lease Term</ProplyticTableHeadCell>
-            <ProplyticTableHeadCell compact>Rent Due</ProplyticTableHeadCell>
-            <ProplyticTableHeadCell numeric>Deposit</ProplyticTableHeadCell>
-            <ProplyticTableHeadCell compact>Status</ProplyticTableHeadCell>
-            <ProplyticTableHeadCell actions />
+            <ProplyticTableHeadCell columnType="text">Tenant</ProplyticTableHeadCell>
+            <ProplyticTableHeadCell columnType="text">Property</ProplyticTableHeadCell>
+            <ProplyticTableHeadCell columnType="currency">Monthly Rent</ProplyticTableHeadCell>
+            <ProplyticTableHeadCell columnType="date">Lease Term</ProplyticTableHeadCell>
+            <ProplyticTableHeadCell columnType="compact">Rent Due</ProplyticTableHeadCell>
+            <ProplyticTableHeadCell columnType="currency">Deposit</ProplyticTableHeadCell>
+            <ProplyticTableHeadCell columnType="status">Status</ProplyticTableHeadCell>
+            <ProplyticTableHeadCell columnType="actions" />
           </ProplyticTableRow>
         </ProplyticTableHeader>
         <ProplyticTableBody>
           {items.map((lease) => (
             <ProplyticTableRow key={lease.id}>
-              <ProplyticTableCell>
+              <ProplyticTableCell columnType="text">
                 <div className="pg-leases-cell-tenant">
                   <span className="pg-leases-avatar" aria-hidden>
                     {tenantInitialsFromName(lease.tenantName)}
@@ -68,7 +67,7 @@ export function LeaseDesktopTable({
                   </div>
                 </div>
               </ProplyticTableCell>
-              <ProplyticTableCell>
+              <ProplyticTableCell columnType="text">
                 <div className="pg-leases-property">
                   <Link className="pg-leases-name" to={`/owned-properties/${lease.propertyId}`}>
                     <strong>{lease.propertyName}</strong>
@@ -76,14 +75,14 @@ export function LeaseDesktopTable({
                   <div className="pg-leases-sub">{lease.propertyAddress || "—"}</div>
                 </div>
               </ProplyticTableCell>
-              <ProplyticTableCell numeric>
+              <ProplyticTableCell columnType="currency">
                 {lease.monthlyRent != null ? (
                   <ProplyticAmountCell>{fmtZar(lease.monthlyRent)}</ProplyticAmountCell>
                 ) : (
                   "—"
                 )}
               </ProplyticTableCell>
-              <ProplyticTableCell compact>
+              <ProplyticTableCell columnType="date">
                 {lease.startDate || lease.endDate ? (
                   <div className="pg-leases-term">
                     <div>{formatDateShort(lease.startDate)}</div>
@@ -93,23 +92,23 @@ export function LeaseDesktopTable({
                   <span className="pg-leases-sub">—</span>
                 )}
               </ProplyticTableCell>
-              <ProplyticTableCell compact>
+              <ProplyticTableCell columnType="compact">
                 <div className="pg-leases-due">{lease.rentDueDay != null ? `Day ${lease.rentDueDay}` : "—"}</div>
               </ProplyticTableCell>
-              <ProplyticTableCell numeric>
+              <ProplyticTableCell columnType="currency">
                 {lease.depositAmount != null ? (
                   <ProplyticAmountCell>{fmtZar(lease.depositAmount)}</ProplyticAmountCell>
                 ) : (
                   "—"
                 )}
               </ProplyticTableCell>
-              <ProplyticTableCell compact>
+              <ProplyticTableCell columnType="status">
                 <div className="pg-leases-status-stack">
                   <ProplyticStatusBadge status={lease.lifecycleStatus} />
                   <ProplyticStatusBadge status={lease.displayStatus} />
                 </div>
               </ProplyticTableCell>
-              <ProplyticTableCell actions>
+              <ProplyticTableCell columnType="actions">
                 <LeaseRowActions lease={lease} onCancel={onCancelLease} onDelete={onDeleteLease} />
               </ProplyticTableCell>
             </ProplyticTableRow>

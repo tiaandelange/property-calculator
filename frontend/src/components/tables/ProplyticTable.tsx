@@ -5,8 +5,14 @@ import type {
   TdHTMLAttributes,
   ThHTMLAttributes
 } from "react";
+import {
+  proplyticTableCellAlign,
+  proplyticTableColumnClass,
+  type ProplyticTableColumnType
+} from "./proplyticTableColumnTypes";
 
 export type ProplyticTableVariant = "standard" | "financial" | "compact" | "editable";
+export type ProplyticTableLayout = "standard" | "wide";
 
 function cn(...parts: Array<string | false | null | undefined>) {
   return parts.filter(Boolean).join(" ");
@@ -51,14 +57,23 @@ export function ProplyticTableWrap({
   className,
   responsive,
   scrollX,
+  tableLayout = "standard",
   ...props
-}: HTMLAttributes<HTMLDivElement> & { responsive?: boolean; scrollX?: boolean }) {
+}: HTMLAttributes<HTMLDivElement> & {
+  responsive?: boolean;
+  /** @deprecated Prefer tableLayout="wide" */
+  scrollX?: boolean;
+  tableLayout?: ProplyticTableLayout;
+}) {
+  const wide = tableLayout === "wide" || scrollX;
+
   return (
     <div
       className={cn(
         "pg-ptable-wrap",
         responsive && "pg-ptable-wrap--responsive",
-        scrollX && "pg-ptable-wrap--scroll-x",
+        wide && "pg-ptable-wrap--scroll-x",
+        wide && "pg-ptable-wrap--wide",
         className
       )}
       {...props}
@@ -120,43 +135,55 @@ export function ProplyticTableRow({
 
 type CellAlign = "left" | "right" | "center";
 
-function cellAlignClass(
-  align?: CellAlign,
-  numeric?: boolean,
-  actions?: boolean,
-  compact?: boolean,
-  flex?: boolean
-) {
-  if (actions) return "pg-ptable__actions";
-  if (numeric || align === "right") return "pg-ptable__num";
-  if (compact) return "pg-ptable__compact";
-  if (align === "center") return "pg-ptable__center";
-  return flex === false ? undefined : "pg-ptable__flex";
+type ProplyticTableCellProps = {
+  align?: CellAlign;
+  columnType?: ProplyticTableColumnType;
+  /** @deprecated Use columnType="currency" | "number" */
+  numeric?: boolean;
+  /** @deprecated Use columnType="actions" */
+  actions?: boolean;
+  /** @deprecated Use columnType="compact" | "date" | "status" | "reference" */
+  compact?: boolean;
+  /** @deprecated Use columnType="text" explicitly with flex={false} to opt out */
+  flex?: boolean;
+};
+
+function resolveCellClass(props: ProplyticTableCellProps) {
+  return proplyticTableColumnClass(props.columnType, {
+    numeric: props.numeric,
+    actions: props.actions,
+    compact: props.compact,
+    flex: props.flex
+  });
+}
+
+function resolveCellAlign(props: ProplyticTableCellProps) {
+  const resolved = proplyticTableCellAlign(props.columnType, props.align, props.numeric);
+  if (resolved === "right") return "pg-ptable-col--align-right";
+  if (resolved === "center") return "pg-ptable-col--align-center";
+  return undefined;
 }
 
 export function ProplyticTableHeadCell({
   children,
   className,
   align,
+  columnType,
   numeric,
   actions,
   compact,
   flex,
   ...props
-}: ThHTMLAttributes<HTMLTableCellElement> & {
-  align?: CellAlign;
-  numeric?: boolean;
-  actions?: boolean;
-  compact?: boolean;
-  flex?: boolean;
-}) {
+}: ThHTMLAttributes<HTMLTableCellElement> & ProplyticTableCellProps) {
+  const cellProps = { align, columnType, numeric, actions, compact, flex };
+
   return (
     <th
       scope="col"
-      className={cn(cellAlignClass(align, numeric, actions, compact, flex), className)}
+      className={cn(resolveCellClass(cellProps), resolveCellAlign(cellProps), className)}
       {...props}
     >
-      {actions ? (children ?? "Actions") : children}
+      {actions || columnType === "actions" ? (children ?? "Actions") : children}
     </th>
   );
 }
@@ -165,20 +192,20 @@ export function ProplyticTableCell({
   children,
   className,
   align,
+  columnType,
   numeric,
   actions,
   compact,
   flex,
   ...props
-}: TdHTMLAttributes<HTMLTableCellElement> & {
-  align?: CellAlign;
-  numeric?: boolean;
-  actions?: boolean;
-  compact?: boolean;
-  flex?: boolean;
-}) {
+}: TdHTMLAttributes<HTMLTableCellElement> & ProplyticTableCellProps) {
+  const cellProps = { align, columnType, numeric, actions, compact, flex };
+
   return (
-    <td className={cn(cellAlignClass(align, numeric, actions, compact, flex), className)} {...props}>
+    <td
+      className={cn(resolveCellClass(cellProps), resolveCellAlign(cellProps), className)}
+      {...props}
+    >
       {children}
     </td>
   );
@@ -240,3 +267,5 @@ export function ProplyticTableSkeleton({ rows = 6 }: { rows?: number }) {
 export function stopTableRowEvent(e: { stopPropagation: () => void }) {
   e.stopPropagation();
 }
+
+export type { ProplyticTableColumnType } from "./proplyticTableColumnTypes";

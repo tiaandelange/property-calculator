@@ -52,36 +52,36 @@ export function ApplicantDesktopTable({
       <ProplyticTable>
         <ProplyticTableHeader>
           <ProplyticTableRow>
-            <ProplyticTableHeadCell>Applicant</ProplyticTableHeadCell>
-            <ProplyticTableHeadCell>Email</ProplyticTableHeadCell>
-            <ProplyticTableHeadCell numeric>Monthly income</ProplyticTableHeadCell>
-            <ProplyticTableHeadCell compact>Fit profile</ProplyticTableHeadCell>
-            <ProplyticTableHeadCell>Property</ProplyticTableHeadCell>
-            <ProplyticTableHeadCell actions />
+            <ProplyticTableHeadCell columnType="text">Applicant</ProplyticTableHeadCell>
+            <ProplyticTableHeadCell columnType="text">Email</ProplyticTableHeadCell>
+            <ProplyticTableHeadCell columnType="currency">Monthly income</ProplyticTableHeadCell>
+            <ProplyticTableHeadCell columnType="status">Fit profile</ProplyticTableHeadCell>
+            <ProplyticTableHeadCell columnType="text">Property</ProplyticTableHeadCell>
+            <ProplyticTableHeadCell columnType="actions" />
           </ProplyticTableRow>
         </ProplyticTableHeader>
         <ProplyticTableBody>
           {items.map((item) => (
             <ProplyticTableRow key={item.id}>
-              <ProplyticTableCell>
+              <ProplyticTableCell columnType="text">
                 <div className="pg-ptable-desc">
                   <div className="pg-ptable-desc__main">{item.fullName}</div>
                   {item.phone ? <div className="pg-ptable-desc__sub">{item.phone}</div> : null}
                 </div>
               </ProplyticTableCell>
-              <ProplyticTableCell>{item.email?.trim() || "—"}</ProplyticTableCell>
-              <ProplyticTableCell numeric>
+              <ProplyticTableCell columnType="text">{item.email?.trim() || "—"}</ProplyticTableCell>
+              <ProplyticTableCell columnType="currency">
                 {item.monthlyIncome != null ? (
                   <ProplyticAmountCell>{fmtZar(item.monthlyIncome)}</ProplyticAmountCell>
                 ) : (
                   "—"
                 )}
               </ProplyticTableCell>
-              <ProplyticTableCell compact>
+              <ProplyticTableCell columnType="status">
                 {item.fitScore != null ? <ApplicantFitBadge score={item.fitScore} /> : "—"}
               </ProplyticTableCell>
-              <ProplyticTableCell>{item.propertyName || "—"}</ProplyticTableCell>
-              <ProplyticTableCell actions>
+              <ProplyticTableCell columnType="text">{item.propertyName || "—"}</ProplyticTableCell>
+              <ProplyticTableCell columnType="actions">
                 <ProplyticTableRowActionsMenu
                   actions={[
                     {

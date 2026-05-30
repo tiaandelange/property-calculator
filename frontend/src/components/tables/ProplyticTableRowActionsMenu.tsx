@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
 import { AppIcon } from "../icons";
@@ -17,13 +17,53 @@ export type ProplyticTableRowAction = {
   primary?: boolean;
 };
 
+const DIRECT_ACTION_PRIORITY = ["view", "edit", "invoice", "download", "property", "tenant", "email"];
+
+function actionPriority(action: ProplyticTableRowAction): number {
+  if (action.primary) return -2;
+  const iconIndex = DIRECT_ACTION_PRIORITY.indexOf(action.icon);
+  if (iconIndex >= 0) return iconIndex;
+  const keyIndex = DIRECT_ACTION_PRIORITY.indexOf(action.key);
+  if (keyIndex >= 0) return keyIndex;
+  if (action.destructive) return 100;
+  return 50;
+}
+
 function pickPrimaryAction(actions: ProplyticTableRowAction[]): ProplyticTableRowAction | null {
   if (!actions.length) return null;
   return (
     actions.find((action) => action.primary) ??
     actions.find((action) => action.icon === "edit") ??
+    actions.find((action) => action.icon === "view") ??
     actions[0]
   );
+}
+
+function splitRowActions(actions: ProplyticTableRowAction[], compactActions?: boolean) {
+  if (actions.length <= 2) {
+    return { direct: actions, overflow: [] as ProplyticTableRowAction[] };
+  }
+
+  if (compactActions) {
+    const primary = pickPrimaryAction(actions);
+    if (!primary) return { direct: [], overflow: actions };
+    return {
+      direct: [primary],
+      overflow: actions.filter((action) => action.key !== primary.key)
+    };
+  }
+
+  const sorted = [...actions].sort((a, b) => actionPriority(a) - actionPriority(b));
+  return {
+    direct: sorted.slice(0, 2),
+    overflow: sorted.slice(2)
+  };
+}
+
+function actionsLayoutClass(directCount: number, hasOverflow: boolean) {
+  if (!hasOverflow) return `pg-ptable-actions--count-${directCount}`;
+  if (directCount <= 1) return "pg-ptable-actions--count-menu";
+  return "pg-ptable-actions--count-2-menu";
 }
 
 function ActionIconButton({ action }: { action: ProplyticTableRowAction }) {
@@ -73,46 +113,81 @@ function MenuItem({ action, onSelect }: { action: ProplyticTableRowAction; onSel
   );
 }
 
-function useOverflowMenuPosition(open: boolean, triggerRef: React.RefObject<HTMLDivElement | null>) {
+function useOverflowMenuPosition(
+  open: boolean,
+  triggerRef: React.RefObject<HTMLDivElement | null>,
+  panelRef: React.RefObject<HTMLDivElement | null>
+) {
   const [panelStyle, setPanelStyle] = useState<CSSProperties>({});
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!open) return;
 
     const updatePosition = () => {
       const trigger = triggerRef.current;
-      if (!trigger) return;
+      const panel = panelRef.current;
+      if (!trigger || !panel) return;
+
       const rect = trigger.getBoundingClientRect();
+      const panelRect = panel.getBoundingClientRect();
+      const panelWidth = panelRect.width || 180;
+      const panelHeight = panelRect.height || 160;
+      const margin = 8;
+
+      let top = rect.bottom + 6;
+      if (top + panelHeight > window.innerHeight - margin) {
+        top = Math.max(margin, rect.top - panelHeight - 6);
+      }
+
+      let left = rect.right;
+      let transform = "translateX(-100%)";
+
+      if (rect.right - panelWidth < margin) {
+        left = rect.left;
+        transform = "none";
+      } else if (rect.right > window.innerWidth - margin) {
+        left = rect.right;
+        transform = "translateX(-100%)";
+      }
+
       setPanelStyle({
         position: "fixed",
-        top: rect.bottom + 6,
-        left: rect.right,
-        transform: "translateX(-100%)"
+        top,
+        left,
+        transform,
+        zIndex: 200
       });
     };
 
     updatePosition();
+    const raf = window.requestAnimationFrame(updatePosition);
     window.addEventListener("scroll", updatePosition, true);
     window.addEventListener("resize", updatePosition);
     return () => {
+      window.cancelAnimationFrame(raf);
       window.removeEventListener("scroll", updatePosition, true);
       window.removeEventListener("resize", updatePosition);
     };
-  }, [open, triggerRef]);
+  }, [open, triggerRef, panelRef]);
 
   return panelStyle;
 }
 
-export function ProplyticTableRowActionsMenu({ actions }: { actions: ProplyticTableRowAction[] }) {
+export function ProplyticTableRowActionsMenu({
+  actions,
+  compactActions
+}: {
+  actions: ProplyticTableRowAction[];
+  compactActions?: boolean;
+}) {
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const menuId = useId();
-  const panelStyle = useOverflowMenuPosition(open, triggerRef);
+  const panelStyle = useOverflowMenuPosition(open, triggerRef, panelRef);
 
-  const primary = pickPrimaryAction(actions);
-  const overflow =
-    primary && actions.length >= 3 ? actions.filter((action) => action.key !== primary.key) : [];
+  const { direct, overflow } = splitRowActions(actions, compactActions);
+  const layoutClass = actionsLayoutClass(direct.length, overflow.length > 0);
 
   useEffect(() => {
     if (!open) return;
@@ -134,29 +209,21 @@ export function ProplyticTableRowActionsMenu({ actions }: { actions: ProplyticTa
 
   if (!actions.length) return null;
 
-  if (actions.length === 1) {
+  if (!overflow.length) {
     return (
-      <ProplyticTableActions>
-        <ActionIconButton action={actions[0]} />
-      </ProplyticTableActions>
-    );
-  }
-
-  if (actions.length === 2) {
-    return (
-      <ProplyticTableActions>
-        {actions.map((action) => (
+      <ProplyticTableActions className={layoutClass}>
+        {direct.map((action) => (
           <ActionIconButton key={action.key} action={action} />
         ))}
       </ProplyticTableActions>
     );
   }
 
-  if (!primary || !overflow.length) return null;
-
   return (
-    <ProplyticTableActions>
-      <ActionIconButton action={primary} />
+    <ProplyticTableActions className={layoutClass}>
+      {direct.map((action) => (
+        <ActionIconButton key={action.key} action={action} />
+      ))}
       <div className="pg-ptable-row-actions-menu" ref={triggerRef}>
         <IconButton
           icon="more"

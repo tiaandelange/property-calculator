@@ -3,7 +3,6 @@ import {
   ProplyticAmountCell,
   ProplyticStatusBadge,
   ProplyticTable,
-  ProplyticTableActions,
   ProplyticTableBody,
   ProplyticTableCell,
   ProplyticTableHeadCell,
@@ -44,20 +43,20 @@ export function TenantDesktopTable({
       <ProplyticTable>
         <ProplyticTableHeader>
           <ProplyticTableRow>
-            <ProplyticTableHeadCell>Tenant</ProplyticTableHeadCell>
-            <ProplyticTableHeadCell>Property / Unit</ProplyticTableHeadCell>
-            <ProplyticTableHeadCell compact>Contact</ProplyticTableHeadCell>
-            <ProplyticTableHeadCell numeric>Monthly Rent</ProplyticTableHeadCell>
-            <ProplyticTableHeadCell compact>Lease Term</ProplyticTableHeadCell>
-            <ProplyticTableHeadCell compact>Payment Status</ProplyticTableHeadCell>
-            <ProplyticTableHeadCell compact>Lease Status</ProplyticTableHeadCell>
-            <ProplyticTableHeadCell actions />
+            <ProplyticTableHeadCell columnType="text">Tenant</ProplyticTableHeadCell>
+            <ProplyticTableHeadCell columnType="text">Property / Unit</ProplyticTableHeadCell>
+            <ProplyticTableHeadCell columnType="reference">Contact</ProplyticTableHeadCell>
+            <ProplyticTableHeadCell columnType="currency">Monthly Rent</ProplyticTableHeadCell>
+            <ProplyticTableHeadCell columnType="date">Lease Term</ProplyticTableHeadCell>
+            <ProplyticTableHeadCell columnType="status">Payment Status</ProplyticTableHeadCell>
+            <ProplyticTableHeadCell columnType="status">Lease Status</ProplyticTableHeadCell>
+            <ProplyticTableHeadCell columnType="actions" />
           </ProplyticTableRow>
         </ProplyticTableHeader>
         <ProplyticTableBody>
           {items.map((t) => (
             <ProplyticTableRow key={t.id}>
-              <ProplyticTableCell>
+              <ProplyticTableCell columnType="text">
                 <div className="pg-tenants-cell-tenant">
                   <TenantAvatar tenant={t} />
                   <div className="pg-tenants-cell-tenant-text">
@@ -68,7 +67,7 @@ export function TenantDesktopTable({
                   </div>
                 </div>
               </ProplyticTableCell>
-              <ProplyticTableCell>
+              <ProplyticTableCell columnType="text">
                 <div className="pg-tenants-property">
                   <strong>{t.propertyName || "No property assigned"}</strong>
                   <div className="pg-tenants-sub">
@@ -77,17 +76,17 @@ export function TenantDesktopTable({
                   </div>
                 </div>
               </ProplyticTableCell>
-              <ProplyticTableCell compact>
+              <ProplyticTableCell columnType="reference">
                 <div className="pg-tenants-contact">{t.phone?.trim() || "No phone"}</div>
               </ProplyticTableCell>
-              <ProplyticTableCell numeric>
+              <ProplyticTableCell columnType="currency">
                 {t.monthlyRent != null ? (
                   <ProplyticAmountCell>{fmtZar(t.monthlyRent)}</ProplyticAmountCell>
                 ) : (
                   "—"
                 )}
               </ProplyticTableCell>
-              <ProplyticTableCell compact>
+              <ProplyticTableCell columnType="date">
                 {t.leaseStartDate || t.leaseEndDate ? (
                   <div className="pg-tenants-term">
                     <div>{formatDateShort(t.leaseStartDate)}</div>
@@ -97,13 +96,13 @@ export function TenantDesktopTable({
                   <span className="pg-tenants-sub">No active lease</span>
                 )}
               </ProplyticTableCell>
-              <ProplyticTableCell compact>
+              <ProplyticTableCell columnType="status">
                 <ProplyticStatusBadge status={t.paymentStatus} />
               </ProplyticTableCell>
-              <ProplyticTableCell compact>
+              <ProplyticTableCell columnType="status">
                 <ProplyticStatusBadge status={t.leaseStatus} />
               </ProplyticTableCell>
-              <ProplyticTableCell actions>
+              <ProplyticTableCell columnType="actions">
                 <TenantRowActions tenant={t} />
               </ProplyticTableCell>
             </ProplyticTableRow>
