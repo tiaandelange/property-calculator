@@ -12,7 +12,7 @@
   --marketing-content-max: 1320px;
 
   /* Core semantic tokens */
-  --background: #070a12;
+  --background: #0f1420;
   --surface: #0f1420;
   --surface-muted: #151b2a;
   --surface-elevated: #181f31;
@@ -295,7 +295,7 @@
   --shell-sticky-header-text-muted: var(--text-muted);
 
   /* Dashboard shell (PropertyBase-style) */
-  --dash-page-bg: #080b12;
+  --dash-page-bg: #0f1420;
   --dash-sidebar-bg: #0d111a;
   --dash-card-bg: #121722;
   --dash-surface-secondary: #161b26;
@@ -356,7 +356,7 @@ html[data-theme="light"] {
 
   --marketing-content-max: 1320px;
 
-  --background: #f8fafc;
+  --background: #ffffff;
   --surface: #ffffff;
   --surface-muted: #f1f5f9;
   --surface-elevated: #ffffff;
@@ -571,7 +571,7 @@ html[data-theme="light"] {
   --shell-sticky-header-text: var(--text-primary);
   --shell-sticky-header-text-muted: var(--text-muted);
 
-  --dash-page-bg: #f8fafc;
+  --dash-page-bg: #ffffff;
   --dash-sidebar-bg: #ffffff;
   --dash-card-bg: #ffffff;
   --dash-surface-secondary: #f3f4f6;

@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { useLocation } from "react-router-dom";
-import { Container } from "../components/ui/Container";
-import { Section } from "../components/ui/Section";
+import { AppListPage } from "../components/ui/AppPage";
 import { Button, ButtonLink } from "../components/ui/Button";
 import { EmptyState } from "../components/ui/DashboardKit";
 import { getPortfolioDashboardSummary, getProperties, getTenants } from "../api/ownedProperties";
@@ -395,12 +394,10 @@ export function OwnedPropertiesPortfolioDashboardPage() {
   ) : null;
 
   return (
-    <Section>
+    <AppListPage contentClassName={`pg-pdash pg-pdash--${desktopLayout.tier}`}>
       <Helmet>
         <title>Portfolio Dashboard | The Property Guy</title>
       </Helmet>
-      <Container className="pg-container--portfolio-dashboard">
-        <div className={`pg-pdash pg-workspace-page pg-pdash--${desktopLayout.tier}`}>
           <div className="pg-pdash-toolbar">
             <div />
             <div className="pg-pdash-toolbar-actions">
@@ -445,8 +442,6 @@ export function OwnedPropertiesPortfolioDashboardPage() {
               {mobileStack}
             </>
           )}
-        </div>
-      </Container>
-    </Section>
+    </AppListPage>
   );
 }

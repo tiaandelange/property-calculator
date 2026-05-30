@@ -20,8 +20,7 @@ import {
   paginate
 } from "../features/invoices/invoiceDirectoryUtils";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
-import { Container } from "../components/ui/Container";
-import { Section } from "../components/ui/Section";
+import { AppListPage } from "../components/ui/AppPage";
 import { Button, ButtonLink } from "../components/ui/Button";
 
 const EMPTY_METRICS: InvoiceDirectoryMetrics = {
@@ -123,12 +122,11 @@ export function InvoicesListPage() {
     filters.dateTo !== "";
 
   return (
-    <Section>
-      <Helmet>
-        <title>Invoices | The Property Guy</title>
-      </Helmet>
-      <Container className="pg-container--invoices-dashboard">
-        <div className="pg-invoices pg-workspace-page">
+    <>
+      <AppListPage contentClassName="pg-invoices">
+        <Helmet>
+          <title>Invoices | The Property Guy</title>
+        </Helmet>
           <div className="pg-invoices-toolbar">
             <div>
               <p className="pg-muted" style={{ marginTop: 6, maxWidth: 560 }}>
@@ -173,8 +171,7 @@ export function InvoicesListPage() {
               <InvoicePagination page={page} totalItems={filtered.length} onPageChange={setPage} />
             </>
           )}
-        </div>
-      </Container>
+      </AppListPage>
 
       <ConfirmDialog
         open={confirmDelete != null}
@@ -195,6 +192,6 @@ export function InvoicesListPage() {
           </p>
         ) : null}
       </ConfirmDialog>
-    </Section>
+    </>
   );
 }

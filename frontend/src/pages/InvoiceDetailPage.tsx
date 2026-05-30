@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { Link, Navigate, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { getTenant } from "../api/ownedProperties";
+import { AppEditorPage } from "../components/ui/AppPage";
 import { fetchMe } from "../api/user";
 import { InvoiceDetailPanel } from "../features/invoices/InvoiceDetailPanel";
 import { invoiceDetailPath } from "../features/invoices/invoiceRoutes";
@@ -103,7 +104,7 @@ export function InvoiceDetailPage() {
       <Helmet>
         <title>{isNew ? "Create Invoice" : "Edit Invoice"} | The Property Guy</title>
       </Helmet>
-      <div className="pg-inv-editor-page">
+      <AppEditorPage className="pg-inv-editor-page">
         {error ? <div className="pg-alert pg-alert-error" style={{ marginBottom: 16 }}>{error}</div> : null}
         {loading ? (
           <div className="pg-tstmt-skeleton" style={{ minHeight: 320 }} aria-busy="true" />
@@ -137,7 +138,7 @@ export function InvoiceDetailPage() {
         ) : (
           <InvoiceDetailPanel invoiceId={invoiceId} onDeleted={handleDeleted} />
         )}
-      </div>
+      </AppEditorPage>
     </>
   );
 }

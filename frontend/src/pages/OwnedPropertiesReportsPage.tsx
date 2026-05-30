@@ -13,8 +13,7 @@ import {
   ProplyticTableSkeleton,
   ProplyticTableWrap
 } from "../components/tables";
-import { Container } from "../components/ui/Container";
-import { Section } from "../components/ui/Section";
+import { AppListPage } from "../components/ui/AppPage";
 import { Card } from "../components/ui/Card";
 import { Button, ButtonLink } from "../components/ui/Button";
 import { AppConfirmDialog } from "../components/ui/AppModal";
@@ -43,10 +42,9 @@ export function OwnedPropertiesReportsPage() {
   }, []);
 
   return (
-    <Section>
-      <Helmet><title>Owned Properties Reports | The Property Guy</title></Helmet>
-      <Container>
-        <div className="pg-workspace-page">
+    <>
+      <AppListPage>
+        <Helmet><title>Owned Properties Reports | The Property Guy</title></Helmet>
           <Card>
             <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
               <div className="pg-muted">
@@ -136,9 +134,9 @@ export function OwnedPropertiesReportsPage() {
               />
             )}
           </section>
-        </div>
+      </AppListPage>
 
-        <AppConfirmDialog
+      <AppConfirmDialog
           open={pendingDelete != null}
           title="Delete report"
           confirmLabel="Delete"
@@ -163,9 +161,8 @@ export function OwnedPropertiesReportsPage() {
           <p style={{ margin: 0 }}>
             Delete this report for <strong>{pendingDelete?.propertyName}</strong>?
           </p>
-        </AppConfirmDialog>
-      </Container>
-    </Section>
+      </AppConfirmDialog>
+    </>
   );
 }
 

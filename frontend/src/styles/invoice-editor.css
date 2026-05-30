@@ -4,7 +4,7 @@
   width: 100%;
   max-width: none;
   margin: 0;
-  padding: clamp(12px, 2vw, 24px) clamp(12px, 2vw, 28px) calc(88px + env(safe-area-inset-bottom, 0px));
+  padding: 0;
   box-sizing: border-box;
 }
 
@@ -717,7 +717,7 @@
     display: flex;
   }
 
-  .pg-inv-editor-page {
+  .pg-app-page--editor.pg-inv-editor-page .pg-app-page__inner {
     padding-bottom: calc(120px + env(safe-area-inset-bottom, 0px));
   }
 }

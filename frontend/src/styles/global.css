@@ -1,5 +1,6 @@
 @import "./themes/proplytic.tokens.css";
 @import "./proplytic-typography.css";
+@import "./app-page.css";
 @import "./workspace-accent.css";
 @import "./ui-components.css";
 @import "./proplytic-buttons.css";

@@ -9,8 +9,7 @@ import {
   listPropertyDocuments,
   uploadPropertyDocument
 } from "../services/documentsSupabase";
-import { Container } from "../components/ui/Container";
-import { Section } from "../components/ui/Section";
+import { AppListPage } from "../components/ui/AppPage";
 import { Card } from "../components/ui/Card";
 import { Field, Input } from "../components/ui/Input";
 import { Button } from "../components/ui/Button";
@@ -87,11 +86,10 @@ export function OwnedDocumentsPage() {
   };
 
   return (
-    <Section>
+    <AppListPage>
       <Helmet>
         <title>Documents | The Property Guy</title>
       </Helmet>
-      <Container>
         {error ? (
           <div className="pg-alert pg-alert-error" role="alert">
             {error}
@@ -151,7 +149,6 @@ export function OwnedDocumentsPage() {
             ))}
           </ul>
         </Card>
-      </Container>
-    </Section>
+    </AppListPage>
   );
 }

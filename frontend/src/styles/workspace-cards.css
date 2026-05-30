@@ -12,6 +12,7 @@
 
 /* Vertical rhythm between page sections (metrics, filters, tables). */
 .pg-workspace-page,
+.pg-app-page__inner.pg-workspace-page,
 .pg-dashboard-shell .pg-pdash,
 .pg-dashboard-shell .pg-tenants,
 .pg-dashboard-shell .pg-leases,
@@ -31,7 +32,8 @@
 }
 
 /* Default vertical rhythm for all signed-in workspace pages */
-.pg-dashboard-shell .pg-main-workspace .pg-container {
+.pg-dashboard-shell .pg-main-workspace .pg-container,
+.pg-dashboard-shell .pg-main-workspace .pg-app-page__inner {
   display: flex;
   flex-direction: column;
   gap: var(--workspace-section-gap);

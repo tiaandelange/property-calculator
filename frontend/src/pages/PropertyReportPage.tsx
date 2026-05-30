@@ -2,8 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { useParams } from "react-router-dom";
 import { ExternalLink, List } from "lucide-react";
-import { Container } from "../components/ui/Container";
-import { Section } from "../components/ui/Section";
+import { AppPage, AppPageActions, AppPageContent, AppPageHeader, AppPageSubtitle, AppPageTitle } from "../components/ui/AppPage";
 import { Card } from "../components/ui/Card";
 import { Button, ButtonLink } from "../components/ui/Button";
 import { generateReportViaVercel } from "../services/reportsVercel";
@@ -42,27 +41,25 @@ export function PropertyReportPage() {
   }, [propertyId]);
 
   return (
-    <Section>
+    <AppPage variant="report">
       <Helmet>
         <title>Property report | PropLytic</title>
       </Helmet>
-      <Container>
+      <AppPageContent>
         {error ? (
           <div className="pg-alert pg-alert-error" role="alert">
             {error}
           </div>
         ) : null}
 
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", justifyContent: "space-between" }}>
-          <div>
-            <div className="pg-h2" style={{ margin: 0 }}>
-              Property report
-            </div>
-            <div className="pg-muted" style={{ marginTop: 4 }}>
+        <AppPageHeader>
+          <div className="pg-app-page-header__main">
+            <AppPageTitle as="h2">Property report</AppPageTitle>
+            <AppPageSubtitle>
               {loading ? "Generating PDF…" : downloadUrl ? "Saved to Reports. You can export or revisit it later." : "—"}
-            </div>
+            </AppPageSubtitle>
           </div>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <AppPageActions>
             <Button
               type="button"
               variant="secondary"
@@ -81,10 +78,8 @@ export function PropertyReportPage() {
               <List size={16} style={{ marginRight: 6 }} aria-hidden />
               Open Reports
             </ButtonLink>
-          </div>
-        </div>
-
-        <div style={{ height: 12 }} />
+          </AppPageActions>
+        </AppPageHeader>
 
         <Card title="Preview">
           {downloadUrl ? (
@@ -97,8 +92,8 @@ export function PropertyReportPage() {
             <div className="pg-muted">{loading ? "Generating preview…" : "No preview available."}</div>
           )}
         </Card>
-      </Container>
-    </Section>
+      </AppPageContent>
+    </AppPage>
   );
 }
 

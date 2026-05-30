@@ -9,8 +9,7 @@ import { LeaseMobileList } from "../features/leases/LeaseMobileCard";
 import { LeasePagination } from "../features/leases/LeasePagination";
 import type { LeaseDirectoryMetrics, LeaseFilters, LeaseListItem } from "../features/leases/leaseDirectoryTypes";
 import { paginate } from "../features/leases/leaseDirectoryUtils";
-import { Container } from "../components/ui/Container";
-import { Section } from "../components/ui/Section";
+import { AppListPage } from "../components/ui/AppPage";
 import { Button, ButtonLink } from "../components/ui/Button";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
 import { CancelLeaseDialog } from "../features/properties/workspace/CancelLeaseDialog";
@@ -148,12 +147,11 @@ export function LeasesListPage() {
   const deleteLeaseItem = deleteLeaseId ? items.find((l) => l.id === deleteLeaseId) : null;
 
   return (
-    <Section>
-      <Helmet>
-        <title>Leases | The Property Guy</title>
-      </Helmet>
-      <Container className="pg-container--leases-dashboard">
-        <div className="pg-leases pg-workspace-page">
+    <>
+      <AppListPage contentClassName="pg-leases">
+        <Helmet>
+          <title>Leases | The Property Guy</title>
+        </Helmet>
           <div className="pg-leases-toolbar">
             <div className="pg-leases-toolbar-actions pg-leases-desktop-only">
               <Button onClick={() => load()} loading={loading}>
@@ -222,8 +220,7 @@ export function LeasesListPage() {
               </div>
             </>
           )}
-        </div>
-      </Container>
+      </AppListPage>
 
       <ConfirmDialog
         open={deleteLeaseId != null}
@@ -259,6 +256,6 @@ export function LeasesListPage() {
         }}
         onConfirm={(payload) => void confirmCancelLease(payload)}
       />
-    </Section>
+    </>
   );
 }

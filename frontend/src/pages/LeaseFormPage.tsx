@@ -21,8 +21,7 @@ import {
   resolveLeaseTypeFromEndDate,
   type LeaseTermPreset
 } from "../utils/leaseTermUtils";
-import { Container } from "../components/ui/Container";
-import { Section } from "../components/ui/Section";
+import { AppFormPage, AppPageHeader, AppPageSubtitle, AppPageTitle } from "../components/ui/AppPage";
 import { Card } from "../components/ui/Card";
 import { Field, Input } from "../components/ui/Input";
 import { Button, ButtonLink } from "../components/ui/Button";
@@ -397,11 +396,9 @@ export function LeaseFormPage() {
 
   if (loadingLease) {
     return (
-      <Section>
-        <Container>
-          <p className="pg-muted">Loading lease…</p>
-        </Container>
-      </Section>
+      <AppFormPage>
+        <p className="pg-muted">Loading lease…</p>
+      </AppFormPage>
     );
   }
 
@@ -410,27 +407,25 @@ export function LeaseFormPage() {
   const backHref = isEdit && propertyId ? `/owned-properties/${propertyId}?tab=tenants` : "/leases";
 
   return (
-    <Section>
+    <AppFormPage>
       <Helmet>
         <title>{pageTitle} | The Property Guy</title>
       </Helmet>
-      <Container>
-        <div className="pg-workspace-page">
-          <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
-            <h1 className="pg-h2" style={{ margin: 0 }}>
-              {pageTitle}
-            </h1>
-            <ButtonLink href={backHref} variant="ghost">
-              {isEdit ? "Back to property" : "Back to Leases"}
-            </ButtonLink>
-          </div>
-          <p className="pg-muted" style={{ fontSize: 13, margin: 0 }}>
+      <AppPageHeader>
+        <div className="pg-app-page-header__main">
+          <AppPageTitle>{pageTitle}</AppPageTitle>
+          <AppPageSubtitle>
             {isEdit
               ? "Update lease terms, rent, and dates. Tenant assignments are shown for reference."
               : "Select property and unit, choose tenants, and set lease terms. Tenants appear under the property automatically."}
-          </p>
-          {error ? <div className="pg-alert pg-alert-error">{error}</div> : null}
-          <Card>
+          </AppPageSubtitle>
+        </div>
+        <ButtonLink href={backHref} variant="ghost">
+          {isEdit ? "Back to property" : "Back to Leases"}
+        </ButtonLink>
+      </AppPageHeader>
+      {error ? <div className="pg-alert pg-alert-error">{error}</div> : null}
+      <Card>
             <form onSubmit={submit}>
               <Field label="Property">
                 <select
@@ -732,8 +727,6 @@ export function LeaseFormPage() {
               </div>
             </form>
           </Card>
-        </div>
-      </Container>
-    </Section>
+    </AppFormPage>
   );
 }

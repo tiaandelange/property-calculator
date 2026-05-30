@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Helmet } from "react-helmet-async";
-import { Container } from "../components/ui/Container";
-import { Section } from "../components/ui/Section";
+import { AppListPage } from "../components/ui/AppPage";
 import { Button, ButtonLink } from "../components/ui/Button";
 import { getProperties, getTenantsDirectory } from "../api/ownedProperties";
 import { PROPERTY_DATA_INVALIDATION } from "../features/properties/invalidate";
@@ -105,12 +104,10 @@ export function TenantsListPage() {
   };
 
   return (
-    <Section>
+    <AppListPage contentClassName="pg-tenants">
       <Helmet>
         <title>Tenants | The Property Guy</title>
       </Helmet>
-      <Container className="pg-container--tenants-dashboard">
-        <div className="pg-tenants pg-workspace-page">
           <div className="pg-tenants-toolbar">
             <div className="pg-tenants-toolbar-actions pg-tenants-desktop-only">
               <Button onClick={() => load()} loading={loading}>
@@ -151,8 +148,6 @@ export function TenantsListPage() {
               </div>
             </>
           )}
-        </div>
-      </Container>
-    </Section>
+    </AppListPage>
   );
 }

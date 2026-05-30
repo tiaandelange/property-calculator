@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { useLocation } from "react-router-dom";
-import { Container } from "../components/ui/Container";
-import { Section } from "../components/ui/Section";
+import { AppListPage } from "../components/ui/AppPage";
 import { Grid } from "../components/ui/Grid";
 import { Card } from "../components/ui/Card";
 import { Button, ButtonLink } from "../components/ui/Button";
@@ -116,9 +115,8 @@ export function OwnedPropertiesMyPropertiesPage() {
   }, [rows, q, type, status, sort]);
 
   return (
-    <Section>
+    <AppListPage>
       <Helmet><title>My Properties | The Property Guy</title></Helmet>
-      <Container>
         <div style={{ display: "flex", justifyContent: "flex-end", gap: 12, flexWrap: "wrap", alignItems: "center", marginTop: 8 }}>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             <Button onClick={load} loading={loading}>Refresh</Button>
@@ -286,8 +284,7 @@ export function OwnedPropertiesMyPropertiesPage() {
             })}
           </Grid>
         )}
-      </Container>
-    </Section>
+    </AppListPage>
   );
 }
 

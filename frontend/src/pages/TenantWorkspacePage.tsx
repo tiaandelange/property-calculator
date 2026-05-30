@@ -2,8 +2,8 @@ import { useCallback, useEffect, useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Download, MoreVertical, Plus } from "lucide-react";
-import { Container } from "../components/ui/Container";
-import { Section } from "../components/ui/Section";
+import { AppDetailPage } from "../components/ui/AppPage";
+import { AppSectionTabs } from "../components/ui/AppSectionTabs";
 import { Button, ButtonLink } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { cancelLease, deleteTenant, getTenant } from "../api/ownedProperties";
@@ -149,12 +149,11 @@ export function TenantWorkspacePage() {
     ctx?.currentLease?.monthlyRent != null ? Number(ctx.currentLease.monthlyRent) : undefined;
 
   return (
-    <Section>
-      <Helmet>
-        <title>Tenant Statement | The Property Guy</title>
-      </Helmet>
-      <Container>
-        <div className="pg-tstmt pg-workspace-page">
+    <>
+      <AppDetailPage contentClassName="pg-tstmt">
+        <Helmet>
+          <title>Tenant Statement | The Property Guy</title>
+        </Helmet>
           <header className="pg-tstmt-mobile-header">
             <Button
               type="button"
@@ -190,24 +189,16 @@ export function TenantWorkspacePage() {
           {downloadError ? <div className="pg-alert pg-alert-error">{downloadError}</div> : null}
           {error ? <div className="pg-alert pg-alert-error">{error}</div> : null}
 
-          <div className="pg-tstmt-workspace-tabs" role="navigation" aria-label="Tenant sections">
-            {(
-              [
-                { id: "statement", label: "Financials" },
-                { id: "overview", label: "Details" },
-                { id: "settings", label: "Invoice settings" }
-              ] as const
-            ).map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                className={`pg-tstmt-workspace-tab${tab === t.id ? " is-active" : ""}`}
-                onClick={() => setTab(t.id)}
-              >
-                {t.label}
-              </button>
-            ))}
-          </div>
+          <AppSectionTabs
+            ariaLabel="Tenant sections"
+            activeId={tab}
+            onSelect={setTab}
+            items={[
+              { id: "statement", label: "Financials" },
+              { id: "overview", label: "Details" },
+              { id: "settings", label: "Invoice settings" }
+            ]}
+          />
 
           {tab === "statement" ? (
             <>
@@ -271,8 +262,7 @@ export function TenantWorkspacePage() {
               </ButtonLink>
             </Card>
           ) : null}
-        </div>
-      </Container>
+      </AppDetailPage>
 
       {invoiceOverlay && ctx && id ? (
         <div className="pg-tstmt-overlay-backdrop" role="dialog" aria-modal="true" aria-label="Create invoice">
@@ -307,7 +297,7 @@ export function TenantWorkspacePage() {
           </div>
         </div>
       ) : null}
-    </Section>
+    </>
   );
 }
 

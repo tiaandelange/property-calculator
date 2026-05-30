@@ -23,6 +23,7 @@ import {
   ProplyticTableWrap
 } from "../../../components/tables";
 import { IconContainer } from "../../../components/ui/IconContainer";
+import { AppSectionTabs } from "../../../components/ui/AppSectionTabs";
 import { Button } from "../../../components/ui/Button";
 import { invoiceDetailPath } from "../../invoices/invoiceRoutes";
 import {
@@ -189,27 +190,19 @@ export function TenantFinSubTabs({
   fin: string;
   onFin: (next: string) => void;
 }) {
-  const tabs = [
-    { id: "statement", label: "Statement" },
-    { id: "invoices", label: "Invoices" },
-    { id: "payments", label: "Payments" },
-    { id: "ledger", label: "Ledger" }
-  ];
   return (
-    <div className="pg-tstmt-tabs" role="tablist">
-      {tabs.map((t) => (
-        <button
-          key={t.id}
-          type="button"
-          role="tab"
-          aria-selected={fin === t.id}
-          className={`pg-tstmt-tab${fin === t.id ? " is-active" : ""}`}
-          onClick={() => onFin(t.id)}
-        >
-          {t.label}
-        </button>
-      ))}
-    </div>
+    <AppSectionTabs
+      asTablist
+      ariaLabel="Tenant financial sections"
+      activeId={fin}
+      onSelect={onFin}
+      items={[
+        { id: "statement", label: "Statement" },
+        { id: "invoices", label: "Invoices" },
+        { id: "payments", label: "Payments" },
+        { id: "ledger", label: "Ledger" }
+      ]}
+    />
   );
 }
 

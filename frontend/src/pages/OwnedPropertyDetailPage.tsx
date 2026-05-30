@@ -1,9 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
-import { ExternalLink } from "lucide-react";
-import { Container } from "../components/ui/Container";
-import { Section } from "../components/ui/Section";
+import { AppDetailPage } from "../components/ui/AppPage";
 import { Card } from "../components/ui/Card";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
 import { ButtonLink } from "../components/ui/Button";
@@ -270,11 +268,11 @@ export function OwnedPropertyDetailPage() {
   };
 
   return (
-    <Section>
-      <Helmet>
-        <title>{data?.name ? `${data.name} | Property` : "Property Detail | The Property Guy"}</title>
-      </Helmet>
-      <Container>
+    <>
+      <AppDetailPage>
+        <Helmet>
+          <title>{data?.name ? `${data.name} | Property` : "Property Detail | The Property Guy"}</title>
+        </Helmet>
         {error ? <div className="pg-alert pg-alert-error">{error}</div> : null}
         {data ? (
           <>
@@ -291,14 +289,9 @@ export function OwnedPropertyDetailPage() {
                   { key: "documents", label: "Documents" },
                   {
                     key: "reports",
-                    label: (
-                      <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-                        Generate report <ExternalLink size={16} aria-hidden />
-                      </span>
-                    ),
+                    label: "Generate report",
                     to: `/owned-properties/${id}/report`,
-                    newTab: true,
-                    variant: "secondary"
+                    newTab: true
                   }
                 ]}
                 extraQueryForTab={{ financials: `fin=${encodeURIComponent(finSub)}` }}
@@ -471,7 +464,7 @@ export function OwnedPropertyDetailPage() {
             </div>
           </>
         ) : null}
-      </Container>
+      </AppDetailPage>
 
       <ConfirmDialog
         open={leaseDeleteTarget != null}
@@ -520,6 +513,6 @@ export function OwnedPropertyDetailPage() {
           onClose={() => setGenerateLeaseTarget(null)}
         />
       ) : null}
-    </Section>
+    </>
   );
 }

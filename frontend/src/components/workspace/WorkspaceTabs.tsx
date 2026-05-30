@@ -1,6 +1,5 @@
 import type React from "react";
-import { ButtonLink } from "../ui/Button";
-import type { ButtonVariant } from "../ui/buttonStyles";
+import { AppSectionTabs, type AppSectionTabItem } from "../ui/AppSectionTabs";
 
 export function WorkspaceTabs({
   basePath,
@@ -12,41 +11,29 @@ export function WorkspaceTabs({
 }: {
   basePath: string;
   active: string;
-  tabs: Array<{ key: string; label: React.ReactNode; to?: string; newTab?: boolean; variant?: ButtonVariant }>;
+  tabs: Array<{ key: string; label: React.ReactNode; to?: string; newTab?: boolean }>;
   /** e.g. { financials: "fin=statement" } — appended only for that tab link */
   extraQueryForTab?: Record<string, string>;
   className?: string;
   style?: React.CSSProperties;
 }) {
-  return (
-    <div
-      className={className}
-      style={{
-        display: "flex",
-        gap: 8,
-        flexWrap: "wrap",
-        marginBottom: 12,
-        ...style
-      }}
-    >
-      {tabs.map((t) => {
-        const suffix = extraQueryForTab?.[t.key] ? `&${extraQueryForTab[t.key]}` : "";
-        const href = t.to ?? `${basePath}?tab=${t.key}${suffix}`;
-        const variant: ButtonVariant =
-          t.variant ?? (active === t.key ? "primary" : "ghost");
+  const items: AppSectionTabItem[] = tabs.map((t) => ({
+    id: t.key,
+    label: typeof t.label === "string" ? t.label : String(t.label),
+    href: t.to,
+    target: t.newTab ? "_blank" : undefined,
+    rel: t.newTab ? "noopener noreferrer" : undefined
+  }));
 
-        return (
-          <ButtonLink
-            key={t.key}
-            href={href}
-            variant={variant}
-            target={t.newTab ? "_blank" : undefined}
-            rel={t.newTab ? "noopener noreferrer" : undefined}
-          >
-            {t.label}
-          </ButtonLink>
-        );
-      })}
-    </div>
+  return (
+    <AppSectionTabs
+      className={className}
+      style={style}
+      ariaLabel="Property sections"
+      activeId={active}
+      basePath={basePath}
+      extraQueryForTab={extraQueryForTab}
+      items={items}
+    />
   );
 }

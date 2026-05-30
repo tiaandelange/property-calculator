@@ -1456,3 +1456,76 @@ html[data-density="compact"] .pg-app-modal-footer,
 html[data-density="compact"] .pg-app-form-modal-footer {
   padding: 12px 16px 16px;
 }
+
+/* --- Section tabs (page subheadings) --- */
+.pg-app-section-tabs {
+  display: flex;
+  align-items: stretch;
+  gap: clamp(18px, 3vw, 28px);
+  border-bottom: 1px solid var(--border-soft);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.pg-app-section-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.pg-app-section-tabs__tab {
+  appearance: none;
+  background: none;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  margin: 0 0 -1px;
+  padding: 12px 4px;
+  font-family: inherit;
+  font-size: 0.9375rem;
+  font-weight: var(--weight-medium, 500);
+  line-height: 1.35;
+  color: var(--text-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+  text-decoration: none;
+  flex-shrink: 0;
+  border-bottom: 3px solid transparent;
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.pg-app-section-tabs__tab:hover:not(:disabled) {
+  color: var(--text-primary);
+}
+
+.pg-app-section-tabs__tab:not(.is-active):hover:not(:disabled) {
+  border-bottom-color: color-mix(in srgb, var(--primary) 22%, transparent);
+}
+
+.pg-app-section-tabs__tab.is-active {
+  color: var(--primary);
+  font-weight: var(--weight-semibold, 600);
+  border-bottom-color: var(--primary);
+}
+
+.pg-app-section-tabs__tab.is-active:hover:not(:disabled) {
+  color: var(--primary);
+}
+
+.pg-app-section-tabs__tab:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+@media (max-width: 768px) {
+  .pg-app-section-tabs {
+    gap: clamp(18px, 5vw, 22px);
+  }
+
+  .pg-app-section-tabs__tab {
+    padding-top: 13px;
+    padding-bottom: 13px;
+    font-size: 0.875rem;
+  }
+}

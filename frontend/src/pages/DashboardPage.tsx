@@ -4,9 +4,8 @@ import { fetchPdfBlob, triggerPdfFileDownload } from "../api/pdfBlob";
 import { deleteUserReport, listUserReports } from "../services/profileSupabase";
 import { generateReportViaVercel } from "../services/reportsVercel";
 import { Card } from "../components/ui/Card";
-import { Container } from "../components/ui/Container";
+import { AppListPage, AppPageActions, AppPageHeader, AppPageSubtitle, AppPageTitle } from "../components/ui/AppPage";
 import { Grid } from "../components/ui/Grid";
-import { Section } from "../components/ui/Section";
 import { Button, ButtonLink } from "../components/ui/Button";
 
 type Report = {
@@ -92,30 +91,25 @@ export function DashboardPage() {
   }, []);
 
   return (
-    <Section>
+    <AppListPage>
       <Helmet>
         <title>My Reports | The Property Guy</title>
         <meta name="description" content="View, generate and download your saved property calculation reports." />
       </Helmet>
-      <Container>
-        <div style={{ display: "flex", gap: 16, alignItems: "flex-end", justifyContent: "space-between", flexWrap: "wrap" }}>
-          <div>
-            <h1 className="pg-h2" style={{ margin: 0 }}>
-              {greeting}
-            </h1>
-            <p className="pg-lead" style={{ margin: "6px 0 0" }}>
-              Your saved calculations and PDF reports live here.
-            </p>
-          </div>
-          <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-            <Button onClick={load} loading={loading}>
-              Refresh
-            </Button>
-            <ButtonLink href="/calculators/cash-on-cash-return" variant="soft">
-              New calculation
-            </ButtonLink>
-          </div>
+      <AppPageHeader>
+        <div>
+          <AppPageTitle>{greeting}</AppPageTitle>
+          <AppPageSubtitle>Your saved calculations and PDF reports live here.</AppPageSubtitle>
         </div>
+        <AppPageActions>
+          <Button onClick={load} loading={loading}>
+            Refresh
+          </Button>
+          <ButtonLink href="/calculators/cash-on-cash-return" variant="soft">
+            New calculation
+          </ButtonLink>
+        </AppPageActions>
+      </AppPageHeader>
 
         {error ? <div className="pg-alert pg-alert-error" style={{ marginTop: 16 }}>{error}</div> : null}
 
@@ -190,8 +184,7 @@ export function DashboardPage() {
             })}
           </Grid>
         ) : null}
-      </Container>
-    </Section>
+    </AppListPage>
   );
 }
 

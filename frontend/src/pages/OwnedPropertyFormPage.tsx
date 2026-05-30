@@ -2,6 +2,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "../components/ui/Button";
+import { AppFormPage, AppPageActions, AppPageHeader } from "../components/ui/AppPage";
 import {
   createProperty,
   deleteProperty,
@@ -237,12 +238,13 @@ export function OwnedPropertyFormPage() {
   const saveLabel = isEdit ? "Save Changes" : "Save Property";
 
   return (
-    <div className="pg-prop-form-page">
+    <AppFormPage className="pg-prop-form-page">
       <Helmet>
         <title>{pageTitle} | The Property Guy</title>
       </Helmet>
-      <div className="pg-prop-form-page__head" style={{ justifyContent: "flex-end" }}>
-        <div className="pg-prop-form-page__actions">
+      <AppPageHeader>
+        <span aria-hidden="true" />
+        <AppPageActions>
           <Button
             type="button"
             variant="secondary"
@@ -253,8 +255,8 @@ export function OwnedPropertyFormPage() {
           <Button type="submit" form="property-form-main" loading={saving}>
             {saveLabel}
           </Button>
-        </div>
-      </div>
+        </AppPageActions>
+      </AppPageHeader>
 
       {draftBanner ? (
         <div className="pg-alert" style={{ marginBottom: 12, display: "flex", gap: 10, justifyContent: "space-between", alignItems: "center" }}>
@@ -328,6 +330,6 @@ export function OwnedPropertyFormPage() {
           </>
         }
       />
-    </div>
+    </AppFormPage>
   );
 }

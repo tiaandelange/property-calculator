@@ -1,9 +1,8 @@
 /* Property create / edit form — Proplytic workspace layout */
 
 .pg-prop-form-page {
-  padding-bottom: max(88px, calc(env(safe-area-inset-bottom, 0px) + 88px));
-  max-width: 1440px;
-  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .pg-prop-form-page__head {

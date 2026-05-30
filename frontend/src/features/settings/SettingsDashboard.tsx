@@ -1,6 +1,7 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { AppIcon, type IconName } from "../../components/icons";
+import { AppPage, AppPageContent, AppPageHeader, AppPageSubtitle, AppPageTitle } from "../../components/ui/AppPage";
 import { fetchMe } from "../../api/user";
 import { Button, ButtonLink } from "../../components/ui/Button";
 import { Field, Input } from "../../components/ui/Input";
@@ -360,25 +361,29 @@ export function SettingsDashboard() {
 
   if (loading) {
     return (
-      <div className="pg-settings-page">
-        <div className="pg-settings-page-header">
-          <h1>Settings</h1>
-        </div>
-        <div className="pg-settings-grid">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="pg-settings-skeleton" />
-          ))}
-        </div>
-      </div>
+      <AppPage variant="settings" className="pg-settings-page">
+        <AppPageContent>
+          <AppPageHeader>
+            <AppPageTitle>Settings</AppPageTitle>
+          </AppPageHeader>
+          <div className="pg-settings-grid">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="pg-settings-skeleton" />
+            ))}
+          </div>
+        </AppPageContent>
+      </AppPage>
     );
   }
 
   if (error && !draft) {
     return (
-      <div className="pg-settings-page">
-        <div className="pg-alert pg-alert-error">{error}</div>
-        <Button onClick={() => void load()}>Retry</Button>
-      </div>
+      <AppPage variant="settings" className="pg-settings-page">
+        <AppPageContent>
+          <div className="pg-alert pg-alert-error">{error}</div>
+          <Button onClick={() => void load()}>Retry</Button>
+        </AppPageContent>
+      </AppPage>
     );
   }
 
@@ -396,18 +401,21 @@ export function SettingsDashboard() {
   );
 
   return (
-    <div className="pg-settings-page">
-      {!isMobile ? (
-        <div className="pg-settings-page-header">
-          <h1 className="pg-text-page-title">Settings</h1>
-          <p className="pg-text-page-subtitle">Account preferences and workspace configuration.</p>
-        </div>
-      ) : null}
+    <AppPage variant="settings" className="pg-settings-page">
+      <AppPageContent>
+        {!isMobile ? (
+          <AppPageHeader>
+            <div className="pg-app-page-header__main">
+              <AppPageTitle>Settings</AppPageTitle>
+              <AppPageSubtitle>Account preferences and workspace configuration.</AppPageSubtitle>
+            </div>
+          </AppPageHeader>
+        ) : null}
 
-      {error ? <div className="pg-alert pg-alert-error" style={{ marginBottom: 16 }}>{error}</div> : null}
-      {success ? <div className="pg-alert" style={{ marginBottom: 16 }}>Settings saved.</div> : null}
+        {error ? <div className="pg-alert pg-alert-error" style={{ marginBottom: 16 }}>{error}</div> : null}
+        {success ? <div className="pg-alert" style={{ marginBottom: 16 }}>Settings saved.</div> : null}
 
-      <div className="pg-settings-grid">
+        <div className="pg-settings-grid">
         <SettingsCard icon="profile" title="Account & Profile" description="Your identity and workspace role.">
           <div className="pg-settings-profile">
             <div className="pg-settings-avatar" aria-hidden>
@@ -780,6 +788,7 @@ export function SettingsDashboard() {
         onSaved={setFullName}
       />
       <ChangePasswordModal open={changePasswordOpen} onClose={() => setChangePasswordOpen(false)} />
-    </div>
+      </AppPageContent>
+    </AppPage>
   );
 }

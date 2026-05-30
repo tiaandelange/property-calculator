@@ -14,8 +14,7 @@ import {
   matchesFinancialFilters,
   paginate
 } from "../features/financials/financialDirectoryUtils";
-import { Container } from "../components/ui/Container";
-import { Section } from "../components/ui/Section";
+import { AppListPage } from "../components/ui/AppPage";
 import { Button, ButtonLink } from "../components/ui/Button";
 
 function parsePropertyIdFromSearch(search: string): string {
@@ -110,12 +109,10 @@ export function FinancialsListPage() {
   const showRunningBalance = filters.propertyId !== "ALL";
 
   return (
-    <Section>
+    <AppListPage contentClassName="pg-fins">
       <Helmet>
         <title>Financials | The Property Guy</title>
       </Helmet>
-      <Container className="pg-container--financials-dashboard">
-        <div className="pg-fins pg-workspace-page">
           <div className="pg-fins-toolbar">
             <div>
               <p className="pg-muted" style={{ marginTop: 6, maxWidth: 560 }}>
@@ -178,8 +175,6 @@ export function FinancialsListPage() {
               </>
             )}
           </section>
-        </div>
-      </Container>
-    </Section>
+    </AppListPage>
   );
 }
