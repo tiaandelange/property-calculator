@@ -1,5 +1,4 @@
-import { Plus, Search } from "lucide-react";
-import { ButtonLink } from "../../components/ui/Button";
+import { Search } from "lucide-react";
 
 export type TenantFilters = {
   q: string;
@@ -68,11 +67,13 @@ function FilterSelects({
 export function TenantControlsBar({
   filters,
   onChange,
-  properties
+  properties,
+  searchPlaceholder = "Search tenants by name, email or property..."
 }: {
   filters: TenantFilters;
   onChange: (next: Partial<TenantFilters>) => void;
   properties: Array<{ id: string; name: string }>;
+  searchPlaceholder?: string;
 }) {
   return (
     <div className="pg-tenants-controls">
@@ -82,19 +83,15 @@ export function TenantControlsBar({
           <input
             type="search"
             className="pg-tenants-search-input"
-            placeholder="Search tenants by name, email or property..."
+            placeholder={searchPlaceholder}
             value={filters.q}
             onChange={(e) => onChange({ q: e.target.value })}
-            aria-label="Search tenants"
+            aria-label="Search directory"
           />
         </label>
         <div className="pg-tenants-controls-filters">
           <FilterSelects filters={filters} onChange={onChange} properties={properties} pill />
         </div>
-        <ButtonLink href="/tenants/new" variant="primary" className="pg-tenants-add-btn">
-          <Plus size={18} aria-hidden />
-          <span className="pg-tenants-add-btn-label">Add Tenant</span>
-        </ButtonLink>
       </div>
     </div>
   );

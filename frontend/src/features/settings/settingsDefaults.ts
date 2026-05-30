@@ -1,3 +1,4 @@
+import { DEFAULT_APPLICANT_FORM_TEMPLATE } from "../applicants/applicantFormTemplate";
 import type { StatementDefaultFilter, UserSettings } from "./settingsTypes";
 
 export const DEFAULT_USER_SETTINGS: UserSettings = {
@@ -17,7 +18,8 @@ export const DEFAULT_USER_SETTINGS: UserSettings = {
   overdueAlertsEnabled: true,
   monthlySummariesEnabled: true,
   newLeaseAlertsEnabled: false,
-  lockInvoiceAfterSent: true
+  lockInvoiceAfterSent: true,
+  applicantFormTemplate: DEFAULT_APPLICANT_FORM_TEMPLATE
 };
 
 export const STATEMENT_FILTER_OPTIONS: Array<{ value: StatementDefaultFilter; label: string }> = [

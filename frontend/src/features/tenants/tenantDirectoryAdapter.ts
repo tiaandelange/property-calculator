@@ -2,6 +2,7 @@ import { snakeRowToCamel } from "../../api/propertyRowMapping";
 import { dbToTenant } from "../../api/tenantRowMapping";
 import { isCurrentLeaseStatus, leaseDisplayStatus } from "../../utils/leaseDisplay";
 import type {
+  ApplicantDirectoryMetrics,
   TenantDirectoryMetrics,
   TenantLeaseStatus,
   TenantListItem,
@@ -140,8 +141,15 @@ export function buildTenantDirectory(
     const tenantInvoices = invoicesByTenant.get(id) ?? [];
 
     const propertyFromTenant = tenant.property as Record<string, unknown> | undefined;
+    const propertyFromApplied = tenant.appliedProperty as Record<string, unknown> | undefined;
     const propertyFromLease = currentLease?.property ?? null;
-    const property = propertyFromLease ?? propertyFromTenant ?? null;
+    const property = propertyFromLease ?? propertyFromTenant ?? propertyFromApplied ?? null;
+    const appliedPropertyId =
+      tenant.appliedPropertyId != null
+        ? String(tenant.appliedPropertyId)
+        : propertyFromApplied?.id != null
+          ? String(propertyFromApplied.id)
+          : null;
 
     const unpaid = tenantInvoices.filter((i) => !PAID_STATUSES.has(i.status.toUpperCase()));
     const outstandingAmount = unpaid.reduce((sum, i) => sum + (Number.isFinite(i.total) ? i.total : 0), 0);
@@ -173,7 +181,7 @@ export function buildTenantDirectory(
       avatarUrl: null,
       tenantStatus: tenant.status != null ? String(tenant.status) : null,
       propertyId: String(
-        currentLease?.propertyId ?? tenant.propertyId ?? property?.id ?? ""
+        currentLease?.propertyId ?? tenant.propertyId ?? appliedPropertyId ?? property?.id ?? ""
       ) || null,
       propertyName: property?.name != null ? String(property.name) : null,
       propertyAddress: propertyAddressFrom(property),
@@ -191,6 +199,16 @@ export function buildTenantDirectory(
     } satisfies TenantListItem;
   });
 
+  return {
+    items,
+    metrics: computeTenantDirectoryMetrics(items, today)
+  };
+}
+
+export function computeTenantDirectoryMetrics(
+  items: TenantListItem[],
+  today = new Date()
+): TenantDirectoryMetrics {
   const renewalHorizon = new Date(today);
   renewalHorizon.setDate(renewalHorizon.getDate() + 30);
 
@@ -221,13 +239,24 @@ export function buildTenantDirectory(
   }
 
   return {
-    items,
-    metrics: {
-      totalTenants: items.length,
-      activeLeases,
-      pendingPaymentsTotal,
-      pendingPaymentsCount,
-      renewalsDue
-    }
+    totalTenants: items.length,
+    activeLeases,
+    pendingPaymentsTotal,
+    pendingPaymentsCount,
+    renewalsDue
   };
+}
+
+export function computeApplicantDirectoryMetrics(items: TenantListItem[]): ApplicantDirectoryMetrics {
+  const applicants = items.filter((item) => String(item.tenantStatus ?? "").toUpperCase() === "APPLICANT");
+  return {
+    totalApplicants: applicants.length,
+    awaitingProperty: applicants.filter((item) => !item.propertyId).length,
+    linkedToProperty: applicants.filter((item) => Boolean(item.propertyId)).length,
+    readyForLease: applicants.filter((item) => Boolean(item.propertyId) && !item.leaseId).length
+  };
+}
+
+export function isApplicantListItem(item: TenantListItem): boolean {
+  return String(item.tenantStatus ?? "").toUpperCase() === "APPLICANT";
 }

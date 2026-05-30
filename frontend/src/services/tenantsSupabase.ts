@@ -91,7 +91,57 @@ export async function listTenantsDirectory(): Promise<{
   if (leasesRes.error) throw toError(leasesRes.error);
   if (invoicesRes.error) throw toError(invoicesRes.error);
 
-  return buildTenantDirectory(rows, (leasesRes.data ?? []) as Record<string, unknown>[], (invoicesRes.data ?? []) as Record<string, unknown>[]);
+  const directory = buildTenantDirectory(
+    rows,
+    (leasesRes.data ?? []) as Record<string, unknown>[],
+    (invoicesRes.data ?? []) as Record<string, unknown>[]
+  );
+
+  const applicantIds = directory.items
+    .filter((item) => String(item.tenantStatus ?? "").toUpperCase() === "APPLICANT")
+    .map((item) => item.id);
+
+  if (!applicantIds.length) {
+    return directory;
+  }
+
+  const { data: appRows, error: appErr } = await sb
+    .from("applicant_application_details")
+    .select("tenant_id, monthly_income, fit_score, target_rent, submitted_at")
+    .eq("user_id", uid)
+    .in("tenant_id", applicantIds);
+
+  if (appErr) throw toError(appErr);
+
+  const appByTenant = new Map(
+    (appRows ?? []).map((row) => {
+      const r = row as Record<string, unknown>;
+      return [
+        String(r.tenant_id ?? ""),
+        {
+          monthlyIncome: Number(r.monthly_income ?? 0),
+          fitScore: Number(r.fit_score ?? 0),
+          targetRent: Number(r.target_rent ?? 0),
+          submittedAt: r.submitted_at != null ? String(r.submitted_at) : null
+        }
+      ] as const;
+    })
+  );
+
+  return {
+    ...directory,
+    items: directory.items.map((item) => {
+      const app = appByTenant.get(item.id);
+      if (!app) return item;
+      return {
+        ...item,
+        monthlyIncome: app.monthlyIncome,
+        fitScore: app.fitScore,
+        targetRent: app.targetRent,
+        applicationSubmittedAt: app.submittedAt
+      };
+    })
+  };
 }
 
 /** All tenants for the signed-in user (RLS). */
@@ -262,9 +312,11 @@ export async function createTenant(input: Record<string, unknown>): Promise<Reco
   const uid = await requireUserId();
   const sb = getSupabase();
   const fields = tenantToDb(input);
+  const rawStatus = String(input.status ?? "ACTIVE").toUpperCase();
+  const status = rawStatus === "APPLICANT" ? "APPLICANT" : "ACTIVE";
   const { data, error } = await sb
     .from("tenants")
-    .insert({ user_id: uid, status: "ACTIVE", ...fields })
+    .insert({ user_id: uid, status, ...fields })
     .select(TENANT_SELECT_WITH_PROPERTY)
     .single();
   if (error) throw toError(error);

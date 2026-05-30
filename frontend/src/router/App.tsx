@@ -31,6 +31,7 @@ import { OwnedPropertiesMyPropertiesPage } from "../pages/OwnedPropertiesMyPrope
 import { OwnedPropertiesPortfolioDashboardPage } from "../pages/OwnedPropertiesPortfolioDashboardPage";
 import { OwnedPropertiesReportsPage } from "../pages/OwnedPropertiesReportsPage";
 import { TenantsListPage } from "../pages/TenantsListPage";
+import { ApplicantApplyPage } from "../pages/ApplicantApplyPage";
 import { TenantFormPage } from "../pages/TenantFormPage";
 import { TenantWorkspacePage } from "../pages/TenantWorkspacePage";
 import { InvoiceDetailPage, LegacyTenantInvoiceRedirect } from "../pages/InvoiceDetailPage";
@@ -54,6 +55,7 @@ export function App() {
         <Route path="/calculators" element={<CalculatorHubPage />} />
         <Route path="/calculators/:slug" element={<CalculatorPage />} />
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/apply/:token" element={<ApplicantApplyPage />} />
         <Route path="/confirm-email" element={<ConfirmEmailPage />} />
         <Route path="/confirm-email/:token" element={<ConfirmEmailPage />} />
         <Route path="/dashboard" element={<RequireAuth><DashboardPage /></RequireAuth>} />

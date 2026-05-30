@@ -1,4 +1,8 @@
 import type { PostgrestError } from "@supabase/supabase-js";
+import {
+  normalizeApplicantFormTemplate,
+  validateApplicantFormTemplate
+} from "../features/applicants/applicantFormTemplate";
 import { DEFAULT_USER_SETTINGS } from "../features/settings/settingsDefaults";
 import type { UserSettings, UserSettingsPatch } from "../features/settings/settingsTypes";
 import { getSupabase } from "../lib/supabaseClient";
@@ -23,6 +27,7 @@ type DbRow = {
   monthly_summaries_enabled: boolean;
   new_lease_alerts_enabled: boolean;
   lock_invoice_after_sent: boolean;
+  applicant_form_template: unknown;
 };
 
 function toError(e: PostgrestError | Error): Error {
@@ -59,7 +64,8 @@ function mapRow(row: DbRow | null): UserSettings {
     overdueAlertsEnabled: row.overdue_alerts_enabled ?? DEFAULT_USER_SETTINGS.overdueAlertsEnabled,
     monthlySummariesEnabled: row.monthly_summaries_enabled ?? DEFAULT_USER_SETTINGS.monthlySummariesEnabled,
     newLeaseAlertsEnabled: row.new_lease_alerts_enabled ?? DEFAULT_USER_SETTINGS.newLeaseAlertsEnabled,
-    lockInvoiceAfterSent: row.lock_invoice_after_sent ?? DEFAULT_USER_SETTINGS.lockInvoiceAfterSent
+    lockInvoiceAfterSent: row.lock_invoice_after_sent ?? DEFAULT_USER_SETTINGS.lockInvoiceAfterSent,
+    applicantFormTemplate: normalizeApplicantFormTemplate(row.applicant_form_template)
   };
 }
 
@@ -88,6 +94,7 @@ function patchToPayload(patch: UserSettingsPatch): Record<string, unknown> {
   if (patch.monthlySummariesEnabled !== undefined) out.monthlySummariesEnabled = patch.monthlySummariesEnabled;
   if (patch.newLeaseAlertsEnabled !== undefined) out.newLeaseAlertsEnabled = patch.newLeaseAlertsEnabled;
   if (patch.lockInvoiceAfterSent !== undefined) out.lockInvoiceAfterSent = patch.lockInvoiceAfterSent;
+  if (patch.applicantFormTemplate !== undefined) out.applicantFormTemplate = patch.applicantFormTemplate;
   return out;
 }
 
@@ -107,7 +114,7 @@ export function validateUserSettings(settings: UserSettings): string | null {
   if (settings.paymentReminderDaysBeforeDue < 0 || settings.paymentReminderDaysBeforeDue > 31) {
     return "Payment reminder days must be between 0 and 31.";
   }
-  return null;
+  return validateApplicantFormTemplate(settings.applicantFormTemplate);
 }
 
 /** Load or create the signed-in user's settings row (RLS: own row only). */

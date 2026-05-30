@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useState } from "react";
 import { Helmet } from "react-helmet-async";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { Container } from "../components/ui/Container";
 import { Section } from "../components/ui/Section";
 import { Card } from "../components/ui/Card";
@@ -10,7 +10,9 @@ import { createTenant, getTenant, updateTenant } from "../api/ownedProperties";
 
 export function TenantFormPage() {
   const { id } = useParams();
+  const [searchParams] = useSearchParams();
   const isEdit = Boolean(id);
+  const isApplicant = !isEdit && searchParams.get("kind") === "applicant";
   const navigate = useNavigate();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -63,7 +65,7 @@ export function TenantFormPage() {
         await updateTenant(id, payload);
         navigate(`/tenants/${id}`);
       } else {
-        const created = await createTenant(payload);
+        const created = await createTenant(isApplicant ? { ...payload, status: "APPLICANT" } : payload);
         navigate(`/tenants/${created.id}`);
       }
     } catch (e: any) {
@@ -73,23 +75,28 @@ export function TenantFormPage() {
     }
   };
 
+  const pageTitle = isEdit ? "Edit Tenant" : isApplicant ? "Add Applicant" : "Add Tenant";
+  const backHref = isApplicant ? "/tenants?tab=applicants" : "/tenants";
+
   return (
     <Section>
       <Helmet>
-        <title>{isEdit ? "Edit Tenant" : "Add Tenant"} | The Property Guy</title>
+        <title>{pageTitle} | The Property Guy</title>
       </Helmet>
       <Container>
         <Card>
           <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
             <h1 className="pg-h2" style={{ margin: 0 }}>
-              {isEdit ? "Edit Tenant" : "Add Tenant"}
+              {pageTitle}
             </h1>
-            <ButtonLink href="/tenants" variant="ghost">
-              Back to tenants
+            <ButtonLink href={backHref} variant="ghost">
+              Back to {isApplicant ? "applicants" : "tenants"}
             </ButtonLink>
           </div>
           <p className="pg-muted" style={{ marginTop: 8, marginBottom: 0, fontSize: 13 }}>
-            Tenants are global contact records. Link a tenant to a property and unit by creating a lease.
+            {isApplicant
+              ? "Applicants are contact records in your vetting pipeline. Link to a property and create a lease when ready."
+              : "Tenants are global contact records. Link a tenant to a property and unit by creating a lease."}
           </p>
           {error ? (
             <div className="pg-alert pg-alert-error" style={{ marginTop: 12 }}>

@@ -236,6 +236,19 @@ describe("tenantsSupabase", () => {
     expect(created.id).toBe(tenantId);
   });
 
+  it("createTenant accepts APPLICANT status when requested", async () => {
+    getUser.mockResolvedValue({ data: { user: { id: userId } }, error: null });
+    const insert = vi.fn(() => ({
+      select: vi.fn(() => ({
+        single: vi.fn(() => Promise.resolve({ data: { ...tenantRowSnake, status: "APPLICANT" }, error: null }))
+      }))
+    }));
+    from.mockReturnValue({ insert });
+
+    await createTenant({ firstName: "Jane", lastName: "Doe", status: "APPLICANT" });
+    expect(insert).toHaveBeenCalledWith(expect.objectContaining({ user_id: userId, status: "APPLICANT" }));
+  });
+
   it("createTenantForProperty creates a global tenant without property_id", async () => {
     getUser.mockResolvedValue({ data: { user: { id: userId } }, error: null });
     const insert = vi.fn(() => ({

@@ -1,3 +1,5 @@
+import type { ApplicantFormTemplate } from "../applicants/applicantFormTemplate";
+
 export type ThemePreference = "light" | "dark" | "system";
 
 export type AccentColor = "purple" | "blue" | "green" | "orange" | "red" | "teal";
@@ -30,6 +32,7 @@ export type UserSettings = {
   monthlySummariesEnabled: boolean;
   newLeaseAlertsEnabled: boolean;
   lockInvoiceAfterSent: boolean;
+  applicantFormTemplate: ApplicantFormTemplate;
 };
 
 export type UserSettingsPatch = Partial<UserSettings>;

@@ -20,6 +20,7 @@ import {
   EXPENSE_CATEGORY_OPTIONS,
   STATEMENT_FILTER_OPTIONS
 } from "./settingsDefaults";
+import { ApplicantFormTemplateSettingsCard } from "../applicants/ApplicantFormTemplateSettingsCard";
 import type { AccentColor, ThemePreference, UserSettings } from "./settingsTypes";
 import { previewWorkspaceAppearance } from "../../theme/workspaceAppearance";
 
@@ -290,6 +291,15 @@ export function SettingsDashboard() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    if (loading || !draft) return;
+    const hash = window.location.hash.replace(/^#/, "");
+    if (!hash) return;
+    window.requestAnimationFrame(() => {
+      document.getElementById(hash)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }, [loading, draft]);
 
   const dirty = useMemo(() => {
     if (!saved || !draft) return false;
@@ -577,6 +587,17 @@ export function SettingsDashboard() {
               ))}
             </select>
           </div>
+        </SettingsCard>
+
+        <SettingsCard
+          icon="applicants"
+          title="Applicant form template"
+          description="Default fields sent on every applicant share link."
+        >
+          <ApplicantFormTemplateSettingsCard
+            template={draft.applicantFormTemplate}
+            onTemplateChange={(next) => patchDraft({ applicantFormTemplate: next })}
+          />
         </SettingsCard>
 
         <SettingsCard icon="invoices" title="Invoices & Statements" description="Automation and PDF preferences.">

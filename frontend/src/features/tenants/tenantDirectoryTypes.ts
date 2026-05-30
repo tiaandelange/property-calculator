@@ -25,6 +25,10 @@ export type TenantListItem = {
   outstandingAmount?: number | null;
   lastPaymentDate?: string | null;
   nextPaymentDueDate?: string | null;
+  monthlyIncome?: number | null;
+  fitScore?: number | null;
+  targetRent?: number | null;
+  applicationSubmittedAt?: string | null;
 };
 
 export type TenantDirectoryMetrics = {
@@ -33,4 +37,11 @@ export type TenantDirectoryMetrics = {
   pendingPaymentsTotal: number;
   pendingPaymentsCount: number;
   renewalsDue: number;
+};
+
+export type ApplicantDirectoryMetrics = {
+  totalApplicants: number;
+  awaitingProperty: number;
+  linkedToProperty: number;
+  readyForLease: number;
 };
