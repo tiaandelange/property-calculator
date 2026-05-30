@@ -3,14 +3,14 @@ import { Helmet } from "react-helmet-async";
 import { useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "react-router-dom";
 import { AppListPage } from "../components/ui/AppPage";
-import { Button, ButtonLink } from "../components/ui/Button";
+import { ButtonLink } from "../components/ui/Button";
 import { EmptyState, SkeletonGrid } from "../components/ui/DashboardKit";
 import { MetricCardsSkeletonRow } from "../components/ui/PageSkeletons";
-import { QueryErrorCard, QueryRefreshingIndicator } from "../components/ui/QueryState";
+import { QueryErrorCard } from "../components/ui/QueryState";
+import { PortfolioDashboardFilters } from "../components/nav/portfolio/PortfolioDashboardFilters";
 import { useAuth } from "../contexts/AuthContext";
 import {
   isInitialQueryLoad,
-  isQueryRefreshing,
   queryKeys,
   useDashboardSummaryQuery,
   usePropertiesQuery,
@@ -83,7 +83,6 @@ export function OwnedPropertiesPortfolioDashboardPage() {
   const properties = (propertiesQuery.data ?? []) as Record<string, unknown>[];
   const tenantCount = Array.isArray(tenantsQuery.data) ? tenantsQuery.data.length : 0;
   const loading = isInitialQueryLoad(summaryQuery);
-  const refreshing = isQueryRefreshing(summaryQuery);
   const propertiesLoading = isInitialQueryLoad(propertiesQuery);
   const error = summaryQuery.error
     ? ((summaryQuery.error as { response?: { data?: { message?: string } }; message?: string })?.response?.data
@@ -387,18 +386,8 @@ export function OwnedPropertiesPortfolioDashboardPage() {
         <title>Portfolio Dashboard | The Property Guy</title>
       </Helmet>
           <div className="pg-pdash-toolbar">
-            <div />
             <div className="pg-pdash-toolbar-actions">
-              <QueryRefreshingIndicator active={refreshing} />
-              <Button onClick={refreshDashboard} loading={summaryQuery.isFetching && !loading}>
-                Refresh
-              </Button>
-              <ButtonLink href="/owned-properties/new" variant="soft">
-                Add Property
-              </ButtonLink>
-              <ButtonLink href="/financials" variant="ghost">
-                Add income/expense
-              </ButtonLink>
+              <PortfolioDashboardFilters />
               <ButtonLink href="/dashboard" variant="ghost">
                 My reports
               </ButtonLink>

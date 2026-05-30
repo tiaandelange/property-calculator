@@ -154,6 +154,40 @@
   padding: var(--workspace-card-pad);
 }
 
+/* Filter button popover (dashboard and other workspace filter triggers). */
+.pg-workspace-filter-dropdown {
+  padding: var(--workspace-card-pad);
+  display: grid;
+  gap: 12px;
+}
+
+.pg-workspace-filter-dropdown__title {
+  margin: 0;
+  font-size: var(--type-card-title);
+  font-weight: var(--weight-semibold);
+  color: var(--dash-text-secondary, var(--text-secondary));
+}
+
+.pg-workspace-filter-dropdown__hint {
+  margin: -4px 0 0;
+  font-size: 13px;
+}
+
+.pg-workspace-filter-dropdown__grid {
+  display: grid;
+  gap: 12px;
+}
+
+.pg-workspace-filter-dropdown__field {
+  display: grid;
+  gap: 6px;
+}
+
+.pg-workspace-filter-dropdown__label {
+  font-size: 13px;
+  color: var(--dash-text-secondary, var(--text-secondary));
+}
+
 .pg-dashboard-shell .pg-pdash-metric,
 .pg-dashboard-shell .pg-pdash-panel {
   padding: var(--workspace-card-pad);

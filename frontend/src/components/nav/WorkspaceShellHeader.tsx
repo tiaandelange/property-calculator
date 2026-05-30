@@ -5,7 +5,6 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { usePropertyOptionsQuery, usePropertyQuery } from "../../features/queries";
 import { workspacePageTitle } from "../../nav/workspaceNavConfig";
-import { PortfolioDashboardFilters } from "./portfolio/PortfolioDashboardFilters";
 
 function titleizeEnum(v: string): string {
   const t = v.replace(/_/g, " ").toLowerCase();
@@ -60,7 +59,6 @@ export function WorkspaceShellHeader({ mobile = false }: { mobile?: boolean }) {
   }, [propertyMenuOpen]);
 
   const title = workspacePageTitle(pathname);
-  const isPortfolioDashboard = pathname === "/owned-properties/dashboard";
 
   const propertyIdFromPath = useMemo(() => {
     const m = /^\/owned-properties\/([^/?#]+)/.exec(pathname);
@@ -129,7 +127,6 @@ export function WorkspaceShellHeader({ mobile = false }: { mobile?: boolean }) {
           {showPropertySwitcher && propertyCtx ? "Properties" : title}
         </h1>
         <div className="pg-dashboard-mobile-topbar-actions">
-          {isPortfolioDashboard ? <PortfolioDashboardFilters /> : null}
           <button type="button" className="pg-dashboard-shell-icon-btn" aria-label="Notifications">
             <Bell size={20} aria-hidden />
           </button>
@@ -203,7 +200,6 @@ export function WorkspaceShellHeader({ mobile = false }: { mobile?: boolean }) {
         />
       </form>
       <div className="pg-dashboard-shell-header-actions">
-        {isPortfolioDashboard ? <PortfolioDashboardFilters /> : null}
         <button type="button" className="pg-dashboard-shell-icon-btn" aria-label="Notifications">
           <Bell size={20} aria-hidden />
         </button>

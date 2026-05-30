@@ -68,6 +68,7 @@ export function PortfolioDashboardFilters({ className, buttonClassName }: Props)
   const wrapRef = useRef<HTMLDivElement | null>(null);
 
   const selectedTypes = useMemo(() => parseTypesParam(search), [search]);
+  const selectedType = selectedTypes.length === 1 ? selectedTypes[0] : "";
   const month = useMemo(
     () => parseMonthParam(search) ?? new Date().toISOString().slice(0, 7),
     [search]
@@ -106,9 +107,9 @@ export function PortfolioDashboardFilters({ className, buttonClassName }: Props)
     navigate(`/owned-properties/dashboard?${params.toString()}`);
   };
 
-  const setTypesFromMultiSelect = (next: string[]) => {
+  const setTypeFilter = (typeId: string) => {
     const params = new URLSearchParams(search);
-    if (next.length) params.set("types", next.join(","));
+    if (typeId) params.set("types", typeId);
     else params.delete("types");
     if (month) params.set("month", month);
     if (propertyId != null) params.set("propertyId", String(propertyId));
@@ -126,7 +127,7 @@ export function PortfolioDashboardFilters({ className, buttonClassName }: Props)
     <div ref={wrapRef} className={className ?? "pg-dashboard-header-filters"}>
       <button
         type="button"
-        className={`pg-dashboard-shell-filter-btn${filterActive ? " pg-dashboard-shell-filter-btn--active" : ""}${buttonClassName ? ` ${buttonClassName}` : ""}`}
+        className={`pg-dashboard-shell-icon-btn pg-dashboard-shell-filter-btn${filterActive ? " pg-dashboard-shell-filter-btn--active" : ""}${buttonClassName ? ` ${buttonClassName}` : ""}`}
         aria-expanded={filtersOpen}
         aria-haspopup="dialog"
         aria-controls="portfolio-dashboard-filters"
@@ -140,66 +141,51 @@ export function PortfolioDashboardFilters({ className, buttonClassName }: Props)
           id="portfolio-dashboard-filters"
           role="dialog"
           aria-label="Dashboard filters"
-          className="pg-card pg-dashboard-filters-popover pg-dashboard-shell-filters-popover"
+          className="pg-workspace-card pg-workspace-filter-dropdown pg-dashboard-filters-popover pg-dashboard-shell-filters-popover"
         >
-          <div className="pg-card-pad">
-            <div className="pg-card-title">Filters</div>
-            <p className="pg-muted" style={{ margin: "0 0 12px", fontSize: 13 }}>
-              Figures reflect the selected month. Hold Ctrl or ⌘ while clicking to choose multiple property types.
-            </p>
-            <div style={{ display: "grid", gap: 14 }}>
-              <div>
-                <div className="pg-muted" style={{ marginBottom: 6, fontSize: 13 }}>
-                  Property
-                </div>
-                <select
-                  className="pg-input"
-                  value={propertyId ?? ""}
-                  onChange={(e) => setParam({ propertyId: e.target.value || null })}
-                >
-                  <option value="">All properties</option>
-                  {properties.map((p: any) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <div className="pg-muted" style={{ marginBottom: 6, fontSize: 13 }}>
-                  Property type
-                </div>
-                <select
-                  multiple
-                  className="pg-input"
-                  style={{ minHeight: 120, paddingTop: 8, paddingBottom: 8 }}
-                  value={selectedTypes}
-                  onChange={(e) => setTypesFromMultiSelect(Array.from(e.target.selectedOptions, (o) => o.value))}
-                >
-                  {TYPE_OPTIONS.map((o) => (
-                    <option key={o.id} value={o.id}>
-                      {o.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <div className="pg-muted" style={{ marginBottom: 6, fontSize: 13 }}>
-                  Month
-                </div>
-                <select className="pg-input" value={month} onChange={(e) => setParam({ month: e.target.value })}>
-                  {monthSelectOptions.map((m) => (
-                    <option key={m} value={m}>
-                      {formatMonthLabel(m)}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <Button type="button" variant="ghost" onClick={resetFilters}>
-                Reset filters
-              </Button>
-            </div>
+          <div className="pg-workspace-filter-dropdown__title">Filters</div>
+          <p className="pg-workspace-filter-dropdown__hint pg-muted">Figures reflect the selected month.</p>
+          <div className="pg-workspace-filter-dropdown__grid">
+            <label className="pg-workspace-filter-dropdown__field">
+              <span className="pg-workspace-filter-dropdown__label">Property</span>
+              <select
+                className="pg-input"
+                value={propertyId ?? ""}
+                onChange={(e) => setParam({ propertyId: e.target.value || null })}
+              >
+                <option value="">All properties</option>
+                {properties.map((p: any) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="pg-workspace-filter-dropdown__field">
+              <span className="pg-workspace-filter-dropdown__label">Property type</span>
+              <select className="pg-input" value={selectedType} onChange={(e) => setTypeFilter(e.target.value)}>
+                <option value="">All types</option>
+                {TYPE_OPTIONS.map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="pg-workspace-filter-dropdown__field">
+              <span className="pg-workspace-filter-dropdown__label">Month</span>
+              <select className="pg-input" value={month} onChange={(e) => setParam({ month: e.target.value })}>
+                {monthSelectOptions.map((m) => (
+                  <option key={m} value={m}>
+                    {formatMonthLabel(m)}
+                  </option>
+                ))}
+              </select>
+            </label>
           </div>
+          <Button type="button" variant="ghost" onClick={resetFilters}>
+            Reset filters
+          </Button>
         </div>
       ) : null}
     </div>
