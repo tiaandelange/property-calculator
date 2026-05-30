@@ -9,6 +9,8 @@ import { ProplyticTableActions } from "./ProplyticTable";
 export type ProplyticTableRowAction = {
   key: string;
   label: string;
+  /** Visible text in the overflow menu; defaults to `label`. */
+  menuLabel?: string;
   icon: IconName;
   href?: string;
   onClick?: () => void;
@@ -17,25 +19,13 @@ export type ProplyticTableRowAction = {
   primary?: boolean;
 };
 
-const DIRECT_ACTION_PRIORITY = ["view", "edit", "invoice", "download", "property", "tenant", "email"];
-
-function actionPriority(action: ProplyticTableRowAction): number {
-  if (action.primary) return -2;
-  const iconIndex = DIRECT_ACTION_PRIORITY.indexOf(action.icon);
-  if (iconIndex >= 0) return iconIndex;
-  const keyIndex = DIRECT_ACTION_PRIORITY.indexOf(action.key);
-  if (keyIndex >= 0) return keyIndex;
-  if (action.destructive) return 100;
-  return 50;
-}
-
-function pickPrimaryAction(actions: ProplyticTableRowAction[]): ProplyticTableRowAction | null {
-  if (!actions.length) return null;
+function pickEditDirectAction(actions: ProplyticTableRowAction[]): ProplyticTableRowAction | null {
   return (
-    actions.find((action) => action.primary) ??
-    actions.find((action) => action.icon === "edit") ??
-    actions.find((action) => action.icon === "view") ??
-    actions[0]
+    actions.find((action) => action.key === "edit" || action.icon === "edit") ??
+    actions.find((action) => action.primary && !action.destructive) ??
+    actions.find((action) => !action.destructive) ??
+    actions[0] ??
+    null
   );
 }
 
@@ -45,7 +35,7 @@ function splitRowActions(actions: ProplyticTableRowAction[], compactActions?: bo
   }
 
   if (compactActions) {
-    const primary = pickPrimaryAction(actions);
+    const primary = pickEditDirectAction(actions);
     if (!primary) return { direct: [], overflow: actions };
     return {
       direct: [primary],
@@ -53,17 +43,20 @@ function splitRowActions(actions: ProplyticTableRowAction[], compactActions?: bo
     };
   }
 
-  const sorted = [...actions].sort((a, b) => actionPriority(a) - actionPriority(b));
+  const editAction = pickEditDirectAction(actions);
+  if (!editAction) {
+    return { direct: actions.slice(0, 1), overflow: actions.slice(1) };
+  }
+
   return {
-    direct: sorted.slice(0, 2),
-    overflow: sorted.slice(2)
+    direct: [editAction],
+    overflow: actions.filter((action) => action.key !== editAction.key)
   };
 }
 
 function actionsLayoutClass(directCount: number, hasOverflow: boolean) {
   if (!hasOverflow) return `pg-ptable-actions--count-${directCount}`;
-  if (directCount <= 1) return "pg-ptable-actions--count-menu";
-  return "pg-ptable-actions--count-2-menu";
+  return "pg-ptable-actions--count-edit-menu";
 }
 
 function ActionIconButton({ action }: { action: ProplyticTableRowAction }) {
@@ -91,7 +84,7 @@ function MenuItem({ action, onSelect }: { action: ProplyticTableRowAction; onSel
     return (
       <Link to={action.href} className={className} role="menuitem" onClick={onSelect}>
         <AppIcon name={action.icon} size="sm" strokeWidth={2} aria-hidden />
-        <span>{action.label}</span>
+        <span>{action.menuLabel ?? action.label}</span>
       </Link>
     );
   }
@@ -108,7 +101,7 @@ function MenuItem({ action, onSelect }: { action: ProplyticTableRowAction; onSel
       }}
     >
       <AppIcon name={action.icon} size="sm" strokeWidth={2} aria-hidden />
-      <span>{action.label}</span>
+      <span>{action.menuLabel ?? action.label}</span>
     </button>
   );
 }

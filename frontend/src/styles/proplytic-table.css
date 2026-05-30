@@ -361,10 +361,52 @@
   width: 1%;
   min-width: 120px;
   max-width: 220px;
-  overflow: hidden;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: normal;
+  line-height: 1.45;
+  vertical-align: middle;
 }
 
-.pg-ptable-col--description,
+.pg-ptable-col--text > *,
+.pg-ptable__flex > * {
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* Wrap all inline text inside text columns; overrides page-level ellipsis utilities. */
+.pg-ptable td.pg-ptable-col--text :where(a, span, div, p, strong, em),
+.pg-ptable td.pg-ptable__flex :where(a, span, div, p, strong, em),
+.pg-ptable th.pg-ptable-col--text :where(a, span, div, p, strong, em),
+.pg-ptable th.pg-ptable__flex :where(a, span, div, p, strong, em) {
+  white-space: normal;
+  overflow: visible;
+  overflow-wrap: anywhere;
+  word-break: normal;
+  text-overflow: unset;
+  max-width: 100%;
+}
+
+.pg-ptable-truncate {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pg-ptable td.pg-ptable-col--text .pg-ptable-truncate,
+.pg-ptable td.pg-ptable__flex .pg-ptable-truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pg-ptable td.pg-ptable-col--text :where(.pg-ptable-badge, .pg-applicant-fit),
+.pg-ptable td.pg-ptable__flex :where(.pg-ptable-badge, .pg-applicant-fit) {
+  white-space: nowrap;
+  overflow: visible;
+}
 .pg-ptable__flex-wide {
   width: 1%;
   min-width: 220px;
@@ -420,30 +462,10 @@
   max-width: 56px;
 }
 
-.pg-ptable-col--actions:has(.pg-ptable-actions--count-2-menu),
-.pg-ptable__actions.pg-ptable-actions--count-2-menu {
-  min-width: 120px;
-  max-width: 132px;
-}
-
-.pg-ptable-col--text .pg-tenants-name,
-.pg-ptable-col--text .pg-leases-name,
-.pg-ptable-col--text .pg-invoices-link,
-.pg-ptable-col--text .pg-fins-name,
-.pg-ptable-col--text .pg-tenants-property strong,
-.pg-ptable-col--text .pg-leases-property strong {
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.pg-ptable-col--text .pg-tenants-sub,
-.pg-ptable-col--text .pg-leases-sub,
-.pg-ptable-col--text .pg-invoices-sub {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.pg-ptable-col--actions:has(.pg-ptable-actions--count-edit-menu),
+.pg-ptable__actions.pg-ptable-actions--count-edit-menu {
+  min-width: 88px;
+  max-width: 104px;
 }
 
 .pg-ptable td:has(> .pg-ptable-badge),
@@ -531,10 +553,13 @@
 .pg-leases-actions,
 .pg-fins-row-actions,
 .pg-pfin-row-actions {
-  display: inline-flex;
+  display: flex;
+  flex-direction: row-reverse;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: flex-start;
   gap: 4px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .pg-ptable-row-actions-menu {

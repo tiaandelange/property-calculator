@@ -14,27 +14,27 @@ export function LeaseRowActions({
   const actions: ProplyticTableRowAction[] = [
     {
       key: "edit",
-      label: `Edit lease for ${lease.tenantName}`,
+      label: "Edit lease",
       icon: "edit",
       href: `/leases/${lease.id}/edit`,
       primary: true
     },
     {
       key: "property",
-      label: `View property ${lease.propertyName}`,
+      label: "View property",
       icon: "property",
       href: `/owned-properties/${lease.propertyId}?tab=leases`
     },
     {
       key: "tenant",
-      label: lease.tenantId ? `View tenant ${lease.tenantName}` : "No tenant linked",
+      label: lease.tenantId ? "View tenant" : "No tenant linked",
       icon: "tenant",
       href: lease.tenantId ? `/tenants/${lease.tenantId}` : undefined,
       disabled: !lease.tenantId
     },
     {
       key: "view",
-      label: `View lease for ${lease.tenantName}`,
+      label: "View lease",
       icon: "view",
       href: propertyLeasesPath(lease.propertyId, lease.id)
     }
@@ -43,7 +43,7 @@ export function LeaseRowActions({
   if (lease.isCancellable && onCancel) {
     actions.push({
       key: "cancel",
-      label: `Cancel lease for ${lease.tenantName}`,
+      label: "Cancel lease",
       icon: "leaseCancel",
       onClick: () => onCancel(lease.id)
     });
@@ -52,7 +52,7 @@ export function LeaseRowActions({
   if (onDelete) {
     actions.push({
       key: "delete",
-      label: `Permanently delete lease for ${lease.tenantName}`,
+      label: "Delete lease",
       icon: "delete",
       onClick: () => onDelete(lease.id),
       destructive: true

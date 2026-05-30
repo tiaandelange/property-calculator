@@ -12,20 +12,20 @@ export function TenantRowActions({ tenant }: { tenant: TenantListItem }) {
       actions={[
         {
           key: "edit",
-          label: `Edit ${tenant.fullName}`,
+          label: "Edit tenant",
           icon: "edit",
           href: `/tenants/${tenant.id}/edit`,
           primary: true
         },
         {
           key: "view",
-          label: `View ${tenant.fullName}`,
+          label: "View tenant",
           icon: "view",
           href: `/tenants/${tenant.id}`
         },
         {
           key: "email",
-          label: mailHref ? `Email ${tenant.fullName}` : "No email on file",
+          label: mailHref ? "Email tenant" : "No email on file",
           icon: "email",
           href: mailHref,
           disabled: !mailHref

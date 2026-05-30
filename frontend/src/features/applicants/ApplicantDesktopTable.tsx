@@ -86,14 +86,14 @@ export function ApplicantDesktopTable({
                   actions={[
                     {
                       key: "view",
-                      label: `View ${item.fullName}`,
+                      label: "View applicant",
                       icon: "view",
                       onClick: () => onView(item),
                       primary: true
                     },
                     {
                       key: "delete",
-                      label: `Delete ${item.fullName}`,
+                      label: "Delete applicant",
                       icon: "delete",
                       onClick: () => onDelete(item),
                       destructive: true

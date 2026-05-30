@@ -73,7 +73,7 @@ export function FinancialStatementTable({
             if (r.source !== "INVOICE") {
               rowActions.push({
                 key: "edit",
-                label: `Edit on ${r.propertyName} financials`,
+                label: "Edit entry",
                 icon: "edit",
                 href: manageUrl,
                 primary: true
