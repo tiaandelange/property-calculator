@@ -218,7 +218,7 @@
 
 .pg-dashboard-shell-header {
   display: grid;
-  grid-template-columns: minmax(160px, max-content) minmax(280px, 1fr) max-content;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
   column-gap: 16px;
   row-gap: 12px;
@@ -231,6 +231,9 @@
   display: grid;
   gap: 4px;
   min-width: 0;
+  justify-self: start;
+  position: relative;
+  z-index: 2;
 }
 
 .pg-dashboard-shell-header-title {
@@ -252,12 +255,10 @@
 
 .pg-dashboard-shell-search {
   min-width: 0;
-  width: clamp(260px, 25vw, 420px);
-  max-width: 520px;
+  width: 100%;
   position: relative;
   display: flex;
   align-items: center;
-  justify-self: center;
 }
 
 .pg-dashboard-shell-search-icon {
@@ -293,6 +294,8 @@
   align-items: center;
   gap: 10px;
   justify-self: end;
+  position: relative;
+  z-index: 2;
 }
 
 .pg-dashboard-shell-prop-switch {
@@ -697,9 +700,11 @@
 /* Global workspace search (header omnibox) */
 .pg-workspace-global-search {
   position: relative;
-  flex: 1 1 320px;
-  max-width: 520px;
+  justify-self: center;
+  width: clamp(280px, 36vw, 520px);
+  max-width: min(520px, 100%);
   min-width: 0;
+  z-index: 1;
 }
 
 .pg-workspace-global-search-results {
