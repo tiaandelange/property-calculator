@@ -67,3 +67,39 @@ export async function getPropertyMonthlyStatement(
   }
   return normalizeStatementRpcPayload(data as Record<string, unknown>);
 }
+
+export type PropertyStatementRangeParams = {
+  startDate: string;
+  endDate: string;
+  includeExpected?: boolean;
+};
+
+/**
+ * Property statement ledger for an inclusive UTC date range (Statement tab).
+ */
+export async function getPropertyStatementRange(
+  propertyId: string,
+  params: PropertyStatementRangeParams
+): Promise<Record<string, unknown>> {
+  const uuid = supabaseStatementPropertyId(propertyId);
+  if (!uuid) throw new Error("Property id must be a UUID when loading statements from Supabase.");
+
+  const startDate = String(params.startDate ?? "").trim().slice(0, 10);
+  const endDate = String(params.endDate ?? "").trim().slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate) || !/^\d{4}-\d{2}-\d{2}$/.test(endDate)) {
+    throw new Error("Statement range requires startDate and endDate (YYYY-MM-DD).");
+  }
+
+  const sb = getSupabase();
+  const { data, error } = await sb.rpc("get_property_statement_range", {
+    p_property_id: uuid,
+    p_start_date: startDate,
+    p_end_date: endDate,
+    p_include_expected: params.includeExpected !== false
+  });
+  if (error) throw toError(error);
+  if (data == null || typeof data !== "object" || Array.isArray(data)) {
+    throw new Error("Empty statement range response.");
+  }
+  return data as Record<string, unknown>;
+}

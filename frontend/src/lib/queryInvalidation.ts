@@ -26,6 +26,9 @@ export function invalidatePortfolioQueries(opts?: InvalidateOpts) {
   if (wid) {
     matchers.push(
       { queryKey: ["properties", wid] },
+      { queryKey: ["properties-directory", wid] },
+      { queryKey: ["tenants-directory", wid] },
+      { queryKey: ["leases-directory", wid] },
       { queryKey: ["tenants", wid] },
       { queryKey: ["leases", wid] },
       { queryKey: ["invoices", wid] },
@@ -66,11 +69,14 @@ export function invalidatePropertyQueries(opts: InvalidateOpts & { propertyId: s
   void qc.invalidateQueries({ queryKey: queryKeys.propertyUnits(pid) });
   void qc.invalidateQueries({ queryKey: queryKeys.propertyLeases(pid) });
   void qc.invalidateQueries({ queryKey: ["property-statement", pid] });
+  void qc.invalidateQueries({ queryKey: ["property-statement-range", pid] });
 
   if (wid) {
     void qc.invalidateQueries({ queryKey: ["properties", wid] });
+    void qc.invalidateQueries({ queryKey: queryKeys.propertiesDirectory(wid) });
     void qc.invalidateQueries({ queryKey: queryKeys.dashboardSummary(wid, { propertyId: pid }) });
     void qc.invalidateQueries({ queryKey: ["financials", wid] });
+    void qc.invalidateQueries({ queryKey: queryKeys.propertiesDirectory(wid) });
     void qc.invalidateQueries({ queryKey: queryKeys.leasesDirectory(wid) });
     void qc.invalidateQueries({ queryKey: queryKeys.tenantsDirectory(wid) });
     void qc.invalidateQueries({ queryKey: queryKeys.invoicesDirectory(wid) });
@@ -89,6 +95,7 @@ export function invalidateLeaseQueries(opts: InvalidateOpts & { propertyId: stri
   const qc = client(opts);
   const wid = ws(opts.workspaceId);
   if (wid) {
+    void qc.invalidateQueries({ queryKey: queryKeys.propertiesDirectory(wid) });
     void qc.invalidateQueries({ queryKey: queryKeys.leasesDirectory(wid) });
     void qc.invalidateQueries({ queryKey: queryKeys.tenantsDirectory(wid) });
     void qc.invalidateQueries({ queryKey: queryKeys.invoicesDirectory(wid) });

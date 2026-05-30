@@ -1,5 +1,5 @@
 export { queryKeys } from "../../lib/queryKeys";
-export type { DashboardSummaryParams, FinancialsDirectoryParams, InvoicesDirectoryParams, LeasesDirectoryParams, PropertiesListFilters, PropertyStatementParams, TenantsDirectoryParams } from "../../lib/queryKeys";
+export type { DashboardSummaryParams, FinancialsDirectoryParams, InvoicesDirectoryParams, LeasesDirectoryParams, PropertiesDirectoryParams, PropertiesListFilters, PropertyStatementParams, PropertyStatementRangeParams, TenantsDirectoryParams } from "../../lib/queryKeys";
 export {
   invalidateInvoiceQueries,
   invalidateLeaseQueries,
@@ -16,6 +16,7 @@ export {
   useFinancialsDirectoryQuery,
   useInvoicesDirectoryQuery,
   useLeasesDirectoryQuery,
+  usePropertiesDirectoryQuery,
   usePropertiesQuery,
   usePropertyOptionsQuery,
   usePropertyQuery,
@@ -28,6 +29,7 @@ export {
   usePropertyInvoicesQuery,
   usePropertyReportsQuery,
   usePropertyStatementQuery,
+  usePropertyStatementRangeQuery,
   usePropertyTenantsQuery,
   useTenantQuery
 } from "./useWorkspaceQueries";

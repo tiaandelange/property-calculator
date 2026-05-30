@@ -5,9 +5,8 @@ import * as tenantUnitLinksSupabase from "../services/tenantUnitLinksSupabase";
 import * as tenantsSupabase from "../services/tenantsSupabase";
 import * as leasesSupabase from "../services/leasesSupabase";
 import { buildLeaseDirectory } from "../features/leases/leaseDirectoryAdapter";
-import { paginate, PAGE_SIZE as LEASE_PAGE_SIZE } from "../features/leases/leaseDirectoryUtils";
-import type { LeaseListItem } from "../features/leases/leaseDirectoryTypes";
-import type { LeasesDirectoryParams, TenantsDirectoryParams } from "../lib/queryKeys";
+import { PAGE_SIZE as LEASE_PAGE_SIZE } from "../features/leases/leaseDirectoryUtils";
+import type { LeasesDirectoryParams, PropertiesDirectoryParams, TenantsDirectoryParams } from "../lib/queryKeys";
 import type { FinancialsDirectoryQueryOpts } from "../services/financialsDirectorySupabase";
 import type { InvoicesDirectoryQueryOpts } from "../services/invoicesDirectorySupabase";
 import * as financialsSupabase from "../services/financialsSupabase";
@@ -34,6 +33,12 @@ export function propertyApiErrorMessage(e: unknown): string {
 export async function getProperties(params?: { month?: string }) {
   assertSupabaseConfigured();
   return propertiesSupabase.listProperties(params);
+}
+
+export async function getPropertiesDirectory(params?: PropertiesDirectoryParams) {
+  assertSupabaseConfigured();
+  const { getPropertiesDirectory: load } = await import("../services/propertiesDirectorySupabase");
+  return load(params);
 }
 
 /** Id/name only — for filter dropdowns and property switchers. */
@@ -123,27 +128,19 @@ export async function getTenantsDirectory(params?: TenantsDirectoryParams) {
   return tenantsSupabase.listTenantsDirectory(params);
 }
 
-function matchesLeaseDirectoryFilters(item: LeaseListItem, filters: LeasesDirectoryParams): boolean {
-  const q = (filters.q ?? "").trim().toLowerCase();
-  if (q) {
-    const hay = `${item.tenantName} ${item.tenantEmail ?? ""} ${item.propertyName} ${item.propertyAddress} ${item.displayStatus}`.toLowerCase();
-    if (!hay.includes(q)) return false;
-  }
-  if (filters.propertyId && filters.propertyId !== "ALL" && item.propertyId !== filters.propertyId) return false;
-  if (filters.status && filters.status !== "ALL" && item.lifecycleStatus !== filters.status) return false;
-  if (filters.leaseType && filters.leaseType !== "ALL" && item.leaseType.toUpperCase() !== filters.leaseType) return false;
-  return true;
-}
-
 export async function getLeasesDirectory(params?: LeasesDirectoryParams) {
   assertSupabaseConfigured();
-  const rows = await leasesSupabase.listLeasesDirectoryFilteredRows(params);
-  const { items, metrics } = buildLeaseDirectory(rows);
-  const filtered = items.filter((item) => matchesLeaseDirectoryFilters(item, params ?? {}));
-  const page = Math.max(1, params?.page ?? 1);
-  const pageSize = Math.max(1, params?.pageSize ?? LEASE_PAGE_SIZE);
-  const { slice, totalCount } = paginate(filtered, page, pageSize);
-  return { items: slice, metrics, totalCount };
+  const pageResult = await leasesSupabase.listLeasesDirectoryFilteredRows({
+    page: params?.page,
+    pageSize: params?.pageSize ?? LEASE_PAGE_SIZE,
+    q: params?.q,
+    propertyId: params?.propertyId,
+    status: params?.status,
+    leaseType: params?.leaseType
+  });
+  const { items } = buildLeaseDirectory(pageResult.rows);
+  const { metrics } = buildLeaseDirectory(pageResult.metricsRows);
+  return { items, metrics, totalCount: pageResult.totalCount };
 }
 
 export async function createTenant(payload: Record<string, unknown>) {
@@ -413,6 +410,18 @@ export async function getPropertyStatement(
     throw new Error("Property id must be a UUID to load the statement.");
   }
   return statementsSupabase.getPropertyMonthlyStatement(uuid, params);
+}
+
+export async function getPropertyStatementRange(
+  propertyId: string | number,
+  params: statementsSupabase.PropertyStatementRangeParams
+) {
+  assertSupabaseConfigured();
+  const uuid = statementsSupabase.supabaseStatementPropertyId(propertyId);
+  if (!uuid) {
+    throw new Error("Property id must be a UUID to load the statement.");
+  }
+  return statementsSupabase.getPropertyStatementRange(uuid, params);
 }
 
 export async function postPropertyFinancialBackfill(propertyId: string | number, body: Record<string, unknown>) {

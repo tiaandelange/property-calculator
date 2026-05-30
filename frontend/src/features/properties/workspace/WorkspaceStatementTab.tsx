@@ -9,9 +9,14 @@ import {
   invoiceIdFromStatementRow,
   invoiceStatementCreditClass
 } from "../../invoices/invoiceStatementUtils";
-import { useSettingsQuery } from "../../queries";
+import {
+  invalidatePropertyQueries,
+  usePropertyStatementRangeQuery,
+  useSettingsQuery,
+  useWorkspaceId
+} from "../../queries";
 import { statementFilterToPreset } from "../../settings/settingsDefaults";
-import { getPropertyStatement } from "../../../api/ownedProperties";
+import { resolveStatementPeriodRange, type StatementPeriodPreset } from "./statementPeriodRange";
 import { Card } from "../../../components/ui/Card";
 import { Input } from "../../../components/ui/Input";
 import { Select } from "../../../components/ui/Select";
@@ -28,7 +33,6 @@ import {
 } from "../../../api/ownedProperties";
 import { MetricCard } from "../../../components/ui/DashboardKit";
 
-type PeriodPreset = "LAST_MONTH" | "SIX_MONTHS" | "YTD" | "TWELVE_MONTHS" | "PER_YEAR" | "FOREVER";
 type StatementSource = "EXPENSE" | "INCOME" | "INVOICE";
 
 type StatementDraft = {
@@ -255,25 +259,6 @@ function StatementStatusPicker({
   );
 }
 
-function monthIdUtc(d: Date): string {
-  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
-}
-
-function monthSequenceUtc(start: Date, endInclusive: Date): string[] {
-  const out: string[] = [];
-  const cur = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), 1));
-  const end = new Date(Date.UTC(endInclusive.getUTCFullYear(), endInclusive.getUTCMonth(), 1));
-  while (cur <= end) {
-    out.push(monthIdUtc(cur));
-    cur.setUTCMonth(cur.getUTCMonth() + 1);
-  }
-  return out;
-}
-
-function utcStartOfYear(d = new Date()): Date {
-  return new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-}
-
 function fmtZar(n: unknown): string {
   const v = Number(n ?? 0);
   if (!Number.isFinite(v)) return "—";
@@ -286,14 +271,12 @@ export function WorkspaceStatementTab({
   propertyId: string;
 }) {
   const navigate = useNavigate();
+  const workspaceId = useWorkspaceId();
   const settingsQuery = useSettingsQuery();
-  const [preset, setPreset] = useState<PeriodPreset>("SIX_MONTHS");
+  const [preset, setPreset] = useState<StatementPeriodPreset>("SIX_MONTHS");
   const [presetReady, setPresetReady] = useState(false);
   const [year, setYear] = useState<number>(() => new Date().getUTCFullYear());
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [rows, setRows] = useState<any[]>([]);
-  const [reloadKey, setReloadKey] = useState(0);
+  const [actionError, setActionError] = useState("");
   const [showAddOnceOff, setShowAddOnceOff] = useState(false);
   const [onceOffSaving, setOnceOffSaving] = useState(false);
   const [onceOffForm, setOnceOffForm] = useState<{
@@ -316,102 +299,30 @@ export function WorkspaceStatementTab({
   const [statusMenuKey, setStatusMenuKey] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<any>(null);
 
-  const monthIds = useMemo(() => {
-    const now = new Date();
-    if (preset === "FOREVER") return null;
-
-    if (preset === "PER_YEAR") {
-      const start = new Date(Date.UTC(year, 0, 1));
-      const end = new Date(Date.UTC(year, 11, 1));
-      return monthSequenceUtc(start, end);
-    }
-
-    if (preset === "YTD") {
-      return monthSequenceUtc(utcStartOfYear(now), now);
-    }
-
-    if (preset === "LAST_MONTH") {
-      const last = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1));
-      return [monthIdUtc(last)];
-    }
-
-    if (preset === "TWELVE_MONTHS" || preset === "SIX_MONTHS") {
-      const back = preset === "TWELVE_MONTHS" ? 11 : 5;
-      const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - back, 1));
-      return monthSequenceUtc(start, now);
-    }
-
-    return monthSequenceUtc(now, now);
-  }, [preset, year]);
+  const periodRange = useMemo(() => resolveStatementPeriodRange(preset, year), [preset, year]);
+  const statementQuery = usePropertyStatementRangeQuery(
+    propertyId,
+    { ...periodRange, includeExpected: true },
+    { enabled: presetReady }
+  );
+  const rows = (statementQuery.data?.statementRows as Record<string, unknown>[] | undefined) ?? [];
+  const loading = !presetReady || statementQuery.isLoading;
+  const error =
+    actionError ||
+    (statementQuery.error instanceof Error
+      ? statementQuery.error.message
+      : statementQuery.error
+        ? "Failed to load statement."
+        : "");
 
   useEffect(() => {
     if (settingsQuery.data) {
-      setPreset(statementFilterToPreset(settingsQuery.data.statementDefaultFilter) as PeriodPreset);
+      setPreset(statementFilterToPreset(settingsQuery.data.statementDefaultFilter) as StatementPeriodPreset);
     }
     if (!settingsQuery.isLoading) {
       setPresetReady(true);
     }
   }, [settingsQuery.data, settingsQuery.isLoading]);
-
-  useEffect(() => {
-    if (!presetReady) return;
-    let cancelled = false;
-    setLoading(true);
-    setError("");
-    void (async () => {
-      try {
-        // FOREVER is intentionally limited to 12 months for safety until a range RPC exists.
-        const ids =
-          monthIds ??
-          monthSequenceUtc(
-            new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth() - 11, 1)),
-            new Date()
-          );
-
-        const stmts = await Promise.all(
-          ids.map((m) =>
-            getPropertyStatement(propertyId, {
-              month: m,
-              includeExpected: true,
-              bustCache: reloadKey > 0
-            }).catch(() => null)
-          )
-        );
-
-        if (cancelled) return;
-        const mergedRaw = stmts
-          .flatMap((s) => (s ? ((s as any).statementRows ?? []) : []))
-          .filter(Boolean);
-
-        // Dedupe across months: some RPC views can repeat open invoices/rows when you query multiple months.
-        const byKey = new Map<string, any>();
-        for (const r of mergedRaw) {
-          const key =
-            r?.id != null && String(r.id).trim() !== ""
-              ? `id:${String(r.id)}`
-              : `row:${String(r.source ?? "")}|${String(r.type ?? "")}|${String(r.date ?? "")}|${String(r.description ?? "")}|${String(
-                  r.debit ?? ""
-                )}|${String(r.credit ?? "")}`;
-          if (!byKey.has(key)) byKey.set(key, r);
-        }
-        const merged = Array.from(byKey.values());
-        merged.sort(
-          (a: any, b: any) =>
-            String(a.date ?? "").localeCompare(String(b.date ?? "")) || String(a.id ?? "").localeCompare(String(b.id ?? ""))
-        );
-        setRows(merged);
-      } catch (e: any) {
-        if (cancelled) return;
-        setError(e?.message ?? "Failed to load statement.");
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [propertyId, monthIds, reloadKey, presetReady]);
 
   useEffect(() => {
     if (!statusMenuKey) return;
@@ -440,22 +351,26 @@ export function WorkspaceStatementTab({
 
   const periodTotals = totals;
 
-  const reload = async () => {
-    setReloadKey((k) => k + 1);
+  const reload = () => {
+    setActionError("");
+    invalidatePropertyQueries({
+      workspaceId: workspaceId ?? undefined,
+      propertyId
+    });
   };
 
   async function addOnceOffExpense() {
     const amount = Number(String(onceOffForm.amount ?? "").trim());
     if (!onceOffForm.description.trim()) {
-      setError("Description is required.");
+      setActionError("Description is required.");
       return;
     }
     if (!Number.isFinite(amount) || amount <= 0) {
-      setError("Enter a valid amount.");
+      setActionError("Enter a valid amount.");
       return;
     }
     setOnceOffSaving(true);
-    setError("");
+    setActionError("");
     try {
       await createPropertyExpense(propertyId, {
         category: onceOffForm.category,
@@ -472,7 +387,7 @@ export function WorkspaceStatementTab({
       });
       await reload();
     } catch (e: any) {
-      setError(e?.message ?? "Failed to add expense.");
+      setActionError(e?.message ?? "Failed to add expense.");
     } finally {
       setOnceOffSaving(false);
     }
@@ -480,13 +395,13 @@ export function WorkspaceStatementTab({
 
   async function performDeleteExpense(expenseId: string) {
     setDeletingRowId(expenseId);
-    setError("");
+    setActionError("");
     try {
       await deletePropertyExpense(expenseId);
       setConfirmDelete(null);
       await reload();
     } catch (e: any) {
-      setError(e?.message ?? "Failed to delete expense.");
+      setActionError(e?.message ?? "Failed to delete expense.");
     } finally {
       setDeletingRowId(null);
     }
@@ -536,7 +451,7 @@ export function WorkspaceStatementTab({
 
     setSavingRowId(draftRow.id);
     setRowEditError("");
-    setError("");
+    setActionError("");
     try {
       if (draftRow.source === "EXPENSE") {
         const amount = debitNum;
@@ -577,13 +492,13 @@ export function WorkspaceStatementTab({
 
   async function applyRowStatus(source: "INCOME", id: string, uiStatus: string) {
     setStatusUpdatingRowId(id);
-    setError("");
+    setActionError("");
     try {
       const mapped = INCOME_STATUS_UI.find((o) => o.value === uiStatus)?.api ?? uiStatus;
       await updatePropertyIncome(String(id), { status: mapped });
       await reload();
     } catch (e: any) {
-      setError(e?.message ?? "Failed to update status.");
+      setActionError(e?.message ?? "Failed to update status.");
       throw e;
     } finally {
       setStatusUpdatingRowId(null);
@@ -591,7 +506,7 @@ export function WorkspaceStatementTab({
   }
 
   async function openInvoiceForRow(r: Record<string, unknown>) {
-    setError("");
+    setActionError("");
     try {
       if (r.source === "INVOICE" && rowSourceId(r)) {
         navigate(invoiceDetailPath(invoiceIdFromStatementRow(r)));
@@ -607,7 +522,7 @@ export function WorkspaceStatementTab({
       }
       throw new Error("Invoice is not available for this line.");
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Could not open invoice.");
+      setActionError(e instanceof Error ? e.message : "Could not open invoice.");
     }
   }
 
@@ -644,7 +559,7 @@ export function WorkspaceStatementTab({
               <p className="pg-pfin-section__desc">Accounting-style ledger lines (income, expenses, invoices).</p>
             </div>
             <div style={{ display: "flex", gap: 8, flexWrap: "nowrap", alignItems: "center" }}>
-              <select className="pg-input" value={preset} onChange={(e) => setPreset(e.target.value as PeriodPreset)} aria-label="Statement period">
+              <select className="pg-input" value={preset} onChange={(e) => setPreset(e.target.value as StatementPeriodPreset)} aria-label="Statement period">
                 <option value="LAST_MONTH">Last month</option>
                 <option value="SIX_MONTHS">6 months (default)</option>
                 <option value="YTD">Year to date</option>
@@ -1047,13 +962,13 @@ export function WorkspaceStatementTab({
             void (async () => {
               const id = String(confirmDelete.id);
               setDeletingRowId(id);
-              setError("");
+              setActionError("");
               try {
                 await deletePropertyIncome(id);
                 setConfirmDelete(null);
                 await reload();
               } catch (e: any) {
-                setError(e?.message ?? "Failed to delete income.");
+                setActionError(e?.message ?? "Failed to delete income.");
               } finally {
                 setDeletingRowId(null);
               }
@@ -1064,13 +979,13 @@ export function WorkspaceStatementTab({
             void (async () => {
               const id = String(confirmDelete.id);
               setDeletingRowId(id);
-              setError("");
+              setActionError("");
               try {
                 await hardDeleteInvoice(id);
                 setConfirmDelete(null);
                 await reload();
               } catch (e: any) {
-                setError(e?.message ?? "Failed to delete invoice.");
+                setActionError(e?.message ?? "Failed to delete invoice.");
               } finally {
                 setDeletingRowId(null);
               }

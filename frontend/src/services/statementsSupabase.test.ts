@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import {
   calendarMonthPartsForStatementRpc,
   getPropertyMonthlyStatement,
+  getPropertyStatementRange,
   supabaseStatementPropertyId
 } from "./statementsSupabase";
 
@@ -83,5 +84,27 @@ describe("statementsSupabase", () => {
     await expect(
       getPropertyMonthlyStatement("aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee", { month: "2026-01" })
     ).rejects.toThrow(/Property not found/);
+  });
+
+  it("getPropertyStatementRange calls range RPC with inclusive dates", async () => {
+    rpc.mockResolvedValue({
+      data: { statementRows: [{ id: "row-1", date: "2026-03-01" }] },
+      error: null
+    });
+    const out = await getPropertyStatementRange("aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee", {
+      startDate: "2026-01-01",
+      endDate: "2026-05-30",
+      includeExpected: true
+    });
+    expect(rpc).toHaveBeenCalledWith(
+      "get_property_statement_range",
+      expect.objectContaining({
+        p_property_id: "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+        p_start_date: "2026-01-01",
+        p_end_date: "2026-05-30",
+        p_include_expected: true
+      })
+    );
+    expect(out.statementRows).toHaveLength(1);
   });
 });

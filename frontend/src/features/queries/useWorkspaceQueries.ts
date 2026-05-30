@@ -1,6 +1,7 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import {
   getPropertyStatement,
+  getPropertyStatementRange,
   getPropertyTenants,
   getPropertyWorkspaceReports,
   getTenant,
@@ -13,7 +14,7 @@ import {
   STALE_TIME_PROPERTIES_MS,
   STALE_TIME_STATEMENT_MS
 } from "../../lib/queryClient";
-import type { PropertyStatementParams } from "../../lib/queryKeys";
+import type { PropertyStatementParams, PropertyStatementRangeParams } from "../../lib/queryKeys";
 import { queryKeys } from "../../lib/queryKeys";
 import { useWorkspaceId } from "./useWorkspaceId";
 
@@ -61,6 +62,31 @@ export function usePropertyStatementQuery(
         includeExpected: params.includeExpected
       }),
     enabled: Boolean(workspaceId && propertyId) && (opts?.enabled !== false),
+    staleTime: STALE_TIME_STATEMENT_MS,
+    gcTime: GC_TIME_MS,
+    placeholderData: keepPreviousData
+  });
+}
+
+export function usePropertyStatementRangeQuery(
+  propertyId: string | undefined,
+  params: PropertyStatementRangeParams,
+  opts?: { enabled?: boolean }
+) {
+  const workspaceId = useWorkspaceId();
+  return useQuery({
+    queryKey: propertyId
+      ? queryKeys.propertyStatementRange(propertyId, params)
+      : ["property-statement-range", "anonymous"],
+    queryFn: () =>
+      getPropertyStatementRange(propertyId!, {
+        startDate: params.startDate,
+        endDate: params.endDate,
+        includeExpected: params.includeExpected
+      }),
+    enabled:
+      Boolean(workspaceId && propertyId && params.startDate && params.endDate) &&
+      (opts?.enabled !== false),
     staleTime: STALE_TIME_STATEMENT_MS,
     gcTime: GC_TIME_MS,
     placeholderData: keepPreviousData

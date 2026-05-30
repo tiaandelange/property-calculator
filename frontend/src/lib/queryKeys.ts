@@ -23,9 +23,24 @@ export type DirectoryPaginationParams = {
   propertyId?: string | null;
 };
 
+export type PropertiesDirectoryParams = {
+  page?: number;
+  pageSize?: number;
+  q?: string;
+  type?: string;
+  status?: string;
+  sort?: string;
+};
+
 export type LeasesDirectoryParams = DirectoryPaginationParams & {
   status?: string;
   leaseType?: string;
+};
+
+export type TenantsDirectorySortParams = {
+  leaseStatus?: string;
+  paymentStatus?: string;
+  tab?: "tenants" | "applicants";
 };
 
 export type InvoicesDirectoryParams = DirectoryPaginationParams & {
@@ -34,14 +49,16 @@ export type InvoicesDirectoryParams = DirectoryPaginationParams & {
   dateTo?: string;
 };
 
-export type TenantsDirectoryParams = DirectoryPaginationParams & {
-  leaseStatus?: string;
-  paymentStatus?: string;
-  tab?: "tenants" | "applicants";
-};
+export type TenantsDirectoryParams = DirectoryPaginationParams & TenantsDirectorySortParams;
 
 export type PropertyStatementParams = {
   month: string;
+  includeExpected?: boolean;
+};
+
+export type PropertyStatementRangeParams = {
+  startDate: string;
+  endDate: string;
   includeExpected?: boolean;
 };
 
@@ -76,10 +93,40 @@ export const queryKeys = {
   propertyLeases: (propertyId: string) => ["leases", "property", propertyId] as const,
   tenants: (workspaceId: string, filters: Record<string, unknown> = {}) =>
     ["tenants", workspaceId, filters] as const,
+  propertiesDirectory: (workspaceId: string, params: PropertiesDirectoryParams = {}) =>
+    [
+      "properties-directory",
+      workspaceId,
+      params.page ?? 1,
+      params.pageSize ?? 25,
+      params.q ?? "",
+      params.type ?? "ALL",
+      params.status ?? "ALL",
+      params.sort ?? "RECENT"
+    ] as const,
   tenantsDirectory: (workspaceId: string, params: TenantsDirectoryParams = {}) =>
-    ["tenants", workspaceId, "directory", params] as const,
+    [
+      "tenants-directory",
+      workspaceId,
+      params.page ?? 1,
+      params.pageSize ?? 6,
+      params.q ?? "",
+      params.propertyId ?? "ALL",
+      params.leaseStatus ?? "ALL",
+      params.paymentStatus ?? "ALL",
+      params.tab ?? "tenants"
+    ] as const,
   leasesDirectory: (workspaceId: string, params: LeasesDirectoryParams = {}) =>
-    ["leases", workspaceId, "directory", params] as const,
+    [
+      "leases-directory",
+      workspaceId,
+      params.page ?? 1,
+      params.pageSize ?? 6,
+      params.q ?? "",
+      params.propertyId ?? "ALL",
+      params.status ?? "ALL",
+      params.leaseType ?? "ALL"
+    ] as const,
   invoices: (workspaceId: string, filters: Record<string, unknown> = {}) =>
     ["invoices", workspaceId, filters] as const,
   invoicesDirectory: (workspaceId: string, params: InvoicesDirectoryParams = {}) =>
@@ -97,6 +144,14 @@ export const queryKeys = {
     ] as const,
   propertyStatement: (propertyId: string, params: PropertyStatementParams) =>
     ["property-statement", propertyId, params.month, params.includeExpected !== false] as const,
+  propertyStatementRange: (propertyId: string, params: PropertyStatementRangeParams) =>
+    [
+      "property-statement-range",
+      propertyId,
+      params.startDate,
+      params.endDate,
+      params.includeExpected !== false
+    ] as const,
   tenantStatement: (tenantId: string, periodKey: string) => ["tenant-statement", tenantId, periodKey] as const,
   dashboardSummary: (workspaceId: string, params: DashboardSummaryParams) =>
     ["dashboard-summary", workspaceId, normalizeDashboardParams(params)] as const,
