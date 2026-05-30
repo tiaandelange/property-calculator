@@ -418,36 +418,16 @@ export function PropertyFormSections({
 
       <PropertyFormSection
         number={6}
-        title="Maintenance & Vacancy"
+        title="Rates & operating costs"
         id="property-section-maintenance"
       >
         <div className="pg-prop-grid pg-prop-grid--2">
-          <PropertyFormField label="Maintenance (monthly)" help="Operating maintenance reserve or actual cost.">
-            <div className="pg-prop-input-suffix">
-              <Input
-                type="number"
-                value={numInputValue(form.maintenanceMonthly)}
-                onChange={(e) => patch({ maintenanceMonthly: e.target.value === "" ? null : Number(e.target.value) })}
-              />
-              <span className="pg-prop-input-suffix__tag">ZAR</span>
-            </div>
-          </PropertyFormField>
           <PropertyFormField label="Rates & taxes (monthly)">
             <div className="pg-prop-input-suffix">
               <Input
                 type="number"
                 value={numInputValue(form.ratesAndTaxesMonthly)}
                 onChange={(e) => patch({ ratesAndTaxesMonthly: e.target.value === "" ? null : Number(e.target.value) })}
-              />
-              <span className="pg-prop-input-suffix__tag">ZAR</span>
-            </div>
-          </PropertyFormField>
-          <PropertyFormField label="Levies (monthly)">
-            <div className="pg-prop-input-suffix">
-              <Input
-                type="number"
-                value={numInputValue(form.leviesMonthly)}
-                onChange={(e) => patch({ leviesMonthly: e.target.value === "" ? null : Number(e.target.value) })}
               />
               <span className="pg-prop-input-suffix__tag">ZAR</span>
             </div>
@@ -463,6 +443,9 @@ export function PropertyFormSections({
             </div>
           </PropertyFormField>
         </div>
+        <p className="pg-muted" style={{ marginTop: 12, marginBottom: 0 }}>
+          HOA / levies and maintenance are tracked on the Financials tab from recurring expenses and actual ledger entries.
+        </p>
       </PropertyFormSection>
 
       <PropertyFormSection number={7} title="Media Upload" id="property-section-media">

@@ -4,10 +4,6 @@
   --app-page-max: 720px;
 }
 
-.pg-dashboard-shell .pg-tenant-form-page .pg-tenant-form-card.pg-card.pg-workspace-card {
-  padding: var(--workspace-card-pad);
-}
-
 .pg-tenant-form-applicant-banner {
   display: flex;
   align-items: flex-start;

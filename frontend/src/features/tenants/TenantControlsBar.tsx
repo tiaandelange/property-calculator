@@ -76,7 +76,7 @@ export function TenantControlsBar({
   searchPlaceholder?: string;
 }) {
   return (
-    <div className="pg-tenants-controls">
+    <div className="pg-tenants-controls pg-workspace-filter-card pg-workspace-card">
       <div className="pg-tenants-controls-row">
         <label className="pg-tenants-search">
           <Search size={18} className="pg-tenants-search-icon" aria-hidden />

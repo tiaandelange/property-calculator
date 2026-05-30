@@ -1,11 +1,10 @@
 import { FormEvent, useEffect, useState } from "react";
 import { Input } from "../../../components/ui/Input";
 import { PropertyFormField } from "../form/PropertyFormField";
+import { formatMetricPercent } from "./propertyFinancialMetrics";
 
 export type FinancialDetailsFormState = {
-  leviesMonthly: string;
   ratesAndTaxesMonthly: string;
-  maintenancePercent: string;
   notes: string;
 };
 
@@ -14,55 +13,46 @@ function str(v: unknown): string {
   return String(v);
 }
 
-export function buildFinancialDetailsInitial(
-  propertyDetail: Record<string, unknown> | null,
-  _primaryLease: Record<string, unknown> | null,
-  _depositHeldTotal: number
-): FinancialDetailsFormState {
+export function buildFinancialDetailsInitial(propertyDetail: Record<string, unknown> | null): FinancialDetailsFormState {
   const pf = propertyDetail ?? {};
-  const rent = Number(pf.expectedMonthlyIncome ?? 0);
-  const maintMonthly = Number(pf.maintenanceMonthly ?? 0);
-  const maintPct = rent > 0 && maintMonthly > 0 ? ((maintMonthly / rent) * 100) : null;
   return {
-    leviesMonthly: str(pf.leviesMonthly),
     ratesAndTaxesMonthly: str(pf.ratesAndTaxesMonthly),
-    maintenancePercent: maintPct == null ? "" : String(Math.round(maintPct * 10) / 10),
     notes: str(pf.notes)
   };
 }
 
 export function PropertyFinancialDetailsForm({
   propertyDetail,
-  primaryLease: _primaryLease,
-  depositHeldTotal: _depositHeldTotal,
   combinedMonthlyRent,
   combinedDepositHeld,
   purchasePrice,
   marketValue,
+  maintenancePercent,
+  vacancyPercent,
+  metricsPeriodLabel,
   compact,
   onSubmit,
   saving,
   formId
 }: {
   propertyDetail: Record<string, unknown> | null;
-  primaryLease: Record<string, unknown> | null;
-  depositHeldTotal: number;
   combinedMonthlyRent: number;
   combinedDepositHeld: number;
   purchasePrice: number;
   marketValue: number;
+  maintenancePercent: number;
+  vacancyPercent: number;
+  metricsPeriodLabel?: string;
   compact?: boolean;
   onSubmit: (state: FinancialDetailsFormState) => Promise<void>;
   saving?: boolean;
   formId?: string;
 }) {
-  const [form, setForm] = useState<FinancialDetailsFormState>(() =>
-    buildFinancialDetailsInitial(propertyDetail, _primaryLease, _depositHeldTotal)
-  );
+  const [form, setForm] = useState<FinancialDetailsFormState>(() => buildFinancialDetailsInitial(propertyDetail));
 
   useEffect(() => {
-    setForm(buildFinancialDetailsInitial(propertyDetail, _primaryLease, _depositHeldTotal));
-  }, [propertyDetail, _primaryLease, _depositHeldTotal]);
+    setForm(buildFinancialDetailsInitial(propertyDetail));
+  }, [propertyDetail]);
 
   const patch = (p: Partial<FinancialDetailsFormState>) => setForm((prev) => ({ ...prev, ...p }));
 
@@ -70,6 +60,10 @@ export function PropertyFinancialDetailsForm({
     e.preventDefault();
     void onSubmit(form);
   };
+
+  const metricsHelp = metricsPeriodLabel
+    ? `Calculated from actual ledger activity (${metricsPeriodLabel}). Add levies under Recurring expenses.`
+    : "Calculated from actual ledger activity over the property period. Add levies under Recurring expenses.";
 
   const fields = (
     <>
@@ -91,11 +85,17 @@ export function PropertyFinancialDetailsForm({
       <PropertyFormField label="Market value" info="Saved on the property record (read-only here).">
         <div className="pg-pfin-readonly">{marketValue > 0 ? `R ${Math.round(marketValue).toLocaleString()}` : "—"}</div>
       </PropertyFormField>
-      <PropertyFormField label="HOA / levies">
-        <div className="pg-pfin-input-suffix">
-          <Input value={form.leviesMonthly} onChange={(e) => patch({ leviesMonthly: e.target.value })} type="number" min={0} />
-          <span className="pg-pfin-input-suffix__tag">ZAR</span>
-        </div>
+      <PropertyFormField
+        label="Maintenance"
+        info={`Actual maintenance and repair spend as a percentage of collected income. ${metricsHelp}`}
+      >
+        <div className="pg-pfin-readonly">{formatMetricPercent(maintenancePercent)}</div>
+      </PropertyFormField>
+      <PropertyFormField
+        label="Vacancy"
+        info="Months without an active lease count the expected rent not collected toward vacancy loss, as a percentage of collected income."
+      >
+        <div className="pg-pfin-readonly">{formatMetricPercent(vacancyPercent)}</div>
       </PropertyFormField>
       <PropertyFormField label="Rates & taxes">
         <div className="pg-pfin-input-suffix">
@@ -106,18 +106,6 @@ export function PropertyFinancialDetailsForm({
             min={0}
           />
           <span className="pg-pfin-input-suffix__tag">ZAR</span>
-        </div>
-      </PropertyFormField>
-      <PropertyFormField label="Maintenance" info="Reserve as a percentage of monthly rent. Used for planning and reporting.">
-        <div className="pg-pfin-input-suffix">
-          <Input
-            value={form.maintenancePercent}
-            onChange={(e) => patch({ maintenancePercent: e.target.value })}
-            type="number"
-            min={0}
-            step="0.1"
-          />
-          <span className="pg-pfin-input-suffix__tag">%</span>
         </div>
       </PropertyFormField>
       <PropertyFormField label="Financial notes" className="pg-pfin-grid__span-2">
@@ -142,6 +130,12 @@ export function PropertyFinancialDetailsForm({
           <PropertyFormField label="Monthly rent">
             <div className="pg-pfin-readonly">R {Math.round(combinedMonthlyRent).toLocaleString()}</div>
           </PropertyFormField>
+          <PropertyFormField label="Maintenance">
+            <div className="pg-pfin-readonly">{formatMetricPercent(maintenancePercent)}</div>
+          </PropertyFormField>
+          <PropertyFormField label="Vacancy">
+            <div className="pg-pfin-readonly">{formatMetricPercent(vacancyPercent)}</div>
+          </PropertyFormField>
           <PropertyFormField label="Rates & taxes">
             <div className="pg-pfin-input-suffix">
               <Input
@@ -150,17 +144,6 @@ export function PropertyFinancialDetailsForm({
                 type="number"
               />
               <span className="pg-pfin-input-suffix__tag">ZAR</span>
-            </div>
-          </PropertyFormField>
-          <PropertyFormField label="Maintenance">
-            <div className="pg-pfin-input-suffix">
-              <Input
-                value={form.maintenancePercent}
-                onChange={(e) => patch({ maintenancePercent: e.target.value })}
-                type="number"
-                step="0.1"
-              />
-              <span className="pg-pfin-input-suffix__tag">%</span>
             </div>
           </PropertyFormField>
         </form>
@@ -174,7 +157,8 @@ export function PropertyFinancialDetailsForm({
         <h2 className="pg-pfin-section__title">Income &amp; Financial Details</h2>
         <p className="pg-pfin-section__desc">
           Property and lease figures used for reporting, IRR assumptions, and cash-flow forecasts.
-          {" "}Monthly rent and deposits are derived from leases and are read-only here.
+          {" "}Monthly rent, deposits, maintenance, and vacancy are derived from leases and ledger activity (read-only here).
+          {" "}HOA / levies belong under Recurring expenses.
         </p>
       </header>
       <form id={formId} className="pg-pfin-grid" onSubmit={handleSubmit}>

@@ -66,7 +66,7 @@ export function LeaseControlsBar({
   properties: Array<{ id: string; name: string }>;
 }) {
   return (
-    <div className="pg-leases-controls">
+    <div className="pg-leases-controls pg-workspace-filter-card pg-workspace-card">
       <div className="pg-leases-controls-row">
         <label className="pg-leases-search">
           <Search size={18} className="pg-leases-search-icon" aria-hidden />

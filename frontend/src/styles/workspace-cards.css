@@ -132,7 +132,35 @@
   padding: 0;
 }
 
+/* Card shell: flatten outer padding; pad header/body instead (tables can bleed when needed). */
 .pg-dashboard-shell .pg-card.pg-workspace-card {
+  padding: 0;
+}
+
+.pg-dashboard-shell .pg-card.pg-workspace-card > .pg-app-card-header {
+  padding: var(--workspace-card-pad) var(--workspace-card-pad) 0;
+}
+
+.pg-dashboard-shell .pg-card.pg-workspace-card > .pg-app-card-content {
+  padding: var(--workspace-card-pad);
+}
+
+.pg-dashboard-shell .pg-card.pg-workspace-card > .pg-app-card-header + .pg-app-card-content {
+  padding-top: 12px;
+}
+
+/* Filter / directory controls — padded card shell (Card or section wrapper). */
+.pg-workspace-filter-card,
+.pg-dashboard-shell .pg-workspace-filter-card.pg-workspace-card:not(.pg-card) {
+  padding: var(--workspace-card-pad);
+}
+
+.pg-dashboard-shell .pg-card.pg-workspace-card.pg-workspace-filter-card > .pg-app-card-header {
+  padding: 0;
+  margin-bottom: 12px;
+}
+
+.pg-dashboard-shell .pg-card.pg-workspace-card.pg-workspace-filter-card > .pg-app-card-content {
   padding: 0;
 }
 

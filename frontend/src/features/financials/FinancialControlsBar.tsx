@@ -20,7 +20,7 @@ export function FinancialControlsBar({
         : "/owned-properties/new";
 
   return (
-    <div className="pg-fins-controls">
+    <div className="pg-fins-controls pg-workspace-filter-card pg-workspace-card">
       <div className="pg-fins-controls-row">
         <label className="pg-fins-search">
           <Search size={18} className="pg-fins-search-icon" aria-hidden />

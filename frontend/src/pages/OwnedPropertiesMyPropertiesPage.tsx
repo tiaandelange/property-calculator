@@ -132,7 +132,7 @@ export function OwnedPropertiesMyPropertiesPage() {
           retrying={directoryQuery.isFetching}
         />
       ) : null}
-      <Card title="Filters">
+      <Card title="Filters" className="pg-workspace-filter-card">
         <div className="pg-workspace-filters-grid">
           <input className="pg-input" placeholder="Search name/address..." value={q} onChange={(e) => setQ(e.target.value)} />
           <select className="pg-input" value={type} onChange={(e) => setType(e.target.value)}>

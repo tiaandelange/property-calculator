@@ -12,6 +12,11 @@ import {
   PropertyFinancialDetailsForm,
   type FinancialDetailsFormState
 } from "../financials/PropertyFinancialDetailsForm";
+import {
+  computeMaintenancePercentFromStatement,
+  computeVacancyPercentFromHistory,
+  formatMetricsPeriodLabel
+} from "../financials/propertyFinancialMetrics";
 import { RecurringExpensesSection } from "../financials/RecurringExpensesSection";
 import { BondPaymentSection } from "../financials/BondPaymentSection";
 import { mapPropertyBondPayment, mapAdditionalBondPayments } from "../financials/propertyBondAdapter";
@@ -560,18 +565,6 @@ export function WorkspaceFinancialsTab({
 
   const setSub = (key: string) => navigate(`/owned-properties/${propertyId}?tab=financials&fin=${key}`, { replace: true });
 
-  const primaryLease = useMemo(() => {
-    const active = (currentLeases as Record<string, unknown>[]).filter((l) =>
-      ["ACTIVE", "MONTH_TO_MONTH"].includes(String(l.status ?? ""))
-    );
-    return active[0] ?? (currentLeases[0] as Record<string, unknown> | undefined) ?? null;
-  }, [currentLeases]);
-
-  const depositHeldTotal = useMemo(
-    () => (deposits as Record<string, unknown>[]).reduce((a, d) => a + Number(d.amount ?? 0), 0),
-    [deposits]
-  );
-
   const recurringDisplayItems = useMemo(
     () => mapRecurringCharges(recurringChargesLandlord),
     [recurringChargesLandlord]
@@ -662,15 +655,8 @@ export function WorkspaceFinancialsTab({
         const x = Number(t);
         return Number.isFinite(x) ? x : null;
       };
-      const maintenancePercent = parseOpt(state.maintenancePercent);
-      const derivedMaintenanceMonthly =
-        maintenancePercent == null
-          ? null
-          : Math.max(0, (Number(maintenancePercent) / 100) * Math.max(0, Number(combinedMonthlyRent ?? 0)));
       const payload: Record<string, unknown> = {
-        leviesMonthly: parseOpt(state.leviesMonthly),
         ratesAndTaxesMonthly: parseOpt(state.ratesAndTaxesMonthly),
-        maintenanceMonthly: derivedMaintenanceMonthly,
         notes: state.notes.trim() || null
       };
       await updateProperty(propertyId, payload);
@@ -1078,6 +1064,51 @@ export function WorkspaceFinancialsTab({
   const purchasePrice = Number((propertyDetail as any)?.purchasePrice ?? 0);
   const marketValue = Number((propertyDetail as any)?.currentEstimatedValue ?? 0);
 
+  const ledgerMetrics = useMemo(() => {
+    const statementRows = (rows as Record<string, unknown>[]).map((r) => ({
+      date: r.date != null ? String(r.date) : undefined,
+      source: r.source != null ? String(r.source) : undefined,
+      status: r.status != null ? String(r.status) : undefined,
+      credit: r.credit != null ? Number(r.credit) : null,
+      debit: r.debit != null ? Number(r.debit) : null,
+      expenseCategory: r.expenseCategory != null ? String(r.expenseCategory) : undefined
+    }));
+    const allLeases = [
+      ...(currentLeases as Record<string, unknown>[]),
+      ...(((propertyDetail as Record<string, unknown> | null)?.leases as Record<string, unknown>[] | undefined) ?? [])
+    ];
+    const leasesById = new Map<string, Record<string, unknown>>();
+    for (const lease of allLeases) {
+      const id = lease.id != null ? String(lease.id) : "";
+      if (id) leasesById.set(id, lease);
+    }
+    const leases = [...leasesById.values()].map((lease) => ({
+      startDate: lease.startDate != null ? String(lease.startDate) : null,
+      fixedTermEndDate: lease.fixedTermEndDate != null ? String(lease.fixedTermEndDate) : null,
+      monthlyRent: lease.monthlyRent != null ? Number(lease.monthlyRent) : null,
+      status: lease.status != null ? String(lease.status) : null
+    }));
+    const fallbackMonthlyRent = Math.max(
+      combinedMonthlyRent,
+      Number((propertyDetail as Record<string, unknown> | null)?.expectedMonthlyIncome ?? 0)
+    );
+    return {
+      maintenancePercent: computeMaintenancePercentFromStatement(statementRows),
+      vacancyPercent: computeVacancyPercentFromHistory({
+        statementRows,
+        leases,
+        propertyCreatedAt:
+          (propertyDetail as Record<string, unknown> | null)?.createdAt != null
+            ? String((propertyDetail as Record<string, unknown> | null)?.createdAt)
+            : null,
+        fallbackMonthlyRent
+      }),
+      periodLabel: formatMetricsPeriodLabel(statementRows, (propertyDetail as Record<string, unknown> | null)?.createdAt != null
+            ? String((propertyDetail as Record<string, unknown> | null)?.createdAt)
+            : null, leases)
+    };
+  }, [rows, currentLeases, propertyDetail, combinedMonthlyRent]);
+
   return (
     <div className="pg-pfin-page">
       {loading ? (
@@ -1098,12 +1129,13 @@ export function WorkspaceFinancialsTab({
             <PropertyFinancialDetailsForm
               formId="pfin-details-form"
               propertyDetail={propertyDetail as Record<string, unknown> | null}
-              primaryLease={primaryLease}
-              depositHeldTotal={depositHeldTotal}
               combinedMonthlyRent={combinedMonthlyRent}
               combinedDepositHeld={combinedDepositHeld}
               purchasePrice={purchasePrice}
               marketValue={marketValue}
+              maintenancePercent={ledgerMetrics.maintenancePercent}
+              vacancyPercent={ledgerMetrics.vacancyPercent}
+              metricsPeriodLabel={ledgerMetrics.periodLabel}
               compact
               saving={financialDetailsSaving}
               onSubmit={saveFinancialDetails}
@@ -1114,12 +1146,13 @@ export function WorkspaceFinancialsTab({
             <PropertyFinancialDetailsForm
               formId="pfin-details-form"
               propertyDetail={propertyDetail as Record<string, unknown> | null}
-              primaryLease={primaryLease}
-              depositHeldTotal={depositHeldTotal}
               combinedMonthlyRent={combinedMonthlyRent}
               combinedDepositHeld={combinedDepositHeld}
               purchasePrice={purchasePrice}
               marketValue={marketValue}
+              maintenancePercent={ledgerMetrics.maintenancePercent}
+              vacancyPercent={ledgerMetrics.vacancyPercent}
+              metricsPeriodLabel={ledgerMetrics.periodLabel}
               saving={financialDetailsSaving}
               onSubmit={saveFinancialDetails}
             />

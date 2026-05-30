@@ -12,7 +12,7 @@ export function InvoiceControlsBar({
   properties: Array<{ id: string; name: string }>;
 }) {
   return (
-    <div className="pg-invoices-controls">
+    <div className="pg-invoices-controls pg-workspace-filter-card pg-workspace-card">
       <div className="pg-invoices-controls-row">
         <label className="pg-invoices-search">
           <Search size={18} className="pg-invoices-search-icon" aria-hidden />
