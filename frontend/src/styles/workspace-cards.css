@@ -44,11 +44,11 @@
 }
 
 .pg-dashboard-shell .pg-workspace-overview .pg-stat-title {
-  font-size: 10px;
+  font-size: var(--type-table-header);
 }
 
 .pg-dashboard-shell .pg-workspace-overview .pg-metric-value {
-  font-size: clamp(16px, 1.6vw, 20px);
+  font-size: var(--type-xl);
   margin-top: 6px;
 }
 

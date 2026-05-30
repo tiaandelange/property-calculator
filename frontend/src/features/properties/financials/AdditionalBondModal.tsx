@@ -1,6 +1,6 @@
 import { FormEvent } from "react";
-import { Card } from "../../../components/ui/Card";
 import { Button } from "../../../components/ui/Button";
+import { AppFormModal } from "../../../components/ui/AppModal";
 import { Field, Input } from "../../../components/ui/Input";
 
 export const ADDITIONAL_BOND_TERM_YEAR_OPTIONS = [5, 10, 15, 20, 25, 30] as const;
@@ -97,97 +97,91 @@ export function AdditionalBondModal({
   saving?: boolean;
   deleting?: boolean;
 }) {
-  if (!open) return null;
-
   const busy = saving || deleting;
 
   return (
-    <div
-      className="pg-pfin-modal-backdrop"
-      role="presentation"
-      onMouseDown={(ev) => {
-        if (!busy && ev.target === ev.currentTarget) onClose();
+    <AppFormModal
+      open={open}
+      onOpenChange={(next) => {
+        if (!next && !busy) onClose();
       }}
+      title={mode === "add" ? "Add additional bond" : "Edit additional bond"}
+      description="Track a second bond, access bond, or credit facility linked to this property. This is separate from the primary home-loan bond on the property profile."
+      size="md"
+      loading={busy}
+      closeOnOverlayClick={!busy}
+      onSubmit={onSubmit}
+      footer={
+        <div className="pg-app-modal-actions">
+          <Button type="button" variant="soft" disabled={busy} onClick={onClose}>
+            Cancel
+          </Button>
+          {mode === "edit" && onDelete ? (
+            <Button type="button" variant="danger" disabled={busy} loading={deleting} onClick={onDelete}>
+              Remove bond
+            </Button>
+          ) : null}
+          <Button type="submit" variant="primary" disabled={busy} loading={saving}>
+            {mode === "add" ? "Add bond" : "Save changes"}
+          </Button>
+        </div>
+      }
     >
-      <div className="pg-pfin-modal" role="dialog" aria-modal="true" aria-labelledby="pfin-additional-bond-title">
-        <Card title={mode === "add" ? "Add additional bond" : "Edit additional bond"}>
-          <p className="pg-muted" style={{ marginTop: 0, fontSize: 14 }}>
-            Track a second bond, access bond, or credit facility linked to this property. This is separate from the
-            primary home-loan bond on the property profile.
-          </p>
-          <form onSubmit={onSubmit} style={{ display: "grid", gap: 12 }}>
-            <Field label="Description" help="e.g. Second bond, credit card facility, access bond">
-              <Input
-                value={form.description}
-                onChange={(e) => onPatch({ description: e.target.value })}
-                placeholder="Second bond — FNB"
-                required
-              />
-            </Field>
-            <Field label="Outstanding balance">
-              <Input
-                type="number"
-                step="any"
-                min={0}
-                value={form.outstandingBondBalance}
-                onChange={(e) => onPatch({ outstandingBondBalance: e.target.value })}
-              />
-            </Field>
-            <Field label="Interest rate (% p.a.)" help="Used with term and start date to derive months remaining.">
-              <Input
-                type="number"
-                step="any"
-                min={0}
-                value={form.bondAnnualInterestRatePercent}
-                onChange={(e) => onPatch({ bondAnnualInterestRatePercent: e.target.value })}
-              />
-            </Field>
-            <Field label="Original term (years)" help="Registered term in 5-year steps up to 30 years.">
-              <select
-                className="pg-input"
-                value={form.bondTermYears}
-                onChange={(e) => onPatch({ bondTermYears: e.target.value })}
-              >
-                <option value="">Not specified</option>
-                {ADDITIONAL_BOND_TERM_YEAR_OPTIONS.map((y) => (
-                  <option key={y} value={y}>
-                    {y} years
-                  </option>
-                ))}
-              </select>
-            </Field>
-            <Field label="Start date" help="Registration or first debit date — pairs with term for remaining months.">
-              <Input
-                type="date"
-                value={form.bondStartDate}
-                onChange={(e) => onPatch({ bondStartDate: e.target.value })}
-              />
-            </Field>
-            <Field label="Monthly payment" help="Leave blank to derive from balance, rate, and term. Adjust actual debits on the statement.">
-              <Input
-                type="number"
-                step="any"
-                min={0}
-                value={form.monthlyBondPayment}
-                onChange={(e) => onPatch({ monthlyBondPayment: e.target.value })}
-              />
-            </Field>
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-              <Button type="submit" variant="primary" disabled={busy} loading={saving}>
-                {mode === "add" ? "Add bond" : "Save changes"}
-              </Button>
-              {mode === "edit" && onDelete ? (
-                <Button type="button" variant="danger" disabled={busy} loading={deleting} onClick={onDelete}>
-                  Remove bond
-                </Button>
-              ) : null}
-              <Button type="button" variant="ghost" disabled={busy} onClick={onClose}>
-                Cancel
-              </Button>
-            </div>
-          </form>
-        </Card>
-      </div>
-    </div>
+      <Field label="Description" help="e.g. Second bond, credit card facility, access bond">
+        <Input
+          value={form.description}
+          onChange={(e) => onPatch({ description: e.target.value })}
+          placeholder="Second bond — FNB"
+          required
+        />
+      </Field>
+      <Field label="Outstanding balance">
+        <Input
+          type="number"
+          step="any"
+          min={0}
+          value={form.outstandingBondBalance}
+          onChange={(e) => onPatch({ outstandingBondBalance: e.target.value })}
+        />
+      </Field>
+      <Field label="Interest rate (% p.a.)" help="Used with term and start date to derive months remaining.">
+        <Input
+          type="number"
+          step="any"
+          min={0}
+          value={form.bondAnnualInterestRatePercent}
+          onChange={(e) => onPatch({ bondAnnualInterestRatePercent: e.target.value })}
+        />
+      </Field>
+      <Field label="Original term (years)" help="Registered term in 5-year steps up to 30 years.">
+        <select
+          className="pg-input"
+          value={form.bondTermYears}
+          onChange={(e) => onPatch({ bondTermYears: e.target.value })}
+        >
+          <option value="">Not specified</option>
+          {ADDITIONAL_BOND_TERM_YEAR_OPTIONS.map((y) => (
+            <option key={y} value={y}>
+              {y} years
+            </option>
+          ))}
+        </select>
+      </Field>
+      <Field label="Start date" help="Registration or first debit date — pairs with term for remaining months.">
+        <Input type="date" value={form.bondStartDate} onChange={(e) => onPatch({ bondStartDate: e.target.value })} />
+      </Field>
+      <Field
+        label="Monthly payment"
+        help="Leave blank to derive from balance, rate, and term. Adjust actual debits on the statement."
+      >
+        <Input
+          type="number"
+          step="any"
+          min={0}
+          value={form.monthlyBondPayment}
+          onChange={(e) => onPatch({ monthlyBondPayment: e.target.value })}
+        />
+      </Field>
+    </AppFormModal>
   );
 }

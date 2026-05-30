@@ -17,7 +17,7 @@ import { Container } from "../components/ui/Container";
 import { Section } from "../components/ui/Section";
 import { Card } from "../components/ui/Card";
 import { Button, ButtonLink } from "../components/ui/Button";
-import { ModalOverlay, ModalPanel } from "../components/ui/Modal";
+import { AppConfirmDialog } from "../components/ui/AppModal";
 import { deleteStoredReport, getStoredReportSignedUrl, listPropertyStoredReports, type PropertyStoredReportRow } from "../services/storedReportsSupabase";
 
 export function OwnedPropertiesReportsPage() {
@@ -138,44 +138,32 @@ export function OwnedPropertiesReportsPage() {
           </section>
         </div>
 
-        {pendingDelete ? (
-          <>
-            <ModalOverlay open onClose={() => setPendingDelete(null)} />
-            <div style={{ position: "fixed", inset: 0, display: "grid", placeItems: "center", padding: 16, zIndex: 60 }}>
-              <ModalPanel title="Delete report" onClose={() => setPendingDelete(null)}>
-                <div style={{ padding: 14, display: "grid", gap: 12 }}>
-                  <div>
-                    Delete this report for <strong>{pendingDelete.propertyName}</strong>?
-                  </div>
-                  <div className="pg-muted" style={{ fontSize: 13 }}>
-                    This removes the PDF from Storage and deletes the report record.
-                  </div>
-                  <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
-                    <Button variant="ghost" type="button" onClick={() => setPendingDelete(null)}>
-                      Cancel
-                    </Button>
-                    <Button
-                      variant="danger"
-                      type="button"
-                      onClick={async () => {
-                        const id = pendingDelete.id;
-                        setPendingDelete(null);
-                        try {
-                          await deleteStoredReport(id);
-                          await load();
-                        } catch (e: any) {
-                          setError(e?.message ?? "Failed to delete report.");
-                        }
-                      }}
-                    >
-                      Delete
-                    </Button>
-                  </div>
-                </div>
-              </ModalPanel>
-            </div>
-          </>
-        ) : null}
+        <AppConfirmDialog
+          open={pendingDelete != null}
+          title="Delete report"
+          confirmLabel="Delete"
+          cancelLabel="Cancel"
+          destructive
+          onClose={() => setPendingDelete(null)}
+          onConfirm={() => {
+            if (!pendingDelete) return;
+            const row = pendingDelete;
+            setPendingDelete(null);
+            void (async () => {
+              try {
+                await deleteStoredReport(row.id);
+                await load();
+              } catch (e: any) {
+                setError(e?.message ?? "Failed to delete report.");
+              }
+            })();
+          }}
+          consequence="This removes the PDF from Storage and deletes the report record."
+        >
+          <p style={{ margin: 0 }}>
+            Delete this report for <strong>{pendingDelete?.propertyName}</strong>?
+          </p>
+        </AppConfirmDialog>
       </Container>
     </Section>
   );

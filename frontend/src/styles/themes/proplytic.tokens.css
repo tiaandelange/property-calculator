@@ -47,6 +47,51 @@
   --radius-lg: 24px;
   --radius-xl: 32px;
 
+  /* Typography scale */
+  --type-xs: 12px;
+  --type-sm: 13px;
+  --type-base: 14px;
+  --type-md: 15px;
+  --type-body: 16px;
+  --type-lg: 18px;
+  --type-xl: 20px;
+  --type-2xl: 24px;
+  --type-3xl: 30px;
+  --type-4xl: 36px;
+
+  --type-page-title: var(--type-3xl);
+  --type-page-title-mobile: var(--type-2xl);
+  --type-page-subtitle: var(--type-md);
+  --type-section-title: var(--type-xl);
+  --type-section-title-mobile: var(--type-lg);
+  --type-card-title: var(--type-body);
+  --type-card-description: var(--type-base);
+  --type-table-header: var(--type-xs);
+  --type-table-cell: var(--type-base);
+  --type-metric-label: var(--type-sm);
+  --type-metric-value: var(--type-3xl);
+  --type-metric-value-mobile: var(--type-2xl);
+  --type-nav-label: var(--type-base);
+  --type-button: var(--type-base);
+  --type-badge: var(--type-xs);
+
+  --leading-tight: 1.2;
+  --leading-heading: 1.25;
+  --leading-normal: 1.4;
+  --leading-body: 1.5;
+  --leading-relaxed: 1.6;
+
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  --tracking-normal: 0;
+  --tracking-heading: -0.02em;
+  --tracking-section: -0.01em;
+  --tracking-table: 0.04em;
+  --tracking-button: 0.01em;
+
   --shadow-soft: 0 18px 50px rgba(0, 0, 0, 0.22);
   --shadow-dark: 0 24px 70px rgba(0, 0, 0, 0.35);
 

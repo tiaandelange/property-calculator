@@ -15,7 +15,7 @@ import { getPropertyStatement } from "../../../api/ownedProperties";
 import { Card } from "../../../components/ui/Card";
 import { Input } from "../../../components/ui/Input";
 import { Select } from "../../../components/ui/Select";
-import { ModalOverlay, ModalPanel } from "../../../components/ui/Modal";
+import { AppConfirmDialog, AppFormModal } from "../../../components/ui/AppModal";
 import { Button } from "../../../components/ui/Button";
 import {
   createPropertyExpense,
@@ -753,7 +753,7 @@ export function WorkspaceStatementTab({
                         <div>
                           <div>{String(r.description ?? "")}</div>
                           {r.source === "INVOICE" && r.invoiceNumber ? (
-                            <div className="pg-muted" style={{ fontSize: 11, marginTop: 2 }}>
+                            <div className="pg-caption" style={{ marginTop: 2 }}>
                               Ref: {String(r.invoiceNumber)}
                             </div>
                           ) : null}
@@ -978,7 +978,7 @@ export function WorkspaceStatementTab({
                   <td className="pg-pfin-table__amount" style={{ textAlign: "right", fontWeight: 800 }}>
                     {fmtZar(periodTotals.credit)}
                   </td>
-                  <td colSpan={3} className="pg-muted" style={{ fontSize: 12 }}>
+                  <td colSpan={3} className="pg-text-helper">
                     Net: {fmtZar(periodTotals.net)} (paid credits − debits)
                   </td>
                 </tr>
@@ -988,122 +988,109 @@ export function WorkspaceStatementTab({
         </section>
       ) : null}
 
-      {showAddOnceOff ? (
-        <>
-          <ModalOverlay open onClose={() => (!onceOffSaving ? setShowAddOnceOff(false) : null)} />
-          <div style={{ position: "fixed", inset: 0, display: "grid", placeItems: "center", padding: 16, zIndex: 60 }}>
-            <ModalPanel
-              title="Add once-off expense"
-              onClose={() => (!onceOffSaving ? setShowAddOnceOff(false) : null)}
-              actions={
-                <Button type="button" loading={onceOffSaving} disabled={onceOffSaving} onClick={() => void addOnceOffExpense()}>
-                  Add
-                </Button>
+      <AppFormModal
+        open={showAddOnceOff}
+        onOpenChange={(next) => {
+          if (!next && !onceOffSaving) setShowAddOnceOff(false);
+        }}
+        title="Add once-off expense"
+        size="md"
+        loading={onceOffSaving}
+        closeOnOverlayClick={!onceOffSaving}
+        footer={
+          <div className="pg-app-modal-actions">
+            <Button type="button" variant="soft" disabled={onceOffSaving} onClick={() => setShowAddOnceOff(false)}>
+              Cancel
+            </Button>
+            <Button type="button" loading={onceOffSaving} disabled={onceOffSaving} onClick={() => void addOnceOffExpense()}>
+              Add
+            </Button>
+          </div>
+        }
+      >
+        <label className="pg-text-label">
+          Date
+          <Input type="date" value={onceOffForm.expenseDate} onChange={(e) => setOnceOffForm({ ...onceOffForm, expenseDate: e.target.value })} />
+        </label>
+        <label className="pg-text-label">
+          Category
+          <select className="pg-input" value={onceOffForm.category} onChange={(e) => setOnceOffForm({ ...onceOffForm, category: e.target.value })}>
+            <option value="OTHER">Other</option>
+            <option value="MAINTENANCE">Maintenance</option>
+            <option value="RATES_TAXES">Rates &amp; Taxes</option>
+            <option value="LEVIES">Levies</option>
+            <option value="INSURANCE">Insurance</option>
+            <option value="ELECTRICITY">Electricity</option>
+            <option value="WATER_SEWER">Water &amp; Sewer</option>
+            <option value="SECURITY">Security</option>
+            <option value="WIFI">Wi-Fi</option>
+          </select>
+        </label>
+        <label className="pg-text-label">
+          Description
+          <Input value={onceOffForm.description} onChange={(e) => setOnceOffForm({ ...onceOffForm, description: e.target.value })} placeholder="e.g. Plumber callout" />
+        </label>
+        <label className="pg-text-label">
+          Amount
+          <Input type="number" step="any" min={0} value={onceOffForm.amount} onChange={(e) => setOnceOffForm({ ...onceOffForm, amount: e.target.value })} />
+        </label>
+      </AppFormModal>
+
+      <AppConfirmDialog
+        open={confirmDelete != null}
+        title="Delete item"
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        destructive
+        onClose={() => setConfirmDelete(null)}
+        onConfirm={() => {
+          if (!confirmDelete) return;
+          const kind = String(confirmDelete.kind ?? "expense");
+          if (kind === "income") {
+            void (async () => {
+              const id = String(confirmDelete.id);
+              setDeletingRowId(id);
+              setError("");
+              try {
+                await deletePropertyIncome(id);
+                setConfirmDelete(null);
+                await reload();
+              } catch (e: any) {
+                setError(e?.message ?? "Failed to delete income.");
+              } finally {
+                setDeletingRowId(null);
               }
-            >
-              <div style={{ padding: 14, display: "grid", gap: 10 }}>
-                <label className="pg-muted" style={{ fontSize: 12 }}>
-                  Date
-                  <Input type="date" value={onceOffForm.expenseDate} onChange={(e) => setOnceOffForm({ ...onceOffForm, expenseDate: e.target.value })} />
-                </label>
-                <label className="pg-muted" style={{ fontSize: 12 }}>
-                  Category
-                  <select className="pg-input" value={onceOffForm.category} onChange={(e) => setOnceOffForm({ ...onceOffForm, category: e.target.value })}>
-                    <option value="OTHER">Other</option>
-                    <option value="MAINTENANCE">Maintenance</option>
-                    <option value="RATES_TAXES">Rates &amp; Taxes</option>
-                    <option value="LEVIES">Levies</option>
-                    <option value="INSURANCE">Insurance</option>
-                    <option value="ELECTRICITY">Electricity</option>
-                    <option value="WATER_SEWER">Water &amp; Sewer</option>
-                    <option value="SECURITY">Security</option>
-                    <option value="WIFI">Wi-Fi</option>
-                  </select>
-                </label>
-                <label className="pg-muted" style={{ fontSize: 12 }}>
-                  Description
-                  <Input value={onceOffForm.description} onChange={(e) => setOnceOffForm({ ...onceOffForm, description: e.target.value })} placeholder="e.g. Plumber callout" />
-                </label>
-                <label className="pg-muted" style={{ fontSize: 12 }}>
-                  Amount
-                  <Input type="number" step="any" min={0} value={onceOffForm.amount} onChange={(e) => setOnceOffForm({ ...onceOffForm, amount: e.target.value })} />
-                </label>
-              </div>
-            </ModalPanel>
-          </div>
-        </>
-      ) : null}
-
-
-      {confirmDelete ? (
-        <>
-          <ModalOverlay open onClose={() => setConfirmDelete(null)} />
-          <div style={{ position: "fixed", inset: 0, display: "grid", placeItems: "center", padding: 16, zIndex: 60 }}>
-            <ModalPanel title="Delete item" onClose={() => setConfirmDelete(null)}>
-              <div style={{ padding: 14, display: "grid", gap: 12 }}>
-                <div>
-                  {String(confirmDelete.kind ?? "") === "invoice_hard" ? (
-                    <>Are you sure you want to permanently delete line item?</>
-                  ) : (
-                    <>
-                      Delete <strong>{confirmDelete.description || "this expense"}</strong>?
-                    </>
-                  )}
-                </div>
-                <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
-                  <Button type="button" variant="ghost" onClick={() => setConfirmDelete(null)}>
-                    Cancel
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="danger"
-                    onClick={() => {
-                      const kind = String(confirmDelete.kind ?? "expense");
-                      if (kind === "income") {
-                        void (async () => {
-                          const id = String(confirmDelete.id);
-                          setDeletingRowId(id);
-                          setError("");
-                          try {
-                            await deletePropertyIncome(id);
-                            setConfirmDelete(null);
-                            await reload();
-                          } catch (e: any) {
-                            setError(e?.message ?? "Failed to delete income.");
-                          } finally {
-                            setDeletingRowId(null);
-                          }
-                        })();
-                        return;
-                      }
-                      if (kind === "invoice_hard") {
-                        void (async () => {
-                          const id = String(confirmDelete.id);
-                          setDeletingRowId(id);
-                          setError("");
-                          try {
-                            await hardDeleteInvoice(id);
-                            setConfirmDelete(null);
-                            await reload();
-                          } catch (e: any) {
-                            setError(e?.message ?? "Failed to delete invoice.");
-                          } finally {
-                            setDeletingRowId(null);
-                          }
-                        })();
-                        return;
-                      }
-                      void performDeleteExpense(String(confirmDelete.id));
-                    }}
-                  >
-                    Delete
-                  </Button>
-                </div>
-              </div>
-            </ModalPanel>
-          </div>
-        </>
-      ) : null}
+            })();
+            return;
+          }
+          if (kind === "invoice_hard") {
+            void (async () => {
+              const id = String(confirmDelete.id);
+              setDeletingRowId(id);
+              setError("");
+              try {
+                await hardDeleteInvoice(id);
+                setConfirmDelete(null);
+                await reload();
+              } catch (e: any) {
+                setError(e?.message ?? "Failed to delete invoice.");
+              } finally {
+                setDeletingRowId(null);
+              }
+            })();
+            return;
+          }
+          void performDeleteExpense(String(confirmDelete.id));
+        }}
+      >
+        {String(confirmDelete?.kind ?? "") === "invoice_hard" ? (
+          <p style={{ margin: 0 }}>Are you sure you want to permanently delete line item?</p>
+        ) : (
+          <p style={{ margin: 0 }}>
+            Delete <strong>{confirmDelete?.description || "this expense"}</strong>?
+          </p>
+        )}
+      </AppConfirmDialog>
     </div>
   );
 }

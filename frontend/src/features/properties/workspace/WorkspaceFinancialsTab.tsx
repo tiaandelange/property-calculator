@@ -45,7 +45,7 @@ ChartJS.register(ArcElement, Tooltip, Legend);
 import { Card } from "../../../components/ui/Card";
 import { Button, ButtonLink } from "../../../components/ui/Button";
 import { Field, Input } from "../../../components/ui/Input";
-import { ModalOverlay, ModalPanel } from "../../../components/ui/Modal";
+import { AppConfirmDialog, AppFormModal } from "../../../components/ui/AppModal";
 import { fetchPdfBlob, isAbsoluteHttpUrl, openPdfBlobInNewTab } from "../../../api/pdfBlob";
 import { isSupabaseConfigured } from "../../../lib/supabaseClient";
 import { generateReportViaVercel } from "../../../services/reportsVercel";
@@ -2125,187 +2125,111 @@ export function WorkspaceFinancialsTab({
         deleting={additionalBondDeleting}
       />
 
-      {scheduleConfirm ? (
-        <>
-          <ModalOverlay
-            open
-            onClose={() => {
-              if (scheduleConfirmBusy) return;
-              setScheduleConfirm(null);
-            }}
-          />
-          <div
-            style={{
-              position: "fixed",
-              inset: 0,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              zIndex: 92,
-              padding: 16
-            }}
-            role="presentation"
-            onMouseDown={(ev) => {
-              if (scheduleConfirmBusy) return;
-              if (ev.target === ev.currentTarget) setScheduleConfirm(null);
-            }}
-          >
-            <ModalPanel
-              title={scheduleConfirm.kind === "delete" ? "Delete schedule?" : "Stop schedule?"}
-              onClose={
-                scheduleConfirmBusy
-                  ? undefined
-                  : () => {
-                      setScheduleConfirm(null);
-                    }
-              }
-              actions={
-                scheduleConfirm.kind === "delete" ? (
-                  <Button
-                    type="button"
-                    variant="danger"
-                    loading={scheduleConfirmBusy}
-                    disabled={scheduleConfirmBusy}
-                    onClick={() => void confirmScheduleAction()}
-                  >
-                    Delete permanently
-                  </Button>
-                ) : (
-                  <Button
-                    type="button"
-                    loading={scheduleConfirmBusy}
-                    disabled={scheduleConfirmBusy}
-                    onClick={() => void confirmScheduleAction()}
-                  >
-                    Stop schedule
-                  </Button>
-                )
-              }
-              className="pg-modal-panel"
-            >
-              <div style={{ display: "grid", gap: 12, maxWidth: 520 }}>
-                <p className="pg-lead" style={{ marginTop: 0, marginBottom: 0 }}>
-                  {scheduleConfirm.kind === "delete"
-                    ? "This will permanently delete the schedule and any automated expense lines created from it. This cannot be undone."
-                    : "This will pause the schedule (archive it). No new charges will post, but existing statement lines stay as history."}
-                </p>
-                <div className="pg-muted" style={{ fontSize: 13 }}>
-                  Schedule: <strong>{String(scheduleConfirm.rc?.description ?? "") || "Untitled"}</strong>
-                </div>
-                {scheduleConfirmError ? <div className="pg-alert pg-alert-error">{scheduleConfirmError}</div> : null}
-                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                  <Button type="button" variant="ghost" disabled={scheduleConfirmBusy} onClick={() => setScheduleConfirm(null)}>
-                    Cancel
-                  </Button>
-                </div>
-              </div>
-            </ModalPanel>
+      <AppConfirmDialog
+        open={scheduleConfirm != null}
+        title={scheduleConfirm?.kind === "delete" ? "Delete schedule?" : "Stop schedule?"}
+        confirmLabel={scheduleConfirm?.kind === "delete" ? "Delete permanently" : "Stop schedule"}
+        cancelLabel="Cancel"
+        destructive={scheduleConfirm?.kind === "delete"}
+        tone={scheduleConfirm?.kind === "delete" ? "danger" : "warning"}
+        loading={scheduleConfirmBusy}
+        onClose={() => {
+          if (scheduleConfirmBusy) return;
+          setScheduleConfirm(null);
+        }}
+        onConfirm={() => void confirmScheduleAction()}
+        consequence={`Schedule: ${String(scheduleConfirm?.rc?.description ?? "") || "Untitled"}`}
+      >
+        <p style={{ margin: 0 }}>
+          {scheduleConfirm?.kind === "delete"
+            ? "This will permanently delete the schedule and any automated expense lines created from it. This cannot be undone."
+            : "This will pause the schedule (archive it). No new charges will post, but existing statement lines stay as history."}
+        </p>
+        {scheduleConfirmError ? <div className="pg-alert pg-alert-error">{scheduleConfirmError}</div> : null}
+      </AppConfirmDialog>
+
+      <AppConfirmDialog
+        open={statementConfirm != null}
+        title={statementConfirm?.kind === "save" ? "Overwrite saved data?" : "Delete line item?"}
+        confirmLabel="Yes"
+        cancelLabel="No"
+        destructive={statementConfirm?.kind === "delete"}
+        tone={statementConfirm?.kind === "delete" ? "danger" : "warning"}
+        loading={statementConfirmBusy}
+        onClose={() => {
+          if (statementConfirmBusy) return;
+          setStatementConfirm(null);
+        }}
+        onConfirm={() => void runStatementConfirm()}
+      >
+        <p style={{ margin: 0 }}>
+          {statementConfirm?.kind === "save"
+            ? "Are you sure you want to overwrite the existing data?"
+            : "Are you sure you want to delete this line item? One-off rows are removed; bond / recurring charges posted automatically are archived so they do not reappear when you reopen the statement."}
+        </p>
+      </AppConfirmDialog>
+
+      <AppFormModal
+        open={depositModal != null}
+        onOpenChange={(next) => {
+          if (!next && !depositSaving) setDepositModal(null);
+        }}
+        title={depositModal ? `Deposit — ${depositModal.tenantLabel}` : "Deposit"}
+        size="sm"
+        loading={depositSaving}
+        closeOnOverlayClick={!depositSaving}
+        onSubmit={(e) => void submitDepositModal(e)}
+        footer={
+          <div className="pg-app-modal-actions">
+            <Button type="button" variant="soft" disabled={depositSaving} onClick={() => setDepositModal(null)}>
+              Cancel
+            </Button>
+            <Button type="submit" loading={depositSaving} disabled={depositSaving}>
+              Save
+            </Button>
           </div>
-        </>
-      ) : null}
-
-
-      {statementConfirm ? (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0,0,0,.55)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 90,
-            padding: 16
-          }}
-          role="presentation"
-          onMouseDown={(ev) => {
-            if (!statementConfirmBusy && ev.target === ev.currentTarget) setStatementConfirm(null);
-          }}
-        >
-          <Card title={statementConfirm.kind === "save" ? "Overwrite saved data?" : "Delete line item?"}>
-            <p className="pg-lead" style={{ marginTop: 0, marginBottom: 16 }}>
-              {statementConfirm.kind === "save"
-                ? "Are you sure you want to overwrite the existing data?"
-                : "Are you sure you want to delete this line item? One-off rows are removed; bond / recurring charges posted automatically are archived so they do not reappear when you reopen the statement."}
-            </p>
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-              <Button type="button" loading={statementConfirmBusy} disabled={statementConfirmBusy} onClick={() => void runStatementConfirm()}>
-                Yes
-              </Button>
-              <Button type="button" variant="ghost" disabled={statementConfirmBusy} onClick={() => setStatementConfirm(null)}>
-                No
-              </Button>
+        }
+      >
+        {depositModal ? (
+          <>
+            <div>
+              <label className="pg-muted" style={{ display: "block", marginBottom: 6 }}>
+                Deposit balance (R)
+              </label>
+              <Input
+                type="number"
+                step="any"
+                min={0}
+                value={depositModal.amount}
+                onChange={(e) => setDepositModal({ ...depositModal, amount: e.target.value })}
+                required
+              />
             </div>
-          </Card>
-        </div>
-      ) : null}
-
-      {depositModal ? (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0,0,0,.55)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 80,
-            padding: 16
-          }}
-          role="presentation"
-          onMouseDown={(ev) => {
-            if (ev.target === ev.currentTarget) setDepositModal(null);
-          }}
-        >
-          <Card title={`Deposit — ${depositModal.tenantLabel}`}>
-            <form onSubmit={(e) => void submitDepositModal(e)} style={{ display: "grid", gap: 12, maxWidth: 420 }}>
-              <div>
-                <label className="pg-muted" style={{ display: "block", marginBottom: 6 }}>
-                  Deposit balance (R)
-                </label>
-                <Input
-                  type="number"
-                  step="any"
-                  min={0}
-                  value={depositModal.amount}
-                  onChange={(e) => setDepositModal({ ...depositModal, amount: e.target.value })}
-                  required
-                />
-              </div>
-              <div>
-                <label className="pg-muted" style={{ display: "block", marginBottom: 6 }}>
-                  Annual growth % (optional)
-                </label>
-                <Input
-                  type="number"
-                  step="any"
-                  min={0}
-                  max={100}
-                  placeholder="e.g. 6 — monthly compound using annual ÷ 12"
-                  value={depositModal.annualPct}
-                  onChange={(e) => setDepositModal({ ...depositModal, annualPct: e.target.value })}
-                />
-                <p className="pg-muted" style={{ fontSize: 12, marginTop: 8, marginBottom: 0 }}>
-                  Each calendar month the balance is multiplied by <strong>(1 + annual% ÷ 12)</strong>. Leave blank to disable automation and edit manually only.
+            <div>
+              <label className="pg-muted" style={{ display: "block", marginBottom: 6 }}>
+                Annual growth % (optional)
+              </label>
+              <Input
+                type="number"
+                step="any"
+                min={0}
+                max={100}
+                placeholder="e.g. 6 — monthly compound using annual ÷ 12"
+                value={depositModal.annualPct}
+                onChange={(e) => setDepositModal({ ...depositModal, annualPct: e.target.value })}
+              />
+              <p className="pg-muted" style={{ fontSize: 12, marginTop: 8, marginBottom: 0 }}>
+                Each calendar month the balance is multiplied by <strong>(1 + annual% ÷ 12)</strong>. Leave blank to disable automation and edit manually only.
+              </p>
+              {depositProjectedNextStep != null ? (
+                <p className="pg-muted" style={{ fontSize: 12, marginTop: 8 }}>
+                  Example next monthly step at current balance: <strong>{fmt(depositProjectedNextStep)}</strong>
                 </p>
-                {depositProjectedNextStep != null ? (
-                  <p className="pg-muted" style={{ fontSize: 12, marginTop: 8 }}>
-                    Example next monthly step at current balance: <strong>{fmt(depositProjectedNextStep)}</strong>
-                  </p>
-                ) : null}
-              </div>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                <Button type="submit" loading={depositSaving} disabled={depositSaving}>
-                  Save
-                </Button>
-                <Button type="button" variant="ghost" onClick={() => setDepositModal(null)}>
-                  Cancel
-                </Button>
-              </div>
-            </form>
-          </Card>
-        </div>
-      ) : null}
+              ) : null}
+            </div>
+          </>
+        ) : null}
+      </AppFormModal>
     </div>
   );
 }

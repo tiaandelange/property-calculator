@@ -1,0 +1,221 @@
+/**
+ * Proplytic universal typography — semantic text styles and legacy aliases.
+ * Uses tokens from proplytic.tokens.css only.
+ */
+
+/* Base body defaults */
+body {
+  font-size: var(--type-body);
+  line-height: var(--leading-body);
+  font-weight: var(--weight-regular);
+}
+
+/* Semantic text styles */
+.pg-text-page-title {
+  margin: 0;
+  font-size: var(--type-page-title);
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-heading);
+  letter-spacing: var(--tracking-heading);
+  color: var(--text-primary);
+}
+
+.pg-text-page-subtitle {
+  margin: 0;
+  font-size: var(--type-page-subtitle);
+  font-weight: var(--weight-regular);
+  line-height: var(--leading-body);
+  color: var(--text-secondary);
+}
+
+.pg-text-section-title {
+  margin: 0;
+  font-size: var(--type-section-title);
+  font-weight: var(--weight-semibold);
+  line-height: 1.3;
+  letter-spacing: var(--tracking-section);
+  color: var(--text-primary);
+}
+
+.pg-text-card-title {
+  margin: 0;
+  font-size: var(--type-card-title);
+  font-weight: var(--weight-semibold);
+  line-height: 1.3;
+  color: var(--text-primary);
+}
+
+.pg-text-card-description {
+  margin: 0;
+  font-size: var(--type-card-description);
+  font-weight: var(--weight-regular);
+  line-height: var(--leading-body);
+  color: var(--text-secondary);
+}
+
+.pg-text-body {
+  margin: 0;
+  font-size: var(--type-body);
+  font-weight: var(--weight-regular);
+  line-height: var(--leading-body);
+  color: var(--text-primary);
+}
+
+.pg-text-body-sm {
+  margin: 0;
+  font-size: var(--type-base);
+  font-weight: var(--weight-regular);
+  line-height: var(--leading-body);
+  color: var(--text-primary);
+}
+
+.pg-text-label {
+  font-size: var(--type-base);
+  font-weight: var(--weight-medium);
+  line-height: var(--leading-normal);
+  color: var(--text-secondary);
+}
+
+.pg-text-helper {
+  font-size: var(--type-sm);
+  font-weight: var(--weight-regular);
+  line-height: var(--leading-normal);
+  color: var(--text-muted);
+}
+
+.pg-text-error {
+  font-size: var(--type-sm);
+  font-weight: var(--weight-medium);
+  line-height: var(--leading-normal);
+  color: var(--danger);
+}
+
+.pg-text-table-header {
+  font-size: var(--type-table-header);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-normal);
+  letter-spacing: var(--tracking-table);
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.pg-text-table-cell {
+  font-size: var(--type-table-cell);
+  font-weight: var(--weight-regular);
+  line-height: var(--leading-normal);
+  color: var(--text-primary);
+}
+
+.pg-text-metric-label {
+  font-size: var(--type-metric-label);
+  font-weight: var(--weight-medium);
+  line-height: var(--leading-normal);
+  color: var(--text-secondary);
+}
+
+.pg-text-metric-value {
+  font-size: var(--type-metric-value);
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-tight);
+  letter-spacing: var(--tracking-heading);
+  color: var(--text-primary);
+}
+
+.pg-text-nav-label {
+  font-size: var(--type-nav-label);
+  font-weight: var(--weight-medium);
+  line-height: var(--leading-normal);
+}
+
+.pg-text-button {
+  font-size: var(--type-button);
+  font-weight: var(--weight-semibold);
+  line-height: 1;
+  letter-spacing: var(--tracking-button);
+}
+
+.pg-text-badge {
+  font-size: var(--type-badge);
+  font-weight: var(--weight-semibold);
+  line-height: 1;
+}
+
+/* Legacy utility aliases */
+.pg-muted {
+  color: var(--text-secondary);
+}
+
+.pg-caption {
+  font-size: var(--type-sm);
+  line-height: var(--leading-normal);
+  color: var(--text-muted);
+}
+
+.pg-lead {
+  color: var(--text-secondary);
+  font-size: var(--type-body);
+  line-height: var(--leading-body);
+  margin: 0 0 var(--s-3);
+}
+
+.pg-label,
+.pg-field .pg-label {
+  font-size: var(--type-base);
+  font-weight: var(--weight-medium);
+  line-height: var(--leading-normal);
+  color: var(--text-secondary);
+}
+
+.pg-help {
+  color: var(--text-muted);
+  font-size: var(--type-sm);
+  line-height: var(--leading-normal);
+}
+
+.pg-h2 {
+  font-size: var(--type-page-title);
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-heading);
+  letter-spacing: var(--tracking-heading);
+  color: var(--text-primary);
+  margin: 0 0 var(--s-2);
+}
+
+.pg-card-title {
+  font-size: var(--type-card-title);
+  font-weight: var(--weight-semibold);
+  line-height: 1.3;
+  color: var(--text-secondary);
+  margin: 0 0 10px;
+  letter-spacing: var(--tracking-normal);
+}
+
+/* Density-aware table text */
+html[data-density="compact"] {
+  --type-table-cell: var(--type-sm);
+}
+
+html:not([data-density="compact"]) {
+  --type-table-cell: var(--type-base);
+}
+
+@media (max-width: 640px) {
+  .pg-text-page-title,
+  .pg-h2 {
+    font-size: var(--type-page-title-mobile);
+  }
+
+  .pg-text-section-title {
+    font-size: var(--type-section-title-mobile);
+  }
+
+  .pg-text-metric-value {
+    font-size: var(--type-metric-value-mobile);
+  }
+}
+
+@media (max-width: 1020px) {
+  .pg-h1 {
+    font-size: 38px;
+  }
+}

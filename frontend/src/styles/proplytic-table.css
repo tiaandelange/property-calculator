@@ -26,7 +26,7 @@
 .pg-fins-statement-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 13px;
+  font-size: var(--type-table-cell);
   color: var(--text-primary);
 }
 
@@ -60,9 +60,9 @@
 .pg-leases-table th,
 .pg-statement-table th,
 .pg-tstmt-table th {
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
+  font-size: var(--type-table-header);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-table);
   text-transform: uppercase;
   color: var(--text-muted);
   background: var(--surface-muted);
@@ -165,8 +165,12 @@ html[data-density="compact"] .pg-leases-table td {
 html[data-density="compact"] .pg-ptable,
 html[data-density="compact"] .pg-table,
 html[data-density="compact"] .pg-pfin-table,
-html[data-density="compact"] .pg-invoices-table {
-  font-size: 12px;
+html[data-density="compact"] .pg-invoices-table,
+html[data-density="compact"] .pg-tenants-table,
+html[data-density="compact"] .pg-leases-table,
+html[data-density="compact"] .pg-statement-table,
+html[data-density="compact"] .pg-tstmt-table {
+  font-size: var(--type-table-cell);
 }
 
 /* Amount tones (financial) */

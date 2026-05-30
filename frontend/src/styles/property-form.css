@@ -82,21 +82,22 @@
 }
 
 .pg-prop-metric-card__label {
-  font-size: 0.75rem;
-  color: var(--text-muted);
+  font-size: var(--type-metric-label);
+  font-weight: var(--weight-medium);
+  color: var(--text-secondary);
   margin-bottom: 2px;
 }
 
 .pg-prop-metric-card__value {
-  font-size: 0.95rem;
-  font-weight: 600;
+  font-size: var(--type-lg);
+  font-weight: var(--weight-semibold);
   color: var(--text-primary);
-  line-height: 1.25;
+  line-height: var(--leading-heading);
 }
 
 .pg-prop-metric-card__helper {
-  font-size: 0.7rem;
-  color: var(--text-secondary);
+  font-size: var(--type-sm);
+  color: var(--text-muted);
   margin-top: 4px;
 }
 

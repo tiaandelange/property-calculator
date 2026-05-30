@@ -75,17 +75,17 @@ html[data-theme="light"] .pg-property-card:hover {
 }
 
 .pg-card-title {
-  font-size: 13px;
-  font-weight: 700;
+  font-size: var(--type-card-title);
+  font-weight: var(--weight-semibold);
+  line-height: 1.3;
   color: var(--text-secondary);
   margin: 0 0 10px;
-  letter-spacing: 0.02em;
 }
 
 .pg-dashboard-card-header h3 {
-  font-size: 16px;
-  font-weight: 800;
-  letter-spacing: -0.02em;
+  font-size: var(--type-card-title);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-heading);
   color: var(--text-primary);
 }
 
@@ -351,6 +351,13 @@ select.pg-input:focus,
   padding: 24px;
 }
 
+.pg-modal-panel.pg-app-modal-panel {
+  padding: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
 .pg-sheet-panel {
   position: fixed;
   top: 0;
@@ -373,11 +380,13 @@ select.pg-input:focus,
 }
 
 .pg-modal-title,
-.pg-sheet-title {
+.pg-sheet-title,
+.pg-app-modal-title {
   margin: 0;
-  font-size: 18px;
-  font-weight: 800;
-  letter-spacing: -0.02em;
+  font-size: var(--type-lg);
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-heading);
+  letter-spacing: var(--tracking-heading);
 }
 
 .pg-sidebar {
@@ -582,10 +591,10 @@ select.pg-input:focus,
 
 .pg-stat-title {
   color: var(--text-muted);
-  font-size: 11px;
-  font-weight: 800;
+  font-size: var(--type-table-header);
+  font-weight: var(--weight-semibold);
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--tracking-table);
 }
 
 .pg-stat-value,
@@ -593,17 +602,17 @@ select.pg-input:focus,
   color: var(--text-primary);
   font-variant-numeric: tabular-nums;
   margin-top: 8px;
-  font-weight: 800;
-  letter-spacing: -0.02em;
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-heading);
+  line-height: var(--leading-tight);
 }
 
 .pg-stat-value {
-  font-size: clamp(22px, 2.4vw, 30px);
-  font-weight: 900;
+  font-size: var(--type-metric-value);
 }
 
 .pg-metric-value {
-  font-size: clamp(20px, 2vw, 24px);
+  font-size: var(--type-metric-value-mobile);
 }
 
 .pg-stat-accent .pg-stat-value,
@@ -933,4 +942,517 @@ html[data-theme="light"] .pg-icon-container--neutral {
 .pg-dashboard-shell-icon-btn.pg-icon-btn {
   min-width: 44px;
   min-height: 44px;
+}
+
+/* --- Universal App Card system --- */
+.pg-app-card {
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--ui-card-radius);
+  color: var(--text-primary);
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease,
+    background 0.2s ease;
+}
+
+.pg-app-card--pad-sm {
+  padding: 12px 14px;
+}
+
+.pg-app-card--pad-md {
+  padding: 16px 20px;
+}
+
+.pg-app-card--pad-lg {
+  padding: 24px;
+}
+
+.pg-app-card--elevated {
+  background: var(--surface-elevated);
+  box-shadow: var(--shadow-card);
+}
+
+html[data-theme="light"] .pg-app-card--elevated {
+  box-shadow: var(--shadow-card);
+}
+
+.pg-app-card--muted {
+  background: var(--surface-muted);
+}
+
+.pg-app-card--primary {
+  background: var(--primary-soft);
+  border-color: var(--primary-border);
+}
+
+.pg-app-card--success {
+  background: var(--success-soft);
+  border-color: color-mix(in srgb, var(--success) 28%, var(--border-soft));
+}
+
+.pg-app-card--warning {
+  background: var(--warning-soft);
+  border-color: color-mix(in srgb, var(--warning) 28%, var(--border-soft));
+}
+
+.pg-app-card--danger {
+  background: var(--danger-soft);
+  border-color: color-mix(in srgb, var(--danger) 28%, var(--border-soft));
+}
+
+.pg-app-card--interactive,
+button.pg-app-card,
+a.pg-app-card,
+.pg-app-card--interactive:hover,
+button.pg-app-card:hover,
+a.pg-app-card:hover {
+  cursor: pointer;
+  text-decoration: none;
+  text-align: inherit;
+}
+
+button.pg-app-card,
+a.pg-app-card {
+  display: block;
+  width: 100%;
+  appearance: none;
+  font: inherit;
+}
+
+a.pg-app-card {
+  color: inherit;
+}
+
+.pg-app-card--interactive:hover,
+button.pg-app-card:hover,
+a.pg-app-card:hover {
+  border-color: var(--primary-border);
+  background: color-mix(in srgb, var(--primary) 4%, var(--surface));
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-soft);
+}
+
+.pg-app-card--interactive:active,
+button.pg-app-card:active,
+a.pg-app-card:active {
+  transform: translateY(0);
+}
+
+.pg-app-card-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.pg-app-card-title {
+  margin: 0;
+  font-size: var(--type-card-title);
+  font-weight: var(--weight-semibold);
+  line-height: 1.3;
+  letter-spacing: var(--tracking-heading);
+  color: var(--text-primary);
+}
+
+.pg-app-card-description {
+  margin: 4px 0 0;
+  font-size: var(--type-card-description);
+  line-height: var(--leading-body);
+  color: var(--text-secondary);
+}
+
+.pg-app-card-content {
+  color: var(--text-primary);
+}
+
+.pg-app-card-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-top: 16px;
+}
+
+.pg-app-metric-card {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.pg-app-metric-card-label {
+  font-size: var(--type-metric-label);
+  font-weight: var(--weight-medium);
+  color: var(--text-secondary);
+}
+
+.pg-app-metric-card-value {
+  margin-top: 4px;
+  font-size: var(--type-metric-value);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-heading);
+  line-height: var(--leading-tight);
+  color: var(--text-primary);
+}
+
+.pg-app-metric-card-hint {
+  margin-top: 6px;
+  font-size: var(--type-sm);
+  color: var(--text-muted);
+}
+
+.pg-app-empty-state-card {
+  text-align: center;
+}
+
+.pg-app-empty-state-card-icon {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+
+.pg-app-empty-state-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  margin-top: 16px;
+}
+
+html[data-density="compact"] .pg-app-card--pad-md {
+  padding: 12px 14px;
+}
+
+html[data-density="compact"] .pg-app-card--pad-lg {
+  padding: 16px 18px;
+}
+
+/* --- Universal App Modal system --- */
+.pg-app-modal-overlay {
+  z-index: 60;
+}
+
+.pg-app-modal-host {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  padding-bottom: max(16px, env(safe-area-inset-bottom));
+  z-index: 61;
+}
+
+.pg-app-modal-panel {
+  background: var(--surface-elevated);
+  border: 1px solid var(--border-soft);
+  border-radius: 20px;
+  box-shadow: var(--shadow-dark);
+  color: var(--text-primary);
+  max-height: min(88vh, 720px);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.pg-app-modal-panel--sm {
+  width: min(420px, calc(100vw - 32px));
+}
+
+.pg-app-modal-panel--md {
+  width: min(560px, calc(100vw - 32px));
+}
+
+.pg-app-modal-panel--lg {
+  width: min(720px, calc(100vw - 32px));
+}
+
+.pg-app-modal-panel--xl {
+  width: min(920px, calc(100vw - 32px));
+}
+
+.pg-app-modal-panel--full-mobile {
+  width: min(920px, calc(100vw - 32px));
+}
+
+.pg-app-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 20px 20px 0;
+}
+
+.pg-app-modal-header--bordered {
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.pg-app-modal-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.pg-app-modal-description {
+  margin: 6px 0 0;
+  font-size: var(--type-card-description);
+  line-height: var(--leading-body);
+  color: var(--text-secondary);
+}
+
+.pg-app-modal-body {
+  padding: 16px 20px 20px;
+  overflow: auto;
+  min-height: 0;
+}
+
+.pg-app-modal-footer {
+  padding: 0 20px 20px;
+}
+
+.pg-app-modal-footer--bordered {
+  padding-top: 16px;
+  border-top: 1px solid var(--border-soft);
+}
+
+.pg-app-modal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.pg-app-form-modal .pg-app-modal-body {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  overflow: hidden;
+}
+
+.pg-app-form-modal-form {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+}
+
+.pg-app-form-modal-scroll {
+  padding: 16px 20px;
+  overflow: auto;
+  min-height: 0;
+  flex: 1;
+  display: grid;
+  gap: 12px;
+  align-content: start;
+}
+
+.pg-app-form-modal-footer {
+  padding: 16px 20px 20px;
+  border-top: 1px solid var(--border-soft);
+  background: var(--surface-elevated);
+}
+
+.pg-app-confirm-dialog-body {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.pg-app-confirm-dialog-copy {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--text-secondary);
+}
+
+.pg-app-confirm-dialog-consequence {
+  margin: 10px 0 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.pg-app-confirm-dialog-icon--danger {
+  color: var(--danger);
+}
+
+.pg-app-confirm-dialog-icon--warning {
+  color: var(--warning);
+}
+
+.pg-app-confirm-dialog-icon--primary {
+  color: var(--primary);
+}
+
+.pg-app-drawer {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  width: min(420px, 100vw);
+  background: var(--surface-elevated);
+  border: 1px solid var(--border-soft);
+  box-shadow: var(--shadow-dark);
+  z-index: 62;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.pg-app-drawer--right {
+  right: 0;
+  border-radius: 20px 0 0 20px;
+}
+
+.pg-app-drawer--left {
+  left: 0;
+  border-radius: 0 20px 20px 0;
+}
+
+.pg-app-drawer-header,
+.pg-app-drawer-footer,
+.pg-app-sheet-header,
+.pg-app-sheet-footer {
+  padding: 16px 20px;
+}
+
+.pg-app-drawer-header,
+.pg-app-sheet-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.pg-app-drawer-body,
+.pg-app-sheet-body {
+  flex: 1;
+  overflow: auto;
+  padding: 16px 20px;
+  min-height: 0;
+}
+
+.pg-app-drawer-footer,
+.pg-app-sheet-footer {
+  border-top: 1px solid var(--border-soft);
+}
+
+.pg-app-sheet-host {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 61;
+  pointer-events: none;
+}
+
+.pg-app-sheet-panel {
+  pointer-events: auto;
+  width: 100%;
+  max-height: min(92dvh, 720px);
+  background: var(--surface-elevated);
+  border: 1px solid var(--border-soft);
+  border-bottom: 0;
+  border-radius: 20px 20px 0 0;
+  box-shadow: var(--shadow-dark);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.pg-app-sheet-handle {
+  width: 40px;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--border);
+  margin: 10px auto 0;
+}
+
+.pg-app-popover-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 55;
+}
+
+.pg-app-popover {
+  position: absolute;
+  z-index: 56;
+  min-width: 180px;
+  background: var(--surface-elevated);
+  border: 1px solid var(--border-soft);
+  border-radius: 14px;
+  box-shadow: var(--shadow-dark);
+  padding: 6px;
+}
+
+.pg-app-popover-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.pg-app-popover-item:hover {
+  background: var(--surface-muted);
+}
+
+.pg-app-popover-item--danger {
+  color: var(--danger);
+}
+
+.pg-app-popover-item--danger:hover {
+  background: var(--danger-soft);
+}
+
+.pg-app-popover-divider {
+  height: 1px;
+  margin: 4px 0;
+  background: var(--border-soft);
+}
+
+@media (max-width: 640px) {
+  .pg-app-modal-host--mobile-sheet {
+    align-items: end;
+    padding: 0;
+  }
+
+  .pg-app-modal-panel--mobile-sheet {
+    width: 100%;
+    max-height: min(92dvh, 720px);
+    border-radius: 20px 20px 0 0;
+    border-bottom: 0;
+  }
+
+  .pg-app-modal-panel--full-mobile {
+    width: 100%;
+    max-height: 100dvh;
+    border-radius: 0;
+  }
+}
+
+html[data-density="compact"] .pg-app-modal-header {
+  padding-top: 16px;
+}
+
+html[data-density="compact"] .pg-app-modal-body,
+html[data-density="compact"] .pg-app-form-modal-scroll {
+  padding: 12px 16px;
+}
+
+html[data-density="compact"] .pg-app-modal-footer,
+html[data-density="compact"] .pg-app-form-modal-footer {
+  padding: 12px 16px 16px;
 }

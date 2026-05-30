@@ -841,7 +841,7 @@ export function InvoiceDetailPanel({
           {INVOICE_SEND_MODAL_MESSAGE}
         </p>
         {!isInvoiceEmailDeliveryAvailable() ? (
-          <p className="pg-muted" style={{ margin: "12px 0 0", fontSize: "0.875rem" }}>
+          <p className="pg-text-helper" style={{ margin: "12px 0 0" }}>
             {INVOICE_SEND_EMAIL_COMING_SOON}
           </p>
         ) : null}

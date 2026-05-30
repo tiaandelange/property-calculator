@@ -4,7 +4,8 @@ import { AppIcon, type IconName } from "../../components/icons";
 import { fetchMe } from "../../api/user";
 import { Button, ButtonLink } from "../../components/ui/Button";
 import { Field, Input } from "../../components/ui/Input";
-import { ModalOverlay, ModalPanel } from "../../components/ui/Modal";
+import { AppCard, AppCardDescription, AppCardHeader, AppCardTitle } from "../../components/ui/AppCard";
+import { AppFormModal } from "../../components/ui/AppModal";
 import { useAuth } from "../../contexts/AuthContext";
 import { useMediaQuery } from "../../hooks/useMediaQuery";
 import { supabase } from "../../lib/supabaseClient";
@@ -70,18 +71,23 @@ function SettingsCard({
   fullWidth?: boolean;
 }) {
   return (
-    <section className={`pg-settings-card${fullWidth ? " pg-settings-card--full" : ""}`}>
-      <div className="pg-settings-card-head">
+    <AppCard
+      as="section"
+      variant="elevated"
+      padding="md"
+      className={`pg-settings-card${fullWidth ? " pg-settings-card--full" : ""}`}
+    >
+      <AppCardHeader className="pg-settings-card-head">
         <div className="pg-settings-card-icon">
           <AppIcon name={icon} size="md" />
         </div>
         <div>
-          <h2 className="pg-settings-card-title">{title}</h2>
-          {description ? <p className="pg-settings-card-desc">{description}</p> : null}
+          <AppCardTitle className="pg-settings-card-title">{title}</AppCardTitle>
+          {description ? <AppCardDescription className="pg-settings-card-desc">{description}</AppCardDescription> : null}
         </div>
-      </div>
+      </AppCardHeader>
       {children}
-    </section>
+    </AppCard>
   );
 }
 
@@ -125,61 +131,60 @@ function ChangePasswordModal({ open, onClose }: { open: boolean; onClose: () => 
     }
   };
 
-  if (!open) return null;
-
   return (
-    <>
-      <ModalOverlay open onClose={onClose} />
-      <div
-        style={{
-          position: "fixed",
-          inset: 0,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          zIndex: 92,
-          padding: 16
-        }}
-        role="presentation"
-        onMouseDown={(e) => {
-          if (e.target === e.currentTarget) onClose();
-        }}
-      >
-        <ModalPanel title="Change password" onClose={onClose}>
-          {done ? (
-            <p className="pg-muted">Your password has been updated.</p>
-          ) : (
-            <form onSubmit={(e) => void submit(e)}>
-              <Field label="New password">
-                <Input
-                  type="password"
-                  autoComplete="new-password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
-              </Field>
-              <Field label="Confirm password">
-                <Input
-                  type="password"
-                  autoComplete="new-password"
-                  value={confirm}
-                  onChange={(e) => setConfirm(e.target.value)}
-                />
-              </Field>
-              {error ? <div className="pg-alert pg-alert-error">{error}</div> : null}
-              <div style={{ marginTop: 16, display: "flex", gap: 10 }}>
-                <Button type="submit" loading={saving}>
-                  Update password
-                </Button>
-                <Button type="button" variant="soft" onClick={onClose}>
-                  Cancel
-                </Button>
-              </div>
-            </form>
-          )}
-        </ModalPanel>
-      </div>
-    </>
+    <AppFormModal
+      open={open}
+      onOpenChange={(next) => {
+        if (!next) onClose();
+      }}
+      title="Change password"
+      size="sm"
+      loading={saving}
+      closeOnOverlayClick={!saving}
+      onSubmit={done ? undefined : (e) => void submit(e)}
+      footer={
+        done ? (
+          <div className="pg-app-modal-actions">
+            <Button type="button" onClick={onClose}>
+              Done
+            </Button>
+          </div>
+        ) : (
+          <div className="pg-app-modal-actions">
+            <Button type="button" variant="soft" onClick={onClose} disabled={saving}>
+              Cancel
+            </Button>
+            <Button type="submit" loading={saving}>
+              Update password
+            </Button>
+          </div>
+        )
+      }
+    >
+      {done ? (
+        <p className="pg-muted">Your password has been updated.</p>
+      ) : (
+        <>
+          <Field label="New password">
+            <Input
+              type="password"
+              autoComplete="new-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+          </Field>
+          <Field label="Confirm password">
+            <Input
+              type="password"
+              autoComplete="new-password"
+              value={confirm}
+              onChange={(e) => setConfirm(e.target.value)}
+            />
+          </Field>
+          {error ? <div className="pg-alert pg-alert-error">{error}</div> : null}
+        </>
+      )}
+    </AppFormModal>
   );
 }
 
@@ -219,44 +224,33 @@ function EditProfileModal({
     }
   };
 
-  if (!open) return null;
-
   return (
-    <>
-      <ModalOverlay open onClose={onClose} />
-      <div
-        style={{
-          position: "fixed",
-          inset: 0,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          zIndex: 92,
-          padding: 16
-        }}
-        role="presentation"
-        onMouseDown={(e) => {
-          if (e.target === e.currentTarget) onClose();
-        }}
-      >
-        <ModalPanel title="Edit profile" onClose={onClose}>
-          <form onSubmit={(e) => void submit(e)}>
-            <Field label="Full name">
-              <Input value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" />
-            </Field>
-            {error ? <div className="pg-alert pg-alert-error">{error}</div> : null}
-            <div style={{ marginTop: 16, display: "flex", gap: 10 }}>
-              <Button type="submit" loading={saving}>
-                Save
-              </Button>
-              <Button type="button" variant="soft" onClick={onClose}>
-                Cancel
-              </Button>
-            </div>
-          </form>
-        </ModalPanel>
-      </div>
-    </>
+    <AppFormModal
+      open={open}
+      onOpenChange={(next) => {
+        if (!next && !saving) onClose();
+      }}
+      title="Edit profile"
+      size="sm"
+      loading={saving}
+      closeOnOverlayClick={!saving}
+      onSubmit={(e) => void submit(e)}
+      footer={
+        <div className="pg-app-modal-actions">
+          <Button type="button" variant="soft" onClick={onClose} disabled={saving}>
+            Cancel
+          </Button>
+          <Button type="submit" loading={saving}>
+            Save
+          </Button>
+        </div>
+      }
+    >
+      <Field label="Full name">
+        <Input value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" />
+      </Field>
+      {error ? <div className="pg-alert pg-alert-error">{error}</div> : null}
+    </AppFormModal>
   );
 }
 
@@ -394,8 +388,8 @@ export function SettingsDashboard() {
     <div className="pg-settings-page">
       {!isMobile ? (
         <div className="pg-settings-page-header">
-          <h1>Settings</h1>
-          <p>Account preferences and workspace configuration.</p>
+          <h1 className="pg-text-page-title">Settings</h1>
+          <p className="pg-text-page-subtitle">Account preferences and workspace configuration.</p>
         </div>
       ) : null}
 
@@ -429,7 +423,7 @@ export function SettingsDashboard() {
 
         <SettingsCard icon="palette" title="Appearance" description="Theme, accent colour, and density.">
           <div className="pg-settings-field">
-            <label>Theme</label>
+            <label className="pg-text-label">Theme</label>
             <div className="pg-settings-theme-options">
               {(["light", "dark", "system"] as ThemePreference[]).map((t) => (
                 <button
@@ -442,10 +436,10 @@ export function SettingsDashboard() {
                 </button>
               ))}
             </div>
-            <p className="pg-settings-field-hint">System follows your browser or OS colour preference.</p>
+            <p className="pg-text-helper">System follows your browser or OS colour preference.</p>
           </div>
           <div className="pg-settings-field">
-            <label>Accent colour</label>
+            <label className="pg-text-label">Accent colour</label>
             <div className="pg-settings-accent-dots">
               {(["purple", "blue", "green", "orange", "red", "teal"] as AccentColor[]).map((c) => (
                 <button
@@ -459,7 +453,7 @@ export function SettingsDashboard() {
             </div>
           </div>
           <div className="pg-settings-field">
-            <label>Density</label>
+            <label className="pg-text-label">Density</label>
             <div className="pg-settings-theme-options">
               {(["comfortable", "compact"] as const).map((d) => (
                 <button

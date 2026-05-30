@@ -1,4 +1,5 @@
 @import "./themes/proplytic.tokens.css";
+@import "./proplytic-typography.css";
 @import "./ui-components.css";
 @import "./proplytic-buttons.css";
 @import "./proplytic-table.css";
@@ -451,12 +452,7 @@ textarea {
   padding: 0;
 }
 
-/* Card primitives: ui-components.css */
-.pg-card-title {
-  font-size: 14px;
-  color: var(--text-secondary);
-  margin: 0 0 8px;
-}
+/* Card / typography primitives: ui-components.css + proplytic-typography.css */
 
 .pg-dashboard-filters-popover {
   position: absolute;
@@ -484,21 +480,13 @@ textarea {
 }
 
 .pg-h1 {
-  font-size: 44px;
-  line-height: 1.08;
-  letter-spacing: -0.02em;
+  font-size: var(--type-4xl);
+  line-height: var(--leading-tight);
+  letter-spacing: var(--tracking-heading);
   margin: 0 0 var(--s-2);
 }
-.pg-h2 {
-  font-size: 28px;
-  letter-spacing: -0.01em;
-  margin: 0 0 var(--s-2);
-}
-.pg-lead {
-  color: var(--text2);
-  font-size: 16px;
-  margin: 0 0 var(--s-3);
-}
+
+/* pg-h2, pg-lead, pg-label, pg-help, pg-muted: proplytic-typography.css */
 
 /* Base button styles: proplytic-buttons.css */
 
@@ -506,14 +494,6 @@ textarea {
   display: grid;
   gap: 6px;
   margin-bottom: 14px;
-}
-.pg-label {
-  font-weight: 800;
-  font-size: 13px;
-}
-.pg-help {
-  color: var(--muted);
-  font-size: 12px;
 }
 .pg-input {
   height: 44px;
@@ -583,9 +563,6 @@ textarea {
 .pg-alert-error {
   border-color: rgba(255, 77, 79, 0.35);
   background: rgba(255, 77, 79, 0.08);
-}
-.pg-muted {
-  color: var(--text2);
 }
 
 .pg-pill {

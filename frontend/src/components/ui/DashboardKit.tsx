@@ -100,6 +100,9 @@ export function StatCard({
   return (
     <div
       className={[
+        "pg-app-card",
+        "pg-app-card--elevated",
+        "pg-app-card--pad-md",
         "pg-workspace-card",
         "pg-stat-card",
         `pg-stat-${statTone}`,
@@ -182,6 +185,9 @@ export function MetricCard({
   return (
     <div
       className={[
+        "pg-app-card",
+        "pg-app-card--elevated",
+        "pg-app-card--pad-md",
         "pg-workspace-card",
         "pg-metric-card",
         elevated ? "pg-metric-card--elevated" : "",
@@ -240,12 +246,19 @@ export function DashboardCard({
 }) {
   return (
     <div
-      className={["pg-workspace-card", "pg-dashboard-card", elevated ? "pg-dashboard-card--elevated" : ""]
+      className={[
+        "pg-app-card",
+        "pg-app-card--elevated",
+        "pg-app-card--pad-md",
+        "pg-workspace-card",
+        "pg-dashboard-card",
+        elevated ? "pg-dashboard-card--elevated" : ""
+      ]
         .filter(Boolean)
         .join(" ")}
     >
       <div className="pg-dashboard-card-header">
-        <h3>{title}</h3>
+        <h3 className="pg-text-section-title">{title}</h3>
         {actions}
       </div>
       <div className="pg-dashboard-card-body">{children}</div>

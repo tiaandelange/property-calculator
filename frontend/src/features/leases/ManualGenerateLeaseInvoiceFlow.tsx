@@ -1,9 +1,9 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ConfirmDialog } from "../../components/ui/ConfirmDialog";
+import { AppFormModal } from "../../components/ui/AppModal";
 import { Button } from "../../components/ui/Button";
-import { ModalOverlay, ModalPanel } from "../../components/ui/Modal";
-import { Input } from "../../components/ui/Input";
+import { Field, Input } from "../../components/ui/Input";
 import { Select } from "../../components/ui/Select";
 import { invoiceDetailPath } from "../invoices/invoiceRoutes";
 import {
@@ -139,85 +139,63 @@ export function ManualGenerateLeaseInvoiceFlow({
         </p>
       </ConfirmDialog>
 
-      {open && step === "form" ? (
-        <>
-          <ModalOverlay open onClose={handleClose} />
-          <div
-            style={{
-              position: "fixed",
-              inset: 0,
-              display: "grid",
-              placeItems: "center",
-              padding: 16,
-              zIndex: 60,
-              pointerEvents: "none"
-            }}
-          >
-            <div style={{ pointerEvents: "auto", width: "min(100%, 480px)" }}>
-              <ModalPanel
-                title="Generate invoice"
-                onClose={handleClose}
-                actions={
-                  <>
-                    <Button type="button" variant="ghost" onClick={handleClose} disabled={loading}>
-                      Cancel
-                    </Button>
-                    <Button type="button" loading={loading} onClick={() => void submitForm()}>
-                      Confirm Generate Invoice
-                    </Button>
-                  </>
-                }
-              >
-                <form onSubmit={(e) => void submitForm(e)} style={{ display: "grid", gap: 12 }}>
-                  <label className="pg-muted" style={{ display: "grid", gap: 6, fontSize: 13 }}>
-                    Billing period
-                    <Select value={invoicePeriod} onChange={(e) => setInvoicePeriod(e.target.value)}>
-                      {periodOptions.map((o) => (
-                        <option key={o.value} value={o.value}>
-                          {o.label}
-                        </option>
-                      ))}
-                    </Select>
-                  </label>
-                  <label className="pg-muted" style={{ display: "grid", gap: 6, fontSize: 13 }}>
-                    Invoice type
-                    <Select
-                      value={invoiceType}
-                      onChange={(e) => setInvoiceType(e.target.value as ManualInvoiceType)}
-                    >
-                      {MANUAL_INVOICE_TYPE_OPTIONS.map((o) => (
-                        <option key={o.value} value={o.value}>
-                          {o.label}
-                        </option>
-                      ))}
-                    </Select>
-                  </label>
-                  <label className="pg-muted" style={{ display: "grid", gap: 6, fontSize: 13 }}>
-                    Due date
-                    <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} required />
-                  </label>
-                  <label className="pg-muted" style={{ display: "grid", gap: 6, fontSize: 13 }}>
-                    Amount
-                    <Input
-                      type="number"
-                      min={0}
-                      step="0.01"
-                      value={amount}
-                      onChange={(e) => setAmount(e.target.value)}
-                      required
-                    />
-                  </label>
-                  <label className="pg-muted" style={{ display: "grid", gap: 6, fontSize: 13 }}>
-                    Notes (optional)
-                    <Input value={notes} onChange={(e) => setNotes(e.target.value)} />
-                  </label>
-                  {error ? <div className="pg-alert pg-alert-error">{error}</div> : null}
-                </form>
-              </ModalPanel>
-            </div>
+      <AppFormModal
+        open={open && step === "form"}
+        onOpenChange={(next) => {
+          if (!next) handleClose();
+        }}
+        title="Generate invoice"
+        size="sm"
+        loading={loading}
+        closeOnOverlayClick={!loading}
+        onSubmit={(e) => void submitForm(e)}
+        footer={
+          <div className="pg-app-modal-actions">
+            <Button type="button" variant="soft" onClick={handleClose} disabled={loading}>
+              Cancel
+            </Button>
+            <Button type="submit" loading={loading}>
+              Confirm Generate Invoice
+            </Button>
           </div>
-        </>
-      ) : null}
+        }
+      >
+        <Field label="Billing period">
+          <Select value={invoicePeriod} onChange={(e) => setInvoicePeriod(e.target.value)}>
+            {periodOptions.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </Select>
+        </Field>
+        <Field label="Invoice type">
+          <Select value={invoiceType} onChange={(e) => setInvoiceType(e.target.value as ManualInvoiceType)}>
+            {MANUAL_INVOICE_TYPE_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </Select>
+        </Field>
+        <Field label="Due date">
+          <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} required />
+        </Field>
+        <Field label="Amount">
+          <Input
+            type="number"
+            min={0}
+            step="0.01"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            required
+          />
+        </Field>
+        <Field label="Notes (optional)">
+          <Input value={notes} onChange={(e) => setNotes(e.target.value)} />
+        </Field>
+        {error ? <div className="pg-alert pg-alert-error">{error}</div> : null}
+      </AppFormModal>
 
       <ConfirmDialog
         open={open && step === "duplicate"}

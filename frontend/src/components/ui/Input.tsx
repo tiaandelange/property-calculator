@@ -1,6 +1,7 @@
 import { Search } from "lucide-react";
 import React from "react";
 import { FieldInfoTip } from "./FieldInfoTip";
+import { typographyClassName } from "./Typography";
 
 export function Field({
   label,
@@ -14,7 +15,7 @@ export function Field({
   return (
     <div className="pg-field">
       <div className="pg-field__label-row">
-        <div className="pg-label">{label}</div>
+        <div className={typographyClassName("label", "pg-label")}>{label}</div>
         <FieldInfoTip label={label} text={help} />
       </div>
       {children}

@@ -109,32 +109,32 @@
 }
 
 .pg-pdash-metric-label {
-  font-size: 13px;
-  font-weight: 600;
+  font-size: var(--type-metric-label);
+  font-weight: var(--weight-medium);
   color: var(--dash-text-secondary, var(--text-secondary));
   margin-bottom: 8px;
 }
 
 .pg-pdash-metric-value {
-  font-size: clamp(1.35rem, 2.4vw, 1.75rem);
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  line-height: 1.15;
+  font-size: var(--type-metric-value);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-heading);
+  line-height: var(--leading-tight);
   font-variant-numeric: tabular-nums;
 }
 
 .pg-pdash-metric--highlight .pg-pdash-metric-value {
-  font-size: clamp(1.65rem, 4vw, 2.25rem);
+  font-size: clamp(var(--type-2xl), 4vw, var(--type-4xl));
 }
 
 .pg-pdash-metric--compact .pg-pdash-metric-value {
-  font-size: 1.25rem;
+  font-size: var(--type-xl);
 }
 
 .pg-pdash-metric-change {
   margin-top: 8px;
-  font-size: 12px;
-  font-weight: 600;
+  font-size: var(--type-xs);
+  font-weight: var(--weight-semibold);
 }
 
 .pg-pdash-metric-change--up {

@@ -1,24 +1,9 @@
 import type React from "react";
 import { Button } from "./Button";
+import { ModalOverlay as SharedOverlay, ModalPanelShell } from "./modalShared";
+import { useId, useRef } from "react";
 
-export function ModalOverlay({
-  open,
-  onClose,
-  className
-}: {
-  open: boolean;
-  onClose?: () => void;
-  className?: string;
-}) {
-  return (
-    <div
-      className={["pg-overlay", className].filter(Boolean).join(" ")}
-      data-open={open ? "true" : "false"}
-      onClick={onClose}
-      aria-hidden={!open}
-    />
-  );
-}
+export { ModalOverlay } from "./modalShared";
 
 export function ModalPanel({
   title,
@@ -33,35 +18,21 @@ export function ModalPanel({
   className?: string;
   actions?: React.ReactNode;
 }) {
+  const titleId = useId();
+  const panelRef = useRef<HTMLDivElement>(null);
+
   return (
-    <div
+    <ModalPanelShell
+      panelRef={panelRef}
+      title={title}
+      titleId={titleId}
+      onClose={onClose}
+      headerActions={actions}
       className={["pg-modal-panel", className].filter(Boolean).join(" ")}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby={title ? "pg-modal-title" : undefined}
-      onClick={(e) => e.stopPropagation()}
+      size="md"
     >
-      {title || onClose || actions ? (
-        <div className="pg-modal-header">
-          {title ? (
-            <h2 id="pg-modal-title" className="pg-modal-title">
-              {title}
-            </h2>
-          ) : (
-            <span />
-          )}
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            {actions}
-            {onClose ? (
-              <Button type="button" variant="ghost" size="sm" onClick={onClose} aria-label="Close">
-                ✕
-              </Button>
-            ) : null}
-          </div>
-        </div>
-      ) : null}
       {children}
-    </div>
+    </ModalPanelShell>
   );
 }
 
@@ -78,20 +49,25 @@ export function SheetPanel({
   className?: string;
   open?: boolean;
 }) {
+  const titleId = useId();
+  const panelRef = useRef<HTMLElement>(null);
+
   if (!open) return null;
+
   return (
     <>
-      <ModalOverlay open onClose={onClose} />
+      <SharedOverlay open onClose={onClose} />
       <aside
-        className={["pg-sheet-panel", className].filter(Boolean).join(" ")}
+        ref={panelRef}
+        className={["pg-sheet-panel", "pg-app-drawer", "pg-app-drawer--right", className].filter(Boolean).join(" ")}
         role="dialog"
         aria-modal="true"
-        aria-labelledby={title ? "pg-sheet-title" : undefined}
+        aria-labelledby={title ? titleId : undefined}
       >
         {title || onClose ? (
-          <div className="pg-sheet-header">
+          <div className="pg-sheet-header pg-app-drawer-header">
             {title ? (
-              <h2 id="pg-sheet-title" className="pg-sheet-title">
+              <h2 id={titleId} className="pg-sheet-title pg-app-modal-title">
                 {title}
               </h2>
             ) : (
@@ -104,7 +80,7 @@ export function SheetPanel({
             ) : null}
           </div>
         ) : null}
-        {children}
+        <div className="pg-app-drawer-body">{children}</div>
       </aside>
     </>
   );

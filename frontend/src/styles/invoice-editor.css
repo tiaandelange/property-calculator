@@ -61,7 +61,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 13px;
+  font-size: var(--type-sm);
   color: var(--text-muted);
   flex-wrap: wrap;
 }
@@ -88,14 +88,17 @@
 
 .pg-inv-editor__title {
   margin: 0;
-  font-size: clamp(1.35rem, 2.2vw, 1.75rem);
-  font-weight: 700;
-  letter-spacing: -0.02em;
+  font-size: var(--type-page-title);
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-heading);
+  letter-spacing: var(--tracking-heading);
+  color: var(--text-primary);
 }
 
 .pg-inv-editor__subtitle {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--type-page-subtitle);
+  line-height: var(--leading-body);
   color: var(--text-secondary);
   max-width: 52ch;
 }
@@ -228,8 +231,9 @@
 }
 
 .pg-inv-editor__label {
-  font-size: 13px;
-  font-weight: 600;
+  font-size: var(--type-base);
+  font-weight: var(--weight-medium);
+  line-height: var(--leading-normal);
   color: var(--text-secondary);
 }
 
@@ -738,6 +742,10 @@
 }
 
 @media (max-width: 640px) {
+  .pg-inv-editor__title {
+    font-size: var(--type-page-title-mobile);
+  }
+
   .pg-inv-editor__field--date,
   .pg-inv-editor__field--number,
   .pg-inv-editor__field--status {
