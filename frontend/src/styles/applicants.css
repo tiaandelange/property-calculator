@@ -163,8 +163,190 @@
 }
 
 .pg-applicant-apply-success {
-  text-align: center;
+  text-align: left;
   padding: 12px 0 4px;
+}
+
+.pg-applicant-documents {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.pg-applicant-documents__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.pg-applicant-documents__title {
+  margin: 0 0 6px;
+  font-size: var(--type-md);
+  font-weight: var(--weight-semibold);
+}
+
+.pg-applicant-documents__desc {
+  margin: 0;
+  font-size: 13px;
+}
+
+.pg-applicant-documents__progress {
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: var(--surface-muted);
+}
+
+.pg-applicant-documents__hint {
+  margin: 0 0 12px;
+  font-size: 13px;
+}
+
+.pg-applicant-documents__group + .pg-applicant-documents__group {
+  margin-top: 18px;
+}
+
+.pg-applicant-documents__group-title {
+  margin: 0 0 4px;
+  font-size: var(--type-base);
+  font-weight: var(--weight-semibold);
+}
+
+.pg-applicant-documents__group-desc {
+  margin: 0 0 10px;
+  font-size: 12px;
+}
+
+.pg-applicant-documents__slots {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.pg-applicant-doc-slot {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 14px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-muted);
+}
+
+.pg-applicant-doc-slot__indicator {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  color: var(--text-muted);
+  background: var(--surface);
+  border: 2px solid var(--border-soft);
+}
+
+.pg-applicant-doc-slot__indicator--done {
+  color: var(--on-primary, #fff);
+  background: var(--success);
+  border-color: var(--success);
+}
+
+.pg-applicant-doc-slot__indicator--busy {
+  border-color: var(--primary);
+  border-top-color: transparent;
+  animation: pg-applicant-doc-spin 0.8s linear infinite;
+}
+
+@keyframes pg-applicant-doc-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.pg-applicant-doc-slot__label {
+  font-weight: 600;
+  font-size: var(--type-base);
+}
+
+.pg-applicant-doc-slot__file {
+  font-size: 12px;
+  margin-top: 2px;
+  overflow-wrap: anywhere;
+}
+
+.pg-applicant-doc-slot__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.pg-applicant-doc-slot__input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+@media (max-width: 640px) {
+  .pg-applicant-doc-slot {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .pg-applicant-doc-slot__actions {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+  }
+}
+
+.pg-tstmt-documents-card__title {
+  margin: 0 0 4px;
+  font-size: var(--type-md);
+  font-weight: var(--weight-semibold);
+}
+
+.pg-tstmt-documents-card__desc {
+  margin: 0;
+  font-size: 13px;
+}
+
+.pg-tstmt-documents-list {
+  list-style: none;
+  margin: 16px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.pg-tstmt-documents-list__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-muted);
+}
+
+.pg-tstmt-documents-list__label {
+  font-weight: 600;
+}
+
+.pg-tstmt-documents-list__file {
+  font-size: 12px;
+  margin-top: 2px;
+  overflow-wrap: anywhere;
 }
 
 .pg-applicant-template-summary__list {

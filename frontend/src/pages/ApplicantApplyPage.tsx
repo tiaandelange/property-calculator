@@ -5,6 +5,7 @@ import { Container } from "../components/ui/Container";
 import { Section } from "../components/ui/Section";
 import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
+import { ApplicantDocumentUploadSection } from "../features/applicants/ApplicantDocumentUploadSection";
 import { ApplicantTemplateFields } from "../features/applicants/ApplicantTemplateFields";
 import {
   buildSubmissionPayload,
@@ -33,6 +34,7 @@ export function ApplicantApplyPage() {
   const [primary, setPrimary] = useState(emptyFieldValues(DEFAULT_APPLICANT_FORM_TEMPLATE));
   const [coApplicant, setCoApplicant] = useState(emptyFieldValues(DEFAULT_APPLICANT_FORM_TEMPLATE));
   const [coEnabled, setCoEnabled] = useState(false);
+  const [submittedTenantId, setSubmittedTenantId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!token) {
@@ -75,11 +77,12 @@ export function ApplicantApplyPage() {
     setSubmitting(true);
     setError("");
     try {
-      await submitApplicantApplication(
+      const result = await submitApplicantApplication(
         token,
         template,
         buildSubmissionPayload(template, primary, coEnabled, coApplicant)
       );
+      setSubmittedTenantId(result.tenantId);
       setSubmitted(true);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Could not submit application.");
@@ -102,7 +105,11 @@ export function ApplicantApplyPage() {
               <h1 className="pg-h2" style={{ marginTop: 0 }}>
                 Application submitted
               </h1>
-              <p className="pg-muted">Thank you. The property owner will review your details and contact you if needed.</p>
+              <p className="pg-muted">
+                Thank you. You can upload supporting documents below. The property owner will review your details and
+                contact you if needed.
+              </p>
+              <ApplicantDocumentUploadSection mode="public" tenantId={submittedTenantId} inviteToken={token} />
             </div>
           ) : null}
           {!loading && !submitted && error && !propertyName ? (
@@ -160,6 +167,12 @@ export function ApplicantApplyPage() {
                     </div>
                   ) : null}
                 </div>
+                <ApplicantDocumentUploadSection
+                  mode="public"
+                  tenantId={null}
+                  inviteToken={token}
+                  disabled
+                />
                 <div style={{ marginTop: 20 }}>
                   <Button type="submit" loading={submitting}>
                     Submit application

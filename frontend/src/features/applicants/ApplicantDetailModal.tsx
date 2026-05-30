@@ -2,6 +2,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { AppFormModal } from "../../components/ui/AppModal";
 import { Button } from "../../components/ui/Button";
+import { ApplicantDocumentUploadSection } from "./ApplicantDocumentUploadSection";
 import { ApplicantTemplateFields } from "./ApplicantTemplateFields";
 import {
   buildSubmissionPayload,
@@ -140,6 +141,9 @@ export function ApplicantDetailModal({
               </div>
             ) : null}
           </div>
+          {tenantId ? (
+            <ApplicantDocumentUploadSection mode="owner" tenantId={tenantId} />
+          ) : null}
           <p className="pg-muted" style={{ fontSize: 13, marginTop: 12 }}>
             Saving recalculates the fit profile using combined monthly income vs three times the property rent.{" "}
             <Link to="/settings#applicant-form-template">Edit default form template</Link>

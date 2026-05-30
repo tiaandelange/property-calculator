@@ -21,6 +21,7 @@ import {
   TenantSummaryCard
 } from "../features/tenants/workspace/TenantStatementPanels";
 import { TenantApplicantDetailsCard } from "../features/tenants/workspace/TenantApplicantDetailsCard";
+import { TenantDocumentsCard } from "../features/tenants/workspace/TenantDocumentsCard";
 import { useTenantApplicantDetails } from "../features/tenants/workspace/useTenantApplicantDetails";
 import { useTenantWorkspaceData } from "../features/tenants/workspace/useTenantWorkspaceData";
 import { invoiceCreatePath, invoiceDetailPath } from "../features/invoices/invoiceRoutes";
@@ -197,6 +198,7 @@ export function TenantWorkspacePage() {
             <>
               <TenantSummaryCard summary={summary} leaseStatus={leaseStatus} loading={loading} />
               <TenantApplicantDetailsCard record={applicantRecord} loading={applicantLoading} />
+              <TenantDocumentsCard tenantId={id} loading={loading || applicantLoading} />
 
               <div className="pg-tstmt-actions pg-tstmt-actions--mobile-only" style={{ marginTop: 0 }}>
                 <Button variant="secondary" loading={downloadBusy} onClick={() => void downloadStatement()} disabled={!propertyId}>
@@ -239,6 +241,7 @@ export function TenantWorkspacePage() {
           {tab === "overview" ? (
             <>
               <TenantApplicantDetailsCard record={applicantRecord} loading={applicantLoading} />
+              <TenantDocumentsCard tenantId={id} loading={overviewLoading || applicantLoading} />
               <TenantOverviewPanel
               id={id}
               data={tenantOverview}
