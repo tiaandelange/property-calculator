@@ -2,10 +2,13 @@
  * Table shell flattening — one visible card border (table wrap), no nested card boxes.
  */
 
-/* List / directory panels: table wrap is the card */
-.pg-dashboard-shell .pg-tenants-list-panel.pg-workspace-card,
-.pg-dashboard-shell .pg-leases-list-panel.pg-workspace-card,
-.pg-dashboard-shell .pg-fins-statement-panel.pg-workspace-card,
+/* List / directory panels: table wrap is the card (no outer pad/border) */
+.pg-dashboard-shell
+  .pg-tenants-list-panel.pg-workspace-card:not(.pg-dashboard-card):not(.pg-card),
+.pg-dashboard-shell
+  .pg-leases-list-panel.pg-workspace-card:not(.pg-dashboard-card):not(.pg-card),
+.pg-dashboard-shell
+  .pg-fins-statement-panel.pg-workspace-card:not(.pg-dashboard-card):not(.pg-card),
 .pg-dashboard-shell section.pg-workspace-card:has(> .pg-ptable-wrap),
 .pg-dashboard-shell section.pg-workspace-card:has(> .pg-ptable-shell) {
   background: transparent;
@@ -39,7 +42,7 @@
   border: 1px solid var(--border-soft);
   border-bottom: 1px solid var(--border-soft);
   border-radius: 20px 20px 0 0;
-  padding: 16px 20px;
+  padding: 16px 14px;
   margin-bottom: 0;
 }
 
@@ -105,12 +108,40 @@
   gap: 10px;
 }
 
-/* Reports list panel */
-.pg-dashboard-shell .pg-tenants-list-panel.pg-workspace-card:has(> .pg-ptable-wrap) {
-  background: transparent;
-  border: none;
-  box-shadow: none;
-  padding: 0;
+/* Pagination/footer attached to table card on directory pages */
+.pg-tenants-list-panel > .pg-tenants-pagination,
+.pg-leases-list-panel > .pg-leases-pagination {
+  border: 1px solid var(--border-soft);
+  border-top: none;
+  border-radius: 0 0 20px 20px;
+  background: var(--surface);
+}
+
+.pg-tenants-list-panel > .pg-ptable-wrap:has(+ .pg-tenants-pagination),
+.pg-leases-list-panel > .pg-ptable-wrap:has(+ .pg-leases-pagination) {
+  border-radius: 20px 20px 0 0;
+}
+
+.pg-tenants-list-panel > .pg-ptable-wrap:has(+ .pg-tenants-pagination) tbody tr:last-child td,
+.pg-leases-list-panel > .pg-ptable-wrap:has(+ .pg-leases-pagination) tbody tr:last-child td {
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.pg-fins-statement-panel > .pg-ptable-wrap:has(+ .pg-fins-pagination) {
+  border-radius: 20px 20px 0 0;
+}
+
+.pg-fins-statement-panel > .pg-ptable-wrap:has(+ .pg-fins-pagination) tbody tr:last-child td {
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.pg-fins-statement-panel > .pg-fins-pagination {
+  margin-top: 0;
+  padding: 14px 16px;
+  border: 1px solid var(--border-soft);
+  border-top: none;
+  border-radius: 0 0 20px 20px;
+  background: var(--surface);
 }
 
 .pg-invoices-table-wrap,

@@ -116,8 +116,20 @@
 .pg-dashboard-shell .pg-stat-card,
 .pg-dashboard-shell .pg-metric-card,
 .pg-dashboard-shell .pg-property-card,
-.pg-dashboard-shell .pg-workspace-card:not(.pg-dashboard-card):not(.pg-card) {
+.pg-dashboard-shell
+  .pg-workspace-card:not(.pg-dashboard-card):not(.pg-card):not(.pg-tenants-list-panel):not(.pg-leases-list-panel):not(
+    .pg-fins-statement-panel
+  ) {
   padding: var(--workspace-card-pad);
+}
+
+/* Table list panels: no inner pad — .pg-ptable-wrap is the card edge */
+.pg-dashboard-shell .pg-tenants-list-panel.pg-workspace-card,
+.pg-dashboard-shell .pg-leases-list-panel.pg-workspace-card,
+.pg-dashboard-shell .pg-fins-statement-panel.pg-workspace-card,
+.pg-dashboard-shell section.pg-workspace-card:has(> .pg-ptable-wrap),
+.pg-dashboard-shell section.pg-workspace-card:has(> .pg-ptable-shell) {
+  padding: 0;
 }
 
 .pg-dashboard-shell .pg-card.pg-workspace-card {

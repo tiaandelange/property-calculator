@@ -104,7 +104,7 @@
 }
 
 .pg-fins-statement-panel {
-  padding: var(--workspace-card-pad, clamp(18px, 1.5vw, 24px));
+  padding: 0;
   min-width: 0;
 }
 
