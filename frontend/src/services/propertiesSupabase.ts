@@ -72,7 +72,7 @@ export function propertyToDb(payload: Record<string, unknown>): Record<string, u
 /** Lists properties for the signed-in user (RLS + `user_id` filter). `month` is ignored until dashboard-summary migrates. */
 export type PropertyListItem = Record<string, unknown> & { id: string };
 
-async function enrichPropertyListItems(uid: string, items: PropertyListItem[]): Promise<PropertyListItem[]> {
+export async function enrichPropertyListItems(uid: string, items: PropertyListItem[]): Promise<PropertyListItem[]> {
   if (items.length === 0) return items;
   const sb = getSupabase();
   const ids = items.map((p) => String(p.id));

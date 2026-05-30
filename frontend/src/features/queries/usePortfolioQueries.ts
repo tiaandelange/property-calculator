@@ -5,6 +5,7 @@ import {
   getLeasesDirectory,
   getPortfolioDashboardSummary,
   getProperties,
+  getPropertiesDirectory,
   getProperty,
   getPropertyOptions,
   getTenants,
@@ -25,6 +26,7 @@ import type {
   FinancialsDirectoryParams,
   InvoicesDirectoryParams,
   LeasesDirectoryParams,
+  PropertiesDirectoryParams,
   TenantsDirectoryParams
 } from "../../lib/queryKeys";
 import { queryKeys } from "../../lib/queryKeys";
@@ -60,6 +62,20 @@ export function usePropertiesQuery(month?: string | null) {
     queryFn: () => getProperties(month ? { month } : undefined),
     enabled: Boolean(workspaceId),
     staleTime: STALE_TIME_PROPERTIES_MS,
+    gcTime: GC_TIME_MS,
+    placeholderData: keepPreviousData
+  });
+}
+
+export function usePropertiesDirectoryQuery(params: PropertiesDirectoryParams = {}) {
+  const workspaceId = useWorkspaceId();
+  return useQuery({
+    queryKey: workspaceId
+      ? queryKeys.propertiesDirectory(workspaceId, params)
+      : ["properties-directory", "anonymous", params],
+    queryFn: () => getPropertiesDirectory(params),
+    enabled: Boolean(workspaceId),
+    staleTime: STALE_TIME_DIRECTORY_MS,
     gcTime: GC_TIME_MS,
     placeholderData: keepPreviousData
   });
