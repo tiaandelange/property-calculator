@@ -22,4 +22,5 @@ export {
   type ProplyticAmountTone
 } from "./ProplyticTableCells";
 export { ProplyticMobileRowCard, ProplyticMobileRowList, type ProplyticMobileField } from "./ProplyticMobileRowCard";
+export { ProplyticTableRowActionsMenu, type ProplyticTableRowAction } from "./ProplyticTableRowActionsMenu";
 export { proplyticStatusLabel, proplyticStatusVariant, normalizeStatusKey } from "./tableStatusMap";

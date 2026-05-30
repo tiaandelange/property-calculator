@@ -1,16 +1,15 @@
 import {
   ProplyticAmountCell,
   ProplyticTable,
-  ProplyticTableActions,
   ProplyticTableBody,
   ProplyticTableCell,
   ProplyticTableHeadCell,
   ProplyticTableHeader,
   ProplyticTableRow,
   ProplyticTableSkeleton,
-  ProplyticTableWrap
+  ProplyticTableWrap,
+  ProplyticTableRowActionsMenu
 } from "../../components/tables";
-import { IconButton } from "../../components/icons";
 import type { TenantListItem } from "../tenants/tenantDirectoryTypes";
 import { fmtZar } from "../tenants/tenantDirectoryUtils";
 
@@ -85,20 +84,24 @@ export function ApplicantDesktopTable({
               </ProplyticTableCell>
               <ProplyticTableCell>{item.propertyName || "—"}</ProplyticTableCell>
               <ProplyticTableCell actions>
-                <ProplyticTableActions>
-                  <IconButton
-                    icon="view"
-                    aria-label={`View ${item.fullName}`}
-                    variant="outline"
-                    onClick={() => onView(item)}
-                  />
-                  <IconButton
-                    icon="delete"
-                    aria-label={`Delete ${item.fullName}`}
-                    variant="danger-outline"
-                    onClick={() => onDelete(item)}
-                  />
-                </ProplyticTableActions>
+                <ProplyticTableRowActionsMenu
+                  actions={[
+                    {
+                      key: "view",
+                      label: `View ${item.fullName}`,
+                      icon: "view",
+                      onClick: () => onView(item),
+                      primary: true
+                    },
+                    {
+                      key: "delete",
+                      label: `Delete ${item.fullName}`,
+                      icon: "delete",
+                      onClick: () => onDelete(item),
+                      destructive: true
+                    }
+                  ]}
+                />
               </ProplyticTableCell>
             </ProplyticTableRow>
           ))}

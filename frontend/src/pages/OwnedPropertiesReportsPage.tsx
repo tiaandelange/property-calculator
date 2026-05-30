@@ -1,9 +1,7 @@
 import { useEffect, useState } from "react";
 import { Helmet } from "react-helmet-async";
-import { IconButton } from "../components/icons";
 import {
   ProplyticTable,
-  ProplyticTableActions,
   ProplyticTableBody,
   ProplyticTableCell,
   ProplyticTableEmptyState,
@@ -11,7 +9,8 @@ import {
   ProplyticTableHeader,
   ProplyticTableRow,
   ProplyticTableSkeleton,
-  ProplyticTableWrap
+  ProplyticTableWrap,
+  ProplyticTableRowActionsMenu
 } from "../components/tables";
 import { AppListPage } from "../components/ui/AppPage";
 import { Card } from "../components/ui/Card";
@@ -101,25 +100,29 @@ export function OwnedPropertiesReportsPage() {
                             <div className="pg-tenants-sub">{r.storageBucket ?? "—"}</div>
                           </ProplyticTableCell>
                           <ProplyticTableCell actions>
-                            <ProplyticTableActions>
-                              <IconButton
-                                icon="download"
-                                aria-label="View or download report"
-                                variant="outline"
-                                disabled={!r.storageBucket || !r.storageKey}
-                                onClick={async () => {
-                                  const url = await getStoredReportSignedUrl(r);
-                                  if (!url) throw new Error("This report has no stored PDF.");
-                                  window.open(url, "_blank", "noopener,noreferrer");
-                                }}
-                              />
-                              <IconButton
-                                icon="delete"
-                                aria-label="Delete report"
-                                variant="danger"
-                                onClick={() => setPendingDelete(r)}
-                              />
-                            </ProplyticTableActions>
+                            <ProplyticTableRowActionsMenu
+                              actions={[
+                                {
+                                  key: "download",
+                                  label: "View or download report",
+                                  icon: "edit",
+                                  disabled: !r.storageBucket || !r.storageKey,
+                                  onClick: async () => {
+                                    const url = await getStoredReportSignedUrl(r);
+                                    if (!url) throw new Error("This report has no stored PDF.");
+                                    window.open(url, "_blank", "noopener,noreferrer");
+                                  },
+                                  primary: true
+                                },
+                                {
+                                  key: "delete",
+                                  label: "Delete report",
+                                  icon: "delete",
+                                  onClick: () => setPendingDelete(r),
+                                  destructive: true
+                                }
+                              ]}
+                            />
                           </ProplyticTableCell>
                         </ProplyticTableRow>
                       );

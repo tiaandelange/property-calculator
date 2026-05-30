@@ -140,9 +140,14 @@
   -webkit-overflow-scrolling: touch;
 }
 
+@media (min-width: 768px) {
+  .pg-tenants-table-wrap:not(.pg-ptable-wrap--scroll-x) {
+    overflow-x: visible;
+  }
+}
+
 .pg-tenants-table {
   width: 100%;
-  min-width: 960px;
   border-collapse: collapse;
 }
 

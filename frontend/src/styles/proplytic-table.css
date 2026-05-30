@@ -61,10 +61,30 @@
   overflow-x: auto;
   overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
+  container-type: inline-size;
+  container-name: ptable;
   background: var(--surface);
   border: 1px solid var(--border-soft);
   border-radius: 20px;
   box-shadow: none;
+}
+
+@media (min-width: 768px) {
+  .pg-ptable-wrap:not(.pg-ptable-wrap--scroll-x),
+  .pg-table-wrap:not(.pg-ptable-wrap--scroll-x),
+  .pg-pfin-table-wrap:not(.pg-ptable-wrap--scroll-x):not(.pg-ptable-wrap),
+  .pg-invoices-table-wrap:not(.pg-ptable-wrap--scroll-x),
+  .pg-tenants-table-wrap:not(.pg-ptable-wrap--scroll-x),
+  .pg-leases-table-wrap:not(.pg-ptable-wrap--scroll-x),
+  .pg-statement-wrap:not(.pg-ptable-wrap--scroll-x):not(.pg-ptable-wrap),
+  .pg-tstmt-table-wrap:not(.pg-ptable-wrap--scroll-x) {
+    overflow-x: visible;
+    overflow-y: visible;
+  }
+}
+
+.pg-ptable-wrap--scroll-x {
+  overflow-x: auto;
 }
 
 .pg-ptable,
@@ -80,9 +100,21 @@
   border-collapse: collapse;
   border-spacing: 0;
   font-size: var(--type-table-cell);
-  line-height: 1.4;
+  line-height: 1.45;
   color: var(--text-primary);
   background: var(--surface);
+}
+
+@media (min-width: 768px) {
+  .pg-ptable-wrap:not(.pg-ptable-wrap--scroll-x) .pg-ptable,
+  .pg-ptable-wrap:not(.pg-ptable-wrap--scroll-x) .pg-table,
+  .pg-ptable-wrap:not(.pg-ptable-wrap--scroll-x) .pg-invoices-table,
+  .pg-ptable-wrap:not(.pg-ptable-wrap--scroll-x) .pg-tenants-table,
+  .pg-ptable-wrap:not(.pg-ptable-wrap--scroll-x) .pg-leases-table,
+  .pg-ptable-wrap:not(.pg-ptable-wrap--scroll-x) .pg-fins-statement-table,
+  .pg-ptable-wrap:not(.pg-ptable-wrap--scroll-x) .pg-tstmt-table {
+    table-layout: fixed;
+  }
 }
 
 .pg-ptable th,
@@ -110,6 +142,28 @@
   border-right: none;
   vertical-align: middle;
   background: var(--surface);
+  overflow-wrap: anywhere;
+  word-wrap: break-word;
+  hyphens: auto;
+}
+
+@media (min-width: 768px) {
+  .pg-ptable-wrap:not(.pg-ptable-wrap--scroll-x) .pg-ptable th,
+  .pg-ptable-wrap:not(.pg-ptable-wrap--scroll-x) .pg-ptable td,
+  .pg-ptable-wrap:not(.pg-ptable-wrap--scroll-x) .pg-table th,
+  .pg-ptable-wrap:not(.pg-ptable-wrap--scroll-x) .pg-table td,
+  .pg-ptable-wrap:not(.pg-ptable-wrap--scroll-x) .pg-invoices-table th,
+  .pg-ptable-wrap:not(.pg-ptable-wrap--scroll-x) .pg-invoices-table td,
+  .pg-ptable-wrap:not(.pg-ptable-wrap--scroll-x) .pg-tenants-table th,
+  .pg-ptable-wrap:not(.pg-ptable-wrap--scroll-x) .pg-tenants-table td,
+  .pg-ptable-wrap:not(.pg-ptable-wrap--scroll-x) .pg-leases-table th,
+  .pg-ptable-wrap:not(.pg-ptable-wrap--scroll-x) .pg-leases-table td,
+  .pg-ptable-wrap:not(.pg-ptable-wrap--scroll-x) .pg-fins-statement-table th,
+  .pg-ptable-wrap:not(.pg-ptable-wrap--scroll-x) .pg-fins-statement-table td,
+  .pg-ptable-wrap:not(.pg-ptable-wrap--scroll-x) .pg-tstmt-table th,
+  .pg-ptable-wrap:not(.pg-ptable-wrap--scroll-x) .pg-tstmt-table td {
+    white-space: normal;
+  }
 }
 
 .pg-ptable th,
@@ -130,6 +184,18 @@
   white-space: nowrap;
   padding-top: 10px;
   padding-bottom: 10px;
+}
+
+@media (min-width: 768px) {
+  .pg-ptable-wrap:not(.pg-ptable-wrap--scroll-x) .pg-ptable th,
+  .pg-ptable-wrap:not(.pg-ptable-wrap--scroll-x) .pg-table th,
+  .pg-ptable-wrap:not(.pg-ptable-wrap--scroll-x) .pg-invoices-table th,
+  .pg-ptable-wrap:not(.pg-ptable-wrap--scroll-x) .pg-tenants-table th,
+  .pg-ptable-wrap:not(.pg-ptable-wrap--scroll-x) .pg-leases-table th,
+  .pg-ptable-wrap:not(.pg-ptable-wrap--scroll-x) .pg-fins-statement-table th,
+  .pg-ptable-wrap:not(.pg-ptable-wrap--scroll-x) .pg-tstmt-table th {
+    white-space: normal;
+  }
 }
 
 .pg-ptable tbody tr:last-child td,
@@ -166,23 +232,21 @@
 }
 
 .pg-ptable-desc__main {
-  font-size: 13px;
+  font-size: inherit;
   font-weight: 500;
-  line-height: 1.35;
+  line-height: 1.4;
   color: var(--text-primary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+  word-wrap: break-word;
 }
 
 .pg-ptable-desc__sub {
   margin-top: 2px;
-  font-size: 12px;
+  font-size: 0.92em;
   line-height: 1.4;
   color: var(--text-muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+  word-wrap: break-word;
 }
 
 .pg-ptable-date {
@@ -199,6 +263,10 @@
 .pg-pfin-table__amount {
   text-align: right;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow-wrap: normal;
+  word-break: keep-all;
+  hyphens: none;
 }
 
 .pg-ptable__actions,
@@ -211,6 +279,10 @@
 .pg-pfin-row-actions {
   text-align: right;
   white-space: nowrap;
+  width: 92px;
+  max-width: 92px;
+  overflow: visible;
+  hyphens: none;
 }
 
 .pg-ptable-actions,
@@ -223,6 +295,137 @@
   align-items: center;
   justify-content: flex-end;
   gap: 6px;
+}
+
+.pg-ptable-row-actions-menu {
+  position: relative;
+  display: inline-flex;
+}
+
+.pg-ptable-row-actions-menu__panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 30;
+  min-width: 180px;
+  padding: 6px;
+  border-radius: 12px;
+  border: 1px solid var(--border-soft);
+  background: var(--surface-elevated);
+  box-shadow: var(--shadow-md);
+}
+
+.pg-ptable-row-actions-menu__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 10px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 500;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.pg-ptable-row-actions-menu__item:hover:not(:disabled) {
+  background: var(--surface-muted);
+}
+
+.pg-ptable-row-actions-menu__item:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.pg-ptable-row-actions-menu__item--danger {
+  color: var(--danger);
+}
+
+.pg-ptable-row-actions-menu__item--danger:hover:not(:disabled) {
+  background: var(--danger-soft);
+}
+
+@container ptable (max-width: 980px) {
+  .pg-ptable th,
+  .pg-ptable td,
+  .pg-table th,
+  .pg-table td,
+  .pg-invoices-table th,
+  .pg-invoices-table td,
+  .pg-tenants-table th,
+  .pg-tenants-table td,
+  .pg-leases-table th,
+  .pg-leases-table td,
+  .pg-fins-statement-table th,
+  .pg-fins-statement-table td,
+  .pg-tstmt-table th,
+  .pg-tstmt-table td {
+    padding-top: 13px;
+    padding-bottom: 13px;
+  }
+}
+
+@container ptable (max-width: 820px) {
+  .pg-ptable th,
+  .pg-ptable td,
+  .pg-table th,
+  .pg-table td,
+  .pg-invoices-table th,
+  .pg-invoices-table td,
+  .pg-tenants-table th,
+  .pg-tenants-table td,
+  .pg-leases-table th,
+  .pg-leases-table td,
+  .pg-fins-statement-table th,
+  .pg-fins-statement-table td,
+  .pg-tstmt-table th,
+  .pg-tstmt-table td {
+    padding-top: 15px;
+    padding-bottom: 15px;
+    line-height: 1.5;
+  }
+}
+
+@container ptable (max-width: 680px) {
+  .pg-ptable,
+  .pg-table,
+  .pg-invoices-table,
+  .pg-tenants-table,
+  .pg-leases-table,
+  .pg-fins-statement-table,
+  .pg-tstmt-table {
+    font-size: 12px;
+  }
+
+  .pg-ptable th,
+  .pg-ptable td,
+  .pg-table th,
+  .pg-table td,
+  .pg-invoices-table th,
+  .pg-invoices-table td,
+  .pg-tenants-table th,
+  .pg-tenants-table td,
+  .pg-leases-table th,
+  .pg-leases-table td,
+  .pg-fins-statement-table th,
+  .pg-fins-statement-table td,
+  .pg-tstmt-table th,
+  .pg-tstmt-table td,
+  .pg-ptable-desc__main,
+  .pg-ptable-desc__sub,
+  .pg-ptable .pg-tenants-name,
+  .pg-ptable .pg-leases-name,
+  .pg-ptable .pg-invoices-link,
+  .pg-ptable .pg-fins-name,
+  .pg-ptable .pg-tenants-sub,
+  .pg-ptable .pg-leases-sub,
+  .pg-ptable .pg-invoices-sub {
+    font-size: inherit;
+  }
 }
 
 /* Variants */

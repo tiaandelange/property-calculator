@@ -123,9 +123,14 @@
   -webkit-overflow-scrolling: touch;
 }
 
+@media (min-width: 768px) {
+  .pg-leases-table-wrap:not(.pg-ptable-wrap--scroll-x) {
+    overflow-x: visible;
+  }
+}
+
 .pg-leases-table {
   width: 100%;
-  min-width: 960px;
   border-collapse: collapse;
 }
 

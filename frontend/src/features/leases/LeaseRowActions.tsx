@@ -1,7 +1,6 @@
-import { Link } from "react-router-dom";
-import { IconButton } from "../../components/icons";
 import { propertyLeasesPath } from "./leaseRoutes";
 import type { LeaseListItem } from "./leaseDirectoryTypes";
+import { ProplyticTableRowActionsMenu, type ProplyticTableRowAction } from "../../components/tables";
 
 export function LeaseRowActions({
   lease,
@@ -12,46 +11,53 @@ export function LeaseRowActions({
   onCancel?: (leaseId: string) => void;
   onDelete?: (leaseId: string) => void;
 }) {
-  return (
-    <div className="pg-ptable-actions">
-      <IconButton
-        icon="property"
-        aria-label={`View property ${lease.propertyName}`}
-        href={`/owned-properties/${lease.propertyId}?tab=leases`}
-        variant="outline"
-      />
-      {lease.tenantId ? (
-        <IconButton
-          icon="tenant"
-          aria-label={`View tenant ${lease.tenantName}`}
-          href={`/tenants/${lease.tenantId}`}
-          variant="outline"
-        />
-      ) : (
-        <IconButton icon="tenant" aria-label="No tenant linked" variant="outline" disabled />
-      )}
-      <IconButton
-        icon="view"
-        aria-label={`View lease for ${lease.tenantName} at ${lease.propertyName}`}
-        href={propertyLeasesPath(lease.propertyId, lease.id)}
-        variant="outline"
-      />
-      {lease.isCancellable && onCancel ? (
-        <IconButton
-          icon="leaseCancel"
-          aria-label={`Cancel lease for ${lease.tenantName}`}
-          variant="outline"
-          onClick={() => onCancel(lease.id)}
-        />
-      ) : null}
-      {onDelete ? (
-        <IconButton
-          icon="delete"
-          aria-label={`Permanently delete lease for ${lease.tenantName}`}
-          variant="danger"
-          onClick={() => onDelete(lease.id)}
-        />
-      ) : null}
-    </div>
-  );
+  const actions: ProplyticTableRowAction[] = [
+    {
+      key: "edit",
+      label: `Edit lease for ${lease.tenantName}`,
+      icon: "edit",
+      href: `/leases/${lease.id}/edit`,
+      primary: true
+    },
+    {
+      key: "property",
+      label: `View property ${lease.propertyName}`,
+      icon: "property",
+      href: `/owned-properties/${lease.propertyId}?tab=leases`
+    },
+    {
+      key: "tenant",
+      label: lease.tenantId ? `View tenant ${lease.tenantName}` : "No tenant linked",
+      icon: "tenant",
+      href: lease.tenantId ? `/tenants/${lease.tenantId}` : undefined,
+      disabled: !lease.tenantId
+    },
+    {
+      key: "view",
+      label: `View lease for ${lease.tenantName}`,
+      icon: "view",
+      href: propertyLeasesPath(lease.propertyId, lease.id)
+    }
+  ];
+
+  if (lease.isCancellable && onCancel) {
+    actions.push({
+      key: "cancel",
+      label: `Cancel lease for ${lease.tenantName}`,
+      icon: "leaseCancel",
+      onClick: () => onCancel(lease.id)
+    });
+  }
+
+  if (onDelete) {
+    actions.push({
+      key: "delete",
+      label: `Permanently delete lease for ${lease.tenantName}`,
+      icon: "delete",
+      onClick: () => onDelete(lease.id),
+      destructive: true
+    });
+  }
+
+  return <ProplyticTableRowActionsMenu actions={actions} />;
 }

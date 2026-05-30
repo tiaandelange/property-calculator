@@ -8,7 +8,6 @@ import {
   ProplyticMobileRowList,
   ProplyticStatusBadge,
   ProplyticTable,
-  ProplyticTableActions,
   ProplyticTableBody,
   ProplyticTableCell,
   ProplyticTableEmptyState,
@@ -16,7 +15,8 @@ import {
   ProplyticTableHeader,
   ProplyticTableRow,
   ProplyticTableSkeleton,
-  ProplyticTableWrap
+  ProplyticTableWrap,
+  ProplyticTableRowActionsMenu
 } from "../../../components/tables";
 import { fmtZar, type RecurringExpenseDisplayItem } from "./propertyFinancialsAdapter";
 
@@ -139,11 +139,30 @@ export function RecurringExpensesSection({
                       />
                     </ProplyticTableCell>
                     <ProplyticTableCell actions>
-                      <ProplyticTableActions>
-                        <IconButton icon="edit" aria-label="Edit expense" variant="outline" onClick={() => onEdit(item)} />
-                        <IconButton icon="void" aria-label="Stop schedule" variant="outline" onClick={() => onStop(item)} />
-                        <IconButton icon="delete" aria-label="Delete expense" variant="danger" onClick={() => onDelete(item)} />
-                      </ProplyticTableActions>
+                      <ProplyticTableRowActionsMenu
+                        actions={[
+                          {
+                            key: "edit",
+                            label: "Edit expense",
+                            icon: "edit",
+                            onClick: () => onEdit(item),
+                            primary: true
+                          },
+                          {
+                            key: "stop",
+                            label: "Stop schedule",
+                            icon: "void",
+                            onClick: () => onStop(item)
+                          },
+                          {
+                            key: "delete",
+                            label: "Delete expense",
+                            icon: "delete",
+                            onClick: () => onDelete(item),
+                            destructive: true
+                          }
+                        ]}
+                      />
                     </ProplyticTableCell>
                   </ProplyticTableRow>
                 );

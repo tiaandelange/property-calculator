@@ -110,6 +110,12 @@
   background: var(--surface);
 }
 
+@media (min-width: 768px) {
+  .pg-invoices-table-wrap:not(.pg-ptable-wrap--scroll-x) {
+    overflow-x: visible;
+  }
+}
+
 .pg-invoices-table {
   width: 100%;
   border-collapse: collapse;

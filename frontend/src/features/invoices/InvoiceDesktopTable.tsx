@@ -12,7 +12,8 @@ import {
   ProplyticTableHeader,
   ProplyticTableRow,
   ProplyticTableSkeleton,
-  ProplyticTableWrap
+  ProplyticTableWrap,
+  ProplyticTableRowActionsMenu
 } from "../../components/tables";
 import { useMediaQuery } from "../../hooks/useMediaQuery";
 import { invoiceDetailPath } from "./invoiceRoutes";
@@ -131,23 +132,32 @@ export function InvoiceDesktopTable({
                   <ProplyticAmountCell tone="balance">{fmtZar(amountDue)}</ProplyticAmountCell>
                 </ProplyticTableCell>
                 <ProplyticTableCell actions>
-                  <ProplyticTableActions>
-                    <IconButton icon="open" aria-label="View invoice" href={viewHref} variant="outline" />
-                    <IconButton
-                      icon="download"
-                      aria-label="Download PDF"
-                      variant="outline"
-                      disabled={rowBusy}
-                      onClick={() => onExportPdf(row)}
-                    />
-                    <IconButton
-                      icon="delete"
-                      aria-label="Delete invoice"
-                      variant="danger"
-                      disabled={rowBusy}
-                      onClick={() => onDelete(row)}
-                    />
-                  </ProplyticTableActions>
+                  <ProplyticTableRowActionsMenu
+                    actions={[
+                      {
+                        key: "view",
+                        label: "View invoice",
+                        icon: "edit",
+                        href: viewHref,
+                        primary: true
+                      },
+                      {
+                        key: "download",
+                        label: "Download PDF",
+                        icon: "download",
+                        disabled: rowBusy,
+                        onClick: () => onExportPdf(row)
+                      },
+                      {
+                        key: "delete",
+                        label: "Delete invoice",
+                        icon: "delete",
+                        disabled: rowBusy,
+                        onClick: () => onDelete(row),
+                        destructive: true
+                      }
+                    ]}
+                  />
                 </ProplyticTableCell>
               </ProplyticTableRow>
             );

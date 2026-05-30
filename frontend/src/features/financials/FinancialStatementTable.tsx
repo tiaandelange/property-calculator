@@ -1,16 +1,16 @@
 import { Link } from "react-router-dom";
-import { IconButton } from "../../components/icons";
 import {
   ProplyticAmountCell,
   ProplyticTable,
-  ProplyticTableActions,
   ProplyticTableBody,
   ProplyticTableCell,
   ProplyticTableHeadCell,
   ProplyticTableHeader,
   ProplyticTableRow,
   ProplyticTableSkeleton,
-  ProplyticTableWrap
+  ProplyticTableWrap,
+  ProplyticTableRowActionsMenu,
+  type ProplyticTableRowAction
 } from "../../components/tables";
 import { invoiceStatementCreditClass, invoiceStatementDisplayType } from "../invoices/invoiceStatementUtils";
 import { invoiceDetailPath } from "../invoices/invoiceRoutes";
@@ -69,6 +69,27 @@ export function FinancialStatementTable({
           {items.map((r) => {
             const manageUrl = propertyFinancialsStatementUrl(r.propertyId, finSubForSource(r.source));
             const invoiceViewUrl = r.source === "INVOICE" && r.invoiceId ? invoiceDetailPath(r.invoiceId) : null;
+            const rowActions: ProplyticTableRowAction[] = [];
+
+            if (r.source !== "INVOICE") {
+              rowActions.push({
+                key: "edit",
+                label: `Edit on ${r.propertyName} financials`,
+                icon: "edit",
+                href: manageUrl,
+                primary: true
+              });
+            }
+
+            if (invoiceViewUrl) {
+              rowActions.push({
+                key: "view",
+                label: "View invoice",
+                icon: "edit",
+                href: invoiceViewUrl,
+                primary: r.source === "INVOICE"
+              });
+            }
 
             return (
               <ProplyticTableRow key={r.id}>
@@ -108,19 +129,7 @@ export function FinancialStatementTable({
                 ) : null}
                 <ProplyticTableCell>{r.source}</ProplyticTableCell>
                 <ProplyticTableCell actions>
-                  <ProplyticTableActions>
-                    {r.source !== "INVOICE" ? (
-                      <IconButton
-                        icon="edit"
-                        aria-label={`Edit on ${r.propertyName} financials`}
-                        href={manageUrl}
-                        variant="outline"
-                      />
-                    ) : null}
-                    {invoiceViewUrl ? (
-                      <IconButton icon="open" aria-label="View invoice" href={invoiceViewUrl} variant="outline" />
-                    ) : null}
-                  </ProplyticTableActions>
+                  <ProplyticTableRowActionsMenu actions={rowActions} />
                 </ProplyticTableCell>
               </ProplyticTableRow>
             );

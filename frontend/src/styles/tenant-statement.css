@@ -289,6 +289,12 @@
   overflow-x: auto;
 }
 
+@media (min-width: 768px) {
+  .pg-tstmt-table-wrap:not(.pg-ptable-wrap--scroll-x) {
+    overflow-x: visible;
+  }
+}
+
 .pg-tstmt-table {
   width: 100%;
   border-collapse: collapse;

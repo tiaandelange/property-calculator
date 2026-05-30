@@ -50,11 +50,17 @@ export function ProplyticTableWrap({
   children,
   className,
   responsive,
+  scrollX,
   ...props
-}: HTMLAttributes<HTMLDivElement> & { responsive?: boolean }) {
+}: HTMLAttributes<HTMLDivElement> & { responsive?: boolean; scrollX?: boolean }) {
   return (
     <div
-      className={cn("pg-ptable-wrap", responsive && "pg-ptable-wrap--responsive", className)}
+      className={cn(
+        "pg-ptable-wrap",
+        responsive && "pg-ptable-wrap--responsive",
+        scrollX && "pg-ptable-wrap--scroll-x",
+        className
+      )}
       {...props}
     >
       {children}

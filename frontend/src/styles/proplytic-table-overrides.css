@@ -77,21 +77,21 @@
 .pg-ptable .pg-leases-name,
 .pg-ptable .pg-invoices-link,
 .pg-ptable .pg-fins-name {
-  font-size: 13px;
+  font-size: inherit;
   font-weight: 500;
-  line-height: 1.35;
+  line-height: 1.4;
 }
 
 .pg-ptable .pg-tenants-property strong,
 .pg-ptable .pg-leases-tenant strong {
-  font-size: 13px;
+  font-size: inherit;
   font-weight: 500;
 }
 
 .pg-ptable .pg-tenants-sub,
 .pg-ptable .pg-leases-sub,
 .pg-ptable .pg-invoices-sub {
-  font-size: 12px;
+  font-size: 0.92em;
   color: var(--text-muted);
   line-height: 1.4;
 }
@@ -148,8 +148,16 @@
 .pg-tenants-table-wrap,
 .pg-leases-table-wrap,
 .pg-pfin-table-wrap:not(.pg-ptable-wrap) {
-  overflow-x: auto;
   -webkit-overflow-scrolling: touch;
+}
+
+@media (min-width: 768px) {
+  .pg-invoices-table-wrap:not(.pg-ptable-wrap--scroll-x),
+  .pg-tenants-table-wrap:not(.pg-ptable-wrap--scroll-x),
+  .pg-leases-table-wrap:not(.pg-ptable-wrap--scroll-x),
+  .pg-pfin-table-wrap:not(.pg-ptable-wrap--scroll-x):not(.pg-ptable-wrap) {
+    overflow-x: visible;
+  }
 }
 
 .pg-invoices-table th,
