@@ -6,9 +6,11 @@ import { AppListPage } from "../components/ui/AppPage";
 import { Grid } from "../components/ui/Grid";
 import { Card } from "../components/ui/Card";
 import { Button, ButtonLink } from "../components/ui/Button";
-import { isInitialQueryLoad, queryKeys, usePropertiesQuery, useWorkspaceId } from "../features/queries";
+import { isInitialQueryLoad, isQueryRefreshing, queryKeys, usePropertiesQuery, useWorkspaceId } from "../features/queries";
 import { prefetchPropertyFromList, listWarmHandlers } from "../lib/routePrefetch";
 import { StatusPill } from "../components/ui/DashboardKit";
+import { MetricCardsSkeletonRow, MobileCardListSkeleton, PropertyCardsSkeletonGrid } from "../components/ui/PageSkeletons";
+import { QueryErrorCard, QueryRefreshingIndicator } from "../components/ui/QueryState";
 
 function occupancyDisplay(p: {
   occupancyStatus?: string;
@@ -52,6 +54,7 @@ export function OwnedPropertiesMyPropertiesPage() {
   const propertiesQuery = usePropertiesQuery();
   const rows = (propertiesQuery.data ?? []) as any[];
   const loading = isInitialQueryLoad(propertiesQuery);
+  const refreshing = isQueryRefreshing(propertiesQuery);
   const error = propertiesQuery.error
     ? (propertiesQuery.error as Error).message ?? "Failed to load properties."
     : "";
@@ -110,6 +113,7 @@ export function OwnedPropertiesMyPropertiesPage() {
     <AppListPage>
       <Helmet><title>My Properties | The Property Guy</title></Helmet>
         <div style={{ display: "flex", justifyContent: "flex-end", gap: 12, flexWrap: "wrap", alignItems: "center", marginTop: 8 }}>
+          <QueryRefreshingIndicator active={refreshing} />
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             <Button
               onClick={() => {
@@ -125,7 +129,15 @@ export function OwnedPropertiesMyPropertiesPage() {
           </div>
         </div>
 
-        {error ? <div className="pg-alert pg-alert-error" style={{ marginTop: 12 }}>{error}</div> : null}
+        {error ? (
+          <QueryErrorCard
+            message={error}
+            onRetry={() => {
+              if (workspaceId) void queryClient.invalidateQueries({ queryKey: queryKeys.properties(workspaceId) });
+            }}
+            retrying={propertiesQuery.isFetching}
+          />
+        ) : null}
         <Card title="Filters">
           <div className="pg-workspace-filters-grid">
             <input className="pg-input" placeholder="Search name/address..." value={q} onChange={(e) => setQ(e.target.value)} />
@@ -169,6 +181,14 @@ export function OwnedPropertiesMyPropertiesPage() {
               Add a property
             </ButtonLink>
           </Card>
+        ) : loading ? (
+          view === "list" ? (
+            <Card title="Properties">
+              <MobileCardListSkeleton count={5} />
+            </Card>
+          ) : (
+            <PropertyCardsSkeletonGrid count={6} />
+          )
         ) : view === "list" ? (
           <Card title="Properties">
             {filtered.length === 0 ? (

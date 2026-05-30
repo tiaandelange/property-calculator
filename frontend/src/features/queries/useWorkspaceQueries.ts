@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import {
   getPropertyStatement,
   getPropertyTenants,
@@ -28,7 +28,8 @@ export function usePropertyInvoicesQuery(propertyId: string | undefined, opts?: 
       }),
     enabled: Boolean(workspaceId && propertyId) && (opts?.enabled !== false),
     staleTime: STALE_TIME_STATEMENT_MS,
-    gcTime: GC_TIME_MS
+    gcTime: GC_TIME_MS,
+    placeholderData: keepPreviousData
   });
 }
 
@@ -39,7 +40,8 @@ export function usePropertyTenantsQuery(propertyId: string | undefined, opts?: {
     queryFn: () => getPropertyTenants(propertyId!),
     enabled: Boolean(workspaceId && propertyId) && (opts?.enabled !== false),
     staleTime: STALE_TIME_PROPERTIES_MS,
-    gcTime: GC_TIME_MS
+    gcTime: GC_TIME_MS,
+    placeholderData: keepPreviousData
   });
 }
 
@@ -60,7 +62,8 @@ export function usePropertyStatementQuery(
       }),
     enabled: Boolean(workspaceId && propertyId) && (opts?.enabled !== false),
     staleTime: STALE_TIME_STATEMENT_MS,
-    gcTime: GC_TIME_MS
+    gcTime: GC_TIME_MS,
+    placeholderData: keepPreviousData
   });
 }
 

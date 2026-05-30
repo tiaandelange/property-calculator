@@ -6,6 +6,7 @@ import { invalidatePropertyWorkspace } from "../features/properties/invalidate";
 import {
   invalidateLeaseQueries,
   isInitialQueryLoad,
+  isQueryRefreshing,
   queryKeys,
   useLeasesDirectoryQuery,
   usePropertyOptionsQuery,
@@ -19,6 +20,8 @@ import { LeasePagination } from "../features/leases/LeasePagination";
 import type { LeaseDirectoryMetrics, LeaseFilters, LeaseListItem } from "../features/leases/leaseDirectoryTypes";
 import { AppListPage } from "../components/ui/AppPage";
 import { Button, ButtonLink } from "../components/ui/Button";
+import { MetricCardsSkeletonRow } from "../components/ui/PageSkeletons";
+import { QueryErrorCard, QueryRefreshingIndicator } from "../components/ui/QueryState";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
 import { CancelLeaseDialog } from "../features/properties/workspace/CancelLeaseDialog";
 
@@ -60,6 +63,7 @@ export function LeasesListPage() {
   const metrics = directoryQuery.data?.metrics ?? EMPTY_METRICS;
   const properties = propertyOptionsQuery.data ?? [];
   const loading = isInitialQueryLoad(directoryQuery);
+  const refreshing = isQueryRefreshing(directoryQuery);
   const error = directoryQuery.error ? propertyApiErrorMessage(directoryQuery.error) : "";
   const [deleteLeaseId, setDeleteLeaseId] = useState<string | null>(null);
   const [cancelLeaseItem, setCancelLeaseItem] = useState<LeaseListItem | null>(null);
@@ -140,19 +144,27 @@ export function LeasesListPage() {
         </Helmet>
           <div className="pg-leases-toolbar">
             <div className="pg-leases-toolbar-actions pg-leases-desktop-only">
+              <QueryRefreshingIndicator active={refreshing} />
               <Button onClick={refreshDirectory} loading={directoryQuery.isFetching && !loading}>
                 Refresh
               </Button>
             </div>
           </div>
 
-          {error ? <div className="pg-alert pg-alert-error">{error}</div> : null}
+          {error ? (
+            <QueryErrorCard
+              message={error}
+              onRetry={() => void directoryQuery.refetch()}
+              retrying={directoryQuery.isFetching}
+            />
+          ) : null}
+          {actionError ? <div className="pg-alert pg-alert-error">{actionError}</div> : null}
 
-          <LeaseMetricCards metrics={metrics} loading={loading} />
+          {loading ? <MetricCardsSkeletonRow count={4} /> : <LeaseMetricCards metrics={metrics} />}
 
           <LeaseControlsBar filters={filters} onChange={patchFilters} properties={properties} />
 
-          {!loading && totalCount === 0 ? (
+          {!loading && !error && totalCount === 0 ? (
             <section className="pg-leases-empty pg-workspace-card" aria-busy={directoryQuery.isFetching}>
               <h2>No leases found</h2>
               <p>

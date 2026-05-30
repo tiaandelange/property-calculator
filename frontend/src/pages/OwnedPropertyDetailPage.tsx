@@ -6,6 +6,8 @@ import { AppDetailPage } from "../components/ui/AppPage";
 import { Card } from "../components/ui/Card";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
 import { ButtonLink } from "../components/ui/Button";
+import { TabPanelSkeleton, WorkspaceTabsSkeleton } from "../components/ui/PageSkeletons";
+import { QueryErrorCard } from "../components/ui/QueryState";
 import { cancelLease, createPropertyIncome, deleteLease } from "../api/ownedProperties";
 import { WorkspaceTabs } from "../components/workspace/WorkspaceTabs";
 import {
@@ -105,12 +107,15 @@ export function OwnedPropertyDetailPage() {
   const perf = dashboardQuery.data ?? null;
   const stmt = statementQuery.data ?? null;
   const reportsCatalog = reportsQuery.data ?? null;
-  const error = propertyQuery.error
+  const loading = isInitialQueryLoad(propertyQuery);
+  const stmtLoading = needsStatement && isInitialQueryLoad(statementQuery);
+  const overviewTabLoading =
+    tab === "overview" &&
+    ((needsDashboard && isInitialQueryLoad(dashboardQuery)) || (needsStatement && isInitialQueryLoad(statementQuery)));
+  const reportsLoading = needsReports && isInitialQueryLoad(reportsQuery);
+  const propertyLoadError = propertyQuery.error
     ? ((propertyQuery.error as Error).message ?? "Failed to load property.")
     : "";
-  const loading = isInitialQueryLoad(propertyQuery);
-  const stmtLoading = needsStatement && statementQuery.isFetching && !statementQuery.data;
-  const reportsLoading = needsReports && isInitialQueryLoad(reportsQuery);
 
   useEffect(() => {
     if (!id || !workspaceId || !propertyQuery.data) return;
@@ -253,8 +258,21 @@ export function OwnedPropertyDetailPage() {
         <Helmet>
           <title>{data?.name ? `${data.name} | Property` : "Property Detail | The Property Guy"}</title>
         </Helmet>
-        {error ? <div className="pg-alert pg-alert-error">{error}</div> : null}
-        {data ? (
+        {propertyLoadError && !propertyQuery.data ? (
+          <QueryErrorCard
+            message={propertyLoadError}
+            onRetry={() => void propertyQuery.refetch()}
+            retrying={propertyQuery.isFetching}
+          />
+        ) : null}
+        {loading ? (
+          <>
+            <WorkspaceTabsSkeleton />
+            <div className="pg-workspace-panel">
+              <TabPanelSkeleton variant="overview" />
+            </div>
+          </>
+        ) : data ? (
           <>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginTop: 8, marginBottom: 12 }}>
               <WorkspaceTabs
@@ -288,28 +306,36 @@ export function OwnedPropertyDetailPage() {
 
             <div className="pg-workspace-panel">
               {tab === "overview" ? (
-                <WorkspaceOverviewTab
-                  data={data}
-                  statement={stmt}
-                  perf={perf}
-                  propertyId={id!}
-                  navigate={(path) => navigate(path)}
-                  currentLeases={currentLeases}
-                  combinedContractRent={combinedContractRent}
-                />
+                overviewTabLoading ? (
+                  <TabPanelSkeleton variant="overview" />
+                ) : (
+                  <WorkspaceOverviewTab
+                    data={data}
+                    statement={stmt}
+                    perf={perf}
+                    propertyId={id!}
+                    navigate={(path) => navigate(path)}
+                    currentLeases={currentLeases}
+                    combinedContractRent={combinedContractRent}
+                  />
+                )
               ) : null}
 
               {tab === "financials" && id ? (
-                <WorkspaceFinancialsTab
-                  propertyId={id}
-                  finSub={finSub}
-                  statement={stmt}
-                  loading={stmtLoading}
-                  onReload={refreshAfterMutation}
-                  currentLeases={currentLeases}
-                  propertyInvoices={data?.invoices ?? []}
-                  propertyDetail={data ?? null}
-                />
+                stmtLoading ? (
+                  <TabPanelSkeleton variant="table" />
+                ) : (
+                  <WorkspaceFinancialsTab
+                    propertyId={id}
+                    finSub={finSub}
+                    statement={stmt}
+                    loading={stmtLoading}
+                    onReload={refreshAfterMutation}
+                    currentLeases={currentLeases}
+                    propertyInvoices={data?.invoices ?? []}
+                    propertyDetail={data ?? null}
+                  />
+                )
               ) : null}
 
               {tab === "statement" && id ? (
@@ -413,7 +439,7 @@ export function OwnedPropertyDetailPage() {
                       Uses the same canonical statement and aggregates as Overview and Financials.
                     </div>
                     {reportsLoading ? (
-                      <div className="pg-muted">Loading catalog…</div>
+                      <TabPanelSkeleton variant="default" />
                     ) : (reportsCatalog?.reports ?? []).length ? (
                       <ul style={{ margin: 0, paddingLeft: 0, listStyle: "none", display: "grid", gap: 10 }}>
                         {(reportsCatalog?.reports ?? []).map((r: any) => (

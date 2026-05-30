@@ -9,7 +9,7 @@ import {
   invoiceIdFromStatementRow,
   invoiceStatementCreditClass
 } from "../../invoices/invoiceStatementUtils";
-import { getOrCreateUserSettings } from "../../../services/settingsSupabase";
+import { useSettingsQuery } from "../../queries";
 import { statementFilterToPreset } from "../../settings/settingsDefaults";
 import { getPropertyStatement } from "../../../api/ownedProperties";
 import { Card } from "../../../components/ui/Card";
@@ -286,6 +286,7 @@ export function WorkspaceStatementTab({
   propertyId: string;
 }) {
   const navigate = useNavigate();
+  const settingsQuery = useSettingsQuery();
   const [preset, setPreset] = useState<PeriodPreset>("SIX_MONTHS");
   const [presetReady, setPresetReady] = useState(false);
   const [year, setYear] = useState<number>(() => new Date().getUTCFullYear());
@@ -344,23 +345,13 @@ export function WorkspaceStatementTab({
   }, [preset, year]);
 
   useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      try {
-        const settings = await getOrCreateUserSettings();
-        if (!cancelled) {
-          setPreset(statementFilterToPreset(settings.statementDefaultFilter) as PeriodPreset);
-        }
-      } catch {
-        /* keep default */
-      } finally {
-        if (!cancelled) setPresetReady(true);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    if (settingsQuery.data) {
+      setPreset(statementFilterToPreset(settingsQuery.data.statementDefaultFilter) as PeriodPreset);
+    }
+    if (!settingsQuery.isLoading) {
+      setPresetReady(true);
+    }
+  }, [settingsQuery.data, settingsQuery.isLoading]);
 
   useEffect(() => {
     if (!presetReady) return;
@@ -378,7 +369,13 @@ export function WorkspaceStatementTab({
           );
 
         const stmts = await Promise.all(
-          ids.map((m) => getPropertyStatement(propertyId, { month: m, includeExpected: true, bustCache: true }).catch(() => null))
+          ids.map((m) =>
+            getPropertyStatement(propertyId, {
+              month: m,
+              includeExpected: true,
+              bustCache: reloadKey > 0
+            }).catch(() => null)
+          )
         );
 
         if (cancelled) return;

@@ -5,6 +5,7 @@ import { useLocation, useSearchParams } from "react-router-dom";
 import { propertyApiErrorMessage } from "../api/ownedProperties";
 import {
   isInitialQueryLoad,
+  isQueryRefreshing,
   queryKeys,
   useFinancialsDirectoryQuery,
   useWorkspaceId
@@ -17,6 +18,7 @@ import type { FinancialFilters } from "../features/financials/financialDirectory
 import { FINANCIALS_PAGE_SIZE, localCalendarMonth } from "../features/financials/financialDirectoryUtils";
 import { AppListPage } from "../components/ui/AppPage";
 import { Button, ButtonLink } from "../components/ui/Button";
+import { QueryErrorCard, QueryRefreshingIndicator } from "../components/ui/QueryState";
 
 function parsePropertyIdFromSearch(search: string): string {
   const raw = new URLSearchParams(search).get("propertyId");
@@ -60,6 +62,7 @@ export function FinancialsListPage() {
     periodLabel: ""
   };
   const loading = isInitialQueryLoad(directoryQuery);
+  const refreshing = isQueryRefreshing(directoryQuery);
   const error = directoryQuery.error ? propertyApiErrorMessage(directoryQuery.error) : "";
 
   useEffect(() => {
@@ -108,13 +111,20 @@ export function FinancialsListPage() {
               </p>
             </div>
             <div className="pg-fins-toolbar-actions pg-fins-desktop-only">
+              <QueryRefreshingIndicator active={refreshing} />
               <Button onClick={refreshDirectory} loading={directoryQuery.isFetching && !loading}>
                 Refresh
               </Button>
             </div>
           </div>
 
-          {error ? <div className="pg-alert pg-alert-error">{error}</div> : null}
+          {error ? (
+            <QueryErrorCard
+              message={error}
+              onRetry={() => void directoryQuery.refetch()}
+              retrying={directoryQuery.isFetching}
+            />
+          ) : null}
 
           <FinancialControlsBar filters={filters} onChange={patchFilters} properties={properties} />
 
@@ -137,7 +147,7 @@ export function FinancialsListPage() {
               cashFlow={ytd.net}
             />
 
-            {!loading && totalCount === 0 ? (
+            {!loading && !error && totalCount === 0 ? (
               <div className="pg-fins-empty">
                 <h2>No ledger entries</h2>
                 <p>

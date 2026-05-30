@@ -1,6 +1,7 @@
 import React from "react";
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { AppChrome } from "./AppChrome";
 import { AuthProvider } from "../contexts/AuthContext";
@@ -54,7 +55,14 @@ vi.mock("../services/settingsSupabase", () => ({
 }));
 
 function renderWithAuth(ui: React.ReactElement) {
-  return render(<AuthProvider>{ui}</AuthProvider>);
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } }
+  });
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>{ui}</AuthProvider>
+    </QueryClientProvider>
+  );
 }
 
 describe("AppChrome", () => {

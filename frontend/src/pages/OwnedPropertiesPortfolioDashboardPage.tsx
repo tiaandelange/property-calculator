@@ -4,10 +4,13 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "react-router-dom";
 import { AppListPage } from "../components/ui/AppPage";
 import { Button, ButtonLink } from "../components/ui/Button";
-import { EmptyState } from "../components/ui/DashboardKit";
+import { EmptyState, SkeletonGrid } from "../components/ui/DashboardKit";
+import { MetricCardsSkeletonRow } from "../components/ui/PageSkeletons";
+import { QueryErrorCard, QueryRefreshingIndicator } from "../components/ui/QueryState";
 import { useAuth } from "../contexts/AuthContext";
 import {
   isInitialQueryLoad,
+  isQueryRefreshing,
   queryKeys,
   useDashboardSummaryQuery,
   usePropertiesQuery,
@@ -80,6 +83,7 @@ export function OwnedPropertiesPortfolioDashboardPage() {
   const properties = (propertiesQuery.data ?? []) as Record<string, unknown>[];
   const tenantCount = Array.isArray(tenantsQuery.data) ? tenantsQuery.data.length : 0;
   const loading = isInitialQueryLoad(summaryQuery);
+  const refreshing = isQueryRefreshing(summaryQuery);
   const propertiesLoading = isInitialQueryLoad(propertiesQuery);
   const error = summaryQuery.error
     ? ((summaryQuery.error as { response?: { data?: { message?: string } }; message?: string })?.response?.data
@@ -385,6 +389,7 @@ export function OwnedPropertiesPortfolioDashboardPage() {
           <div className="pg-pdash-toolbar">
             <div />
             <div className="pg-pdash-toolbar-actions">
+              <QueryRefreshingIndicator active={refreshing} />
               <Button onClick={refreshDashboard} loading={summaryQuery.isFetching && !loading}>
                 Refresh
               </Button>
@@ -400,9 +405,15 @@ export function OwnedPropertiesPortfolioDashboardPage() {
             </div>
           </div>
 
-          {error ? <div className="pg-alert pg-alert-error">{error}</div> : null}
+          {error ? (
+            <QueryErrorCard
+              message={error}
+              onRetry={() => refreshDashboard()}
+              retrying={summaryQuery.isFetching}
+            />
+          ) : null}
 
-          {!hasProperties && !loading ? (
+          {!hasProperties && !loading && !error ? (
             <EmptyState
               title="Add your first property"
               body="Track equity, cash flow, tenants, leases and reports across your portfolio."
@@ -417,6 +428,13 @@ export function OwnedPropertiesPortfolioDashboardPage() {
                 </>
               }
             />
+          ) : loading && !data ? (
+            <>
+              {mobileWelcome}
+              <MetricCardsSkeletonRow count={4} />
+              {desktopLayout.showSecondaryMetrics ? <MetricCardsSkeletonRow count={4} /> : null}
+              <SkeletonGrid count={2} columns={2} />
+            </>
           ) : (
             <>
               {mobileWelcome}

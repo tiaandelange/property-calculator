@@ -11,6 +11,7 @@ export {
 } from "../../lib/queryInvalidation";
 export {
   isInitialQueryLoad,
+  isQueryRefreshing,
   useDashboardSummaryQuery,
   useFinancialsDirectoryQuery,
   useInvoicesDirectoryQuery,

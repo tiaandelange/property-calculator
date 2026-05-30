@@ -1,4 +1,4 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   getFinancialsDirectory,
   getInvoicesDirectory,
@@ -60,7 +60,8 @@ export function usePropertiesQuery(month?: string | null) {
     queryFn: () => getProperties(month ? { month } : undefined),
     enabled: Boolean(workspaceId),
     staleTime: STALE_TIME_PROPERTIES_MS,
-    gcTime: GC_TIME_MS
+    gcTime: GC_TIME_MS,
+    placeholderData: keepPreviousData
   });
 }
 
@@ -71,7 +72,8 @@ export function useTenantsDirectoryQuery(params: TenantsDirectoryParams = {}) {
     queryFn: () => getTenantsDirectory(params),
     enabled: Boolean(workspaceId),
     staleTime: STALE_TIME_DIRECTORY_MS,
-    gcTime: GC_TIME_MS
+    gcTime: GC_TIME_MS,
+    placeholderData: keepPreviousData
   });
 }
 
@@ -82,7 +84,8 @@ export function useLeasesDirectoryQuery(params: LeasesDirectoryParams = {}) {
     queryFn: () => getLeasesDirectory(params),
     enabled: Boolean(workspaceId),
     staleTime: STALE_TIME_DIRECTORY_MS,
-    gcTime: GC_TIME_MS
+    gcTime: GC_TIME_MS,
+    placeholderData: keepPreviousData
   });
 }
 
@@ -95,7 +98,8 @@ export function useInvoicesDirectoryQuery(params: InvoicesDirectoryParams = {}) 
     queryFn: () => getInvoicesDirectory(params),
     enabled: Boolean(workspaceId),
     staleTime: STALE_TIME_DIRECTORY_MS,
-    gcTime: GC_TIME_MS
+    gcTime: GC_TIME_MS,
+    placeholderData: keepPreviousData
   });
 }
 
@@ -108,7 +112,8 @@ export function useFinancialsDirectoryQuery(params: FinancialsDirectoryParams) {
     queryFn: () => getFinancialsDirectory(params),
     enabled: Boolean(workspaceId),
     staleTime: STALE_TIME_STATEMENT_MS,
-    gcTime: GC_TIME_MS
+    gcTime: GC_TIME_MS,
+    placeholderData: keepPreviousData
   });
 }
 
@@ -121,7 +126,8 @@ export function useDashboardSummaryQuery(params: DashboardSummaryParams, opts?: 
     queryFn: () => getPortfolioDashboardSummary(params),
     enabled: Boolean(workspaceId) && (opts?.enabled !== false),
     staleTime: STALE_TIME_DASHBOARD_MS,
-    gcTime: GC_TIME_MS
+    gcTime: GC_TIME_MS,
+    placeholderData: keepPreviousData
   });
 }
 
@@ -148,13 +154,19 @@ export function usePropertyQuery(
     queryFn: () => getProperty(propertyId!, { includeInvoices }),
     enabled: Boolean(workspaceId && propertyId) && (opts?.enabled !== false),
     staleTime: STALE_TIME_PROPERTIES_MS,
-    gcTime: GC_TIME_MS
+    gcTime: GC_TIME_MS,
+    placeholderData: keepPreviousData
   });
 }
 
 /** True when loading and no cached data yet — use for skeletons only. */
 export function isInitialQueryLoad(query: { isLoading: boolean; isFetching: boolean; data: unknown }): boolean {
   return query.isLoading && query.data === undefined;
+}
+
+/** True when refetching with stale cache visible — use for subtle refreshing UI. */
+export function isQueryRefreshing(query: { isFetching: boolean; isLoading: boolean; data: unknown }): boolean {
+  return query.isFetching && !query.isLoading && query.data !== undefined;
 }
 
 export function useInvalidateQueries() {

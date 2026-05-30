@@ -11,6 +11,7 @@ import { openInvoicePdfExport } from "../features/invoices/invoicePdfExport";
 import {
   invalidateInvoiceQueries,
   isInitialQueryLoad,
+  isQueryRefreshing,
   queryKeys,
   useInvoicesDirectoryQuery,
   useWorkspaceId
@@ -23,6 +24,8 @@ import type { InvoiceDirectoryFilters, InvoiceDirectoryMetrics, InvoiceDirectory
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
 import { AppListPage } from "../components/ui/AppPage";
 import { Button, ButtonLink } from "../components/ui/Button";
+import { MetricCardsSkeletonRow } from "../components/ui/PageSkeletons";
+import { QueryErrorCard, QueryRefreshingIndicator } from "../components/ui/QueryState";
 import { listWarmHandlers, prefetchInvoiceDetail } from "../lib/routePrefetch";
 
 const EMPTY_METRICS: InvoiceDirectoryMetrics = {
@@ -67,6 +70,7 @@ export function InvoicesListPage() {
   const metrics = directoryQuery.data?.metrics ?? EMPTY_METRICS;
   const properties = directoryQuery.data?.properties ?? [];
   const loading = isInitialQueryLoad(directoryQuery);
+  const refreshing = isQueryRefreshing(directoryQuery);
   const error = directoryQuery.error ? propertyApiErrorMessage(directoryQuery.error) : "";
 
   useEffect(() => {
@@ -124,19 +128,26 @@ export function InvoicesListPage() {
               </p>
             </div>
             <div className="pg-invoices-toolbar-actions pg-invoices-desktop-only">
+              <QueryRefreshingIndicator active={refreshing} />
               <Button onClick={refreshDirectory} loading={directoryQuery.isFetching && !loading}>
                 Refresh
               </Button>
             </div>
           </div>
 
-          {error ? <div className="pg-alert pg-alert-error">{error}</div> : null}
+          {error ? (
+            <QueryErrorCard
+              message={error}
+              onRetry={() => void directoryQuery.refetch()}
+              retrying={directoryQuery.isFetching}
+            />
+          ) : null}
 
-          <InvoiceMetricCards metrics={metrics} loading={loading} />
+          {loading ? <MetricCardsSkeletonRow count={4} /> : <InvoiceMetricCards metrics={metrics} />}
 
           <InvoiceControlsBar filters={filters} onChange={(next) => setFilters((prev) => ({ ...prev, ...next }))} properties={properties} />
 
-          {!loading && totalCount === 0 ? (
+          {!loading && !error && totalCount === 0 ? (
             <section className="pg-invoices-empty pg-workspace-card" aria-busy={directoryQuery.isFetching}>
               <h2>No invoices found</h2>
               <p>

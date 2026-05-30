@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import { AuthenticatedShell } from "./AuthenticatedShell";
+import { RouteFallback } from "../components/ui/RouteFallback";
 import { HomePublicFooter } from "../components/home/HomePublicFooter";
 import { HomePublicHeader } from "../components/home/HomePublicHeader";
 import { DEFAULT_USER_SETTINGS } from "../features/settings/settingsDefaults";
@@ -83,6 +84,15 @@ export function AppChrome() {
   }, [useWorkspaceChrome, workspaceAppearance.themePreference]);
 
   if (initializing) {
+    if (isWorkspacePath(location.pathname)) {
+      return (
+        <div className="pg-app">
+          <AuthenticatedShell userRole={null}>
+            <RouteFallback />
+          </AuthenticatedShell>
+        </div>
+      );
+    }
     return null;
   }
 

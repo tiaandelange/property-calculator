@@ -5,6 +5,8 @@ import { useSearchParams } from "react-router-dom";
 import { AppListPage } from "../components/ui/AppPage";
 import { AppSectionTabs } from "../components/ui/AppSectionTabs";
 import { Button, ButtonLink } from "../components/ui/Button";
+import { MetricCardsSkeletonRow } from "../components/ui/PageSkeletons";
+import { QueryErrorCard, QueryRefreshingIndicator } from "../components/ui/QueryState";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
 import { deleteTenant } from "../api/ownedProperties";
 import { ApplicantDetailModal } from "../features/applicants/ApplicantDetailModal";
@@ -23,6 +25,7 @@ import { PAGE_SIZE } from "../features/tenants/tenantDirectoryUtils";
 import {
   invalidateTenantQueries,
   isInitialQueryLoad,
+  isQueryRefreshing,
   queryKeys,
   usePropertyOptionsQuery,
   useTenantsDirectoryQuery,
@@ -79,6 +82,7 @@ export function TenantsListPage() {
   const applicantMetrics = directoryQuery.data?.applicantMetrics ?? computeApplicantDirectoryMetrics([]);
   const properties = propertyOptionsQuery.data ?? [];
   const loading = isInitialQueryLoad(directoryQuery);
+  const refreshing = isQueryRefreshing(directoryQuery);
 
   useEffect(() => {
     setPage(1);
@@ -120,7 +124,7 @@ export function TenantsListPage() {
     }
   };
 
-  const displayError = actionError || error;
+  const displayError = actionError;
 
   return (
     <AppListPage contentClassName="pg-tenants">
@@ -128,6 +132,13 @@ export function TenantsListPage() {
         <title>{isApplicants ? "Applicants" : "Tenants"} | The Property Guy</title>
       </Helmet>
 
+      {error ? (
+        <QueryErrorCard
+          message={error}
+          onRetry={() => void directoryQuery.refetch()}
+          retrying={directoryQuery.isFetching}
+        />
+      ) : null}
       {displayError ? <div className="pg-alert pg-alert-error">{displayError}</div> : null}
 
       <div className="pg-tenants-section-head">
@@ -142,6 +153,7 @@ export function TenantsListPage() {
           ]}
         />
         <div className="pg-tenants-section-head__actions">
+          <QueryRefreshingIndicator active={refreshing} />
           {isApplicants ? (
             <Button type="button" variant="soft" onClick={() => setShowInviteCard(true)}>
               Add Applicant
@@ -154,10 +166,12 @@ export function TenantsListPage() {
         </div>
       </div>
 
-      {isApplicants ? (
-        <ApplicantMetricCards metrics={applicantMetrics} loading={loading} />
+      {loading ? (
+        <MetricCardsSkeletonRow count={4} />
+      ) : isApplicants ? (
+        <ApplicantMetricCards metrics={applicantMetrics} />
       ) : (
-        <TenantMetricCards metrics={tenantMetrics || EMPTY_TENANT_METRICS} loading={loading} />
+        <TenantMetricCards metrics={tenantMetrics || EMPTY_TENANT_METRICS} />
       )}
 
       <TenantControlsBar
@@ -171,7 +185,7 @@ export function TenantsListPage() {
         }
       />
 
-      {!loading && totalCount === 0 ? (
+      {!loading && !error && totalCount === 0 ? (
         <section className="pg-tenants-empty pg-workspace-card" aria-busy={directoryQuery.isFetching}>
           <h2>{isApplicants ? "No applicants found" : "No tenants found"}</h2>
           <p>
