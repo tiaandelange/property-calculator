@@ -5,7 +5,6 @@ import { Container } from "../components/ui/Container";
 import { Section } from "../components/ui/Section";
 import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
-import { PageBrandMark } from "../components/brand/PageBrandMark";
 import { ApplicantTemplateFields } from "../features/applicants/ApplicantTemplateFields";
 import {
   buildSubmissionPayload,
@@ -96,9 +95,6 @@ export function ApplicantApplyPage() {
         <meta name="robots" content="noindex,nofollow" />
       </Helmet>
       <Container className="pg-applicant-apply-container">
-        <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}>
-          <PageBrandMark />
-        </div>
         <Card className="pg-applicant-apply-card">
           {loading ? <p className="pg-muted">Loading application…</p> : null}
           {!loading && submitted ? (

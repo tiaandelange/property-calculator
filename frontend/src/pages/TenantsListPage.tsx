@@ -9,7 +9,7 @@ import { deleteTenant, getProperties, getTenantsDirectory } from "../api/ownedPr
 import { PROPERTY_DATA_INVALIDATION } from "../features/properties/invalidate";
 import { ApplicantDetailModal } from "../features/applicants/ApplicantDetailModal";
 import { ApplicantDesktopTable } from "../features/applicants/ApplicantDesktopTable";
-import { ApplicantInviteCard } from "../features/applicants/ApplicantInviteCard";
+import { ApplicantInviteModal } from "../features/applicants/ApplicantInviteCard";
 import {
   computeApplicantDirectoryMetrics,
   computeTenantDirectoryMetrics,
@@ -172,8 +172,8 @@ export function TenantsListPage() {
         />
         <div className="pg-tenants-section-head__actions">
           {isApplicants ? (
-            <Button type="button" variant="soft" onClick={() => setShowInviteCard((v) => !v)}>
-              {showInviteCard ? "Hide invite form" : "Add Applicant"}
+            <Button type="button" variant="soft" onClick={() => setShowInviteCard(true)}>
+              Add Applicant
             </Button>
           ) : (
             <ButtonLink href="/tenants/new" variant="soft">
@@ -188,10 +188,6 @@ export function TenantsListPage() {
       ) : (
         <TenantMetricCards metrics={tenantMetrics || EMPTY_TENANT_METRICS} loading={loading && !items.length} />
       )}
-
-      {isApplicants && showInviteCard ? (
-        <ApplicantInviteCard properties={properties} onClose={() => setShowInviteCard(false)} />
-      ) : null}
 
       <TenantControlsBar
         filters={filters}
@@ -250,6 +246,12 @@ export function TenantsListPage() {
           </div>
         </>
       )}
+
+      <ApplicantInviteModal
+        open={showInviteCard}
+        onOpenChange={setShowInviteCard}
+        properties={properties}
+      />
 
       <ApplicantDetailModal
         tenantId={viewApplicantId}

@@ -10,7 +10,23 @@ function inputMode(field: ApplicantFormFieldDef): React.HTMLAttributes<HTMLInput
 function inputType(field: ApplicantFormFieldDef): string {
   if (field.type === "email") return "email";
   if (field.type === "phone") return "tel";
+  if (field.type === "income") return "number";
   return "text";
+}
+
+function sanitizeIncomeInput(raw: string): string {
+  const cleaned = raw.replace(/[^\d.]/g, "");
+  const parts = cleaned.split(".");
+  if (parts.length <= 1) return cleaned;
+  return `${parts[0]}.${parts.slice(1).join("")}`;
+}
+
+function fieldValue(field: ApplicantFormFieldDef, values: ApplicantFieldValues): string {
+  return values[field.id] ?? "";
+}
+
+function patchField(field: ApplicantFormFieldDef, value: string): string {
+  return field.type === "income" ? sanitizeIncomeInput(value) : value;
 }
 
 export function ApplicantTemplateFields({
@@ -26,8 +42,8 @@ export function ApplicantTemplateFields({
   onChange: (next: ApplicantFieldValues) => void;
   emailRequired?: boolean;
 }) {
-  const patch = (id: string, value: string) => {
-    onChange({ ...values, [id]: value });
+  const patch = (id: string, field: ApplicantFormFieldDef, value: string) => {
+    onChange({ ...values, [id]: patchField(field, value) });
   };
 
   const rows: ApplicantFormFieldDef[][] = [];
@@ -51,6 +67,15 @@ export function ApplicantTemplateFields({
   }
   if (pendingHalf) rows.push([pendingHalf]);
 
+  const incomeProps = (field: ApplicantFormFieldDef) =>
+    field.type === "income"
+      ? {
+          min: 0,
+          step: "0.01",
+          placeholder: field.placeholder ?? "0.00"
+        }
+      : { placeholder: field.placeholder };
+
   return (
     <div className="pg-applicant-person-fields">
       {rows.map((row) => {
@@ -62,12 +87,12 @@ export function ApplicantTemplateFields({
                 <Field key={field.id} label={field.label}>
                   <Input
                     type={inputType(field)}
-                    value={values[field.id] ?? ""}
-                    onChange={(e) => patch(field.id, e.target.value)}
+                    value={fieldValue(field, values)}
+                    onChange={(e) => patch(field.id, field, e.target.value)}
                     inputMode={inputMode(field)}
-                    placeholder={field.placeholder}
                     autoComplete={`${prefix}-${field.id}`}
                     required={field.required && (field.type !== "email" || emailRequired)}
+                    {...incomeProps(field)}
                   />
                 </Field>
               ))}
@@ -79,12 +104,12 @@ export function ApplicantTemplateFields({
           <Field key={field.id} label={field.label}>
             <Input
               type={inputType(field)}
-              value={values[field.id] ?? ""}
-              onChange={(e) => patch(field.id, e.target.value)}
+              value={fieldValue(field, values)}
+              onChange={(e) => patch(field.id, field, e.target.value)}
               inputMode={inputMode(field)}
-              placeholder={field.placeholder}
               autoComplete={`${prefix}-${field.id}`}
               required={field.required && (field.type !== "email" || emailRequired)}
+              {...incomeProps(field)}
             />
           </Field>
         );

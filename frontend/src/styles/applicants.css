@@ -4,6 +4,33 @@
   padding: 18px 20px;
 }
 
+.pg-applicant-invite-modal {
+  animation: pg-applicant-invite-modal-in 0.24s ease-out;
+}
+
+@keyframes pg-applicant-invite-modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.pg-applicant-invite-modal__row {
+  display: grid;
+  gap: 12px;
+}
+
+.pg-applicant-invite-modal__url {
+  margin: 14px 0 0;
+  font-size: 12px;
+  word-break: break-all;
+}
+
 .pg-applicant-invite-card__head {
   display: flex;
   align-items: flex-start;

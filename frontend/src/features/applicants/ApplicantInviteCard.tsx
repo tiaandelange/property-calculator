@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { AppModal } from "../../components/ui/AppModal";
 import { Button } from "../../components/ui/Button";
 import { Field } from "../../components/ui/Input";
 import {
@@ -7,12 +8,14 @@ import {
   getOrCreateApplicantInvite
 } from "../../services/applicantApplicationsSupabase";
 
-export function ApplicantInviteCard({
-  properties,
-  onClose
+export function ApplicantInviteModal({
+  open,
+  onOpenChange,
+  properties
 }: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   properties: Array<{ id: string; name: string }>;
-  onClose?: () => void;
 }) {
   const [propertyId, setPropertyId] = useState("");
   const [token, setToken] = useState("");
@@ -21,7 +24,16 @@ export function ApplicantInviteCard({
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    if (!propertyId) {
+    if (open) return;
+    setPropertyId("");
+    setToken("");
+    setError("");
+    setCopied(false);
+    setLoading(false);
+  }, [open]);
+
+  useEffect(() => {
+    if (!open || !propertyId) {
       setToken("");
       return;
     }
@@ -41,7 +53,7 @@ export function ApplicantInviteCard({
     return () => {
       cancelled = true;
     };
-  }, [propertyId]);
+  }, [open, propertyId]);
 
   const shareUrl = token ? applicantApplyUrl(token) : "";
 
@@ -57,26 +69,31 @@ export function ApplicantInviteCard({
   };
 
   return (
-    <section className="pg-workspace-card pg-applicant-invite-card">
-      <div className="pg-applicant-invite-card__head">
-        <div>
-          <h2 className="pg-applicant-invite-card__title">Share applicant form</h2>
-          <p className="pg-applicant-invite-card__desc">
-            Select a property, then copy the private link. Only people you share it with can open the application form.
-            {" "}
-            <Link to="/settings#applicant-form-template">Edit default form template</Link>
-          </p>
-        </div>
-        {onClose ? (
-          <Button type="button" variant="ghost" onClick={onClose}>
+    <AppModal
+      open={open}
+      onOpenChange={onOpenChange}
+      title="Share applicant form"
+      description="Select a property, then copy the private link. Only people you share it with can open the application form."
+      size="md"
+      className="pg-applicant-invite-modal"
+      footer={
+        <div className="pg-app-modal-actions">
+          <Button type="button" variant="soft" onClick={() => onOpenChange(false)}>
             Close
           </Button>
-        ) : null}
-      </div>
+          <Button type="button" disabled={!propertyId || !token || loading} onClick={() => void copyLink()}>
+            {copied ? "Copied" : "Copy link"}
+          </Button>
+        </div>
+      }
+    >
+      <p className="pg-muted" style={{ margin: "0 0 16px", fontSize: 13 }}>
+        <Link to="/settings#applicant-form-template">Edit default form template</Link>
+      </p>
 
       {error ? <div className="pg-alert pg-alert-error">{error}</div> : null}
 
-      <div className="pg-applicant-invite-card__row">
+      <div className="pg-applicant-invite-modal__row">
         <Field label="Property">
           <select
             className="pg-tenants-select"
@@ -92,18 +109,15 @@ export function ApplicantInviteCard({
             ))}
           </select>
         </Field>
-        <div className="pg-applicant-invite-card__copy">
-          <Button type="button" variant="soft" disabled={!propertyId || !token || loading} onClick={() => void copyLink()}>
-            {copied ? "Copied" : "Copy Link"}
-          </Button>
-        </div>
       </div>
 
+      {loading ? <p className="pg-muted">Preparing link…</p> : null}
+
       {shareUrl ? (
-        <p className="pg-applicant-invite-card__url pg-muted" aria-live="polite">
+        <p className="pg-applicant-invite-modal__url pg-muted" aria-live="polite">
           {shareUrl}
         </p>
       ) : null}
-    </section>
+    </AppModal>
   );
 }
