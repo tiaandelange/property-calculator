@@ -31,6 +31,7 @@ export type UserSettings = {
   overdueAlertsEnabled: boolean;
   monthlySummariesEnabled: boolean;
   newLeaseAlertsEnabled: boolean;
+  leaseExpiringAlertsEnabled: boolean;
   lockInvoiceAfterSent: boolean;
   applicantFormTemplate: ApplicantFormTemplate;
 };

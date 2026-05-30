@@ -26,6 +26,7 @@ type DbRow = {
   overdue_alerts_enabled: boolean;
   monthly_summaries_enabled: boolean;
   new_lease_alerts_enabled: boolean;
+  lease_expiring_alerts_enabled: boolean;
   lock_invoice_after_sent: boolean;
   applicant_form_template: unknown;
 };
@@ -64,6 +65,7 @@ function mapRow(row: DbRow | null): UserSettings {
     overdueAlertsEnabled: row.overdue_alerts_enabled ?? DEFAULT_USER_SETTINGS.overdueAlertsEnabled,
     monthlySummariesEnabled: row.monthly_summaries_enabled ?? DEFAULT_USER_SETTINGS.monthlySummariesEnabled,
     newLeaseAlertsEnabled: row.new_lease_alerts_enabled ?? DEFAULT_USER_SETTINGS.newLeaseAlertsEnabled,
+    leaseExpiringAlertsEnabled: row.lease_expiring_alerts_enabled ?? DEFAULT_USER_SETTINGS.leaseExpiringAlertsEnabled,
     lockInvoiceAfterSent: row.lock_invoice_after_sent ?? DEFAULT_USER_SETTINGS.lockInvoiceAfterSent,
     applicantFormTemplate: normalizeApplicantFormTemplate(row.applicant_form_template)
   };
@@ -93,6 +95,7 @@ function patchToPayload(patch: UserSettingsPatch): Record<string, unknown> {
   if (patch.overdueAlertsEnabled !== undefined) out.overdueAlertsEnabled = patch.overdueAlertsEnabled;
   if (patch.monthlySummariesEnabled !== undefined) out.monthlySummariesEnabled = patch.monthlySummariesEnabled;
   if (patch.newLeaseAlertsEnabled !== undefined) out.newLeaseAlertsEnabled = patch.newLeaseAlertsEnabled;
+  if (patch.leaseExpiringAlertsEnabled !== undefined) out.leaseExpiringAlertsEnabled = patch.leaseExpiringAlertsEnabled;
   if (patch.lockInvoiceAfterSent !== undefined) out.lockInvoiceAfterSent = patch.lockInvoiceAfterSent;
   if (patch.applicantFormTemplate !== undefined) out.applicantFormTemplate = patch.applicantFormTemplate;
   return out;

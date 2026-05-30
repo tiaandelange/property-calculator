@@ -60,7 +60,7 @@ export function OwnedPropertiesMyPropertiesPage() {
   const queryClient = useQueryClient();
   const workspaceId = useWorkspaceId();
   const [page, setPage] = useState(1);
-  const [q, setQ] = useState("");
+  const [q, setQ] = useState(() => new URLSearchParams(search).get("q") ?? "");
   const [type, setType] = useState<string>("ALL");
   const [status, setStatus] = useState<string>(new URLSearchParams(search).get("filter") ?? "ALL");
   const [sort, setSort] = useState<string>(new URLSearchParams(search).get("sort") ?? "RECENT");
@@ -90,6 +90,11 @@ export function OwnedPropertiesMyPropertiesPage() {
   useEffect(() => {
     setPage(1);
   }, [q, type, status, sort]);
+
+  useEffect(() => {
+    const urlQ = new URLSearchParams(search).get("q") ?? "";
+    setQ(urlQ);
+  }, [search]);
 
   const warmProperty = (propertyId: string) => {
     prefetchPropertyFromList(propertyId, queryClient, workspaceId ?? null);

@@ -18,6 +18,7 @@ export const DEFAULT_USER_SETTINGS: UserSettings = {
   overdueAlertsEnabled: true,
   monthlySummariesEnabled: true,
   newLeaseAlertsEnabled: false,
+  leaseExpiringAlertsEnabled: true,
   lockInvoiceAfterSent: true,
   applicantFormTemplate: DEFAULT_APPLICANT_FORM_TEMPLATE
 };

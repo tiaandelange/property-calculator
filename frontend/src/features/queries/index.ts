@@ -7,7 +7,8 @@ export {
   invalidatePortfolioQueries,
   invalidatePropertyQueries,
   invalidateSettingsQueries,
-  invalidateTenantQueries
+  invalidateTenantQueries,
+  invalidateWorkspaceNotifications
 } from "../../lib/queryInvalidation";
 export {
   isInitialQueryLoad,
@@ -31,6 +32,7 @@ export {
   usePropertyStatementQuery,
   usePropertyStatementRangeQuery,
   usePropertyTenantsQuery,
-  useTenantQuery
+  useTenantQuery,
+  useWorkspaceNotificationsQuery
 } from "./useWorkspaceQueries";
 export { useWorkspaceId } from "./useWorkspaceId";

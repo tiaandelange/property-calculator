@@ -117,6 +117,7 @@ export function invalidateInvoiceQueries(
     void qc.invalidateQueries({ queryKey: queryKeys.invoicesDirectory(wid) });
     void qc.invalidateQueries({ queryKey: ["dashboard-summary", wid] });
     void qc.invalidateQueries({ queryKey: ["financials", wid] });
+    invalidateWorkspaceNotifications({ ...opts, workspaceId: wid });
   } else {
     void qc.invalidateQueries({ queryKey: ["invoices"] });
     void qc.invalidateQueries({ queryKey: ["dashboard-summary"] });
@@ -130,10 +131,21 @@ export function invalidateInvoiceQueries(
   }
 }
 
+export function invalidateWorkspaceNotifications(opts?: InvalidateOpts) {
+  const qc = client(opts);
+  const wid = ws(opts?.workspaceId);
+  if (wid) {
+    void qc.invalidateQueries({ queryKey: queryKeys.workspaceNotifications(wid) });
+  } else {
+    void qc.invalidateQueries({ queryKey: ["workspace-notifications"] });
+  }
+}
+
 export function invalidatePaymentQueries(
   opts: InvalidateOpts & { propertyId?: string; tenantId?: string; invoiceId?: string }
 ) {
   invalidateInvoiceQueries(opts);
+  invalidateWorkspaceNotifications(opts);
 }
 
 export function invalidateTenantQueries(opts: InvalidateOpts & { tenantId: string }) {

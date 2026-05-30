@@ -153,6 +153,8 @@ export const queryKeys = {
       params.includeExpected !== false
     ] as const,
   tenantStatement: (tenantId: string, periodKey: string) => ["tenant-statement", tenantId, periodKey] as const,
+  workspaceSearch: (workspaceId: string, q: string) => ["workspace-search", workspaceId, q.trim().toLowerCase()] as const,
+  workspaceNotifications: (workspaceId: string) => ["workspace-notifications", workspaceId] as const,
   dashboardSummary: (workspaceId: string, params: DashboardSummaryParams) =>
     ["dashboard-summary", workspaceId, normalizeDashboardParams(params)] as const,
   reports: (workspaceId: string) => ["reports", workspaceId] as const,

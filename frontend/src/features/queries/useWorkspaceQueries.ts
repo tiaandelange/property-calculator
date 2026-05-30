@@ -8,6 +8,7 @@ import {
   listPropertyInvoices
 } from "../../api/ownedProperties";
 import { fetchMe } from "../../api/user";
+import { getWorkspaceNotifications } from "../../services/workspaceNotificationsSupabase";
 import {
   GC_TIME_MS,
   STALE_TIME_METADATA_MS,
@@ -122,6 +123,19 @@ export function useProfileQuery(opts?: { enabled?: boolean }) {
     queryFn: fetchMe,
     enabled: Boolean(workspaceId) && (opts?.enabled !== false),
     staleTime: STALE_TIME_METADATA_MS,
+    gcTime: GC_TIME_MS
+  });
+}
+
+export function useWorkspaceNotificationsQuery(opts?: { enabled?: boolean }) {
+  const workspaceId = useWorkspaceId();
+  return useQuery({
+    queryKey: workspaceId ? queryKeys.workspaceNotifications(workspaceId) : ["workspace-notifications", "anonymous"],
+    queryFn: getWorkspaceNotifications,
+    enabled: Boolean(workspaceId) && (opts?.enabled !== false),
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+    refetchOnWindowFocus: true,
     gcTime: GC_TIME_MS
   });
 }

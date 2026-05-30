@@ -19,7 +19,7 @@ import {
 import { ApplicantFormTemplateSettingsCard } from "../applicants/ApplicantFormTemplateSettingsCard";
 import type { AccentColor, ThemePreference, UserSettings } from "./settingsTypes";
 import { previewWorkspaceAppearance } from "../../theme/workspaceAppearance";
-import { invalidateSettingsQueries, queryKeys, useProfileQuery, useSettingsQuery, useWorkspaceId } from "../queries";
+import { invalidateSettingsQueries, invalidateWorkspaceNotifications, queryKeys, useProfileQuery, useSettingsQuery, useWorkspaceId } from "../queries";
 
 function initials(name: string | null | undefined, email: string): string {
   const n = (name ?? "").trim();
@@ -364,6 +364,13 @@ export function SettingsDashboard() {
       if (workspaceId) {
         queryClient.setQueryData(queryKeys.settings(workspaceId), updated);
         invalidateSettingsQueries({ workspaceId });
+        if (
+          patch.overdueAlertsEnabled !== undefined ||
+          patch.paymentReminderDaysBeforeDue !== undefined ||
+          patch.leaseExpiringAlertsEnabled !== undefined
+        ) {
+          invalidateWorkspaceNotifications({ workspaceId });
+        }
       }
       previewWorkspaceAppearance({
         themePreference: updated.themePreference,
@@ -379,8 +386,6 @@ export function SettingsDashboard() {
       setSaving(false);
     }
   };
-
-  const emailRemindersOn = (draft?.paymentReminderDaysBeforeDue ?? 0) > 0;
 
   if (loading) {
     return (
@@ -690,15 +695,30 @@ export function SettingsDashboard() {
           </div>
         </SettingsCard>
 
-        <SettingsCard icon="bell" title="Notifications" description="Email and alert preferences.">
+        <SettingsCard icon="bell" title="Dashboard notifications" description="In-app alerts in the header bell. Email delivery is planned separately.">
           <div className="pg-settings-row">
             <div>
-              <div className="pg-settings-row-label">Email reminders</div>
-              <div className="pg-settings-row-desc">Payment reminders before due date</div>
+              <div className="pg-settings-row-label">Overdue rent</div>
+              <div className="pg-settings-row-desc">When unpaid rent is past due</div>
             </div>
             <SettingsToggle
-              label="Email reminders"
-              checked={emailRemindersOn}
+              label="Overdue rent"
+              checked={draft.overdueAlertsEnabled}
+              onChange={(v) => patchDraft({ overdueAlertsEnabled: v })}
+            />
+          </div>
+          <div className="pg-settings-row">
+            <div>
+              <div className="pg-settings-row-label">Rent due soon</div>
+              <div className="pg-settings-row-desc">
+                {draft.paymentReminderDaysBeforeDue > 0
+                  ? `Within ${draft.paymentReminderDaysBeforeDue} day(s) of due date`
+                  : "Off — enable payment reminders below"}
+              </div>
+            </div>
+            <SettingsToggle
+              label="Rent due soon"
+              checked={draft.paymentReminderDaysBeforeDue > 0}
               onChange={(v) =>
                 patchDraft({ paymentReminderDaysBeforeDue: v ? (draft.paymentReminderDaysBeforeDue || 3) : 0 })
               }
@@ -706,17 +726,19 @@ export function SettingsDashboard() {
           </div>
           <div className="pg-settings-row">
             <div>
-              <div className="pg-settings-row-label">Overdue alerts</div>
+              <div className="pg-settings-row-label">Lease expiring</div>
+              <div className="pg-settings-row-desc">Fixed-term leases ending within 60 days</div>
             </div>
             <SettingsToggle
-              label="Overdue alerts"
-              checked={draft.overdueAlertsEnabled}
-              onChange={(v) => patchDraft({ overdueAlertsEnabled: v })}
+              label="Lease expiring"
+              checked={draft.leaseExpiringAlertsEnabled}
+              onChange={(v) => patchDraft({ leaseExpiringAlertsEnabled: v })}
             />
           </div>
           <div className="pg-settings-row">
             <div>
               <div className="pg-settings-row-label">Monthly summaries</div>
+              <div className="pg-settings-row-desc">Email portfolio summary (not shown in the bell)</div>
             </div>
             <SettingsToggle
               label="Monthly summaries"
@@ -724,17 +746,6 @@ export function SettingsDashboard() {
               onChange={(v) => patchDraft({ monthlySummariesEnabled: v })}
             />
           </div>
-          <div className="pg-settings-row">
-            <div>
-              <div className="pg-settings-row-label">New lease alerts</div>
-            </div>
-            <SettingsToggle
-              label="New lease alerts"
-              checked={draft.newLeaseAlertsEnabled}
-              onChange={(v) => patchDraft({ newLeaseAlertsEnabled: v })}
-            />
-          </div>
-          <p className="pg-settings-field-hint">Email delivery is not yet configured; preferences are saved for when it is.</p>
         </SettingsCard>
 
         <SettingsCard icon="shield" title="Security" description="Protect your account.">

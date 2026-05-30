@@ -1,9 +1,11 @@
-import { Bell, ChevronDown, Search, UserCircle } from "lucide-react";
+import { ChevronDown, UserCircle } from "lucide-react";
 import { ProplyticLogo } from "../brand/ProplyticLogo";
-import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { usePropertyOptionsQuery, usePropertyQuery } from "../../features/queries";
+import { WorkspaceGlobalSearch } from "../../features/workspace/WorkspaceGlobalSearch";
+import { WorkspaceNotificationsPanel } from "../../features/workspace/WorkspaceNotificationsPanel";
 import { workspacePageTitle } from "../../nav/workspaceNavConfig";
 
 function titleizeEnum(v: string): string {
@@ -32,7 +34,6 @@ export function WorkspaceShellHeader({ mobile = false }: { mobile?: boolean }) {
   const { pathname, search } = useLocation();
   const navigate = useNavigate();
   const { session, profile } = useAuth();
-  const [searchQuery, setSearchQuery] = useState("");
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement | null>(null);
   const [propertyMenuOpen, setPropertyMenuOpen] = useState(false);
@@ -103,16 +104,6 @@ export function WorkspaceShellHeader({ mobile = false }: { mobile?: boolean }) {
     [session?.user?.email, profile?.full_name]
   );
 
-  const onSearchSubmit = (e: FormEvent) => {
-    e.preventDefault();
-    const q = searchQuery.trim();
-    if (!q) {
-      navigate("/owned-properties/my-properties");
-      return;
-    }
-    navigate(`/owned-properties/my-properties?q=${encodeURIComponent(q)}`);
-  };
-
   if (mobile) {
     return (
       <header className="pg-dashboard-mobile-topbar">
@@ -127,9 +118,7 @@ export function WorkspaceShellHeader({ mobile = false }: { mobile?: boolean }) {
           {showPropertySwitcher && propertyCtx ? "Properties" : title}
         </h1>
         <div className="pg-dashboard-mobile-topbar-actions">
-          <button type="button" className="pg-dashboard-shell-icon-btn" aria-label="Notifications">
-            <Bell size={20} aria-hidden />
-          </button>
+          <WorkspaceNotificationsPanel />
           <Link to="/settings" className="pg-dashboard-shell-avatar" aria-label="Account settings">
             <UserCircle size={26} aria-hidden />
           </Link>
@@ -188,21 +177,9 @@ export function WorkspaceShellHeader({ mobile = false }: { mobile?: boolean }) {
           </div>
         ) : null}
       </div>
-      <form className="pg-dashboard-shell-search" onSubmit={onSearchSubmit} role="search">
-        <Search size={18} className="pg-dashboard-shell-search-icon" aria-hidden />
-        <input
-          type="search"
-          className="pg-dashboard-shell-search-input"
-          placeholder="Search properties, tenants, leases…"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          aria-label="Search workspace"
-        />
-      </form>
+      <WorkspaceGlobalSearch />
       <div className="pg-dashboard-shell-header-actions">
-        <button type="button" className="pg-dashboard-shell-icon-btn" aria-label="Notifications">
-          <Bell size={20} aria-hidden />
-        </button>
+        <WorkspaceNotificationsPanel />
         <div className="pg-dashboard-shell-user-wrap" ref={userMenuRef}>
           <button
             type="button"
