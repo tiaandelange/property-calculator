@@ -57,9 +57,7 @@ export function ApplicantDesktopTable({
             <ProplyticTableHeadCell numeric>Monthly income</ProplyticTableHeadCell>
             <ProplyticTableHeadCell compact>Fit profile</ProplyticTableHeadCell>
             <ProplyticTableHeadCell>Property</ProplyticTableHeadCell>
-            <ProplyticTableHeadCell actions>
-              <span className="pg-ptable-sr-only">Actions</span>
-            </ProplyticTableHeadCell>
+            <ProplyticTableHeadCell actions />
           </ProplyticTableRow>
         </ProplyticTableHeader>
         <ProplyticTableBody>

@@ -463,9 +463,7 @@ export function TenantInvoicesTable({
               <ProplyticTableHeadCell>Due</ProplyticTableHeadCell>
               <ProplyticTableHeadCell>Status</ProplyticTableHeadCell>
               <ProplyticTableHeadCell numeric>Total</ProplyticTableHeadCell>
-              <ProplyticTableHeadCell actions>
-                <span className="pg-ptable-sr-only">Actions</span>
-              </ProplyticTableHeadCell>
+              <ProplyticTableHeadCell actions />
             </ProplyticTableRow>
           </ProplyticTableHeader>
           <ProplyticTableBody>

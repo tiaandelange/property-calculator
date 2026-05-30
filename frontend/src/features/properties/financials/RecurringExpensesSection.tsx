@@ -106,9 +106,7 @@ export function RecurringExpensesSection({
                 <ProplyticTableHeadCell numeric>Amount</ProplyticTableHeadCell>
                 <ProplyticTableHeadCell compact>Next due</ProplyticTableHeadCell>
                 <ProplyticTableHeadCell compact>Status</ProplyticTableHeadCell>
-                <ProplyticTableHeadCell actions>
-                  <span className="pg-ptable-sr-only">Actions</span>
-                </ProplyticTableHeadCell>
+                <ProplyticTableHeadCell actions />
               </ProplyticTableRow>
             </ProplyticTableHeader>
             <ProplyticTableBody>

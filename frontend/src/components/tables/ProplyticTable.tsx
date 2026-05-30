@@ -156,7 +156,7 @@ export function ProplyticTableHeadCell({
       className={cn(cellAlignClass(align, numeric, actions, compact, flex), className)}
       {...props}
     >
-      {children}
+      {actions ? (children ?? "Actions") : children}
     </th>
   );
 }

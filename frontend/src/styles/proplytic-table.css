@@ -135,16 +135,13 @@
 .pg-tstmt-table td,
 .pg-fins-statement-table th,
 .pg-fins-statement-table td {
-  padding: 11px 14px;
+  padding: 11px 10px;
   text-align: left;
   border-bottom: 1px solid var(--border-soft);
   border-left: none;
   border-right: none;
   vertical-align: middle;
   background: var(--surface);
-  overflow-wrap: anywhere;
-  word-wrap: break-word;
-  hyphens: auto;
 }
 
 @media (min-width: 768px) {
@@ -162,8 +159,7 @@
   .pg-ptable-wrap:not(.pg-ptable-wrap--scroll-x) .pg-fins-statement-table td + td,
   .pg-ptable-wrap:not(.pg-ptable-wrap--scroll-x) .pg-tstmt-table th + th,
   .pg-ptable-wrap:not(.pg-ptable-wrap--scroll-x) .pg-tstmt-table td + td {
-    border-left: 1px solid color-mix(in srgb, var(--border-soft) 50%, transparent);
-    padding-left: 20px;
+    padding-left: 12px;
   }
 
   .pg-ptable-wrap:not(.pg-ptable-wrap--scroll-x) .pg-ptable th,
@@ -253,12 +249,18 @@
   width: auto;
   min-width: 0;
   max-width: 22rem;
+  overflow-wrap: anywhere;
+  word-wrap: break-word;
+  hyphens: auto;
 }
 
 .pg-ptable__flex-wide {
   width: auto;
   min-width: 0;
   max-width: 28rem;
+  overflow-wrap: anywhere;
+  word-wrap: break-word;
+  hyphens: auto;
 }
 
 .pg-ptable__compact {
@@ -313,9 +315,23 @@
   white-space: nowrap;
   overflow-wrap: normal;
   word-break: keep-all;
+  word-wrap: normal;
   hyphens: none;
   width: 1%;
-  max-width: 9.5rem;
+}
+
+.pg-ptable td.pg-ptable__num,
+.pg-ptable td:has(> .pg-ptable-amount),
+.pg-fins-statement-table td.pg-ptable__num,
+.pg-invoices-table td.pg-ptable__num,
+.pg-tenants-table td.pg-ptable__num,
+.pg-leases-table td.pg-ptable__num,
+.pg-pfin-table td.pg-pfin-table__amount {
+  white-space: nowrap;
+  overflow-wrap: normal;
+  word-break: keep-all;
+  word-wrap: normal;
+  hyphens: none;
 }
 
 .pg-ptable__actions,
@@ -329,9 +345,10 @@
   text-align: right;
   white-space: nowrap;
   width: 1%;
-  min-width: 120px;
+  min-width: 84px;
   max-width: none;
-  padding-right: 18px;
+  padding-left: 8px;
+  padding-right: 10px;
   overflow: visible;
   hyphens: none;
   vertical-align: middle;
@@ -346,7 +363,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 6px;
+  gap: 4px;
 }
 
 .pg-ptable-row-actions-menu {
@@ -540,9 +557,14 @@ html[data-density="compact"] .pg-tstmt-table {
 
 /* Amount tones (financial) */
 .pg-ptable-amount {
+  display: inline-block;
   font-weight: 500;
   font-variant-numeric: tabular-nums;
   font-size: var(--type-table-cell);
+  white-space: nowrap;
+  overflow-wrap: normal;
+  word-break: keep-all;
+  word-wrap: normal;
 }
 
 .pg-ptable-amount--debit {

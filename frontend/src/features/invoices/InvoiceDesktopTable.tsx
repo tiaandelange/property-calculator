@@ -99,9 +99,7 @@ export function InvoiceDesktopTable({
             <ProplyticTableHeadCell>Tenant</ProplyticTableHeadCell>
             <ProplyticTableHeadCell compact>Due Date</ProplyticTableHeadCell>
             <ProplyticTableHeadCell numeric>Amount Due</ProplyticTableHeadCell>
-            <ProplyticTableHeadCell actions>
-              <span className="pg-ptable-sr-only">Actions</span>
-            </ProplyticTableHeadCell>
+            <ProplyticTableHeadCell actions />
           </ProplyticTableRow>
         </ProplyticTableHeader>
         <ProplyticTableBody>

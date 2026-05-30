@@ -60,9 +60,7 @@ export function FinancialStatementTable({
             <ProplyticTableHeadCell numeric>Credit</ProplyticTableHeadCell>
             {showRunningBalance ? <ProplyticTableHeadCell numeric>Balance</ProplyticTableHeadCell> : null}
             <ProplyticTableHeadCell compact>Source</ProplyticTableHeadCell>
-            <ProplyticTableHeadCell actions>
-              <span className="pg-ptable-sr-only">Actions</span>
-            </ProplyticTableHeadCell>
+            <ProplyticTableHeadCell actions />
           </ProplyticTableRow>
         </ProplyticTableHeader>
         <ProplyticTableBody>

@@ -51,9 +51,7 @@ export function TenantDesktopTable({
             <ProplyticTableHeadCell compact>Lease Term</ProplyticTableHeadCell>
             <ProplyticTableHeadCell compact>Payment Status</ProplyticTableHeadCell>
             <ProplyticTableHeadCell compact>Lease Status</ProplyticTableHeadCell>
-            <ProplyticTableHeadCell actions>
-              <span className="pg-ptable-sr-only">Actions</span>
-            </ProplyticTableHeadCell>
+            <ProplyticTableHeadCell actions />
           </ProplyticTableRow>
         </ProplyticTableHeader>
         <ProplyticTableBody>
