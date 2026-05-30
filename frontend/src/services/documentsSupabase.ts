@@ -47,12 +47,17 @@ export function sanitizeFilenameForStorage(name: string, maxLen = 180): string {
   return s.length > maxLen ? s.slice(0, maxLen) : s;
 }
 
+const ALLOWED_EXT = new Set([".pdf", ".jpg", ".jpeg", ".png", ".doc", ".docx"]);
+
 export function assertAllowedPropertyDocumentFile(file: File): void {
   if (!file || !(file instanceof File)) throw new Error("No file selected.");
   if (file.size <= 0) throw new Error("File is empty.");
   if (file.size > MAX_BYTES) throw new Error("File too large (max 10 MB).");
   const mime = (file.type || "").toLowerCase();
-  if (!ALLOWED_MIME.has(mime)) throw new Error("Unsupported file type.");
+  const ext = file.name.includes(".") ? file.name.slice(file.name.lastIndexOf(".")).toLowerCase() : "";
+  if (!ALLOWED_MIME.has(mime) && !ALLOWED_EXT.has(ext)) {
+    throw new Error("Unsupported file type. Use PDF, JPG, PNG, or Word.");
+  }
   if (file.name && file.name.length > 255) throw new Error("Filename too long.");
 }
 

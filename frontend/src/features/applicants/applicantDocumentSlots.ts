@@ -34,6 +34,10 @@ export function applicantDocumentSlotsForGroup(group: ApplicantDocumentSlotDef["
   return APPLICANT_DOCUMENT_SLOTS.filter((s) => s.group === group);
 }
 
+export function applicantDocumentSlotIdsForGroup(group: ApplicantDocumentSlotDef["group"]): ApplicantDocumentSlotId[] {
+  return applicantDocumentSlotsForGroup(group).map((s) => s.slot);
+}
+
 export function applicantDocumentsCompleteCount(uploadedSlots: Set<string>): number {
   return APPLICANT_DOCUMENT_SLOTS.filter((s) => uploadedSlots.has(s.slot)).length;
 }

@@ -47,11 +47,24 @@ function buildTenantDocumentStorageKey(userId: string, tenantId: string, documen
   return `${userId}/tenants/${tenantId}/${documentId}-${safe}`;
 }
 
+function parseDocumentList(data: unknown): TenantDocumentRecord[] {
+  if (data == null) return [];
+  if (Array.isArray(data)) return data.map((r) => mapRow(r as Record<string, unknown>));
+  if (typeof data === "string") {
+    try {
+      return parseDocumentList(JSON.parse(data) as unknown);
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
+
 export async function listTenantDocumentsOwner(tenantId: string): Promise<TenantDocumentRecord[]> {
   const sb = getSupabase();
   const { data, error } = await sb.rpc("list_tenant_documents_owner", { p_tenant_id: tenantId });
   if (error) throw new Error(error.message);
-  return ((data as unknown[]) ?? []).map((r) => mapRow(r as Record<string, unknown>));
+  return parseDocumentList(data);
 }
 
 export async function listApplicantDocumentsPublic(token: string, tenantId: string): Promise<TenantDocumentRecord[]> {
@@ -61,7 +74,7 @@ export async function listApplicantDocumentsPublic(token: string, tenantId: stri
     p_tenant_id: tenantId
   });
   if (error) throw new Error(error.message);
-  return ((data as unknown[]) ?? []).map((r) => mapRow(r as Record<string, unknown>));
+  return parseDocumentList(data);
 }
 
 export async function uploadApplicantDocumentPublic(

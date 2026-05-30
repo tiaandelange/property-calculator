@@ -211,6 +211,14 @@
   margin-top: 18px;
 }
 
+.pg-applicant-documents__group-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
 .pg-applicant-documents__group-title {
   margin: 0 0 4px;
   font-size: var(--type-base);
@@ -290,12 +298,39 @@
   justify-content: flex-end;
 }
 
+.pg-applicant-doc-slot--readonly {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+}
+
+.pg-applicant-doc-upload-btn {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.pg-applicant-doc-upload-btn__label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  margin: 0;
+}
+
+.pg-applicant-doc-upload-btn__label.is-disabled {
+  opacity: 0.55;
+  pointer-events: none;
+  cursor: not-allowed;
+}
+
 .pg-applicant-doc-slot__input {
   position: absolute;
   width: 1px;
   height: 1px;
-  opacity: 0;
-  pointer-events: none;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 @media (max-width: 640px) {

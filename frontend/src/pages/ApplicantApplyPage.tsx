@@ -167,12 +167,9 @@ export function ApplicantApplyPage() {
                     </div>
                   ) : null}
                 </div>
-                <ApplicantDocumentUploadSection
-                  mode="public"
-                  tenantId={null}
-                  inviteToken={token}
-                  disabled
-                />
+                <p className="pg-muted pg-applicant-documents__hint" style={{ marginTop: 16 }}>
+                  After you submit, you can upload your ID, payslips, and bank statements on the next screen.
+                </p>
                 <div style={{ marginTop: 20 }}>
                   <Button type="submit" loading={submitting}>
                     Submit application
