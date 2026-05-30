@@ -665,7 +665,7 @@
   position: fixed;
   left: 0;
   right: 0;
-  bottom: calc(56px + env(safe-area-inset-bottom, 0px));
+  bottom: calc(var(--dash-bottom-nav-h, 72px) + env(safe-area-inset-bottom, 0px));
   z-index: 30;
   padding: 10px 16px;
   gap: 10px;

@@ -1079,6 +1079,17 @@ html[data-density="compact"] .pg-tstmt-table {
     display: none;
   }
 
+  .pg-ptable-mobile-card__head-end {
+    flex-shrink: 0;
+    max-width: 42%;
+  }
+
+  .pg-ptable-mobile-card__field dd {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    text-align: right;
+  }
+
   .pg-ptable-wrap--responsive,
   .pg-pfin-table-wrap.pg-ptable-wrap--responsive {
     display: none;

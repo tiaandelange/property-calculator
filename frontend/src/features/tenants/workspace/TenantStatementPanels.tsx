@@ -7,10 +7,12 @@ import {
   ReceiptText,
   Wallet
 } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { IconButton } from "../../../components/icons";
 import {
   ProplyticAmountCell,
+  ProplyticMobileRowCard,
+  ProplyticMobileRowList,
   ProplyticStatusBadge,
   ProplyticTable,
   ProplyticTableActions,
@@ -25,6 +27,7 @@ import {
 import { IconContainer } from "../../../components/ui/IconContainer";
 import { AppSectionTabs } from "../../../components/ui/AppSectionTabs";
 import { Button } from "../../../components/ui/Button";
+import { useMediaQuery } from "../../../hooks/useMediaQuery";
 import { invoiceDetailPath } from "../../invoices/invoiceRoutes";
 import {
   invoiceIdFromStatementRow,
@@ -444,6 +447,8 @@ export function TenantInvoicesTable({
   /** @deprecated Invoice edits open on /invoices/:id — prop ignored. */
   onOpenInvoice?: (id: string) => void;
 }) {
+  const isMobile = useMediaQuery("(max-width: 767px)");
+
   if (loading) return <ProplyticTableSkeleton rows={4} />;
   if (!invoices.length) {
     return (
@@ -452,6 +457,35 @@ export function TenantInvoicesTable({
       </div>
     );
   }
+
+  if (isMobile) {
+    return (
+      <div className="pg-tstmt-card">
+        <ProplyticMobileRowList>
+          {invoices.map((inv) => {
+            const viewHref = invoiceDetailPath(inv.id);
+            return (
+              <li key={inv.id}>
+                <ProplyticMobileRowCard
+                  title={inv.invoiceNumber}
+                  subtitle={formatDateShort(inv.invoiceDate)}
+                  badge={<ProplyticStatusBadge status={inv.status} />}
+                  fields={[
+                    { label: "Due date", value: formatDateShort(inv.dueDate) },
+                    { label: "Total", value: fmtZar(inv.total) }
+                  ]}
+                  actions={
+                    <IconButton icon="open" aria-label="View invoice" href={viewHref} variant="outline" />
+                  }
+                />
+              </li>
+            );
+          })}
+        </ProplyticMobileRowList>
+      </div>
+    );
+  }
+
   return (
     <div className="pg-tstmt-card">
       <ProplyticTableWrap responsive>
@@ -499,6 +533,8 @@ export function TenantPaymentsTable({
   paidInvoices: TenantInvoiceListItem[];
   loading?: boolean;
 }) {
+  const isMobile = useMediaQuery("(max-width: 767px)");
+
   if (loading) return <ProplyticTableSkeleton rows={4} />;
   if (!paidInvoices.length) {
     return (
@@ -507,6 +543,31 @@ export function TenantPaymentsTable({
       </div>
     );
   }
+
+  if (isMobile) {
+    return (
+      <div className="pg-tstmt-card">
+        <ProplyticMobileRowList>
+          {paidInvoices.map((inv) => (
+            <li key={inv.id}>
+              <ProplyticMobileRowCard
+                title={inv.invoiceNumber}
+                subtitle={formatDateShort(inv.paidAt ?? inv.invoiceDate)}
+                badge={
+                  <ProplyticAmountCell tone="credit-paid">{fmtZar(inv.total)}</ProplyticAmountCell>
+                }
+                fields={[
+                  { label: "Invoice date", value: formatDateShort(inv.invoiceDate) },
+                  { label: "Status", value: <ProplyticStatusBadge status={inv.status} /> }
+                ]}
+              />
+            </li>
+          ))}
+        </ProplyticMobileRowList>
+      </div>
+    );
+  }
+
   return (
     <div className="pg-tstmt-card">
       <ProplyticTableWrap responsive>
@@ -547,6 +608,7 @@ export function TenantLedgerPanel({
   propertyId?: string | null;
 }) {
   const navigate = useNavigate();
+  const isMobile = useMediaQuery("(max-width: 767px)");
 
   if (loading) return <div className="pg-tstmt-card pg-tstmt-skeleton" />;
   if (!transactions.length) {
@@ -557,6 +619,61 @@ export function TenantLedgerPanel({
       </div>
     );
   }
+
+  if (isMobile) {
+    return (
+      <div className="pg-tstmt-card">
+        <h2>Ledger</h2>
+        <ProplyticMobileRowList className="pg-tstmt-ledger-mobile">
+          {transactions.map((row) => {
+            const raw = row.raw ?? {};
+            const showInvoiceView = isInvoiceStatementRow(raw) && !!invoiceIdFromStatementRow(raw);
+            const invoiceCreditClass = isInvoiceStatementRow(raw)
+              ? invoiceStatementCreditClass(row.status)
+              : "";
+
+            return (
+              <li key={row.id}>
+                <ProplyticMobileRowCard
+                  title={row.description || "—"}
+                  subtitle={formatDateShort(row.date)}
+                  badge={<TypeBadge type={row.type} />}
+                  fields={[
+                    {
+                      label: "Amount",
+                      value: (
+                        <span
+                          className={invoiceCreditClass}
+                          style={
+                            invoiceCreditClass ? undefined : { color: amountColor(row.type, row.amount) }
+                          }
+                        >
+                          {row.amount < 0 ? "-" : ""}
+                          {fmtZar(Math.abs(row.amount))}
+                        </span>
+                      )
+                    },
+                    { label: "Balance", value: fmtZar(row.balance) }
+                  ]}
+                  actions={
+                    showInvoiceView ? (
+                      <IconButton
+                        icon="open"
+                        aria-label="View invoice"
+                        variant="outline"
+                        onClick={() => navigate(invoiceDetailPath(invoiceIdFromStatementRow(raw)))}
+                      />
+                    ) : undefined
+                  }
+                />
+              </li>
+            );
+          })}
+        </ProplyticMobileRowList>
+      </div>
+    );
+  }
+
   return (
     <div className="pg-tstmt-card">
       <h2>Ledger</h2>

@@ -22,6 +22,7 @@
 @import "./tenant-statement.css";
 @import "./tenant-form.css";
 @import "./settings-dashboard.css";
+@import "./mobile-layout.css";
 
 /* Structural tokens (spacing + typography). Palette: proplytic.tokens.css */
 :root {

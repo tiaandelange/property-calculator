@@ -1,5 +1,7 @@
 import {
   ProplyticAmountCell,
+  ProplyticMobileRowCard,
+  ProplyticMobileRowList,
   ProplyticTable,
   ProplyticTableBody,
   ProplyticTableCell,
@@ -10,6 +12,7 @@ import {
   ProplyticTableWrap,
   ProplyticTableRowActionsMenu
 } from "../../components/tables";
+import { useMediaQuery } from "../../hooks/useMediaQuery";
 import type { TenantListItem } from "../tenants/tenantDirectoryTypes";
 import { fmtZar } from "../tenants/tenantDirectoryUtils";
 
@@ -39,12 +42,58 @@ export function ApplicantDesktopTable({
   onView: (item: TenantListItem) => void;
   onDelete: (item: TenantListItem) => void;
 }) {
+  const isMobile = useMediaQuery("(max-width: 767px)");
+
   if (loading) {
     return <ProplyticTableSkeleton rows={6} />;
   }
 
   if (!items.length) {
     return null;
+  }
+
+  if (isMobile) {
+    return (
+      <ProplyticMobileRowList>
+        {items.map((item) => (
+          <li key={item.id}>
+            <ProplyticMobileRowCard
+              title={item.fullName}
+              subtitle={item.email?.trim() || "No email"}
+              badge={item.fitScore != null ? <ApplicantFitBadge score={item.fitScore} /> : undefined}
+              fields={[
+                { label: "Phone", value: item.phone?.trim() || "—" },
+                {
+                  label: "Monthly income",
+                  value: item.monthlyIncome != null ? fmtZar(item.monthlyIncome) : "—"
+                },
+                { label: "Property", value: item.propertyName || "—" }
+              ]}
+              actions={
+                <ProplyticTableRowActionsMenu
+                  actions={[
+                    {
+                      key: "view",
+                      label: "View applicant",
+                      icon: "view",
+                      onClick: () => onView(item),
+                      primary: true
+                    },
+                    {
+                      key: "delete",
+                      label: "Delete applicant",
+                      icon: "delete",
+                      onClick: () => onDelete(item),
+                      destructive: true
+                    }
+                  ]}
+                />
+              }
+            />
+          </li>
+        ))}
+      </ProplyticMobileRowList>
+    );
   }
 
   return (

@@ -1,0 +1,303 @@
+/**
+ * Proplytic dashboard — mobile-only layout polish (max-width: 767px).
+ * Desktop (768px+) is intentionally untouched.
+ */
+
+@media (max-width: 767px) {
+  /* —— Page shell —— */
+  .pg-dashboard-shell {
+    overflow-x: clip;
+  }
+
+  .pg-dashboard-shell-content,
+  .pg-dashboard-shell .pg-container {
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+
+  .pg-dashboard-shell .pg-app-page {
+    --app-page-pad-x: 16px;
+    --app-page-section-gap: 16px;
+    --app-page-grid-gap: 16px;
+    /* Shell already pads for bottom nav; avoid double stacking with page inner */
+    --app-page-bottom-pad: max(16px, env(safe-area-inset-bottom, 0px));
+  }
+
+  .pg-dashboard-shell .pg-app-page__inner {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .pg-workspace-card-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    min-width: 0;
+  }
+
+  /* —— Cards —— */
+  .pg-dashboard-shell .pg-workspace-card,
+  .pg-dashboard-shell .pg-card.pg-workspace-card,
+  .pg-dashboard-shell .pg-workspace-inset,
+  .pg-dashboard-shell .pg-tenants-mobile-card,
+  .pg-dashboard-shell .pg-leases-mobile-card,
+  .pg-dashboard-shell .pg-ptable-mobile-card {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    min-width: 0;
+    overflow: visible;
+    border-radius: 16px;
+    padding: 14px 16px;
+  }
+
+  .pg-dashboard-shell .pg-workspace-card > *,
+  .pg-dashboard-shell .pg-workspace-inset > * {
+    min-width: 0;
+  }
+
+  /* —— Text containment —— */
+  .pg-dashboard-shell .pg-workspace-card,
+  .pg-dashboard-shell .pg-ptable-mobile-card,
+  .pg-dashboard-shell .pg-tenants-mobile-card,
+  .pg-dashboard-shell .pg-leases-mobile-card {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  .pg-dashboard-shell .pg-ptable-mobile-card__title,
+  .pg-dashboard-shell .pg-tenants-name,
+  .pg-dashboard-shell .pg-leases-name,
+  .pg-dashboard-shell .pg-invoices-link,
+  .pg-dashboard-shell h1,
+  .pg-dashboard-shell h2,
+  .pg-dashboard-shell h3 {
+    overflow-wrap: anywhere;
+  }
+
+  .pg-ptable-mobile-card__title {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+  }
+
+  .pg-ptable-mobile-card__subtitle {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+  }
+
+  .pg-ptable-mobile-card__field dd,
+  .pg-ptable-amount,
+  .pg-tenants-mobile-rent strong,
+  .pg-leases-mobile-rent strong {
+    white-space: nowrap;
+  }
+
+  /* —— Flex/grid children need min-width: 0 —— */
+  .pg-dashboard-shell [class*="toolbar"],
+  .pg-dashboard-shell [class*="__head"],
+  .pg-dashboard-shell [class*="__top"],
+  .pg-dashboard-shell [class*="__foot"],
+  .pg-dashboard-shell [class*="__actions"],
+  .pg-dashboard-shell .pg-app-page-header,
+  .pg-dashboard-shell .pg-tenants-section-head,
+  .pg-dashboard-shell .pg-leases-toolbar,
+  .pg-dashboard-shell .pg-invoices-toolbar,
+  .pg-dashboard-shell .pg-fins-toolbar {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .pg-tenants-section-head,
+  .pg-leases-toolbar,
+  .pg-invoices-toolbar,
+  .pg-fins-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .pg-tenants-section-head__actions,
+  .pg-invoices-toolbar-actions,
+  .pg-fins-toolbar-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  /* Property workspace: tabs + actions */
+  .pg-workspace-panel-head,
+  .pg-workspace-detail-head {
+    flex-direction: column;
+    align-items: stretch !important;
+    gap: 12px !important;
+  }
+
+  .pg-workspace-panel-head .pg-app-section-tabs,
+  .pg-workspace-detail-head .pg-app-section-tabs {
+    width: 100%;
+    flex-shrink: 0;
+  }
+
+  .pg-workspace-panel-head-actions,
+  .pg-workspace-detail-head-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .pg-workspace-panel-head-actions .pg-btn,
+  .pg-workspace-detail-head-actions .pg-btn {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  /* Section tabs: text-only horizontal scroll */
+  .pg-app-section-tabs__tab .pg-app-section-tabs__icon,
+  .pg-app-section-tabs [class*="icon"] {
+    display: none !important;
+  }
+
+  /* —— Mobile row cards —— */
+  .pg-ptable-mobile-list {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    min-width: 0;
+  }
+
+  .pg-ptable-mobile-card__head {
+    min-width: 0;
+  }
+
+  .pg-ptable-mobile-card__head > div:first-child {
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+
+  .pg-ptable-mobile-card__actions {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    overflow: visible;
+    min-height: 44px;
+    gap: 8px;
+  }
+
+  .pg-ptable-mobile-card__actions .pg-icon-btn,
+  .pg-ptable-mobile-card__actions button {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  /* Dropdown menus: avoid card clipping */
+  .pg-ptable-row-actions-menu__panel,
+  .pg-ptable-mobile-card .pg-ptable-row-actions-menu__panel {
+    z-index: 50;
+  }
+
+  .pg-workspace-card:has(.pg-ptable-row-actions-menu__panel),
+  .pg-ptable-mobile-card:has(.pg-ptable-row-actions-menu__panel) {
+    overflow: visible;
+    z-index: 2;
+  }
+
+  /* Contained horizontal scroll (complex editable tables only) —— */
+  .pg-mobile-table-scroll {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+    border-radius: 12px;
+    box-shadow: inset -8px 0 12px -12px color-mix(in srgb, var(--text-primary) 12%, transparent);
+  }
+
+  .pg-mobile-table-scroll > table,
+  .pg-mobile-table-scroll > .pg-ptable {
+    min-width: 640px;
+  }
+
+  /* Property statement: keep editable table with contained scroll (not hidden) */
+  .pg-pfin-statement-table-wrap.pg-ptable-wrap--responsive {
+    display: block !important;
+  }
+
+  .pg-tstmt-ledger-mobile {
+    margin-top: 12px;
+  }
+
+  /* Statement / financials toolbar stacks */
+  .pg-pfin-statement-head,
+  .pg-pfin-statement-head > div:last-child {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    flex-wrap: wrap !important;
+    gap: 10px !important;
+  }
+
+  .pg-pfin-statement-head select,
+  .pg-pfin-statement-head .pg-btn {
+    width: 100%;
+    min-width: 0 !important;
+  }
+
+  /* Forms: single column */
+  .pg-dashboard-shell .pg-prop-form-grid,
+  .pg-dashboard-shell .pg-settings-grid,
+  .pg-dashboard-shell .pg-pfin-form-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .pg-dashboard-shell .pg-input,
+  .pg-dashboard-shell .pg-select,
+  .pg-dashboard-shell select.pg-input,
+  .pg-dashboard-shell textarea {
+    max-width: 100%;
+  }
+
+  /* Metric / filter grids */
+  .pg-workspace-metrics-row,
+  .pg-workspace-filter-grid,
+  .pg-pdash-metrics-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Portfolio dashboard chart cards */
+  .pg-pdash-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Modals full width */
+  .pg-app-modal-panel {
+    max-width: calc(100vw - 16px);
+  }
+
+  /* Tenant statement cards */
+  .pg-tstmt-card {
+    padding: 14px 16px;
+    overflow: visible;
+  }
+
+  /* Expense / bond mobile lists */
+  .pg-pfin-expense-list__item {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .pg-pfin-expense-list__right {
+    width: 100%;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .pg-pfin-row-actions {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+}

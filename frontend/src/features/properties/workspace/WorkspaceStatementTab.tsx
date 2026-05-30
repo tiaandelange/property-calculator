@@ -599,7 +599,7 @@ export function WorkspaceStatementTab({
               </Button>
             </div>
           </header>
-          <div className="pg-ptable-wrap pg-ptable-wrap--responsive">
+          <div className="pg-ptable-wrap pg-ptable-wrap--responsive pg-pfin-statement-table-wrap pg-mobile-table-scroll">
             <table className="pg-ptable pg-ptable--financial pg-pfin-table">
               <thead>
                 <tr>

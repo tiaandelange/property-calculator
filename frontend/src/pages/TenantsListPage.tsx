@@ -224,7 +224,16 @@ export function TenantsListPage() {
             </section>
           )}
           <div className="pg-tenants-mobile-only pg-workspace-card-stack" aria-busy={directoryQuery.isFetching}>
-            <TenantMobileList items={pageItems} loading={loading} />
+            {isApplicants ? (
+              <ApplicantDesktopTable
+                items={pageItems}
+                loading={loading}
+                onView={(item) => setViewApplicantId(item.id)}
+                onDelete={(item) => setDeleteApplicant(item)}
+              />
+            ) : (
+              <TenantMobileList items={pageItems} loading={loading} />
+            )}
             <section className="pg-workspace-card pg-tenants-pagination-panel">
               <TenantPagination page={page} totalItems={totalCount} onPageChange={setPage} />
             </section>

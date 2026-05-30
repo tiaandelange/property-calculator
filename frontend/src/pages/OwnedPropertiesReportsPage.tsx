@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 import { Helmet } from "react-helmet-async";
+import { IconButton } from "../components/icons";
 import {
+  ProplyticMobileRowCard,
+  ProplyticMobileRowList,
   ProplyticTable,
   ProplyticTableBody,
   ProplyticTableCell,
@@ -16,6 +19,7 @@ import { AppListPage } from "../components/ui/AppPage";
 import { Card } from "../components/ui/Card";
 import { Button, ButtonLink } from "../components/ui/Button";
 import { AppConfirmDialog } from "../components/ui/AppModal";
+import { useMediaQuery } from "../hooks/useMediaQuery";
 import { deleteStoredReport, getStoredReportSignedUrl, listPropertyStoredReports, type PropertyStoredReportRow } from "../services/storedReportsSupabase";
 
 export function OwnedPropertiesReportsPage() {
@@ -23,6 +27,7 @@ export function OwnedPropertiesReportsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [pendingDelete, setPendingDelete] = useState<PropertyStoredReportRow | null>(null);
+  const isMobile = useMediaQuery("(max-width: 767px)");
 
   const load = async () => {
     setLoading(true);
@@ -69,6 +74,49 @@ export function OwnedPropertiesReportsPage() {
             {loading ? (
               <ProplyticTableSkeleton rows={5} />
             ) : rows.length ? (
+              isMobile ? (
+                <ProplyticMobileRowList>
+                  {rows.map((r) => {
+                    const dt = r.createdAt ? new Date(r.createdAt) : null;
+                    const when = dt && !Number.isNaN(dt.getTime()) ? dt.toLocaleString() : r.createdAt || "—";
+                    return (
+                      <li key={r.id}>
+                        <ProplyticMobileRowCard
+                          title={r.fileName}
+                          subtitle={r.propertyName || "Property"}
+                          badge={<span className="pg-muted" style={{ fontSize: 12 }}>{when}</span>}
+                          fields={[
+                            { label: "Property ID", value: r.propertyId ?? "—" },
+                            { label: "Report ID", value: r.id },
+                            { label: "Storage", value: r.storageBucket ?? "—" }
+                          ]}
+                          actions={
+                            <>
+                              <IconButton
+                                icon="open"
+                                aria-label="View or download report"
+                                variant="outline"
+                                disabled={!r.storageBucket || !r.storageKey}
+                                onClick={async () => {
+                                  const url = await getStoredReportSignedUrl(r);
+                                  if (!url) throw new Error("This report has no stored PDF.");
+                                  window.open(url, "_blank", "noopener,noreferrer");
+                                }}
+                              />
+                              <IconButton
+                                icon="delete"
+                                aria-label="Delete report"
+                                variant="danger"
+                                onClick={() => setPendingDelete(r)}
+                              />
+                            </>
+                          }
+                        />
+                      </li>
+                    );
+                  })}
+                </ProplyticMobileRowList>
+              ) : (
               <ProplyticTableWrap responsive>
                 <ProplyticTable>
                   <ProplyticTableHeader>
@@ -128,6 +176,7 @@ export function OwnedPropertiesReportsPage() {
                   </ProplyticTableBody>
                 </ProplyticTable>
               </ProplyticTableWrap>
+              )
             ) : (
               <ProplyticTableEmptyState
                 title="No property reports generated yet"
@@ -166,4 +215,3 @@ export function OwnedPropertiesReportsPage() {
     </>
   );
 }
-
