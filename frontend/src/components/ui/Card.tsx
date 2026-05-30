@@ -64,3 +64,20 @@ export function Card({
     </AppCard>
   );
 }
+
+/** Padded filter panel for directory / list pages (search, selects, view toggles). */
+export function WorkspaceFilterCard({
+  title = "Filters",
+  children,
+  className
+}: {
+  title?: string;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <Card title={title} className={["pg-workspace-filter-card", className].filter(Boolean).join(" ")}>
+      {children}
+    </Card>
+  );
+}

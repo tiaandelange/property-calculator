@@ -149,19 +149,9 @@
   padding-top: 12px;
 }
 
-/* Filter / directory controls — padded card shell (Card or section wrapper). */
-.pg-workspace-filter-card,
+/* Filter / directory controls — section wrappers (controls bars). Card filters use header/body rules above. */
 .pg-dashboard-shell .pg-workspace-filter-card.pg-workspace-card:not(.pg-card) {
   padding: var(--workspace-card-pad);
-}
-
-.pg-dashboard-shell .pg-card.pg-workspace-card.pg-workspace-filter-card > .pg-app-card-header {
-  padding: 0;
-  margin-bottom: 12px;
-}
-
-.pg-dashboard-shell .pg-card.pg-workspace-card.pg-workspace-filter-card > .pg-app-card-content {
-  padding: 0;
 }
 
 .pg-dashboard-shell .pg-pdash-metric,

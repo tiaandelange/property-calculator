@@ -4,7 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "react-router-dom";
 import { AppListPage } from "../components/ui/AppPage";
 import { Grid } from "../components/ui/Grid";
-import { Card } from "../components/ui/Card";
+import { Card, WorkspaceFilterCard } from "../components/ui/Card";
 import { Button, ButtonLink } from "../components/ui/Button";
 import {
   isInitialQueryLoad,
@@ -132,7 +132,7 @@ export function OwnedPropertiesMyPropertiesPage() {
           retrying={directoryQuery.isFetching}
         />
       ) : null}
-      <Card title="Filters" className="pg-workspace-filter-card">
+      <WorkspaceFilterCard>
         <div className="pg-workspace-filters-grid">
           <input className="pg-input" placeholder="Search name/address..." value={q} onChange={(e) => setQ(e.target.value)} />
           <select className="pg-input" value={type} onChange={(e) => setType(e.target.value)}>
@@ -166,7 +166,7 @@ export function OwnedPropertiesMyPropertiesPage() {
             <option value="list">List view</option>
           </select>
         </div>
-      </Card>
+      </WorkspaceFilterCard>
       {!loading && !error && totalCount === 0 && !hasFilters ? (
         <Card title="Properties">
           <p className="pg-muted" style={{ marginTop: 0 }}>
