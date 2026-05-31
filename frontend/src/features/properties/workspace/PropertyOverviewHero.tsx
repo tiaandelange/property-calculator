@@ -46,15 +46,6 @@ export function PropertyOverviewHero({
 
   return (
     <section className="pg-prop-overview-hero" aria-label="Property summary">
-      <div className="pg-prop-overview-hero__toolbar">
-        <ButtonLink href={`/owned-properties/${propertyId}/edit`} variant="soft">
-          Edit Property
-        </ButtonLink>
-        <ButtonLink href={`/owned-properties/${propertyId}/report`} target="_blank" rel="noopener noreferrer" variant="soft">
-          Export Report
-        </ButtonLink>
-      </div>
-
       <div className="pg-prop-overview-hero__media">
         {showImage ? (
           <img
@@ -83,6 +74,14 @@ export function PropertyOverviewHero({
           <div>
             <h1 className="pg-prop-overview-hero__title">{name}</h1>
             {typeLabel ? <p className="pg-prop-overview-hero__type">{typeLabel}</p> : null}
+          </div>
+          <div className="pg-prop-overview-hero__actions">
+            <ButtonLink href={`/owned-properties/${propertyId}/edit`} variant="soft">
+              Edit Property
+            </ButtonLink>
+            <ButtonLink href={`/owned-properties/${propertyId}/report`} target="_blank" rel="noopener noreferrer" variant="soft">
+              Export Report
+            </ButtonLink>
           </div>
         </div>
 
