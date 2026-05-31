@@ -1,3 +1,4 @@
+import { calendarMonthPeriod } from "../lib/subscriptionPeriod";
 import { getSupabase, isSupabaseConfigured } from "../lib/supabaseClient";
 import type { UserSubscriptionRecord } from "./userSubscriptionsSupabase";
 
@@ -35,8 +36,8 @@ export function getSubscriptionUsagePeriod(
     };
   }
 
-  const start = new Date(now.getFullYear(), now.getMonth(), 1);
-  const end = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  const start = calendarMonthPeriod(now).start;
+  const end = calendarMonthPeriod(now).end;
   return { start, end, label: "This calendar month" };
 }
 

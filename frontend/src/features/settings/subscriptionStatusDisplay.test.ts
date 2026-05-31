@@ -15,20 +15,20 @@ describe("subscriptionStatusDisplay", () => {
 });
 
 describe("getSubscriptionUsagePeriod", () => {
-  it("uses trial window when trialing", () => {
+  it("uses current period for free starter plan", () => {
     const period = getSubscriptionUsagePeriod({
       id: "1",
       userId: "u",
       planCode: "starter",
-      status: "trialing",
-      trialStart: "2026-06-01T00:00:00.000Z",
-      trialEnd: "2026-06-15T00:00:00.000Z",
-      currentPeriodStart: null,
-      currentPeriodEnd: null,
+      status: "active_manual",
+      trialStart: null,
+      trialEnd: null,
+      currentPeriodStart: "2026-06-01T00:00:00.000Z",
+      currentPeriodEnd: "2026-07-01T00:00:00.000Z",
       paymentProvider: null,
       paymentSubscriptionId: null
     });
-    expect(period.label).toBe("Trial period");
+    expect(period.label).toBe("Current billing period");
     expect(period.start.toISOString()).toBe("2026-06-01T00:00:00.000Z");
   });
 });

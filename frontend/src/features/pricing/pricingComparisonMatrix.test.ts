@@ -26,10 +26,16 @@ describe("pricingComparisonMatrix QA", () => {
     expect(calculators?.values.investor).toEqual({ kind: "yes" });
   });
 
-  it("shows starter trial as included", () => {
+  it("shows starter without paid trial on comparison matrix", () => {
     const rows = buildPricingComparisonRows(FALLBACK_SUBSCRIPTION_PLANS);
     const trial = rows.find((r) => r.id === "free_trial");
-    expect(trial?.values.starter).toEqual({ kind: "yes" });
-    expect(trial?.values.investor).toEqual({ kind: "no" });
+    expect(trial?.values.starter).toEqual({ kind: "no" });
+    expect(trial?.values.portfolio).toEqual({ kind: "yes" });
+  });
+
+  it("shows starter report limit as 3 per month", () => {
+    const rows = buildPricingComparisonRows(FALLBACK_SUBSCRIPTION_PLANS);
+    const reports = rows.find((r) => r.id === "investment_reports");
+    expect(reports?.values.starter).toEqual({ kind: "text", text: "3 per month" });
   });
 });

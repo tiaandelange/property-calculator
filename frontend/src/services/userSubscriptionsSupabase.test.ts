@@ -3,12 +3,14 @@ import { FALLBACK_SUBSCRIPTION_PLANS } from "./subscriptionPlansSupabase";
 import { buildInitialUserSubscriptionFields } from "./userSubscriptionsSupabase";
 
 describe("buildInitialUserSubscriptionFields", () => {
-  it("uses trialing with trial dates for starter", () => {
+  it("uses active_manual with monthly period for free starter", () => {
     const starter = FALLBACK_SUBSCRIPTION_PLANS.find((p) => p.code === "starter")!;
     const fields = buildInitialUserSubscriptionFields(starter);
-    expect(fields.status).toBe("trialing");
-    expect(fields.trial_start).toBeTruthy();
-    expect(fields.trial_end).toBeTruthy();
+    expect(fields.status).toBe("active_manual");
+    expect(fields.trial_start).toBeNull();
+    expect(fields.trial_end).toBeNull();
+    expect(fields.current_period_start).toBeTruthy();
+    expect(fields.current_period_end).toBeTruthy();
     expect(fields.plan_code).toBe("starter");
   });
 

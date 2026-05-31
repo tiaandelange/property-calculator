@@ -14,6 +14,27 @@ describe("computeSubscriptionLimits", () => {
     expect(limits.isLegacyProfile).toBe(true);
   });
 
+  it("blocks report generation at starter monthly limit", () => {
+    const limits = computeSubscriptionLimits({
+      plans: FALLBACK_SUBSCRIPTION_PLANS,
+      subscription: {
+        id: "1",
+        userId: "u",
+        planCode: "starter",
+        status: "active_manual",
+        trialStart: null,
+        trialEnd: null,
+        currentPeriodStart: null,
+        currentPeriodEnd: null,
+        paymentProvider: null,
+        paymentSubscriptionId: null
+      },
+      usage: { propertyCount: 1, investmentReportCount: 3, period: { label: "Month", start: new Date(), end: new Date() } }
+    });
+    expect(limits.canGenerateReport).toBe(false);
+    expect(limits.reportLimit).toBe(3);
+  });
+
   it("blocks new properties at starter limit", () => {
     const limits = computeSubscriptionLimits({
       plans: FALLBACK_SUBSCRIPTION_PLANS,
@@ -21,7 +42,7 @@ describe("computeSubscriptionLimits", () => {
         id: "1",
         userId: "u",
         planCode: "starter",
-        status: "trialing",
+        status: "active_manual",
         trialStart: null,
         trialEnd: null,
         currentPeriodStart: null,

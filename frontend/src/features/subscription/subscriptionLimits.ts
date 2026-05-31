@@ -119,5 +119,5 @@ export function formatReportLimitUsage(
   periodLabel: string
 ): string {
   if (limit == null) return `${current} reports (${periodLabel}) · unlimited`;
-  return `${current} / ${limit} reports (${periodLabel})`;
+  return `${current} / ${limit} reports per month (${periodLabel})`;
 }

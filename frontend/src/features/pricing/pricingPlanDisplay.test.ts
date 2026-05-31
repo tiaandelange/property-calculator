@@ -4,6 +4,7 @@ import {
   planCta,
   planFeatureBullets,
   planPriceHeadline,
+  planReportLimitLabel,
   planSecondaryCta
 } from "./pricingPlanDisplay";
 
@@ -23,21 +24,23 @@ describe("pricingPlanDisplay QA", () => {
     ]);
   });
 
-  it("shows starter free trial then R99/month", () => {
-    expect(planPriceHeadline(plan("starter"))).toBe("FREE trial for 14 days, then R99/month");
+  it("shows starter as free with monthly report limit", () => {
+    expect(planPriceHeadline(plan("starter"))).toBe("Free");
+    expect(planReportLimitLabel(plan("starter"))).toBe("3 investment reports per month");
+    expect(plan("starter").monthlyPrice).toBe(0);
   });
 
   it("shows investor pricing and feature bullets", () => {
     expect(planPriceHeadline(plan("investor"))).toBe("R299/month");
     expect(planFeatureBullets(plan("investor"))).toEqual([
       "Up to 10 properties",
-      "10 investment reports",
+      "10 investment reports per month",
       "Calculators + management software"
     ]);
   });
 
   it("shows portfolio pricing and unlimited reports", () => {
-    expect(planPriceHeadline(plan("portfolio"))).toMatch(/^R599\/month$/);
+    expect(planPriceHeadline(plan("portfolio"))).toContain("R599/month");
     expect(planFeatureBullets(plan("portfolio"))).toContain("Up to 30 properties");
     expect(planFeatureBullets(plan("portfolio"))).toContain("Unlimited reports");
   });
@@ -50,7 +53,7 @@ describe("pricingPlanDisplay QA", () => {
   it("routes signup CTAs with plan query params", () => {
     expect(planCta(plan("starter"))).toMatchObject({
       href: "/signup?plan=starter",
-      label: "Start free trial"
+      label: "Get started free"
     });
     expect(planCta(plan("investor"))).toMatchObject({
       href: "/signup?plan=investor",

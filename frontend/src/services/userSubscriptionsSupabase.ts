@@ -1,3 +1,4 @@
+import { calendarMonthIsoBounds } from "../lib/subscriptionPeriod";
 import { getSupabase, isSupabaseConfigured } from "../lib/supabaseClient";
 import {
   FALLBACK_SUBSCRIPTION_PLANS,
@@ -28,19 +29,33 @@ export function buildInitialUserSubscriptionFields(plan: SubscriptionPlanRecord)
   status: string;
   trial_start: string | null;
   trial_end: string | null;
+  current_period_start: string | null;
+  current_period_end: string | null;
 } {
   const now = new Date();
-  const trialDays =
-    plan.trialDays > 0 ? plan.trialDays : plan.code === "starter" ? 14 : 0;
 
-  if (trialDays > 0) {
+  if (plan.monthlyPrice === 0) {
+    const period = calendarMonthIsoBounds(now);
+    return {
+      plan_code: plan.code,
+      status: "active_manual",
+      trial_start: null,
+      trial_end: null,
+      current_period_start: period.start,
+      current_period_end: period.end
+    };
+  }
+
+  if (plan.trialDays > 0) {
     const trialEnd = new Date(now);
-    trialEnd.setDate(trialEnd.getDate() + trialDays);
+    trialEnd.setDate(trialEnd.getDate() + plan.trialDays);
     return {
       plan_code: plan.code,
       status: "trialing",
       trial_start: now.toISOString(),
-      trial_end: trialEnd.toISOString()
+      trial_end: trialEnd.toISOString(),
+      current_period_start: null,
+      current_period_end: null
     };
   }
 
@@ -48,7 +63,9 @@ export function buildInitialUserSubscriptionFields(plan: SubscriptionPlanRecord)
     plan_code: plan.code,
     status: "pending_payment",
     trial_start: null,
-    trial_end: null
+    trial_end: null,
+    current_period_start: null,
+    current_period_end: null
   };
 }
 
@@ -137,6 +154,8 @@ export async function ensureUserSubscriptionForPlanCode(
     status: initial.status,
     trial_start: initial.trial_start,
     trial_end: initial.trial_end,
+    current_period_start: initial.current_period_start,
+    current_period_end: initial.current_period_end,
     payment_provider: null,
     payment_customer_id: null,
     payment_subscription_id: null
@@ -176,7 +195,9 @@ export async function updateUserSubscriptionPlanCode(
       plan_code: initial.plan_code,
       status: initial.status,
       trial_start: initial.trial_start,
-      trial_end: initial.trial_end
+      trial_end: initial.trial_end,
+      current_period_start: initial.current_period_start,
+      current_period_end: initial.current_period_end
     })
     .eq("user_id", user.id)
     .select(

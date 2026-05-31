@@ -38,7 +38,7 @@ function trialCell(plan?: SubscriptionPlanRecord): ComparisonCellValue {
 function reportLimitText(plan?: SubscriptionPlanRecord): string {
   if (!plan) return "—";
   if (plan.includesUnlimitedReports || plan.reportLimit == null) return "Unlimited";
-  return `${plan.reportLimit} reports`;
+  return `${plan.reportLimit} per month`;
 }
 
 function propertyLimitText(plan?: SubscriptionPlanRecord): string {
@@ -60,7 +60,7 @@ export function buildPricingComparisonRows(plans: SubscriptionPlanRecord[]): Com
       id: "monthly_price",
       label: "Monthly price",
       values: {
-        starter: label(starter ? planPriceHeadline(starter) : "R99/month after 14-day trial"),
+        starter: label(starter ? planPriceHeadline(starter) : "Free"),
         investor: label(investor ? formatPlanPrice(investor.monthlyPrice, investor.currency) : "R299/month"),
         portfolio: label(portfolio ? formatPlanPrice(portfolio.monthlyPrice, portfolio.currency) : "R599/month"),
         portfolio_pro: label(
@@ -184,8 +184,8 @@ export function buildPricingComparisonRows(plans: SubscriptionPlanRecord[]): Com
       id: "investment_reports",
       label: "Investment reports",
       values: {
-        starter: label("Limited"),
-        investor: label("10 reports"),
+        starter: label("3 per month"),
+        investor: label("10 per month"),
         portfolio: label("Unlimited"),
         portfolio_pro: label("Unlimited")
       }

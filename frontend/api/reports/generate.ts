@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { randomUUID } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
+import { assertInvestmentReportQuota } from "../lib/investmentReportQuota.js";
 import { renderPdfDefinitionToBuffer } from "../lib/pdfMakeServer.js";
 import {
   buildCalculationReportPdfDefinition,
@@ -98,6 +99,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
 
       if (cErr || !calc) {
         res.status(404).json({ error: "Calculation not found." });
+        return;
+      }
+
+      const quotaErr = await assertInvestmentReportQuota(sb);
+      if (quotaErr) {
+        res.status(403).json({ error: quotaErr });
         return;
       }
 

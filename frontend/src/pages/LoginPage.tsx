@@ -201,7 +201,7 @@ export function LoginPage() {
               Track deals. Save reports. Manage your portfolio.
             </h2>
             <p className="pg-lead">
-              Your first 3 calculator reports are free. Then upgrade for unlimited analysis and a full property command centre.
+              Starter is free with 3 investment reports per month. Upgrade for more properties, reports, and portfolio tools.
             </p>
           </div>
           <Card>

@@ -28,7 +28,7 @@ export function SubscriptionPage() {
     <Section>
       <Helmet>
         <title>Subscription | The Property Guy</title>
-        <meta name="description" content="Subscribe for unlimited calculator usage at R99/month." />
+        <meta name="description" content="View paid plans for unlimited calculator usage and portfolio tools." />
       </Helmet>
       <Container>
         <div style={{ maxWidth: 860, margin: "0 auto" }}>
@@ -38,7 +38,8 @@ export function SubscriptionPage() {
               Subscription
             </h1>
             <p className="pg-lead">
-              Unlimited calculator usage and full report history for <strong>R99/month</strong>.
+              Paid plans unlock more properties, reports, and portfolio tools. The Starter plan is free — see{" "}
+              <strong>/pricing</strong> for details.
             </p>
 
             <GridRow />
