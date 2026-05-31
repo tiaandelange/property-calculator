@@ -1,5 +1,8 @@
 /** Safe client-side route/chunk logging — no auth tokens, keys, or tenant/financial data. */
 
+import { isChunkLoadError } from "./chunkLoadError";
+import { formatRouteErrorForDev, isQueryError, type RouteErrorContext } from "./routeErrorUtils";
+
 type SafeError = {
   name?: string;
   message?: string;
@@ -25,21 +28,44 @@ export function logLazyImportStart(label?: string): void {
 }
 
 export function logLazyImportFailure(label: string | undefined, error: unknown): void {
-  console.error("[route] lazy-import-failure", label ?? "unknown", toSafeError(error));
+  const safe = toSafeError(error);
+  console.error(
+    `[RouteError] route=${label ?? "unknown"} phase=lazy-import error=${safe.name ?? "Error"}: ${safe.message ?? "unknown"}`
+  );
 }
 
 export function logRoutePrefetchFailure(target: string, path: string | undefined, error: unknown): void {
-  console.error("[route] prefetch-failure", { target, path, ...toSafeError(error) });
+  if (!import.meta.env.DEV) return;
+  console.warn("[route] prefetch-failure", { target, path, ...toSafeError(error) });
 }
 
 export function logQueryPrefetchFailure(key: string, error: unknown): void {
-  console.error("[route] query-prefetch-failure", key, toSafeError(error));
+  if (!import.meta.env.DEV) return;
+  console.warn("[route] query-prefetch-failure", key, toSafeError(error));
 }
 
-export function logRouteRenderError(error: unknown, info?: string): void {
-  console.error("[route] render-error", toSafeError(error), info ?? "");
+export function logRouteRenderError(context: RouteErrorContext): void {
+  const { routeLabel, path, locationKey, error, componentStack } = context;
+  const details = formatRouteErrorForDev(error);
+  const route = routeLabel ?? "unknown";
+  const routePath = path ?? "unknown";
+
+  console.error(
+    `[RouteError] route=${route} path=${routePath} error=${details.name}: ${details.message}`,
+    {
+      locationKey,
+      isChunkLoad: details.isChunkLoad,
+      isQueryError: details.isQueryError,
+      timestamp: new Date().toISOString(),
+      stack: details.stack,
+      componentStack
+    }
+  );
 }
 
 export function logChunkLoadFailure(source: string, error: unknown): void {
-  console.error("[route] chunk-load-failure", source, toSafeError(error));
+  const safe = toSafeError(error);
+  console.error(
+    `[RouteError] route=unknown path=unknown phase=${source} isChunkLoad=true error=${safe.name ?? "Error"}: ${safe.message ?? "unknown"}`
+  );
 }

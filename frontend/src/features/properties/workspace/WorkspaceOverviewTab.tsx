@@ -3,6 +3,7 @@ import { Line, Doughnut } from "react-chartjs-2";
 import { Card } from "../../../components/ui/Card";
 import { Button } from "../../../components/ui/Button";
 import { MetricCard } from "../../../components/ui/DashboardKit";
+import { asArray } from "../../../lib/asArray";
 import { getChartCategoryPalette, getChartSemanticColors } from "../../../theme/cssTokens";
 
 type CompositionSlice = { label: string; amount: number; kind: "income" | "expense" };
@@ -144,7 +145,9 @@ export function WorkspaceOverviewTab({ data, statement, perf, propertyId, naviga
   const irrVp = perf?.portfolioIRR?.valuePercent;
   const irrPct = irrVp != null && Number.isFinite(Number(irrVp)) ? Number(irrVp) : null;
 
-  const recent = (statement?.statementRows ?? []).slice(-8).reverse();
+  const recent = asArray(statement?.statementRows).slice(-8).reverse();
+  const noiTrendRows = asArray(perf?.charts?.monthlyNOITrend);
+  const alertMessages = asArray<string>(data.aggregateMeta?.alerts);
 
   /** Ledger-aligned only — do not fall back to dashboard-summary composition (STR adds synthetic Utilities/fees unrelated to deleted expenses). */
   const incomeExpenseDoughnut = useMemo(() => {
@@ -272,14 +275,14 @@ export function WorkspaceOverviewTab({ data, statement, perf, propertyId, naviga
           )}
         </Card>
         <Card title="NOI trend">
-          {perf?.charts?.monthlyNOITrend?.length ? (
+          {noiTrendRows.length ? (
             <Line
               data={{
-                labels: perf.charts.monthlyNOITrend.map((r: any) => r.label),
+                labels: noiTrendRows.map((r: any) => r.label),
                 datasets: [
                   {
                     label: "NOI",
-                    data: perf.charts.monthlyNOITrend.map((r: any) => r.noi),
+                    data: noiTrendRows.map((r: any) => r.noi),
                     borderColor: getChartSemanticColors().info,
                     backgroundColor: "rgba(77,150,255,0.15)"
                   }
@@ -347,10 +350,10 @@ export function WorkspaceOverviewTab({ data, statement, perf, propertyId, naviga
         </Card>
       </div>
 
-      {(data.aggregateMeta?.alerts ?? []).length > 0 ? (
+      {alertMessages.length > 0 ? (
         <Card title="Alerts">
           <ul style={{ margin: 0, paddingLeft: 18 }}>
-            {(data.aggregateMeta.alerts as string[]).map((a, i) => (
+            {alertMessages.map((a, i) => (
               <li key={i}>{a}</li>
             ))}
           </ul>

@@ -5,7 +5,7 @@ import { logLazyImportFailure, logLazyImportStart } from "./routeLoadLog";
 export type LazyWithRetryOptions = {
   /** Human-readable route label for dev logging only. */
   label?: string;
-  /** Total import attempts (default 3). Chunk-load errors retry with backoff. */
+  /** Total import attempts (default 2 for chunk errors, 3 overall). */
   retries?: number;
 };
 
@@ -32,14 +32,19 @@ export function lazyWithRetry<T extends ComponentType<unknown>>(
         lastError = error;
         logLazyImportFailure(label, error);
 
-        const shouldRetry = attempt < retries - 1 && (isChunkLoadError(error) || attempt === 0);
+        const chunkError = isChunkLoadError(error);
+        const shouldRetry = attempt < retries - 1 && (chunkError || attempt === 0);
         if (shouldRetry) {
           await new Promise((resolve) => setTimeout(resolve, 400 * (attempt + 1)));
         }
       }
     }
 
-    throw lastError instanceof Error ? lastError : new Error("Failed to load page.");
+    const base = lastError instanceof Error ? lastError : new Error("Failed to load page.");
+    if (label && !base.message.includes(label)) {
+      base.message = `[${label}] ${base.message}`;
+    }
+    throw base;
   });
 }
 

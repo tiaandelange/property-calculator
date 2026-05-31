@@ -2,6 +2,7 @@ import { Fragment, useEffect, useMemo, useState, type MouseEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { ChevronDown } from "lucide-react";
 import { AppIcon, IconButton } from "../../../components/icons";
+import { asArray } from "../../../lib/asArray";
 import { invoiceDetailPath } from "../../invoices/invoiceRoutes";
 import {
   canEditStatementRow,
@@ -305,7 +306,7 @@ export function WorkspaceStatementTab({
     { ...periodRange, includeExpected: true },
     { enabled: presetReady }
   );
-  const rows = (statementQuery.data?.statementRows as Record<string, unknown>[] | undefined) ?? [];
+  const rows = asArray<Record<string, unknown>>(statementQuery.data?.statementRows);
   const loading = !presetReady || statementQuery.isLoading;
   const error =
     actionError ||

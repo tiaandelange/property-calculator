@@ -9,6 +9,7 @@ import { MetricCardsSkeletonRow } from "../components/ui/PageSkeletons";
 import { QueryErrorCard } from "../components/ui/QueryState";
 import { PortfolioDashboardFilters } from "../components/nav/portfolio/PortfolioDashboardFilters";
 import { useAuth } from "../contexts/AuthContext";
+import { asArray } from "../lib/asArray";
 import {
   isInitialQueryLoad,
   queryKeys,
@@ -133,8 +134,8 @@ export function OwnedPropertiesPortfolioDashboardPage() {
   const userName = displayUserName(session?.user?.email, profile?.full_name ?? null);
 
   const charts = (data?.charts ?? {}) as Record<string, unknown>;
-  const mie = (charts.monthlyIncomeExpenses ?? []) as MonthIncomeExpenseRow[];
-  const noiTrend = (charts.monthlyNOITrend ?? []) as NoiTrendRow[];
+  const mie = asArray<MonthIncomeExpenseRow>(charts.monthlyIncomeExpenses);
+  const noiTrend = asArray<NoiTrendRow>(charts.monthlyNOITrend);
 
   const incomeChange = formatChangeLine(
     changeFromSeries(mie.map((r) => Number(r.income ?? 0)).filter((n) => Number.isFinite(n))) ??
@@ -156,14 +157,15 @@ export function OwnedPropertiesPortfolioDashboardPage() {
 
   const recentPropertyCards = useMemo((): RecentPropertyCard[] => {
     const leaseIds = new Set(
-      ((charts.leaseTimeline as Array<{ propertyId?: string }>) ?? []).map((r) => String(r.propertyId))
+      asArray<{ propertyId?: string }>(charts.leaseTimeline).map((r) => String(r.propertyId))
     );
     const cashById = new Map(
-      ((charts.cashFlowByProperty as Array<{ propertyId?: string; monthlyIncome?: number; netCashFlow?: number }>) ??
-        []).map((r) => [String(r.propertyId), r])
+      asArray<{ propertyId?: string; monthlyIncome?: number; netCashFlow?: number }>(charts.cashFlowByProperty).map(
+        (r) => [String(r.propertyId), r]
+      )
     );
     const negativeIds = new Set(
-      ((charts.cashFlowByProperty as Array<{ propertyId?: string; netCashFlow?: number }>) ?? [])
+      asArray<{ propertyId?: string; netCashFlow?: number }>(charts.cashFlowByProperty)
         .filter((r) => Number(r.netCashFlow ?? 0) < 0)
         .map((r) => String(r.propertyId))
     );

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { AppFormModal } from "../../components/ui/AppModal";
 import { Button } from "../../components/ui/Button";
 import { Field, Input } from "../../components/ui/Input";
+import { asArray } from "../../lib/asArray";
 import {
   createCustomFieldId,
   DEFAULT_APPLICANT_FORM_TEMPLATE,
@@ -209,21 +210,22 @@ export function ApplicantFormTemplateSettingsCard({
   onTemplateChange: (next: ApplicantFormTemplate) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const fields = asArray<ApplicantFormFieldDef>(template.fields);
 
   return (
     <>
       <div id="applicant-form-template" className="pg-applicant-template-summary">
         <p className="pg-muted" style={{ margin: "0 0 8px" }}>
-          {template.fields.length} fields · {template.allowCoApplicant ? "Co-applicant enabled" : "Single applicant only"}
+          {fields.length} fields · {template.allowCoApplicant ? "Co-applicant enabled" : "Single applicant only"}
         </p>
         <ul className="pg-applicant-template-summary__list">
-          {template.fields.slice(0, 6).map((f) => (
+          {fields.slice(0, 6).map((f) => (
             <li key={f.id}>
               {f.label}
               {f.required ? " *" : ""}
             </li>
           ))}
-          {template.fields.length > 6 ? <li>+{template.fields.length - 6} more</li> : null}
+          {fields.length > 6 ? <li>+{fields.length - 6} more</li> : null}
         </ul>
       </div>
       <div className="pg-settings-actions" style={{ marginTop: 12 }}>

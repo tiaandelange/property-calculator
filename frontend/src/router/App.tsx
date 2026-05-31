@@ -11,101 +11,162 @@ import { RequireAuth } from "../components/auth/RequireAuth";
 import { RouteBoundary } from "../components/ui/RouteBoundary";
 import { lazyWithRetry } from "../lib/lazyWithRetry";
 
-const CalculatorHubPage = lazyWithRetry(() =>
-  import("../pages/CalculatorHubPage").then((m) => ({ default: m.CalculatorHubPage }))
+const CalculatorHubPage = lazyWithRetry(
+  () => import("../pages/CalculatorHubPage").then((m) => ({ default: m.CalculatorHubPage })),
+  { label: "Calculators" }
 );
-const CalculatorPage = lazyWithRetry(() => import("../pages/CalculatorPage").then((m) => ({ default: m.CalculatorPage })));
-const DashboardPage = lazyWithRetry(() => import("../pages/DashboardPage").then((m) => ({ default: m.DashboardPage })));
-const AccountPage = lazyWithRetry(() => import("../pages/AccountPage").then((m) => ({ default: m.AccountPage })));
-const ApplicantApplyPage = lazyWithRetry(() =>
-  import("../pages/ApplicantApplyPage").then((m) => ({ default: m.ApplicantApplyPage }))
+const CalculatorPage = lazyWithRetry(
+  () => import("../pages/CalculatorPage").then((m) => ({ default: m.CalculatorPage })),
+  { label: "Calculator" }
 );
-const OwnedPropertyFormPage = lazyWithRetry(() =>
-  import("../pages/OwnedPropertyFormPage").then((m) => ({ default: m.OwnedPropertyFormPage }))
+const DashboardPage = lazyWithRetry(
+  () => import("../pages/DashboardPage").then((m) => ({ default: m.DashboardPage })),
+  { label: "Dashboard" }
 );
-const OwnedPropertyDetailPage = lazyWithRetry(() =>
-  import("../pages/OwnedPropertyDetailPage").then((m) => ({ default: m.OwnedPropertyDetailPage }))
+const AccountPage = lazyWithRetry(
+  () => import("../pages/AccountPage").then((m) => ({ default: m.AccountPage })),
+  { label: "Account" }
 );
-const OwnedLeasesPage = lazyWithRetry(() => import("../pages/OwnedLeasesPage").then((m) => ({ default: m.OwnedLeasesPage })));
-const LeaseFormPage = lazyWithRetry(() => import("../pages/LeaseFormPage").then((m) => ({ default: m.LeaseFormPage })));
-const LeaseDetailRedirect = lazyWithRetry(() =>
-  import("../pages/LeaseDetailRedirect").then((m) => ({ default: m.LeaseDetailRedirect }))
+const ApplicantApplyPage = lazyWithRetry(
+  () => import("../pages/ApplicantApplyPage").then((m) => ({ default: m.ApplicantApplyPage })),
+  { label: "Applicant Apply" }
 );
-const FinancialsListPage = lazyWithRetry(() =>
-  import("../pages/FinancialsListPage").then((m) => ({ default: m.FinancialsListPage }))
+const OwnedPropertyFormPage = lazyWithRetry(
+  () => import("../pages/OwnedPropertyFormPage").then((m) => ({ default: m.OwnedPropertyFormPage })),
+  { label: "Property Form" }
 );
-const OwnedInvoicesPage = lazyWithRetry(() => import("../pages/OwnedInvoicesPage").then((m) => ({ default: m.OwnedInvoicesPage })));
-const InvoicesListPage = lazyWithRetry(() => import("../pages/InvoicesListPage").then((m) => ({ default: m.InvoicesListPage })));
-const OwnedRecurringInvoicesPage = lazyWithRetry(() =>
-  import("../pages/OwnedRecurringInvoicesPage").then((m) => ({ default: m.OwnedRecurringInvoicesPage }))
+const OwnedPropertyDetailPage = lazyWithRetry(
+  () => import("../pages/OwnedPropertyDetailPage").then((m) => ({ default: m.OwnedPropertyDetailPage })),
+  { label: "Property Detail" }
 );
-const OwnedDocumentsPage = lazyWithRetry(() =>
-  import("../pages/OwnedDocumentsPage").then((m) => ({ default: m.OwnedDocumentsPage }))
+const OwnedLeasesPage = lazyWithRetry(
+  () => import("../pages/OwnedLeasesPage").then((m) => ({ default: m.OwnedLeasesPage })),
+  { label: "Leases" }
 );
-const PropertyReportPage = lazyWithRetry(() =>
-  import("../pages/PropertyReportPage").then((m) => ({ default: m.PropertyReportPage }))
+const LeaseFormPage = lazyWithRetry(
+  () => import("../pages/LeaseFormPage").then((m) => ({ default: m.LeaseFormPage })),
+  { label: "Lease Form" }
 );
-const OwnedEquityMetricsPage = lazyWithRetry(() =>
-  import("../pages/OwnedEquityMetricsPage").then((m) => ({ default: m.OwnedEquityMetricsPage }))
+const LeaseDetailRedirect = lazyWithRetry(
+  () => import("../pages/LeaseDetailRedirect").then((m) => ({ default: m.LeaseDetailRedirect })),
+  { label: "Lease Detail" }
 );
-const OwnedLeaseMetricsPage = lazyWithRetry(() =>
-  import("../pages/OwnedLeaseMetricsPage").then((m) => ({ default: m.OwnedLeaseMetricsPage }))
+const FinancialsListPage = lazyWithRetry(
+  () => import("../pages/FinancialsListPage").then((m) => ({ default: m.FinancialsListPage })),
+  { label: "Financials" }
 );
-const OwnedRentDueMetricsPage = lazyWithRetry(() =>
-  import("../pages/OwnedRentDueMetricsPage").then((m) => ({ default: m.OwnedRentDueMetricsPage }))
+const OwnedInvoicesPage = lazyWithRetry(
+  () => import("../pages/OwnedInvoicesPage").then((m) => ({ default: m.OwnedInvoicesPage })),
+  { label: "Invoices Legacy" }
 );
-const OwnedDepositsMetricsPage = lazyWithRetry(() =>
-  import("../pages/OwnedDepositsMetricsPage").then((m) => ({ default: m.OwnedDepositsMetricsPage }))
+const InvoicesListPage = lazyWithRetry(
+  () => import("../pages/InvoicesListPage").then((m) => ({ default: m.InvoicesListPage })),
+  { label: "Invoices" }
 );
-const OwnedCashFlowMetricsPage = lazyWithRetry(() =>
-  import("../pages/OwnedCashFlowMetricsPage").then((m) => ({ default: m.OwnedCashFlowMetricsPage }))
+const OwnedRecurringInvoicesPage = lazyWithRetry(
+  () => import("../pages/OwnedRecurringInvoicesPage").then((m) => ({ default: m.OwnedRecurringInvoicesPage })),
+  { label: "Recurring Invoices" }
 );
-const OwnedPropertiesMyPropertiesPage = lazyWithRetry(() =>
-  import("../pages/OwnedPropertiesMyPropertiesPage").then((m) => ({ default: m.OwnedPropertiesMyPropertiesPage }))
+const OwnedDocumentsPage = lazyWithRetry(
+  () => import("../pages/OwnedDocumentsPage").then((m) => ({ default: m.OwnedDocumentsPage })),
+  { label: "Documents" }
 );
-const OwnedPropertiesPortfolioDashboardPage = lazyWithRetry(() =>
-  import("../pages/OwnedPropertiesPortfolioDashboardPage").then((m) => ({
-    default: m.OwnedPropertiesPortfolioDashboardPage
-  }))
+const PropertyReportPage = lazyWithRetry(
+  () => import("../pages/PropertyReportPage").then((m) => ({ default: m.PropertyReportPage })),
+  { label: "Property Report" }
 );
-const OwnedPropertiesReportsPage = lazyWithRetry(() =>
-  import("../pages/OwnedPropertiesReportsPage").then((m) => ({ default: m.OwnedPropertiesReportsPage }))
+const OwnedEquityMetricsPage = lazyWithRetry(
+  () => import("../pages/OwnedEquityMetricsPage").then((m) => ({ default: m.OwnedEquityMetricsPage })),
+  { label: "Equity Metrics" }
 );
-const TenantsListPage = lazyWithRetry(() => import("../pages/TenantsListPage").then((m) => ({ default: m.TenantsListPage })));
-const TenantFormPage = lazyWithRetry(() => import("../pages/TenantFormPage").then((m) => ({ default: m.TenantFormPage })));
-const TenantWorkspacePage = lazyWithRetry(() =>
-  import("../pages/TenantWorkspacePage").then((m) => ({ default: m.TenantWorkspacePage }))
+const OwnedLeaseMetricsPage = lazyWithRetry(
+  () => import("../pages/OwnedLeaseMetricsPage").then((m) => ({ default: m.OwnedLeaseMetricsPage })),
+  { label: "Lease Metrics" }
 );
-const InvoiceDetailPage = lazyWithRetry(() =>
-  import("../pages/InvoiceDetailPage").then((m) => ({ default: m.InvoiceDetailPage }))
+const OwnedRentDueMetricsPage = lazyWithRetry(
+  () => import("../pages/OwnedRentDueMetricsPage").then((m) => ({ default: m.OwnedRentDueMetricsPage })),
+  { label: "Rent Due Metrics" }
 );
-const LegacyTenantInvoiceRedirect = lazyWithRetry(() =>
-  import("../pages/InvoiceDetailPage").then((m) => ({ default: m.LegacyTenantInvoiceRedirect }))
+const OwnedDepositsMetricsPage = lazyWithRetry(
+  () => import("../pages/OwnedDepositsMetricsPage").then((m) => ({ default: m.OwnedDepositsMetricsPage })),
+  { label: "Deposits Metrics" }
 );
-const OwnedValuationsMetricsPage = lazyWithRetry(() =>
-  import("../pages/OwnedValuationsMetricsPage").then((m) => ({ default: m.OwnedValuationsMetricsPage }))
+const OwnedCashFlowMetricsPage = lazyWithRetry(
+  () => import("../pages/OwnedCashFlowMetricsPage").then((m) => ({ default: m.OwnedCashFlowMetricsPage })),
+  { label: "Cash Flow Metrics" }
 );
-const OwnedBondsMetricsPage = lazyWithRetry(() =>
-  import("../pages/OwnedBondsMetricsPage").then((m) => ({ default: m.OwnedBondsMetricsPage }))
+const OwnedPropertiesMyPropertiesPage = lazyWithRetry(
+  () =>
+    import("../pages/OwnedPropertiesMyPropertiesPage").then((m) => ({
+      default: m.OwnedPropertiesMyPropertiesPage
+    })),
+  { label: "Properties" }
 );
-const OwnedReturnsMetricsPage = lazyWithRetry(() =>
-  import("../pages/OwnedReturnsMetricsPage").then((m) => ({ default: m.OwnedReturnsMetricsPage }))
+const OwnedPropertiesPortfolioDashboardPage = lazyWithRetry(
+  () =>
+    import("../pages/OwnedPropertiesPortfolioDashboardPage").then((m) => ({
+      default: m.OwnedPropertiesPortfolioDashboardPage
+    })),
+  { label: "Portfolio Dashboard" }
 );
-const OwnedExpensesMetricsPage = lazyWithRetry(() =>
-  import("../pages/OwnedExpensesMetricsPage").then((m) => ({ default: m.OwnedExpensesMetricsPage }))
+const OwnedPropertiesReportsPage = lazyWithRetry(
+  () => import("../pages/OwnedPropertiesReportsPage").then((m) => ({ default: m.OwnedPropertiesReportsPage })),
+  { label: "Reports" }
 );
-const SettingsPage = lazyWithRetry(() => import("../pages/SettingsPage").then((m) => ({ default: m.SettingsPage })));
-const AdminPanelPage = lazyWithRetry(() => import("../pages/AdminPanelPage").then((m) => ({ default: m.AdminPanelPage })));
+const TenantsListPage = lazyWithRetry(
+  () => import("../pages/TenantsListPage").then((m) => ({ default: m.TenantsListPage })),
+  { label: "Tenants" }
+);
+const TenantFormPage = lazyWithRetry(
+  () => import("../pages/TenantFormPage").then((m) => ({ default: m.TenantFormPage })),
+  { label: "Tenant Form" }
+);
+const TenantWorkspacePage = lazyWithRetry(
+  () => import("../pages/TenantWorkspacePage").then((m) => ({ default: m.TenantWorkspacePage })),
+  { label: "Tenant Workspace" }
+);
+const InvoiceDetailPage = lazyWithRetry(
+  () => import("../pages/InvoiceDetailPage").then((m) => ({ default: m.InvoiceDetailPage })),
+  { label: "Invoice Detail" }
+);
+const LegacyTenantInvoiceRedirect = lazyWithRetry(
+  () => import("../pages/InvoiceDetailPage").then((m) => ({ default: m.LegacyTenantInvoiceRedirect })),
+  { label: "Tenant Invoice Redirect" }
+);
+const OwnedValuationsMetricsPage = lazyWithRetry(
+  () => import("../pages/OwnedValuationsMetricsPage").then((m) => ({ default: m.OwnedValuationsMetricsPage })),
+  { label: "Valuations Metrics" }
+);
+const OwnedBondsMetricsPage = lazyWithRetry(
+  () => import("../pages/OwnedBondsMetricsPage").then((m) => ({ default: m.OwnedBondsMetricsPage })),
+  { label: "Bonds Metrics" }
+);
+const OwnedReturnsMetricsPage = lazyWithRetry(
+  () => import("../pages/OwnedReturnsMetricsPage").then((m) => ({ default: m.OwnedReturnsMetricsPage })),
+  { label: "Returns Metrics" }
+);
+const OwnedExpensesMetricsPage = lazyWithRetry(
+  () => import("../pages/OwnedExpensesMetricsPage").then((m) => ({ default: m.OwnedExpensesMetricsPage })),
+  { label: "Expenses Metrics" }
+);
+const SettingsPage = lazyWithRetry(
+  () => import("../pages/SettingsPage").then((m) => ({ default: m.SettingsPage })),
+  { label: "Settings" }
+);
+const AdminPanelPage = lazyWithRetry(
+  () => import("../pages/AdminPanelPage").then((m) => ({ default: m.AdminPanelPage })),
+  { label: "Admin" }
+);
 
 function OwnedPropertyFinancialsRedirect() {
   const { id } = useParams();
   return <Navigate to={`/owned-properties/${id}?tab=financials`} replace />;
 }
 
-function Auth({ children }: { children: ReactElement }) {
+function Auth({ children, label }: { children: ReactElement; label?: string }) {
   return (
     <RequireAuth>
-      <RouteBoundary>{children}</RouteBoundary>
+      <RouteBoundary label={label}>{children}</RouteBoundary>
     </RequireAuth>
   );
 }
@@ -118,7 +179,7 @@ export function App() {
         <Route
           path="/calculators"
           element={
-            <RouteBoundary>
+            <RouteBoundary label="Calculators">
               <CalculatorHubPage />
             </RouteBoundary>
           }
@@ -126,7 +187,7 @@ export function App() {
         <Route
           path="/calculators/:slug"
           element={
-            <RouteBoundary>
+            <RouteBoundary label="Calculator">
               <CalculatorPage />
             </RouteBoundary>
           }
@@ -135,14 +196,14 @@ export function App() {
         <Route
           path="/apply/:token"
           element={
-            <RouteBoundary>
+            <RouteBoundary label="Applicant Apply">
               <ApplicantApplyPage />
             </RouteBoundary>
           }
         />
         <Route path="/confirm-email" element={<ConfirmEmailPage />} />
         <Route path="/confirm-email/:token" element={<ConfirmEmailPage />} />
-        <Route path="/dashboard" element={<Auth><DashboardPage /></Auth>} />
+        <Route path="/dashboard" element={<Auth label="Dashboard"><DashboardPage /></Auth>} />
         <Route
           path="/learn"
           element={
@@ -189,7 +250,7 @@ export function App() {
             />
           }
         />
-        <Route path="/admin" element={<Auth><AdminPanelPage /></Auth>} />
+        <Route path="/admin" element={<Auth label="Admin"><AdminPanelPage /></Auth>} />
         <Route
           path="/help"
           element={
@@ -217,51 +278,51 @@ export function App() {
             />
           }
         />
-        <Route path="/settings" element={<Auth><SettingsPage /></Auth>} />
-        <Route path="/settings/security" element={<Auth><Navigate to="/settings" replace /></Auth>} />
-        <Route path="/settings/notifications" element={<Auth><Navigate to="/settings" replace /></Auth>} />
-        <Route path="/owned-properties" element={<Auth><Navigate to="/owned-properties/dashboard" replace /></Auth>} />
-        <Route path="/owned-properties/my-properties" element={<Auth><OwnedPropertiesMyPropertiesPage /></Auth>} />
-        <Route path="/owned-properties/dashboard" element={<Auth><OwnedPropertiesPortfolioDashboardPage /></Auth>} />
-        <Route path="/owned-properties/metrics/equity" element={<Auth><OwnedEquityMetricsPage /></Auth>} />
-        <Route path="/owned-properties/metrics/valuations" element={<Auth><OwnedValuationsMetricsPage /></Auth>} />
-        <Route path="/owned-properties/metrics/bonds" element={<Auth><OwnedBondsMetricsPage /></Auth>} />
-        <Route path="/owned-properties/metrics/returns" element={<Auth><OwnedReturnsMetricsPage /></Auth>} />
-        <Route path="/owned-properties/metrics/expenses" element={<Auth><OwnedExpensesMetricsPage /></Auth>} />
-        <Route path="/owned-properties/metrics/leases" element={<Auth><OwnedLeaseMetricsPage /></Auth>} />
-        <Route path="/owned-properties/metrics/rent-due" element={<Auth><OwnedRentDueMetricsPage /></Auth>} />
-        <Route path="/owned-properties/metrics/deposits" element={<Auth><OwnedDepositsMetricsPage /></Auth>} />
-        <Route path="/owned-properties/metrics/cash-flow" element={<Auth><OwnedCashFlowMetricsPage /></Auth>} />
-        <Route path="/owned-properties/new" element={<Auth><OwnedPropertyFormPage /></Auth>} />
-        <Route path="/owned-properties/:id/edit" element={<Auth><OwnedPropertyFormPage /></Auth>} />
-        <Route path="/owned-properties/:id/financials" element={<Auth><OwnedPropertyFinancialsRedirect /></Auth>} />
-        <Route path="/owned-properties/:id/report" element={<Auth><PropertyReportPage /></Auth>} />
-        <Route path="/owned-properties/:id" element={<Auth><OwnedPropertyDetailPage /></Auth>} />
-        <Route path="/owned-properties/tenants" element={<Auth><Navigate to="/tenants" replace /></Auth>} />
-        <Route path="/owned-properties/leases" element={<Auth><Navigate to="/leases" replace /></Auth>} />
-        <Route path="/owned-properties/financials" element={<Auth><Navigate to="/financials" replace /></Auth>} />
-        <Route path="/owned-properties/invoices" element={<Auth><Navigate to="/invoices" replace /></Auth>} />
-        <Route path="/owned-properties/documents" element={<Auth><Navigate to="/documents" replace /></Auth>} />
-        <Route path="/owned-properties/recurring-invoices" element={<Auth><OwnedRecurringInvoicesPage /></Auth>} />
-        <Route path="/owned-properties/reports" element={<Auth><OwnedPropertiesReportsPage /></Auth>} />
+        <Route path="/settings" element={<Auth label="Settings"><SettingsPage /></Auth>} />
+        <Route path="/settings/security" element={<Auth label="Settings"><Navigate to="/settings" replace /></Auth>} />
+        <Route path="/settings/notifications" element={<Auth label="Settings"><Navigate to="/settings" replace /></Auth>} />
+        <Route path="/owned-properties" element={<Auth label="Portfolio Dashboard"><Navigate to="/owned-properties/dashboard" replace /></Auth>} />
+        <Route path="/owned-properties/my-properties" element={<Auth label="Properties"><OwnedPropertiesMyPropertiesPage /></Auth>} />
+        <Route path="/owned-properties/dashboard" element={<Auth label="Portfolio Dashboard"><OwnedPropertiesPortfolioDashboardPage /></Auth>} />
+        <Route path="/owned-properties/metrics/equity" element={<Auth label="Equity Metrics"><OwnedEquityMetricsPage /></Auth>} />
+        <Route path="/owned-properties/metrics/valuations" element={<Auth label="Valuations Metrics"><OwnedValuationsMetricsPage /></Auth>} />
+        <Route path="/owned-properties/metrics/bonds" element={<Auth label="Bonds Metrics"><OwnedBondsMetricsPage /></Auth>} />
+        <Route path="/owned-properties/metrics/returns" element={<Auth label="Returns Metrics"><OwnedReturnsMetricsPage /></Auth>} />
+        <Route path="/owned-properties/metrics/expenses" element={<Auth label="Expenses Metrics"><OwnedExpensesMetricsPage /></Auth>} />
+        <Route path="/owned-properties/metrics/leases" element={<Auth label="Lease Metrics"><OwnedLeaseMetricsPage /></Auth>} />
+        <Route path="/owned-properties/metrics/rent-due" element={<Auth label="Rent Due Metrics"><OwnedRentDueMetricsPage /></Auth>} />
+        <Route path="/owned-properties/metrics/deposits" element={<Auth label="Deposits Metrics"><OwnedDepositsMetricsPage /></Auth>} />
+        <Route path="/owned-properties/metrics/cash-flow" element={<Auth label="Cash Flow Metrics"><OwnedCashFlowMetricsPage /></Auth>} />
+        <Route path="/owned-properties/new" element={<Auth label="Property Form"><OwnedPropertyFormPage /></Auth>} />
+        <Route path="/owned-properties/:id/edit" element={<Auth label="Property Form"><OwnedPropertyFormPage /></Auth>} />
+        <Route path="/owned-properties/:id/financials" element={<Auth label="Property Financials"><OwnedPropertyFinancialsRedirect /></Auth>} />
+        <Route path="/owned-properties/:id/report" element={<Auth label="Property Report"><PropertyReportPage /></Auth>} />
+        <Route path="/owned-properties/:id" element={<Auth label="Property Detail"><OwnedPropertyDetailPage /></Auth>} />
+        <Route path="/owned-properties/tenants" element={<Auth label="Tenants"><Navigate to="/tenants" replace /></Auth>} />
+        <Route path="/owned-properties/leases" element={<Auth label="Leases"><Navigate to="/leases" replace /></Auth>} />
+        <Route path="/owned-properties/financials" element={<Auth label="Financials"><Navigate to="/financials" replace /></Auth>} />
+        <Route path="/owned-properties/invoices" element={<Auth label="Invoices"><Navigate to="/invoices" replace /></Auth>} />
+        <Route path="/owned-properties/documents" element={<Auth label="Documents"><Navigate to="/documents" replace /></Auth>} />
+        <Route path="/owned-properties/recurring-invoices" element={<Auth label="Recurring Invoices"><OwnedRecurringInvoicesPage /></Auth>} />
+        <Route path="/owned-properties/reports" element={<Auth label="Reports"><OwnedPropertiesReportsPage /></Auth>} />
 
-        <Route path="/leases" element={<Auth><OwnedLeasesPage /></Auth>} />
-        <Route path="/leases/new" element={<Auth><LeaseFormPage /></Auth>} />
-        <Route path="/leases/:id/edit" element={<Auth><LeaseFormPage /></Auth>} />
-        <Route path="/leases/:id" element={<Auth><LeaseDetailRedirect /></Auth>} />
-        <Route path="/financials" element={<Auth><FinancialsListPage /></Auth>} />
-        <Route path="/invoices" element={<Auth><InvoicesListPage /></Auth>} />
-        <Route path="/invoices/new" element={<Auth><InvoiceDetailPage /></Auth>} />
-        <Route path="/invoices/:invoiceId" element={<Auth><InvoiceDetailPage /></Auth>} />
-        <Route path="/invoices/legacy" element={<Auth><OwnedInvoicesPage /></Auth>} />
-        <Route path="/documents" element={<Auth><OwnedDocumentsPage /></Auth>} />
-        <Route path="/tenants" element={<Auth><TenantsListPage /></Auth>} />
-        <Route path="/tenants/new" element={<Auth><TenantFormPage /></Auth>} />
-        <Route path="/tenants/:id/invoices/new" element={<Auth><LegacyTenantInvoiceRedirect /></Auth>} />
-        <Route path="/tenants/:id/invoices/:invoiceId" element={<Auth><LegacyTenantInvoiceRedirect /></Auth>} />
-        <Route path="/tenants/:id" element={<Auth><TenantWorkspacePage /></Auth>} />
-        <Route path="/tenants/:id/edit" element={<Auth><TenantFormPage /></Auth>} />
-        <Route path="/account" element={<Auth><AccountPage /></Auth>} />
+        <Route path="/leases" element={<Auth label="Leases"><OwnedLeasesPage /></Auth>} />
+        <Route path="/leases/new" element={<Auth label="Lease Form"><LeaseFormPage /></Auth>} />
+        <Route path="/leases/:id/edit" element={<Auth label="Lease Form"><LeaseFormPage /></Auth>} />
+        <Route path="/leases/:id" element={<Auth label="Lease Detail"><LeaseDetailRedirect /></Auth>} />
+        <Route path="/financials" element={<Auth label="Financials"><FinancialsListPage /></Auth>} />
+        <Route path="/invoices" element={<Auth label="Invoices"><InvoicesListPage /></Auth>} />
+        <Route path="/invoices/new" element={<Auth label="Edit Invoice"><InvoiceDetailPage /></Auth>} />
+        <Route path="/invoices/:invoiceId" element={<Auth label="Invoice Detail"><InvoiceDetailPage /></Auth>} />
+        <Route path="/invoices/legacy" element={<Auth label="Invoices Legacy"><OwnedInvoicesPage /></Auth>} />
+        <Route path="/documents" element={<Auth label="Documents"><OwnedDocumentsPage /></Auth>} />
+        <Route path="/tenants" element={<Auth label="Tenants"><TenantsListPage /></Auth>} />
+        <Route path="/tenants/new" element={<Auth label="Tenant Form"><TenantFormPage /></Auth>} />
+        <Route path="/tenants/:id/invoices/new" element={<Auth label="Tenant Invoice Redirect"><LegacyTenantInvoiceRedirect /></Auth>} />
+        <Route path="/tenants/:id/invoices/:invoiceId" element={<Auth label="Tenant Invoice Redirect"><LegacyTenantInvoiceRedirect /></Auth>} />
+        <Route path="/tenants/:id" element={<Auth label="Tenant Workspace"><TenantWorkspacePage /></Auth>} />
+        <Route path="/tenants/:id/edit" element={<Auth label="Tenant Form"><TenantFormPage /></Auth>} />
+        <Route path="/account" element={<Auth label="Account"><AccountPage /></Auth>} />
         <Route path="/subscription" element={<SubscriptionPage />} />
         <Route path="/subscription/success" element={<SubscriptionResultPage mode="success" />} />
         <Route path="/subscription/cancel" element={<SubscriptionResultPage mode="cancel" />} />

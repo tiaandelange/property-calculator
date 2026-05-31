@@ -1,5 +1,6 @@
 import React, { Component, type ErrorInfo, type ReactNode } from "react";
 import { hasChunkReloadBeenAttempted, isChunkLoadError } from "../../lib/chunkLoadError";
+import { formatRouteErrorForDev, isQueryError } from "../../lib/routeErrorUtils";
 import { logRouteRenderError } from "../../lib/routeLoadLog";
 import { Button } from "./Button";
 
@@ -7,6 +8,9 @@ type Props = {
   children: ReactNode;
   /** Remount boundary when route changes. */
   resetKey?: string;
+  routeLabel?: string;
+  path?: string;
+  locationKey?: string;
   /** Reset TanStack Query errors (from QueryErrorResetBoundary). */
   onReset?: () => void;
 };
@@ -29,7 +33,13 @@ export class RouteErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
-    logRouteRenderError(error, info.componentStack ?? undefined);
+    logRouteRenderError({
+      routeLabel: this.props.routeLabel,
+      path: this.props.path,
+      locationKey: this.props.locationKey,
+      error,
+      componentStack: info.componentStack ?? undefined
+    });
   }
 
   private retry = () => {
@@ -45,6 +55,7 @@ export class RouteErrorBoundary extends Component<Props, State> {
     const { error } = this.state;
     if (error) {
       const staleDeploy = isChunkLoadError(error) || hasChunkReloadBeenAttempted();
+      const devDetails = import.meta.env.DEV ? formatRouteErrorForDev(error) : null;
 
       return (
         <div className="pg-route-error" role="alert">
@@ -64,6 +75,28 @@ export class RouteErrorBoundary extends Component<Props, State> {
               Reload app
             </Button>
           </div>
+          {import.meta.env.DEV && devDetails ? (
+            <details style={{ marginTop: 20 }}>
+              <summary className="pg-muted" style={{ cursor: "pointer", userSelect: "none" }}>
+                Technical details (development only)
+              </summary>
+              <div
+                className="pg-muted"
+                style={{
+                  marginTop: 10,
+                  padding: 12,
+                  borderRadius: 8,
+                  border: "1px solid var(--border-soft)",
+                  fontSize: 12,
+                  fontFamily: "ui-monospace, monospace",
+                  whiteSpace: "pre-wrap",
+                  wordBreak: "break-word"
+                }}
+              >
+                {`Route: ${this.props.routeLabel ?? "unknown"}\nPath: ${this.props.path ?? "unknown"}\nLocation key: ${this.props.locationKey ?? "unknown"}\nError: ${devDetails.name}: ${devDetails.message}\nChunk load: ${devDetails.isChunkLoad ? "yes" : "no"}\nQuery error: ${isQueryError(error) ? "yes" : "no"}\n\n${devDetails.stack ?? ""}`}
+              </div>
+            </details>
+          ) : null}
         </div>
       );
     }

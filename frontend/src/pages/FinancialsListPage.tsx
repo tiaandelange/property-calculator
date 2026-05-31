@@ -3,6 +3,7 @@ import { Helmet } from "react-helmet-async";
 import { useQueryClient } from "@tanstack/react-query";
 import { useLocation, useSearchParams } from "react-router-dom";
 import { propertyApiErrorMessage } from "../api/ownedProperties";
+import { asArray } from "../lib/asArray";
 import {
   isInitialQueryLoad,
   isQueryRefreshing,
@@ -11,6 +12,7 @@ import {
   useWorkspaceId
 } from "../features/queries";
 import { FinancialControlsBar } from "../features/financials/FinancialControlsBar";
+import type { FinancialStatementRow } from "../features/financials/financialDirectoryTypes";
 import { FinancialPagination } from "../features/financials/FinancialPagination";
 import { FinancialStatementTable } from "../features/financials/FinancialStatementTable";
 import { FinancialYtdSummary } from "../features/financials/FinancialYtdSummary";
@@ -51,9 +53,9 @@ export function FinancialsListPage() {
   );
 
   const directoryQuery = useFinancialsDirectoryQuery(directoryParams);
-  const pageItems = directoryQuery.data?.items ?? [];
+  const pageItems = asArray<FinancialStatementRow>(directoryQuery.data?.items);
   const totalCount = directoryQuery.data?.totalCount ?? 0;
-  const properties = directoryQuery.data?.properties ?? [];
+  const properties = asArray<{ id: string; name: string }>(directoryQuery.data?.properties);
   const ytd = directoryQuery.data?.ytd ?? {
     year: new Date().getFullYear(),
     revenue: 0,

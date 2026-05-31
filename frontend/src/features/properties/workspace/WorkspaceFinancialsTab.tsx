@@ -2,6 +2,7 @@ import { FormEvent, useEffect, useMemo, useRef, useState, type ReactNode } from 
 import { Link, useNavigate } from "react-router-dom";
 import { Chart as ChartJS, ArcElement, Legend, Tooltip } from "chart.js";
 import { useMediaQuery } from "../../../hooks/useMediaQuery";
+import { asArray } from "../../../lib/asArray";
 import {
   buildPropertyFinancialOverview,
   mapRecurringCharges,
@@ -546,10 +547,10 @@ export function WorkspaceFinancialsTab({
       setRecurringScheduleSaving(false);
     }
   }
-  const rows = statement?.statementRows ?? [];
-  const deposits = statement?.deposits ?? [];
-  const futureCharges = statement?.futureCharges ?? [];
-  const recurringCharges = statement?.recurringCharges ?? [];
+  const rows = asArray(statement?.statementRows);
+  const deposits = asArray(statement?.deposits);
+  const futureCharges = asArray(statement?.futureCharges);
+  const recurringCharges = asArray(statement?.recurringCharges);
 
   const futureChargesLandlord = useMemo(
     () => (futureCharges as any[]).filter((fc) => !isTenantFacingChargeForecast(fc)),

@@ -1,5 +1,7 @@
 /** Shared formatters and data helpers for the portfolio dashboard UI. */
 
+import { asArray } from "../../lib/asArray";
+
 export type PortfolioChartRange = "THIS_YEAR" | "LAST_6" | "LAST_12" | "ALL";
 
 export type MonthIncomeExpenseRow = {
@@ -92,7 +94,7 @@ export function buildPortfolioChartPoints(
   range: PortfolioChartRange
 ): { points: PortfolioChartPoint[]; estimated: boolean } {
   const charts = (data?.charts ?? {}) as Record<string, unknown>;
-  const mie = (charts.monthlyIncomeExpenses ?? []) as MonthIncomeExpenseRow[];
+  const mie = asArray<MonthIncomeExpenseRow>(charts.monthlyIncomeExpenses);
   const filteredMie = filterMonthRows(
     mie.filter((r) => r.month),
     range === "THIS_YEAR" ? "THIS_YEAR" : range
@@ -108,7 +110,7 @@ export function buildPortfolioChartPoints(
     };
   }
 
-  const noiRows = (charts.monthlyNOITrend ?? []) as NoiTrendRow[];
+  const noiRows = asArray<NoiTrendRow>(charts.monthlyNOITrend);
   const filteredNoi = filterMonthRows(
     noiRows.filter((r) => r.month || r.label),
     range === "ALL" ? "LAST_12" : range === "THIS_YEAR" ? "THIS_YEAR" : range

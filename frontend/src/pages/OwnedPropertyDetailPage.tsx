@@ -23,6 +23,7 @@ import {
 } from "../features/queries";
 import { invalidatePropertyWorkspace } from "../features/properties/invalidate";
 import { prefetchPropertyWorkspaceTabs } from "../lib/routePrefetch";
+import { asArray } from "../lib/asArray";
 import { WorkspaceFinancialsTab } from "../features/properties/workspace/WorkspaceFinancialsTab";
 import { WorkspaceOverviewTab } from "../features/properties/workspace/WorkspaceOverviewTab";
 import { WorkspaceStatementTab } from "../features/properties/workspace/WorkspaceStatementTab";
@@ -133,13 +134,18 @@ export function OwnedPropertyDetailPage() {
     const raw = data.currentLeases;
     if (Array.isArray(raw) && raw.length) return raw;
     if (data.currentLease) return [data.currentLease];
-    return (data.leases ?? []).filter((l: any) => {
+    return asArray(data.leases).filter((l: any) => {
       const st = l.displayStatus ?? l.status;
       return st === "ACTIVE" || st === "MONTH_TO_MONTH";
     });
   }, [data]);
 
   const currentLeaseIdSet = useMemo(() => new Set(currentLeases.map((l: any) => String(l.id))), [currentLeases]);
+
+  const historyLeases = useMemo(
+    () => asArray(data?.leases).filter((l: any) => !currentLeaseIdSet.has(String(l.id))),
+    [data?.leases, currentLeaseIdSet]
+  );
 
   const combinedContractRent = useMemo(() => {
     const v = data?.combinedMonthlyRentFromLeases;
@@ -388,11 +394,9 @@ export function OwnedPropertyDetailPage() {
                       Lease history
                     </summary>
                     <div style={{ height: 10 }} />
-                    {(data.leases?.filter?.((l: any) => !currentLeaseIdSet.has(String(l.id)))?.length ?? 0) ? (
+                    {historyLeases.length > 0 ? (
                       <div className="pg-workspace-card-stack">
-                        {data.leases
-                          .filter((l: any) => !currentLeaseIdSet.has(String(l.id)))
-                          .map((l: any) => (
+                        {historyLeases.map((l: any) => (
                             <PropertyLeaseCard
                               key={l.id}
                               lease={l}
