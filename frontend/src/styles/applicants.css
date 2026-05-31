@@ -225,8 +225,8 @@
   font-weight: var(--weight-semibold);
 }
 
-.pg-applicant-documents__group-desc {
-  margin: 0 0 10px;
+.pg-applicant-doc-slot__copy .pg-applicant-documents__group-desc {
+  margin: 0 0 6px;
   font-size: 12px;
 }
 
@@ -307,21 +307,7 @@
   flex-shrink: 0;
 }
 
-.pg-applicant-doc-upload-btn__label {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  margin: 0;
-}
-
-.pg-applicant-doc-upload-btn__label.is-disabled {
-  opacity: 0.55;
-  pointer-events: none;
-  cursor: not-allowed;
-}
-
-.pg-applicant-doc-slot__input {
+.pg-applicant-doc-upload-btn .pg-applicant-doc-slot__input {
   position: absolute;
   width: 1px;
   height: 1px;

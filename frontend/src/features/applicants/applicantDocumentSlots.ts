@@ -45,3 +45,25 @@ export function applicantDocumentsCompleteCount(uploadedSlots: Set<string>): num
 export function applicantDocumentsAllComplete(uploadedSlots: Set<string>): boolean {
   return applicantDocumentsCompleteCount(uploadedSlots) === APPLICANT_DOCUMENT_SLOTS.length;
 }
+
+export function applicantDocumentGroupComplete(
+  group: ApplicantDocumentSlotDef["group"],
+  uploadedSlots: Set<string>
+): boolean {
+  return applicantDocumentSlotIdsForGroup(group).every((slot) => uploadedSlots.has(slot));
+}
+
+export function applicantDocumentGroupsCompleteCount(uploadedSlots: Set<string>): number {
+  return APPLICANT_DOCUMENT_GROUPS.filter((g) => applicantDocumentGroupComplete(g.id, uploadedSlots)).length;
+}
+
+export function applicantDocumentFilenamesForGroup(
+  group: ApplicantDocumentSlotDef["group"],
+  docsBySlot: Map<ApplicantDocumentSlotId, { originalFilename?: string | null; fileName?: string }>
+): string {
+  return applicantDocumentSlotIdsForGroup(group)
+    .map((slot) => docsBySlot.get(slot))
+    .filter(Boolean)
+    .map((doc) => doc!.originalFilename || doc!.fileName || "Document")
+    .join(", ");
+}

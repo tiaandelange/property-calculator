@@ -1,12 +1,12 @@
-import { useCallback, useEffect, useId, useMemo, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { Check, Circle, ExternalLink, Upload } from "lucide-react";
-import { buttonClassName } from "../../components/ui/buttonStyles";
 import { Button } from "../../components/ui/Button";
 import {
   APPLICANT_DOCUMENT_GROUPS,
+  applicantDocumentFilenamesForGroup,
+  applicantDocumentGroupComplete,
+  applicantDocumentGroupsCompleteCount,
   applicantDocumentSlotIdsForGroup,
-  applicantDocumentSlotsForGroup,
-  applicantDocumentsCompleteCount,
   type ApplicantDocumentSlotDef,
   type ApplicantDocumentSlotId
 } from "./applicantDocumentSlots";
@@ -47,44 +47,7 @@ function SlotIndicator({ uploaded, busy }: { uploaded: boolean; busy?: boolean }
   );
 }
 
-function DocumentSlotRow({
-  slotDef,
-  doc,
-  busy,
-  showView,
-  onView
-}: {
-  slotDef: ApplicantDocumentSlotDef;
-  doc?: TenantDocumentRecord;
-  busy?: boolean;
-  showView?: boolean;
-  onView?: () => void;
-}) {
-  const uploaded = Boolean(doc?.storageKey || doc?.uploadedAt);
-  return (
-    <li className="pg-applicant-doc-slot pg-applicant-doc-slot--readonly">
-      <SlotIndicator uploaded={uploaded} busy={busy} />
-      <div className="pg-applicant-doc-slot__copy">
-        <div className="pg-applicant-doc-slot__label">{slotDef.label}</div>
-        {doc?.originalFilename || doc?.fileName ? (
-          <div className="pg-applicant-doc-slot__file pg-muted">{doc.originalFilename || doc.fileName}</div>
-        ) : (
-          <div className="pg-applicant-doc-slot__file pg-muted">Not uploaded yet</div>
-        )}
-      </div>
-      {showView && doc ? (
-        <div className="pg-applicant-doc-slot__actions">
-          <Button type="button" variant="ghost" size="sm" onClick={onView}>
-            <ExternalLink size={14} aria-hidden style={{ marginRight: 4 }} />
-            View
-          </Button>
-        </div>
-      ) : null}
-    </li>
-  );
-}
-
-function FileUploadLabel({
+function FileUploadTrigger({
   inputId,
   label,
   multiple,
@@ -101,34 +64,110 @@ function FileUploadLabel({
   variant?: "outline" | "soft";
   onFiles: (files: FileList) => void;
 }) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
   return (
     <div className="pg-applicant-doc-upload-btn">
       <input
+        ref={inputRef}
         id={inputId}
         type="file"
         accept={FILE_ACCEPT}
         multiple={multiple}
+        tabIndex={-1}
+        aria-hidden
         className="pg-applicant-doc-slot__input"
-        disabled={disabled || busy}
         onChange={(e) => {
           const files = e.target.files;
           if (files?.length) onFiles(files);
           e.target.value = "";
         }}
       />
-      <label
-        htmlFor={inputId}
-        className={buttonClassName({
-          variant,
-          size: "sm",
-          className: `pg-applicant-doc-upload-btn__label${disabled || busy ? " is-disabled" : ""}`
-        })}
-        aria-disabled={disabled || busy}
+      <Button
+        type="button"
+        variant={variant}
+        size="sm"
+        disabled={disabled || busy}
+        onClick={() => inputRef.current?.click()}
       >
         <Upload size={14} aria-hidden style={{ marginRight: 4 }} />
         {busy ? "Uploading…" : label}
-      </label>
+      </Button>
     </div>
+  );
+}
+
+function DocumentGroupRow({
+  group,
+  bySlot,
+  busy,
+  readOnly,
+  uploadsEnabled,
+  mode,
+  inputId,
+  onUploadSingle,
+  onUploadMultiple,
+  onView
+}: {
+  group: (typeof APPLICANT_DOCUMENT_GROUPS)[number];
+  bySlot: Map<ApplicantDocumentSlotId, TenantDocumentRecord>;
+  busy?: boolean;
+  readOnly?: boolean;
+  uploadsEnabled: boolean;
+  mode: "public" | "owner";
+  inputId: string;
+  onUploadSingle: (file: File) => void;
+  onUploadMultiple: (files: FileList) => void;
+  onView?: (doc: TenantDocumentRecord) => void;
+}) {
+  const isMulti = group.id === "payslips" || group.id === "bank";
+  const uploadedSlots = new Set(Array.from(bySlot.keys()));
+  const complete = applicantDocumentGroupComplete(group.id, uploadedSlots);
+  const filenames = applicantDocumentFilenamesForGroup(group.id, bySlot);
+  const uploadedCount = applicantDocumentSlotIdsForGroup(group.id).filter((slot) => bySlot.has(slot)).length;
+
+  return (
+    <li className="pg-applicant-doc-slot">
+      <SlotIndicator uploaded={complete} busy={busy} />
+      <div className="pg-applicant-doc-slot__copy">
+        <div className="pg-applicant-doc-slot__label">{group.title}</div>
+        <p className="pg-muted pg-applicant-documents__group-desc">{group.description}</p>
+        <div className="pg-applicant-doc-slot__file pg-muted">{filenames || "Not uploaded yet"}</div>
+      </div>
+      <div className="pg-applicant-doc-slot__actions">
+        {mode === "owner" && group.id === "identity" && bySlot.get("ID") ? (
+          <Button type="button" variant="ghost" size="sm" onClick={() => onView?.(bySlot.get("ID")!)}>
+            <ExternalLink size={14} aria-hidden style={{ marginRight: 4 }} />
+            View
+          </Button>
+        ) : null}
+        {!readOnly ? (
+          <FileUploadTrigger
+            inputId={inputId}
+            label={
+              isMulti
+                ? uploadedCount > 0
+                  ? "Replace files"
+                  : "Upload files"
+                : complete
+                  ? "Replace"
+                  : "Upload file"
+            }
+            multiple={isMulti}
+            disabled={!uploadsEnabled}
+            busy={busy}
+            variant={complete ? "soft" : "outline"}
+            onFiles={(files) => {
+              if (isMulti) onUploadMultiple(files);
+              else {
+                const file = files[0];
+                if (file) onUploadSingle(file);
+              }
+            }}
+          />
+        ) : null}
+      </div>
+    </li>
   );
 }
 
@@ -177,7 +216,8 @@ export function ApplicantDocumentUploadSection({
   }, [refresh]);
 
   const bySlot = useMemo(() => docsBySlot(docs), [docs]);
-  const uploadedCount = applicantDocumentsCompleteCount(new Set(Array.from(bySlot.keys())));
+  const uploadedSlots = useMemo(() => new Set(Array.from(bySlot.keys())), [bySlot]);
+  const groupsCompleteCount = applicantDocumentGroupsCompleteCount(uploadedSlots);
 
   const uploadFileCore = async (slot: ApplicantDocumentSlotId, file: File) => {
     if (!tenantId || disabled || readOnly) return;
@@ -243,12 +283,12 @@ export function ApplicantDocumentUploadSection({
             Supporting documents
           </h2>
           <p className="pg-muted pg-applicant-documents__desc">
-            Upload your ID, three recent payslips, and three recent bank statements. Each item shows a green check when
-            uploaded. Payslips and bank statements can be selected together in one step (up to three files).
+            Upload your ID, three recent payslips, and three recent bank statements. Each category shows a green check
+            when complete. Select up to three payslips or bank statements at once.
           </p>
         </div>
         <span className="pg-applicant-documents__progress" aria-live="polite">
-          {uploadedCount} of 7 uploaded
+          {groupsCompleteCount} of {APPLICANT_DOCUMENT_GROUPS.length} complete
         </span>
       </div>
 
@@ -261,91 +301,27 @@ export function ApplicantDocumentUploadSection({
       {error ? <div className="pg-alert pg-alert-error">{error}</div> : null}
       {loading && !docs.length ? <p className="pg-muted">Loading documents…</p> : null}
 
-      {APPLICANT_DOCUMENT_GROUPS.map((group) => {
-        const slots = applicantDocumentSlotsForGroup(group.id);
-        const groupSlots = applicantDocumentSlotIdsForGroup(group.id);
-        const groupUploaded = groupSlots.filter((s) => bySlot.has(s)).length;
-        const groupBusy = busyGroup === group.id;
-        const isMulti = group.id === "payslips" || group.id === "bank";
+      <ul className="pg-applicant-documents__slots">
+        {APPLICANT_DOCUMENT_GROUPS.map((group) => {
+          const groupBusy = busyGroup === group.id || (group.id === "identity" && busySlot === "ID");
 
-        return (
-          <div key={group.id} className="pg-applicant-documents__group">
-            <div className="pg-applicant-documents__group-head">
-              <div>
-                <h3 className="pg-applicant-documents__group-title">{group.title}</h3>
-                <p className="pg-muted pg-applicant-documents__group-desc">{group.description}</p>
-              </div>
-              {!readOnly && isMulti ? (
-                <FileUploadLabel
-                  inputId={`${baseId}-${group.id}`}
-                  label={groupUploaded > 0 ? "Replace files" : "Upload (up to 3)"}
-                  multiple
-                  disabled={!uploadsEnabled}
-                  busy={groupBusy}
-                  variant={groupUploaded > 0 ? "soft" : "outline"}
-                  onFiles={(files) => void uploadMultiple(group.id, files)}
-                />
-              ) : null}
-            </div>
-
-            <ul className="pg-applicant-documents__slots">
-              {slots.map((slotDef) => {
-                const doc = bySlot.get(slotDef.slot);
-                const busy = busySlot === slotDef.slot || groupBusy;
-
-                if (group.id === "identity") {
-                  const uploaded = Boolean(doc?.storageKey || doc?.uploadedAt);
-                  return (
-                    <li key={slotDef.slot} className="pg-applicant-doc-slot">
-                      <SlotIndicator uploaded={uploaded} busy={busy} />
-                      <div className="pg-applicant-doc-slot__copy">
-                        <div className="pg-applicant-doc-slot__label">{slotDef.label}</div>
-                        {doc?.originalFilename || doc?.fileName ? (
-                          <div className="pg-applicant-doc-slot__file pg-muted">{doc.originalFilename || doc.fileName}</div>
-                        ) : (
-                          <div className="pg-applicant-doc-slot__file pg-muted">PDF or image, max 10 MB</div>
-                        )}
-                      </div>
-                      <div className="pg-applicant-doc-slot__actions">
-                        {mode === "owner" && doc ? (
-                          <Button type="button" variant="ghost" size="sm" onClick={() => void openDocument(doc)}>
-                            <ExternalLink size={14} aria-hidden style={{ marginRight: 4 }} />
-                            View
-                          </Button>
-                        ) : null}
-                        {!readOnly ? (
-                          <FileUploadLabel
-                            inputId={`${baseId}-${slotDef.slot}`}
-                            label={uploaded ? "Replace" : "Upload"}
-                            disabled={!uploadsEnabled}
-                            busy={busy}
-                            variant={uploaded ? "soft" : "outline"}
-                            onFiles={(files) => {
-                              const file = files[0];
-                              if (file) void uploadFile(slotDef.slot, file);
-                            }}
-                          />
-                        ) : null}
-                      </div>
-                    </li>
-                  );
-                }
-
-                return (
-                  <DocumentSlotRow
-                    key={slotDef.slot}
-                    slotDef={slotDef}
-                    doc={doc}
-                    busy={busy}
-                    showView={mode === "owner"}
-                    onView={doc ? () => void openDocument(doc) : undefined}
-                  />
-                );
-              })}
-            </ul>
-          </div>
-        );
-      })}
+          return (
+            <DocumentGroupRow
+              key={group.id}
+              group={group}
+              bySlot={bySlot}
+              busy={groupBusy}
+              readOnly={readOnly}
+              uploadsEnabled={uploadsEnabled}
+              mode={mode}
+              inputId={`${baseId}-${group.id}`}
+              onUploadSingle={(file) => void uploadFile("ID", file)}
+              onUploadMultiple={(files) => void uploadMultiple(group.id, files)}
+              onView={(doc) => void openDocument(doc)}
+            />
+          );
+        })}
+      </ul>
     </section>
   );
 }

@@ -20,6 +20,12 @@ import {
 import { fmtZar } from "../features/tenants/tenantDirectoryUtils";
 import { isSupabaseConfigured } from "../lib/supabaseClient";
 
+const APPLICANT_TENANT_STORAGE_PREFIX = "pg-applicant-tenant:";
+
+function applicantTenantStorageKey(token: string): string {
+  return `${APPLICANT_TENANT_STORAGE_PREFIX}${token}`;
+}
+
 export function ApplicantApplyPage() {
   const { token = "" } = useParams();
   const [loading, setLoading] = useState(true);
@@ -59,6 +65,12 @@ export function ApplicantApplyPage() {
         setPrimary(emptyFieldValues(ctx.formTemplate));
         setCoApplicant(emptyFieldValues(ctx.formTemplate));
         setCoEnabled(false);
+
+        const storedTenantId = sessionStorage.getItem(applicantTenantStorageKey(token));
+        if (storedTenantId) {
+          setTenantId(storedTenantId);
+          setSaved(true);
+        }
       })
       .catch(() => {
         if (!cancelled) setError("This application link is invalid or has expired.");
@@ -84,6 +96,9 @@ export function ApplicantApplyPage() {
       );
       setTenantId(result.tenantId);
       setSaved(true);
+      if (result.tenantId) {
+        sessionStorage.setItem(applicantTenantStorageKey(token), result.tenantId);
+      }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Could not save application.");
     } finally {
@@ -182,24 +197,24 @@ export function ApplicantApplyPage() {
                   ) : null}
                 </div>
 
+                <ApplicantDocumentUploadSection
+                  mode="public"
+                  tenantId={tenantId}
+                  inviteToken={token}
+                  disabled={!saved || !tenantId}
+                />
+
                 {!saved ? (
                   <div style={{ marginTop: 20 }}>
                     <Button type="submit" loading={submitting}>
                       Save application details
                     </Button>
                     <p className="pg-muted pg-applicant-documents__hint" style={{ marginTop: 12, marginBottom: 0 }}>
-                      Save your details first to unlock document uploads on this page.
+                      Save your details to unlock document uploads. Everything stays on this page.
                     </p>
                   </div>
                 ) : null}
               </form>
-
-              <ApplicantDocumentUploadSection
-                mode="public"
-                tenantId={tenantId}
-                inviteToken={token}
-                disabled={!saved || !tenantId}
-              />
             </>
           ) : null}
         </Card>
