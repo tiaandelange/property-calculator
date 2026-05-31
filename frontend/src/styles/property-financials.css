@@ -233,20 +233,13 @@
 }
 
 .pg-pfin-textarea {
-  min-height: 88px;
-  resize: vertical;
+  min-height: 44px;
+  height: 44px;
+  resize: none;
+  overflow: hidden;
   line-height: 1.5;
   box-sizing: border-box;
-}
-
-.pg-pfin-notes-field .pg-pfin-textarea:placeholder-shown {
-  padding-top: calc((88px - 1.5em) / 2);
-  padding-bottom: calc((88px - 1.5em) / 2);
-}
-
-.pg-pfin-notes-field .pg-pfin-textarea:not(:placeholder-shown) {
-  padding-top: 10px;
-  padding-bottom: 10px;
+  padding: 10px 12px;
 }
 
 .pg-pfin-form-actions {

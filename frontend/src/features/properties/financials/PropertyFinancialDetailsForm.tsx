@@ -97,7 +97,7 @@ export function PropertyFinancialDetailsForm({
       <PropertyFormField label="Financial notes" className="pg-pfin-grid__span-2 pg-pfin-notes-field">
         <textarea
           className="pg-input pg-pfin-textarea"
-          rows={3}
+          rows={1}
           value={form.notes}
           onChange={(e) => patch({ notes: e.target.value })}
           placeholder="Notes for reporting and tenant management…"
