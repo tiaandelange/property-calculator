@@ -235,21 +235,18 @@
 .pg-pfin-textarea {
   min-height: 88px;
   resize: vertical;
+  line-height: 1.5;
+  box-sizing: border-box;
 }
 
-@media (min-width: 640px) {
-  .pg-pfin-notes-field.pg-prop-field {
-    display: grid;
-    grid-template-columns: minmax(120px, 11rem) 1fr;
-    align-items: center;
-    column-gap: 16px;
-    row-gap: 0;
-  }
+.pg-pfin-notes-field .pg-pfin-textarea:placeholder-shown {
+  padding-top: calc((88px - 1.5em) / 2);
+  padding-bottom: calc((88px - 1.5em) / 2);
+}
 
-  .pg-pfin-notes-field .pg-prop-field__head,
-  .pg-pfin-notes-field .pg-prop-field__control {
-    min-width: 0;
-  }
+.pg-pfin-notes-field .pg-pfin-textarea:not(:placeholder-shown) {
+  padding-top: 10px;
+  padding-bottom: 10px;
 }
 
 .pg-pfin-form-actions {
