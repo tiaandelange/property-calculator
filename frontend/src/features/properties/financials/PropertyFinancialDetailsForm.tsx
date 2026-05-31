@@ -1,10 +1,8 @@
 import { FormEvent, useEffect, useState } from "react";
-import { Input } from "../../../components/ui/Input";
 import { PropertyFormField } from "../form/PropertyFormField";
 import { formatMetricPercent } from "./propertyFinancialMetrics";
 
 export type FinancialDetailsFormState = {
-  ratesAndTaxesMonthly: string;
   notes: string;
 };
 
@@ -16,7 +14,6 @@ function str(v: unknown): string {
 export function buildFinancialDetailsInitial(propertyDetail: Record<string, unknown> | null): FinancialDetailsFormState {
   const pf = propertyDetail ?? {};
   return {
-    ratesAndTaxesMonthly: str(pf.ratesAndTaxesMonthly),
     notes: str(pf.notes)
   };
 }
@@ -97,18 +94,7 @@ export function PropertyFinancialDetailsForm({
       >
         <div className="pg-pfin-readonly">{formatMetricPercent(vacancyPercent)}</div>
       </PropertyFormField>
-      <PropertyFormField label="Rates & taxes">
-        <div className="pg-pfin-input-suffix">
-          <Input
-            value={form.ratesAndTaxesMonthly}
-            onChange={(e) => patch({ ratesAndTaxesMonthly: e.target.value })}
-            type="number"
-            min={0}
-          />
-          <span className="pg-pfin-input-suffix__tag">ZAR</span>
-        </div>
-      </PropertyFormField>
-      <PropertyFormField label="Financial notes" className="pg-pfin-grid__span-2">
+      <PropertyFormField label="Financial notes" className="pg-pfin-grid__span-2 pg-pfin-notes-field">
         <textarea
           className="pg-input pg-pfin-textarea"
           rows={3}
@@ -135,16 +121,6 @@ export function PropertyFinancialDetailsForm({
           </PropertyFormField>
           <PropertyFormField label="Vacancy">
             <div className="pg-pfin-readonly">{formatMetricPercent(vacancyPercent)}</div>
-          </PropertyFormField>
-          <PropertyFormField label="Rates & taxes">
-            <div className="pg-pfin-input-suffix">
-              <Input
-                value={form.ratesAndTaxesMonthly}
-                onChange={(e) => patch({ ratesAndTaxesMonthly: e.target.value })}
-                type="number"
-              />
-              <span className="pg-pfin-input-suffix__tag">ZAR</span>
-            </div>
           </PropertyFormField>
         </form>
       </section>

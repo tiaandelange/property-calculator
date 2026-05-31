@@ -650,14 +650,7 @@ export function WorkspaceFinancialsTab({
   async function saveFinancialDetails(state: FinancialDetailsFormState) {
     setFinancialDetailsSaving(true);
     try {
-      const parseOpt = (s: string) => {
-        const t = String(s ?? "").trim();
-        if (t === "") return null;
-        const x = Number(t);
-        return Number.isFinite(x) ? x : null;
-      };
       const payload: Record<string, unknown> = {
-        ratesAndTaxesMonthly: parseOpt(state.ratesAndTaxesMonthly),
         notes: state.notes.trim() || null
       };
       await updateProperty(propertyId, payload);
