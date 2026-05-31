@@ -2,6 +2,8 @@ import { FormEvent, useEffect, useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "../components/ui/Button";
+import { PlanLimitUpgradePrompt } from "../features/subscription/PlanLimitUpgradePrompt";
+import { useSubscriptionLimits } from "../features/subscription/useSubscriptionLimits";
 import { AppFormPage, AppPageActions, AppPageHeader } from "../components/ui/AppPage";
 import {
   createProperty,
@@ -53,6 +55,9 @@ export function OwnedPropertyFormPage() {
   const [pendingPhotos, setPendingPhotos] = useState<PendingPhoto[]>([]);
   const [draftBanner, setDraftBanner] = useState<null | { restoredAt: number }>(null);
   const [loaded, setLoaded] = useState(false);
+  const subscriptionLimits = useSubscriptionLimits();
+  const propertyLimitReached =
+    !isEdit && subscriptionLimits.limitsActive && !subscriptionLimits.canCreateProperty;
 
   useEffect(() => {
     if (isEdit) return;
@@ -252,7 +257,12 @@ export function OwnedPropertyFormPage() {
           >
             Cancel
           </Button>
-          <Button type="submit" form="property-form-main" loading={saving}>
+          <Button
+            type="submit"
+            form="property-form-main"
+            loading={saving}
+            disabled={propertyLimitReached}
+          >
             {saveLabel}
           </Button>
         </AppPageActions>
@@ -299,6 +309,12 @@ export function OwnedPropertyFormPage() {
           >
             Discard draft
           </Button>
+        </div>
+      ) : null}
+
+      {propertyLimitReached ? (
+        <div style={{ marginBottom: 12 }}>
+          <PlanLimitUpgradePrompt context="property" limits={subscriptionLimits} />
         </div>
       ) : null}
 

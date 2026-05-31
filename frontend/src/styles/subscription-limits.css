@@ -1,0 +1,61 @@
+.pg-plan-limit-prompt {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-soft);
+  background: var(--surface);
+}
+
+.pg-plan-limit-prompt--compact {
+  flex-direction: row;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 10px 12px;
+}
+
+.pg-plan-limit-prompt__message {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.pg-plan-limit-prompt__usage {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.pg-plan-limit-prompt__note {
+  margin: 6px 0 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+.pg-plan-limit-prompt__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.pg-plan-limit-hint {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.pg-add-property-button-wrap {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.pg-calculator-limit-banner {
+  margin-bottom: 12px;
+}

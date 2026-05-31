@@ -88,6 +88,7 @@ function normalizeDashboardParams(params: DashboardSummaryParams) {
 /** Stable TanStack Query keys scoped by workspace (signed-in user id). */
 export const queryKeys = {
   profile: (userId: string) => ["profile", userId] as const,
+  subscription: (workspaceId: string) => ["subscription", workspaceId] as const,
   settings: (workspaceId: string) => ["settings", workspaceId] as const,
   properties: (workspaceId: string, filters: PropertiesListFilters = {}) =>
     ["properties", workspaceId, filters.month ?? "current"] as const,

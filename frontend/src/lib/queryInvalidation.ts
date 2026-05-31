@@ -41,7 +41,8 @@ export function invalidatePortfolioQueries(opts?: InvalidateOpts) {
       { queryKey: ["invoice-metrics", wid] },
       { queryKey: ["financials", wid] },
       { queryKey: ["dashboard-summary", wid] },
-      { queryKey: queryKeys.reports(wid) }
+      { queryKey: queryKeys.reports(wid) },
+      { queryKey: queryKeys.subscription(wid) }
     );
   } else {
     matchers.push(

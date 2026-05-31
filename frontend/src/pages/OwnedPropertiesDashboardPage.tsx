@@ -7,6 +7,7 @@ import { Container } from "../components/ui/Container";
 import { Section } from "../components/ui/Section";
 import { Grid } from "../components/ui/Grid";
 import { Button, ButtonLink } from "../components/ui/Button";
+import { AddPropertyButton } from "../features/subscription/AddPropertyButton";
 import { getProperties, getProperty } from "../api/ownedProperties";
 import { PROPERTY_DATA_INVALIDATION } from "../features/properties/invalidate";
 import { AlertBanner, DashboardCard, EmptyState, MetricCard, SkeletonGrid, StatCard, StatusPill } from "../components/ui/DashboardKit";
@@ -178,7 +179,7 @@ export function OwnedPropertiesDashboardPage() {
           </div>
           <div style={{ display: "flex", gap: 10 }}>
             <Button onClick={load} loading={loading}>Refresh</Button>
-            <ButtonLink href="/owned-properties/new" variant="soft">Add Property</ButtonLink>
+            <AddPropertyButton variant="soft" />
             <ButtonLink href="/financials" variant="ghost">Add Income/Expense</ButtonLink>
             <ButtonLink href="/owned-properties/reports" variant="ghost">Generate Portfolio Report</ButtonLink>
           </div>
@@ -192,7 +193,7 @@ export function OwnedPropertiesDashboardPage() {
             body="Add your first property to track rent, expenses, leases, documents and portfolio equity."
             actions={
               <>
-                <ButtonLink href="/owned-properties/new" variant="primary">Add Property</ButtonLink>
+                <AddPropertyButton variant="primary" />
                 <ButtonLink href="/calculators/cash-on-cash-return" variant="ghost">Try Investment Calculator</ButtonLink>
               </>
             }

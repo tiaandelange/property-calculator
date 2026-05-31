@@ -5,9 +5,10 @@ import { HelmetProvider } from "react-helmet-async";
 import { LoginPage } from "./LoginPage";
 import { AuthProvider } from "../contexts/AuthContext";
 
-const { signInWithPassword, signUp } = vi.hoisted(() => ({
+const { signInWithPassword, signUp, subscriptionInsert } = vi.hoisted(() => ({
   signInWithPassword: vi.fn(() => Promise.resolve({ data: { user: {}, session: {} }, error: null })),
-  signUp: vi.fn(() => Promise.resolve({ data: { user: {}, session: null }, error: null }))
+  signUp: vi.fn(() => Promise.resolve({ data: { user: { id: "u1" }, session: { user: { id: "u1" } } }, error: null })),
+  subscriptionInsert: vi.fn(() => Promise.resolve({ error: null }))
 }));
 
 const profileChain = {
@@ -29,14 +30,59 @@ const profileChain = {
   }))
 };
 
+const subscriptionPlansChain = {
+  select: vi.fn(() => ({
+    eq: vi.fn(() => ({
+      order: vi.fn(() =>
+        Promise.resolve({
+          data: [
+            {
+              id: "1",
+              code: "investor",
+              name: "Investor",
+              description: null,
+              monthly_price: 299,
+              currency: "ZAR",
+              trial_days: 0,
+              property_limit: 10,
+              report_limit: 10,
+              includes_calculators: true,
+              includes_management: true,
+              includes_unlimited_reports: false,
+              sort_order: 20
+            }
+          ],
+          error: null
+        })
+      )
+    }))
+  }))
+};
+
+const userSubscriptionsChain = {
+  select: vi.fn(() => ({
+    eq: vi.fn(() => ({
+      maybeSingle: vi.fn(() => Promise.resolve({ data: null, error: null }))
+    }))
+  })),
+  insert: subscriptionInsert
+};
+
+function fromMock(table: string) {
+  if (table === "user_subscriptions") return userSubscriptionsChain;
+  if (table === "subscription_plans") return subscriptionPlansChain;
+  return profileChain;
+}
+
 vi.mock("../lib/supabaseClient", () => ({
   isSupabaseConfigured: true,
   getSupabase: () => ({
     auth: {
       signInWithPassword,
-      signUp
+      signUp,
+      getUser: vi.fn(() => Promise.resolve({ data: { user: { id: "u1" } }, error: null }))
     },
-    from: vi.fn(() => profileChain)
+    from: vi.fn(fromMock)
   }),
   supabase: {
     auth: {
@@ -44,9 +90,10 @@ vi.mock("../lib/supabaseClient", () => ({
       signUp,
       getSession: vi.fn(() => Promise.resolve({ data: { session: null } })),
       onAuthStateChange: vi.fn(() => ({ data: { subscription: { unsubscribe: vi.fn() } } })),
-      signOut: vi.fn()
+      signOut: vi.fn(),
+      getUser: vi.fn(() => Promise.resolve({ data: { user: { id: "u1" } }, error: null }))
     },
-    from: vi.fn(() => profileChain)
+    from: vi.fn(fromMock)
   }
 }));
 
@@ -66,6 +113,8 @@ describe("LoginPage", () => {
   beforeEach(() => {
     signInWithPassword.mockClear();
     signUp.mockClear();
+    subscriptionInsert.mockClear();
+    sessionStorage.clear();
   });
 
   it("calls Supabase signInWithPassword on sign in", async () => {
@@ -84,6 +133,53 @@ describe("LoginPage", () => {
         email: "a@test.example",
         password: "password123"
       });
+    });
+  });
+
+  it("shows plan summary and creates subscription on signup with plan param", async () => {
+    render(
+      <HelmetProvider>
+        <MemoryRouter initialEntries={["/signup?plan=investor"]}>
+          <AuthProvider>
+            <LoginPage />
+          </AuthProvider>
+        </MemoryRouter>
+      </HelmetProvider>
+    );
+
+    expect(await screen.findByRole("heading", { name: /investor/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /change plan/i })).toHaveAttribute("href", "/pricing");
+
+    fireEvent.change(screen.getByPlaceholderText("you@example.com"), {
+      target: { value: "new@test.example" }
+    });
+    fireEvent.change(screen.getByPlaceholderText("••••••••"), {
+      target: { value: "password123" }
+    });
+    fireEvent.click(screen.getByRole("button", { name: /create account/i }));
+
+    await waitFor(() => {
+      expect(signUp).toHaveBeenCalledWith(
+        expect.objectContaining({
+          email: "new@test.example",
+          password: "password123",
+          options: expect.objectContaining({
+            data: { plan_code: "investor" }
+          })
+        })
+      );
+    });
+
+    await waitFor(() => {
+      expect(subscriptionInsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          user_id: "u1",
+          plan_code: "investor",
+          status: "pending_payment",
+          payment_provider: null,
+          payment_subscription_id: null
+        })
+      );
     });
   });
 });

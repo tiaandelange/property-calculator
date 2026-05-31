@@ -7,6 +7,8 @@ import { Card } from "../components/ui/Card";
 import { AppListPage, AppPageActions, AppPageHeader, AppPageSubtitle, AppPageTitle } from "../components/ui/AppPage";
 import { Grid } from "../components/ui/Grid";
 import { Button, ButtonLink } from "../components/ui/Button";
+import { PlanLimitUpgradePrompt } from "../features/subscription/PlanLimitUpgradePrompt";
+import { useSubscriptionLimits } from "../features/subscription/useSubscriptionLimits";
 
 type Report = {
   id: string | number;
@@ -29,6 +31,7 @@ function getKeyMetric(result: Record<string, unknown>) {
 }
 
 export function DashboardPage() {
+  const subscriptionLimits = useSubscriptionLimits();
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>("");
@@ -48,6 +51,10 @@ export function DashboardPage() {
   };
 
   const generate = async (calculationId: string | number) => {
+    if (!subscriptionLimits.canGenerateReport && subscriptionLimits.limitsActive) {
+      setError(subscriptionLimits.upgradeMessage ?? "Report limit reached for your plan.");
+      return;
+    }
     setError("");
     setPdfBusyCalcId(calculationId);
     try {
@@ -169,6 +176,8 @@ export function DashboardPage() {
                         >
                           Download PDF
                         </Button>
+                      ) : !subscriptionLimits.canGenerateReport && subscriptionLimits.limitsActive ? (
+                        <PlanLimitUpgradePrompt context="report" limits={subscriptionLimits} compact />
                       ) : (
                         <Button variant="secondary" loading={pdfBusyCalcId === r.id} onClick={() => void generate(r.id)}>
                           {r.legacyPdfOnly ? "Regenerate PDF" : "Generate PDF"}

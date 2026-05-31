@@ -4,6 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "react-router-dom";
 import { AppListPage } from "../components/ui/AppPage";
 import { ButtonLink } from "../components/ui/Button";
+import { AddPropertyButton } from "../features/subscription/AddPropertyButton";
 import { EmptyState, SkeletonGrid } from "../components/ui/DashboardKit";
 import { MetricCardsSkeletonRow } from "../components/ui/PageSkeletons";
 import { QueryErrorCard } from "../components/ui/QueryState";
@@ -410,9 +411,7 @@ export function OwnedPropertiesPortfolioDashboardPage() {
               body="Track equity, cash flow, tenants, leases and reports across your portfolio."
               actions={
                 <>
-                  <ButtonLink href="/owned-properties/new" variant="primary">
-                    Add Property
-                  </ButtonLink>
+                  <AddPropertyButton variant="primary" />
                   <ButtonLink href="/calculators/cash-on-cash-return" variant="ghost">
                     Open Calculators
                   </ButtonLink>

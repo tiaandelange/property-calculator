@@ -11,12 +11,18 @@ import {
   listActiveSubscriptionPlans,
   type SubscriptionPlanRecord
 } from "../services/subscriptionPlansSupabase";
-import { planDisplayName } from "../features/pricing/pricingPlanDisplay";
+import { SignupPlanSummary } from "../features/signup/SignupPlanSummary";
+import {
+  PENDING_SIGNUP_PLAN_STORAGE_KEY,
+  resolveSignupPlanSelection,
+  SIGNUP_PLAN_USER_METADATA_KEY
+} from "../features/signup/signupPlan";
 import { getSupabase, isSupabaseConfigured } from "../lib/supabaseClient";
 import { getConfirmEmailRedirectUrl } from "../lib/authRedirect";
 import { formatAuthError } from "../utils/authErrors";
 import { useAuth } from "../contexts/AuthContext";
 import { PageBrandMark } from "../components/brand/PageBrandMark";
+import { ensureUserSubscriptionForPlanCode } from "../services/userSubscriptionsSupabase";
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -31,13 +37,13 @@ export function LoginPage() {
 
   const planCode = searchParams.get("plan")?.trim() ?? "";
   const isSignupEntry = location.pathname === "/signup" || Boolean(planCode);
-  const selectedPlanName = planCode ? planDisplayName(planCode, plans) : null;
+  const signupPlan = resolveSignupPlanSelection(location.pathname, planCode, plans);
 
   useEffect(() => {
     let cancelled = false;
     void listActiveSubscriptionPlans()
       .then((rows) => {
-        if (!cancelled) setPlans(rows);
+        if (!cancelled) setPlans(rows.length ? rows : FALLBACK_SUBSCRIPTION_PLANS);
       })
       .catch(() => {
         if (!cancelled) setPlans(FALLBACK_SUBSCRIPTION_PLANS);
@@ -60,6 +66,32 @@ export function LoginPage() {
     }
     navigate("/owned-properties/dashboard", { replace: true });
   }, [session, initializing, location.state, navigate]);
+
+  useEffect(() => {
+    if (!session?.user?.id) return;
+
+    const pending = sessionStorage.getItem(PENDING_SIGNUP_PLAN_STORAGE_KEY);
+    const meta = session.user.user_metadata?.[SIGNUP_PLAN_USER_METADATA_KEY];
+    const code =
+      typeof pending === "string" && pending.trim()
+        ? pending.trim()
+        : typeof meta === "string" && meta.trim()
+          ? meta.trim()
+          : null;
+
+    if (!code) return;
+
+    void ensureUserSubscriptionForPlanCode(code)
+      .catch((e) => {
+        console.warn(
+          "[signup] user_subscriptions",
+          e instanceof Error ? e.message : e
+        );
+      })
+      .finally(() => {
+        sessionStorage.removeItem(PENDING_SIGNUP_PLAN_STORAGE_KEY);
+      });
+  }, [session?.user?.id, session?.user?.user_metadata]);
 
   const submit = async (mode: "login" | "register") => {
     setLoading(mode);
@@ -86,29 +118,58 @@ export function LoginPage() {
         return;
       }
 
+      const selectedPlanCode = isSignupEntry ? signupPlan.plan.code : null;
+      if (selectedPlanCode) {
+        sessionStorage.setItem(PENDING_SIGNUP_PLAN_STORAGE_KEY, selectedPlanCode);
+      }
+
       const { data, error } = await sb.auth.signUp({
         email: email.trim(),
         password,
         options: {
-          emailRedirectTo: getConfirmEmailRedirectUrl()
+          emailRedirectTo: getConfirmEmailRedirectUrl(),
+          ...(selectedPlanCode
+            ? { data: { [SIGNUP_PLAN_USER_METADATA_KEY]: selectedPlanCode } }
+            : {})
         }
       });
       if (error) {
+        if (selectedPlanCode) {
+          sessionStorage.removeItem(PENDING_SIGNUP_PLAN_STORAGE_KEY);
+        }
         setMessage({ kind: "error", text: formatAuthError(error) });
         return;
       }
 
       if (data.session) {
-        setMessage({
-          kind: "ok",
-          text: "Account created. You are signed in."
-        });
+        if (selectedPlanCode) {
+          try {
+            await ensureUserSubscriptionForPlanCode(selectedPlanCode);
+            sessionStorage.removeItem(PENDING_SIGNUP_PLAN_STORAGE_KEY);
+          } catch (subErr) {
+            console.warn(
+              "[signup] user_subscriptions",
+              subErr instanceof Error ? subErr.message : subErr
+            );
+          }
+          setMessage({
+            kind: "ok",
+            text: `Account created on the ${signupPlan.plan.name} plan. You are signed in. No payment was charged.`
+          });
+        } else {
+          setMessage({
+            kind: "ok",
+            text: "Account created. You are signed in."
+          });
+        }
         return;
       }
 
       setMessage({
         kind: "ok",
-        text: "Check your email for a confirmation link. After confirming, return here to sign in."
+        text: selectedPlanCode
+          ? `Check your email for a confirmation link. Your ${signupPlan.plan.name} plan will be applied after you sign in. No payment is required yet.`
+          : "Check your email for a confirmation link. After confirming, return here to sign in."
       });
     } catch (e: unknown) {
       setMessage({ kind: "error", text: formatAuthError(e as Error) });
@@ -129,7 +190,7 @@ export function LoginPage() {
   return (
     <Section>
       <Helmet>
-        <title>Sign In | The Property Guy</title>
+        <title>{isSignupEntry ? "Create Account" : "Sign In"} | Proplytic</title>
         <meta name="description" content="Sign in or create an account to save calculations and generate reports." />
       </Helmet>
       <Container>
@@ -157,11 +218,8 @@ export function LoginPage() {
 
             <div style={{ height: 18 }} />
 
-            {selectedPlanName ? (
-              <div className="pg-login-plan-banner" role="status">
-                You selected the <strong>{selectedPlanName}</strong> plan.{" "}
-                <Link to="/pricing">Change plan</Link>
-              </div>
+            {signupPlan.showSummary ? (
+              <SignupPlanSummary plan={signupPlan.plan} invalidRequested={signupPlan.invalidRequested} />
             ) : null}
 
             {configHint}

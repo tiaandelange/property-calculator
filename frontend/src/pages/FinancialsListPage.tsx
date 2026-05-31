@@ -20,6 +20,7 @@ import type { FinancialFilters } from "../features/financials/financialDirectory
 import { FINANCIALS_PAGE_SIZE, localCalendarMonth } from "../features/financials/financialDirectoryUtils";
 import { AppListPage } from "../components/ui/AppPage";
 import { Button, ButtonLink } from "../components/ui/Button";
+import { AddPropertyButton } from "../features/subscription/AddPropertyButton";
 import { QueryErrorCard, QueryRefreshingIndicator } from "../components/ui/QueryState";
 
 function parsePropertyIdFromSearch(search: string): string {
@@ -162,9 +163,7 @@ export function FinancialsListPage() {
                     Open property financials
                   </ButtonLink>
                 ) : (
-                  <ButtonLink href="/owned-properties/new" variant="primary">
-                    Add property
-                  </ButtonLink>
+                  <AddPropertyButton variant="primary">Add property</AddPropertyButton>
                 )}
               </div>
             ) : (

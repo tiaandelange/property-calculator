@@ -1,15 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { Link } from "react-router-dom";
-import { Check } from "lucide-react";
 import { Container } from "../components/ui/Container";
 import { Section } from "../components/ui/Section";
 import { ButtonLink } from "../components/ui/Button";
-import {
-  FALLBACK_SUBSCRIPTION_PLANS,
-  listActiveSubscriptionPlans,
-  type SubscriptionPlanRecord
-} from "../services/subscriptionPlansSupabase";
+import { PricingComparisonTable } from "../features/pricing/PricingComparisonTable";
 import {
   isPopularPlan,
   planCta,
@@ -17,14 +12,11 @@ import {
   planPriceHeadline,
   planSecondaryCta
 } from "../features/pricing/pricingPlanDisplay";
-
-function ComparisonCell({ yes }: { yes: boolean }) {
-  return (
-    <td className="pg-pricing-compare__cell" data-yes={yes ? "true" : "false"}>
-      {yes ? <Check size={16} aria-hidden /> : <span className="pg-pricing-compare__dash">—</span>}
-    </td>
-  );
-}
+import {
+  FALLBACK_SUBSCRIPTION_PLANS,
+  listActiveSubscriptionPlans,
+  type SubscriptionPlanRecord
+} from "../services/subscriptionPlansSupabase";
 
 function PricingCard({ plan }: { plan: SubscriptionPlanRecord }) {
   const popular = isPopularPlan(plan);
@@ -70,7 +62,7 @@ export function PricingPage() {
     let cancelled = false;
     void listActiveSubscriptionPlans()
       .then((rows) => {
-        if (!cancelled) setPlans(rows);
+        if (!cancelled) setPlans(rows.length ? rows : FALLBACK_SUBSCRIPTION_PLANS);
       })
       .catch(() => {
         if (!cancelled) setPlans(FALLBACK_SUBSCRIPTION_PLANS);
@@ -116,69 +108,7 @@ export function PricingPage() {
           ))}
         </div>
 
-        <div className="pg-pricing-compare-wrap">
-          <h2 className="pg-pricing-compare__title">Compare plans</h2>
-          <div className="pg-pricing-compare-scroll">
-            <table className="pg-pricing-compare">
-              <thead>
-                <tr>
-                  <th scope="col">Feature</th>
-                  {ordered.map((p) => (
-                    <th key={p.code} scope="col">
-                      {p.name}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <th scope="row">Monthly price</th>
-                  {ordered.map((p) => (
-                    <td key={p.code} className="pg-pricing-compare__cell pg-pricing-compare__cell--text">
-                      {planPriceHeadline(p)}
-                    </td>
-                  ))}
-                </tr>
-                <tr>
-                  <th scope="row">Properties</th>
-                  {ordered.map((p) => (
-                    <td key={p.code} className="pg-pricing-compare__cell pg-pricing-compare__cell--text">
-                      {p.propertyLimit ?? "Unlimited"}
-                    </td>
-                  ))}
-                </tr>
-                <tr>
-                  <th scope="row">Reports</th>
-                  {ordered.map((p) => (
-                    <td key={p.code} className="pg-pricing-compare__cell pg-pricing-compare__cell--text">
-                      {p.includesUnlimitedReports || p.reportLimit == null ? "Unlimited" : p.reportLimit}
-                    </td>
-                  ))}
-                </tr>
-                <tr>
-                  <th scope="row">Calculators</th>
-                  {ordered.map((p) => (
-                    <ComparisonCell key={p.code} yes={p.includesCalculators} />
-                  ))}
-                </tr>
-                <tr>
-                  <th scope="row">Management software</th>
-                  {ordered.map((p) => (
-                    <ComparisonCell key={p.code} yes={p.includesManagement} />
-                  ))}
-                </tr>
-                <tr>
-                  <th scope="row">Free trial</th>
-                  {ordered.map((p) => (
-                    <td key={p.code} className="pg-pricing-compare__cell pg-pricing-compare__cell--text">
-                      {p.trialDays > 0 ? `${p.trialDays} days` : "—"}
-                    </td>
-                  ))}
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <PricingComparisonTable plans={ordered} />
 
         <p className="pg-pricing-footer-note">
           Already have an account?{" "}

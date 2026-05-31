@@ -6,6 +6,7 @@ import { AppListPage } from "../components/ui/AppPage";
 import { Grid } from "../components/ui/Grid";
 import { Card, WorkspaceFilterCard } from "../components/ui/Card";
 import { Button, ButtonLink } from "../components/ui/Button";
+import { AddPropertyButton } from "../features/subscription/AddPropertyButton";
 import {
   isInitialQueryLoad,
   isQueryRefreshing,
@@ -123,9 +124,7 @@ export function OwnedPropertiesMyPropertiesPage() {
           >
             Refresh
           </Button>
-          <ButtonLink href="/owned-properties/new" variant="primary">
-            Add Property
-          </ButtonLink>
+          <AddPropertyButton variant="primary" showUsageHint />
         </div>
       </div>
 
@@ -179,9 +178,9 @@ export function OwnedPropertiesMyPropertiesPage() {
             No properties were returned for your account. If you recently reset the database or ran migrations that recreate tables, your portfolio data may have been cleared—restore from a backup if you need it. Otherwise try{" "}
             <strong>logging out and logging in again</strong> so your session matches the current user record.
           </p>
-          <ButtonLink href="/owned-properties/new" variant="primary" style={{ marginTop: 12, display: "inline-block" }}>
+          <AddPropertyButton variant="primary" style={{ marginTop: 12, display: "inline-block" }}>
             Add a property
-          </ButtonLink>
+          </AddPropertyButton>
         </Card>
       ) : loading ? (
         view === "list" ? (

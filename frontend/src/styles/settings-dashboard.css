@@ -322,6 +322,131 @@
   color: var(--primary, #7c5cff);
 }
 
+.pg-settings-subscription {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.pg-settings-subscription-notice {
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid color-mix(in srgb, var(--warning, #d97706) 35%, var(--border-soft));
+  background: color-mix(in srgb, var(--warning, #d97706) 8%, var(--surface));
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.pg-settings-subscription-notice strong {
+  color: var(--text-primary);
+}
+
+.pg-settings-subscription-current__plan-name {
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--text-primary);
+}
+
+.pg-settings-subscription-usage__title,
+.pg-settings-subscription-plans__title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.pg-settings-subscription-usage__period {
+  margin: 4px 0 8px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.pg-settings-subscription-usage-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.pg-settings-subscription-usage-row:last-child {
+  border-bottom: none;
+}
+
+.pg-settings-subscription-actions {
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.pg-settings-subscription-legacy__hint {
+  margin: 0;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.pg-settings-subscription-plans__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.pg-settings-subscription-plan {
+  position: relative;
+  padding: 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-soft);
+  background: var(--surface);
+}
+
+.pg-settings-subscription-plan--current {
+  border-color: color-mix(in srgb, var(--primary) 45%, var(--border-soft));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary) 20%, transparent);
+}
+
+.pg-settings-subscription-plan__tag {
+  display: inline-block;
+  margin-bottom: 8px;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+.pg-settings-subscription-plan__name {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.pg-settings-subscription-plan__price {
+  margin: 6px 0 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.pg-settings-subscription-plan__features {
+  margin: 10px 0 12px;
+  padding-left: 1.1rem;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+.pg-link-button {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: var(--primary);
+  cursor: pointer;
+  text-decoration: underline;
+}
+
 .pg-settings-coming-soon {
   font-size: 11px;
   font-weight: 600;

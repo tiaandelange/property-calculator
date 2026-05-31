@@ -21,6 +21,9 @@ import { Grid } from "../components/ui/Grid";
 import { Card } from "../components/ui/Card";
 import { Field, Input } from "../components/ui/Input";
 import { Button, ButtonLink } from "../components/ui/Button";
+import { PlanLimitUpgradePrompt } from "../features/subscription/PlanLimitUpgradePrompt";
+import { formatReportLimitUsage } from "../features/subscription/subscriptionLimits";
+import { useSubscriptionLimits } from "../features/subscription/useSubscriptionLimits";
 
 ChartJS.register(ArcElement, BarElement, CategoryScale, LinearScale, Legend, Tooltip, PointElement, LineElement);
 
@@ -317,6 +320,7 @@ export function CalculatorPage() {
   const lastRunRef = useRef<string>("");
   const [savedId, setSavedId] = useState<string | number | null>(null);
   const [pdfBusy, setPdfBusy] = useState(false);
+  const subscriptionLimits = useSubscriptionLimits();
   const { focusResults, onCalculateSuccess, showInputs } = useCalculatorMobileResults(slug);
 
   const runWithValues = useCallback(async (targetSlug: string, payloadValues: Record<string, any>, opts?: { userInitiated?: boolean }) => {
@@ -521,6 +525,10 @@ export function CalculatorPage() {
 
   const generateAndDownloadPdf = async () => {
     if (!savedId) return;
+    if (!subscriptionLimits.canGenerateReport && subscriptionLimits.limitsActive) {
+      setError(subscriptionLimits.upgradeMessage ?? "Report limit reached for your plan.");
+      return;
+    }
     setPdfBusy(true);
     setError("");
     try {
@@ -819,11 +827,24 @@ export function CalculatorPage() {
                 My Reports
               </ButtonLink>
               {savedId ? (
-                <Button type="button" variant="ghost" onClick={generateAndDownloadPdf} loading={pdfBusy}>
-                  PDF
-                </Button>
+                !subscriptionLimits.canGenerateReport && subscriptionLimits.limitsActive ? (
+                  <PlanLimitUpgradePrompt context="report" limits={subscriptionLimits} compact />
+                ) : (
+                  <Button type="button" variant="ghost" onClick={generateAndDownloadPdf} loading={pdfBusy}>
+                    PDF
+                  </Button>
+                )
               ) : null}
             </div>
+            {subscriptionLimits.limitsActive && savedId ? (
+              <p className="pg-plan-limit-hint" style={{ marginTop: 8 }}>
+                {formatReportLimitUsage(
+                  subscriptionLimits.currentReportCount,
+                  subscriptionLimits.reportLimit,
+                  subscriptionLimits.reportPeriodLabel
+                )}
+              </p>
+            ) : null}
             <div className="pg-muted" style={{ marginTop: 12, fontSize: 12 }}>
               Estimates only — not financial, legal, or tax advice.
             </div>

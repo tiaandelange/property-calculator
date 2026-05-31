@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { AppIcon, type IconName } from "../../components/icons";
 import { AppPage, AppPageContent, AppPageHeader, AppPageSubtitle, AppPageTitle } from "../../components/ui/AppPage";
 import { Button, ButtonLink } from "../../components/ui/Button";
@@ -17,6 +17,7 @@ import {
   STATEMENT_FILTER_OPTIONS
 } from "./settingsDefaults";
 import { ApplicantFormTemplateSettingsCard } from "../applicants/ApplicantFormTemplateSettingsCard";
+import { SubscriptionSettingsSection } from "./SubscriptionSettingsSection";
 import type { AccentColor, ThemePreference, UserSettings } from "./settingsTypes";
 import { previewWorkspaceAppearance } from "../../theme/workspaceAppearance";
 import { invalidateSettingsQueries, invalidateWorkspaceNotifications, queryKeys, useProfileQuery, useSettingsQuery, useWorkspaceId } from "../queries";
@@ -57,12 +58,14 @@ function SettingsToggle({
 }
 
 function SettingsCard({
+  id,
   icon,
   title,
   description,
   children,
   fullWidth
 }: {
+  id?: string;
   icon: IconName;
   title: string;
   description?: string;
@@ -71,6 +74,7 @@ function SettingsCard({
 }) {
   return (
     <AppCard
+      id={id}
       as="section"
       variant="elevated"
       padding="md"
@@ -260,7 +264,8 @@ function EditProfileModal({
 
 export function SettingsDashboard() {
   const isMobile = useMediaQuery("(max-width: 768px)");
-  const { refreshProfile } = useAuth();
+  const [searchParams] = useSearchParams();
+  const { refreshProfile, profile } = useAuth();
   const queryClient = useQueryClient();
   const workspaceId = useWorkspaceId();
   const settingsQuery = useSettingsQuery();
@@ -303,12 +308,14 @@ export function SettingsDashboard() {
 
   useEffect(() => {
     if (loading || !draft) return;
+    const section = searchParams.get("section");
     const hash = window.location.hash.replace(/^#/, "");
-    if (!hash) return;
+    const targetId = section === "subscription" ? "subscription" : hash;
+    if (!targetId) return;
     window.requestAnimationFrame(() => {
-      document.getElementById(hash)?.scrollIntoView({ behavior: "smooth", block: "start" });
+      document.getElementById(targetId)?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
-  }, [loading, draft]);
+  }, [loading, draft, searchParams]);
 
   const dirty = useMemo(() => {
     if (!saved || !draft) return false;
@@ -523,26 +530,14 @@ export function SettingsDashboard() {
           </div>
         </SettingsCard>
 
-        <SettingsCard icon="payments" title="Subscription & Billing" description="Plan and payment details.">
-          <div className="pg-settings-row">
-            <div>
-              <div className="pg-settings-row-label">Current plan</div>
-              <div className="pg-settings-row-desc">Calculator subscription</div>
-            </div>
-            <span className="pg-settings-badge pg-settings-badge--muted">Free tier</span>
-          </div>
-          <div className="pg-settings-row">
-            <div>
-              <div className="pg-settings-row-label">Price</div>
-              <div className="pg-settings-row-desc">R99/month when subscribed</div>
-            </div>
-          </div>
-          <div className="pg-settings-actions" style={{ marginTop: 12 }}>
-            <ButtonLink href="/subscription" variant="outline">
-              Manage subscription
-            </ButtonLink>
-            <span className="pg-settings-coming-soon">Billing history — coming soon</span>
-          </div>
+        <SettingsCard
+          id="subscription"
+          icon="payments"
+          title="Subscription & Billing"
+          description="Your plan, usage, and billing (payments coming soon)."
+          fullWidth
+        >
+          <SubscriptionSettingsSection freeUsesRemaining={profile?.free_uses_remaining} />
         </SettingsCard>
 
         <SettingsCard icon="sliders" title="Property Defaults" description="Defaults for new properties and leases.">
