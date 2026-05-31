@@ -23,8 +23,11 @@ import {
   submitApplicantApplication
 } from "../services/applicantApplicationsSupabase";
 import { uploadApplicantDocumentsPublic } from "../services/tenantDocumentsSupabase";
-import { fmtZar } from "../features/tenants/tenantDirectoryUtils";
 import { isSupabaseConfigured } from "../lib/supabaseClient";
+
+function formatApplicationLocation(address: string, unitName: string | null): string {
+  return [address.trim(), unitName?.trim()].filter(Boolean).join(" · ");
+}
 
 export function ApplicantApplyPage() {
   const { token = "" } = useParams();
@@ -32,10 +35,9 @@ export function ApplicantApplyPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [submitted, setSubmitted] = useState(false);
-  const [propertyName, setPropertyName] = useState("");
+  const [inviteLoaded, setInviteLoaded] = useState(false);
   const [propertyAddress, setPropertyAddress] = useState("");
   const [unitName, setUnitName] = useState<string | null>(null);
-  const [targetRent, setTargetRent] = useState(0);
   const [template, setTemplate] = useState<ApplicantFormTemplate>(DEFAULT_APPLICANT_FORM_TEMPLATE);
   const [primary, setPrimary] = useState(emptyFieldValues(DEFAULT_APPLICANT_FORM_TEMPLATE));
   const [coApplicant, setCoApplicant] = useState(emptyFieldValues(DEFAULT_APPLICANT_FORM_TEMPLATE));
@@ -57,14 +59,13 @@ export function ApplicantApplyPage() {
     void getApplicantInvitePublic(token)
       .then((ctx) => {
         if (cancelled) return;
-        setPropertyName(ctx.propertyName);
         setPropertyAddress(ctx.propertyAddress);
         setUnitName(ctx.unitName ?? null);
-        setTargetRent(ctx.targetRent);
         setTemplate(ctx.formTemplate);
         setPrimary(emptyFieldValues(ctx.formTemplate));
         setCoApplicant(emptyFieldValues(ctx.formTemplate));
         setCoEnabled(false);
+        setInviteLoaded(true);
       })
       .catch(() => {
         if (!cancelled) setError("This application link is invalid or has expired.");
@@ -107,6 +108,8 @@ export function ApplicantApplyPage() {
     }
   };
 
+  const applicationLocation = formatApplicationLocation(propertyAddress, unitName);
+
   return (
     <Section>
       <Helmet>
@@ -117,7 +120,7 @@ export function ApplicantApplyPage() {
         <Card className="pg-applicant-apply-card">
           {loading ? <p className="pg-muted">Loading application…</p> : null}
 
-          {!loading && error && !propertyName ? (
+          {!loading && error && !inviteLoaded ? (
             <div>
               <h1 className="pg-h2" style={{ marginTop: 0 }}>
                 Application unavailable
@@ -126,7 +129,7 @@ export function ApplicantApplyPage() {
             </div>
           ) : null}
 
-          {!loading && propertyName ? (
+          {!loading && inviteLoaded ? (
             <>
               <h1 className="pg-h2" style={{ marginTop: 0 }}>
                 {template.title}
@@ -136,12 +139,11 @@ export function ApplicantApplyPage() {
                   {template.description}
                 </p>
               ) : null}
-              <p className="pg-muted" style={{ marginBottom: 16 }}>
-                {propertyName}
-                {unitName ? ` · ${unitName}` : ""}
-                {propertyAddress ? ` · ${propertyAddress}` : ""}
-                {targetRent > 0 ? ` · Rent ${fmtZar(targetRent)}` : ""}
-              </p>
+              {applicationLocation ? (
+                <p className="pg-muted" style={{ marginBottom: 16 }}>
+                  {applicationLocation}
+                </p>
+              ) : null}
 
               {submitted ? (
                 <div
