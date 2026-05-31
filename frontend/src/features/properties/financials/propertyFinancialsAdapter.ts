@@ -189,7 +189,7 @@ export function computePropertyMonthlyFinancialSnapshot({
   };
 }
 
-/** List-card metrics — NOI excludes debt; cash flow subtracts debt (matches Financials tab). */
+/** List-card metrics — NOI excludes debt; cash flow subtracts bond/debt service (matches Financials tab). */
 export function propertyListCardFinancials(property: Record<string, unknown>): {
   monthlyIncome: number;
   monthlyOperatingExpenses: number;
@@ -199,10 +199,7 @@ export function propertyListCardFinancials(property: Record<string, unknown>): {
 } {
   const monthlyIncome = n(property.monthlyIncome);
   const monthlyOperatingExpenses = n(property.monthlyOperatingExpenses);
-  const monthlyDebtService = n(
-    property.monthlyDebtService ??
-      n(property.monthlyBondPayment) + n(property.monthlyAdditionalBondPayment)
-  );
+  const monthlyDebtService = resolveListCardDebtService(property);
   const monthlyNOI = monthlyIncome - monthlyOperatingExpenses;
   const monthlyCashFlow = monthlyIncome - monthlyOperatingExpenses - monthlyDebtService;
   return {
@@ -212,6 +209,23 @@ export function propertyListCardFinancials(property: Record<string, unknown>): {
     monthlyNOI,
     monthlyCashFlow
   };
+}
+
+function resolveListCardDebtService(property: Record<string, unknown>): number {
+  const fromApi =
+    n(property.monthlyDebtService) ||
+    n(property.monthlyBondPayment) + n(property.monthlyAdditionalBondPayment);
+  if (fromApi > 0) return fromApi;
+
+  const bondRows = mapPropertyBondPayment(property, String(property.name ?? "Property"));
+  const computedBond = bondRows.reduce((sum, row) => sum + n(row.monthlyPayment), 0);
+  if (computedBond > 0) return computedBond;
+
+  const totalExpenses = n(property.monthlyExpenses);
+  const operating = n(property.monthlyOperatingExpenses);
+  if (totalExpenses > operating) return totalExpenses - operating;
+
+  return 0;
 }
 
 /** Recompute list-card NOI/cash from income, operating expenses, and debt — never trust stale aggregates. */

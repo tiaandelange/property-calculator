@@ -236,6 +236,7 @@ export function OwnedPropertiesMyPropertiesPage() {
                         <div>
                           Monthly cash flow:{" "}
                           <strong style={{ color: cash >= 0 ? "var(--success)" : "var(--danger)" }}>R {cash.toLocaleString()}</strong>
+                          <span className="pg-muted" style={{ fontSize: 12 }}> (after bond)</span>
                         </div>
                       </div>
                       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -319,6 +320,7 @@ export function OwnedPropertiesMyPropertiesPage() {
                     <div>
                       Monthly cash flow:{" "}
                       <strong style={{ color: cash >= 0 ? "var(--success)" : "var(--danger)" }}>R {cash.toLocaleString()}</strong>
+                      <span className="pg-muted" style={{ fontSize: 12 }}> (after bond)</span>
                     </div>
                     <div>
                       Tenant:{" "}

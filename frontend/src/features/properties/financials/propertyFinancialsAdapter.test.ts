@@ -68,4 +68,21 @@ describe("propertyListCardFinancials", () => {
     expect(fin.monthlyNOI).toBe(8_200);
     expect(fin.monthlyCashFlow).toBe(5_200);
   });
+
+  it("derives bond payment for cash flow when debt service is missing on the card payload", () => {
+    const fin = propertyListCardFinancials({
+      name: "Oak",
+      monthlyIncome: 10_000,
+      monthlyOperatingExpenses: 1_800,
+      monthlyDebtService: 0,
+      bondAnnualInterestRatePercent: 10,
+      bondTermYears: 20,
+      bondStartDate: "2020-01-01",
+      outstandingBondBalance: 1_000_000
+    });
+    expect(fin.monthlyNOI).toBe(8_200);
+    expect(fin.monthlyDebtService).toBeGreaterThan(0);
+    expect(fin.monthlyCashFlow).toBe(fin.monthlyNOI - fin.monthlyDebtService);
+    expect(fin.monthlyCashFlow).toBeLessThan(fin.monthlyNOI);
+  });
 });
