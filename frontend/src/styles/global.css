@@ -22,6 +22,7 @@
 @import "./tenant-statement.css";
 @import "./tenant-form.css";
 @import "./settings-dashboard.css";
+@import "./pricing.css";
 @import "./mobile-layout.css";
 
 /* Structural tokens (spacing + typography). Palette: proplytic.tokens.css */
@@ -4738,6 +4739,48 @@ html[data-theme="light"] .pg-color-scheme-switch[data-on="false"] .pg-color-sche
 
 .pg-home-site-header-cta:active {
   transform: translateY(1px);
+}
+
+.pg-home-site-header-auth-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.pg-home-site-header-auth-actions--stacked {
+  flex-direction: column;
+  align-items: stretch;
+  width: 100%;
+}
+
+.pg-home-site-header-auth-actions--stacked .pg-home-site-header-sign-in,
+.pg-home-site-header-auth-actions--stacked .pg-home-site-header-cta {
+  width: 100%;
+}
+
+.pg-home-site-header-sign-in {
+  min-height: 44px;
+  padding: 0 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: 0.02em;
+  text-decoration: none;
+  color: var(--text-secondary);
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+.pg-home-site-header-sign-in:hover {
+  text-decoration: none;
+  color: var(--text-primary);
+  border-color: color-mix(in srgb, var(--primary) 35%, var(--border-soft));
+  background: var(--surface-muted);
 }
 
 /* --- Marketing header: Calculators mega-menu (desktop) --- */

@@ -180,7 +180,8 @@ export function HomePublicHeader() {
     );
   };
 
-  const ctaClass = "pg-home-site-header-cta";
+  const joinCtaClass = "pg-home-site-header-cta";
+  const signInClass = "pg-home-site-header-sign-in";
 
   const calculatorsHeroShell =
     location.pathname === "/calculators" || /^\/calculators\/.+/.test(location.pathname);
@@ -287,9 +288,12 @@ export function HomePublicHeader() {
             })}
           </nav>
 
-          <div className="pg-home-site-header-actions pg-home-site-header-actions--desktop">
-            <Link to="/login" className={ctaClass}>
-              Join / Sign In
+          <div className="pg-home-site-header-actions pg-home-site-header-actions--desktop pg-home-site-header-auth-actions">
+            <Link to="/login" className={signInClass}>
+              Sign In
+            </Link>
+            <Link to="/pricing" className={joinCtaClass}>
+              Join
             </Link>
           </div>
 
@@ -388,9 +392,12 @@ export function HomePublicHeader() {
             );
           })}
         </nav>
-        <div className="pg-home-site-drawer-cta-wrap">
-          <Link to="/login" className={ctaClass} onClick={closeDrawer}>
-            Join / Sign In
+        <div className="pg-home-site-drawer-cta-wrap pg-home-site-header-auth-actions pg-home-site-header-auth-actions--stacked">
+          <Link to="/login" className={signInClass} onClick={closeDrawer}>
+            Sign In
+          </Link>
+          <Link to="/pricing" className={joinCtaClass} onClick={closeDrawer}>
+            Join
           </Link>
         </div>
       </div>

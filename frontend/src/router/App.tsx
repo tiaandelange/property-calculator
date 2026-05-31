@@ -3,6 +3,7 @@ import { Navigate, Route, Routes, useParams } from "react-router-dom";
 import { AppChrome } from "../layouts/AppChrome";
 import { HomePage } from "../pages/HomePage";
 import { LoginPage } from "../pages/LoginPage";
+import { PricingPage } from "../pages/PricingPage";
 import { ConfirmEmailPage } from "../pages/ConfirmEmailPage";
 import { SimplePage } from "../pages/SimplePage";
 import { SubscriptionPage } from "../pages/SubscriptionPage";
@@ -192,7 +193,9 @@ export function App() {
             </RouteBoundary>
           }
         />
+        <Route path="/pricing" element={<PricingPage />} />
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/signup" element={<LoginPage />} />
         <Route
           path="/apply/:token"
           element={

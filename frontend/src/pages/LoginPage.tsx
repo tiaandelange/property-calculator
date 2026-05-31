@@ -5,7 +5,13 @@ import { Section } from "../components/ui/Section";
 import { Card } from "../components/ui/Card";
 import { Button, ButtonLink } from "../components/ui/Button";
 import { Field, Input } from "../components/ui/Input";
-import { useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import {
+  FALLBACK_SUBSCRIPTION_PLANS,
+  listActiveSubscriptionPlans,
+  type SubscriptionPlanRecord
+} from "../services/subscriptionPlansSupabase";
+import { planDisplayName } from "../features/pricing/pricingPlanDisplay";
 import { getSupabase, isSupabaseConfigured } from "../lib/supabaseClient";
 import { getConfirmEmailRedirectUrl } from "../lib/authRedirect";
 import { formatAuthError } from "../utils/authErrors";
@@ -15,11 +21,31 @@ import { PageBrandMark } from "../components/brand/PageBrandMark";
 export function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const { session, initializing } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState<null | "login" | "register">(null);
   const [message, setMessage] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
+  const [plans, setPlans] = useState<SubscriptionPlanRecord[]>(FALLBACK_SUBSCRIPTION_PLANS);
+
+  const planCode = searchParams.get("plan")?.trim() ?? "";
+  const isSignupEntry = location.pathname === "/signup" || Boolean(planCode);
+  const selectedPlanName = planCode ? planDisplayName(planCode, plans) : null;
+
+  useEffect(() => {
+    let cancelled = false;
+    void listActiveSubscriptionPlans()
+      .then((rows) => {
+        if (!cancelled) setPlans(rows);
+      })
+      .catch(() => {
+        if (!cancelled) setPlans(FALLBACK_SUBSCRIPTION_PLANS);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (initializing || !session) return;
@@ -28,7 +54,7 @@ export function LoginPage() {
       navigate(from, { replace: true });
       return;
     }
-    if (from && from !== "/login" && from !== "/") {
+    if (from && from !== "/login" && from !== "/signup" && from !== "/") {
       navigate(from, { replace: true });
       return;
     }
@@ -120,14 +146,23 @@ export function LoginPage() {
           <Card>
             <div style={{ display: "grid", gap: 10 }}>
               <h1 className="pg-h2" style={{ margin: 0 }}>
-                Sign in to save reports
+                {isSignupEntry ? "Create your account" : "Sign in to save reports"}
               </h1>
               <p className="pg-lead" style={{ margin: 0 }}>
-                Create an account to track your calculations and generate downloadable PDFs.
+                {isSignupEntry
+                  ? "Complete registration to start using Proplytic. Billing is not charged during signup."
+                  : "Create an account to track your calculations and generate downloadable PDFs."}
               </p>
             </div>
 
             <div style={{ height: 18 }} />
+
+            {selectedPlanName ? (
+              <div className="pg-login-plan-banner" role="status">
+                You selected the <strong>{selectedPlanName}</strong> plan.{" "}
+                <Link to="/pricing">Change plan</Link>
+              </div>
+            ) : null}
 
             {configHint}
 
@@ -145,8 +180,8 @@ export function LoginPage() {
               <Button variant="secondary" onClick={() => void submit("register")} loading={loading === "register"}>
                 Create Account
               </Button>
-              <ButtonLink href="/subscription" variant="ghost">
-                Pricing
+              <ButtonLink href="/pricing" variant="ghost">
+                View pricing
               </ButtonLink>
             </div>
 
