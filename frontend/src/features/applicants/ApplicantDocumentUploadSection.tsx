@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useState } from "react";
 import { Check, Circle, ExternalLink, Upload } from "lucide-react";
+import { buttonClassName } from "../../components/ui/buttonStyles";
 import { Button } from "../../components/ui/Button";
 import {
   APPLICANT_DOCUMENT_GROUPS,
@@ -53,6 +54,7 @@ function FileUploadTrigger({
   multiple,
   disabled,
   busy,
+  disabledHint,
   variant = "outline",
   onFiles
 }: {
@@ -61,39 +63,40 @@ function FileUploadTrigger({
   multiple?: boolean;
   disabled?: boolean;
   busy?: boolean;
+  disabledHint?: string;
   variant?: "outline" | "soft";
   onFiles: (files: FileList) => void;
 }) {
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inactive = disabled || busy;
 
   return (
-    <div className="pg-applicant-doc-upload-btn">
+    <label
+      className={buttonClassName({
+        variant,
+        size: "sm",
+        className: `pg-applicant-doc-upload-btn${inactive ? " is-disabled" : ""}`
+      })}
+      aria-disabled={inactive || undefined}
+      title={disabled ? disabledHint : undefined}
+    >
       <input
-        ref={inputRef}
         id={inputId}
         type="file"
         accept={FILE_ACCEPT}
         multiple={multiple}
-        tabIndex={-1}
-        aria-hidden
-        className="pg-applicant-doc-slot__input"
+        disabled={inactive}
+        className="pg-applicant-doc-upload-btn__input"
         onChange={(e) => {
           const files = e.target.files;
           if (files?.length) onFiles(files);
           e.target.value = "";
         }}
       />
-      <Button
-        type="button"
-        variant={variant}
-        size="sm"
-        disabled={disabled || busy}
-        onClick={() => inputRef.current?.click()}
-      >
-        <Upload size={14} aria-hidden style={{ marginRight: 4 }} />
+      <span className="pg-applicant-doc-upload-btn__content">
+        <Upload size={14} aria-hidden />
         {busy ? "Uploading…" : label}
-      </Button>
-    </div>
+      </span>
+    </label>
   );
 }
 
@@ -156,6 +159,7 @@ function DocumentGroupRow({
             multiple={isMulti}
             disabled={!uploadsEnabled}
             busy={busy}
+            disabledHint="Save your application details first to upload documents"
             variant={complete ? "soft" : "outline"}
             onFiles={(files) => {
               if (isMulti) onUploadMultiple(files);
@@ -314,7 +318,7 @@ export function ApplicantDocumentUploadSection({
               readOnly={readOnly}
               uploadsEnabled={uploadsEnabled}
               mode={mode}
-              inputId={`${baseId}-${group.id}`}
+              inputId={`${baseId}-${group.id}`.replace(/:/g, "")}
               onUploadSingle={(file) => void uploadFile("ID", file)}
               onUploadMultiple={(files) => void uploadMultiple(group.id, files)}
               onView={(doc) => void openDocument(doc)}

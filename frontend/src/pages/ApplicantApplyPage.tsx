@@ -197,16 +197,9 @@ export function ApplicantApplyPage() {
                   ) : null}
                 </div>
 
-                <ApplicantDocumentUploadSection
-                  mode="public"
-                  tenantId={tenantId}
-                  inviteToken={token}
-                  disabled={!saved || !tenantId}
-                />
-
                 {!saved ? (
                   <div style={{ marginTop: 20 }}>
-                    <Button type="submit" loading={submitting}>
+                    <Button id="applicant-save-details" type="submit" loading={submitting}>
                       Save application details
                     </Button>
                     <p className="pg-muted pg-applicant-documents__hint" style={{ marginTop: 12, marginBottom: 0 }}>
@@ -215,6 +208,13 @@ export function ApplicantApplyPage() {
                   </div>
                 ) : null}
               </form>
+
+              <ApplicantDocumentUploadSection
+                mode="public"
+                tenantId={tenantId}
+                inviteToken={token}
+                disabled={!saved || !tenantId}
+              />
             </>
           ) : null}
         </Card>
