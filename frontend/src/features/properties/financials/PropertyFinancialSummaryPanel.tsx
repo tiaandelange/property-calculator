@@ -7,12 +7,16 @@ export function PropertyFinancialSummaryPanel({
   overview,
   propertyName,
   unitLabel,
-  addressLine
+  addressLine,
+  cashOnCashRoi = null,
+  grossYield = null
 }: {
   overview: PropertyFinancialOverview;
   propertyName: string;
   unitLabel: string | null;
   addressLine: string | null;
+  cashOnCashRoi?: number | null;
+  grossYield?: number | null;
 }) {
   const colors = useMemo(() => getChartSemanticColors(), []);
 
@@ -69,9 +73,17 @@ export function PropertyFinancialSummaryPanel({
             </dd>
           </div>
           <div>
-            <dt>Annual yield / ROI</dt>
+            <dt>Cash on Cash ROI</dt>
             <dd className="pg-pfin-summary__roi">
-              {overview.annualYieldPercent != null ? `${overview.annualYieldPercent}%` : "—"}
+              {cashOnCashRoi != null ? `${cashOnCashRoi.toFixed(2)}%` : "—"}
+            </dd>
+          </div>
+          <div>
+            <dt>Gross yield (purchase price)</dt>
+            <dd className="pg-pfin-summary__roi">
+              {(grossYield ?? overview.annualYieldPercent) != null
+                ? `${grossYield ?? overview.annualYieldPercent}%`
+                : "—"}
             </dd>
           </div>
         </dl>

@@ -4,10 +4,12 @@ import { Chart as ChartJS, ArcElement, Legend, Tooltip } from "chart.js";
 import { useMediaQuery } from "../../../hooks/useMediaQuery";
 import { asArray } from "../../../lib/asArray";
 import {
-  buildPropertyFinancialOverview,
+  isTenantFacingChargeForecast,
   mapRecurringCharges,
+  selectLandlordRecurringCharges,
   type RecurringExpenseDisplayItem
 } from "../financials/propertyFinancialsAdapter";
+import { buildPropertyFinancialSummary } from "../../financials/buildPropertyFinancialSummary";
 import { PropertyFinancialMetricCards } from "../financials/PropertyFinancialMetricCards";
 import {
   PropertyFinancialDetailsForm,
@@ -144,25 +146,6 @@ function formatIsoDateShort(iso: string) {
   const [y, m, d] = iso.split("-").map(Number);
   if (!y || !m || !d) return iso;
   return new Date(y, m - 1, d).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
-}
-
-/** Hide tenant rent / invoice-style rows from landlord charge tabs (legacy API payloads or mistaken expense rows). */
-function isTenantFacingChargeForecast(row: {
-  description?: unknown;
-  label?: unknown;
-  kind?: unknown;
-  invoiceDescription?: unknown;
-}): boolean {
-  const kind = String(row.kind ?? "");
-  if (["LEASE_RENT", "RECURRING_INVOICE_RULE", "RECURRING_INCOME_RULE"].includes(kind)) return true;
-  const text = String(row.description ?? row.label ?? row.invoiceDescription ?? "").trim();
-  const tl = text.toLowerCase();
-  if (/^expected\s+rent\b/.test(tl)) return true;
-  if (/\brecurring\s+income\s+rule\b/.test(tl)) return true;
-  if (/^recurring\s+invoice\b/.test(tl)) return true;
-  if (/^invoice\s+line\b/.test(tl)) return true;
-  if (/^monthly\s+rent\s*$/i.test(text)) return true;
-  return false;
 }
 
 const PROPERTY_INCOME_CATEGORY_OPTIONS: Array<{ value: string; label: string }> = [
@@ -557,10 +540,7 @@ export function WorkspaceFinancialsTab({
     [futureCharges]
   );
   const recurringChargesLandlord = useMemo(
-    () =>
-      (recurringCharges as any[]).filter(
-        (rc) => !isTenantFacingChargeForecast(rc) && String(rc.category ?? "") !== "BOND_PAYMENT"
-      ),
+    () => selectLandlordRecurringCharges(recurringCharges),
     [recurringCharges]
   );
 
@@ -625,6 +605,7 @@ export function WorkspaceFinancialsTab({
         await updatePropertyAdditionalBond(additionalBondEditingId, payload);
       }
       await reloadAdditionalBonds();
+      await onReload?.();
       closeAdditionalBondModal();
     } catch (err: unknown) {
       window.alert(err instanceof Error ? err.message : "Could not save additional bond.");
@@ -639,6 +620,7 @@ export function WorkspaceFinancialsTab({
     try {
       await deletePropertyAdditionalBond(bondId);
       await reloadAdditionalBonds();
+      await onReload?.();
       closeAdditionalBondModal();
     } catch (err: unknown) {
       window.alert(err instanceof Error ? err.message : "Could not remove additional bond.");
@@ -1031,9 +1013,9 @@ export function WorkspaceFinancialsTab({
     () => additionalBondDisplayItems.reduce((a, i) => a + i.monthlyPayment, 0),
     [additionalBondDisplayItems]
   );
-  const financialOverview = useMemo(
+  const propertyFinancialSummary = useMemo(
     () =>
-      buildPropertyFinancialOverview({
+      buildPropertyFinancialSummary({
         propertyId,
         propertyDetail: propertyDetail as Record<string, unknown> | null,
         currentLeases,
@@ -1052,6 +1034,7 @@ export function WorkspaceFinancialsTab({
       additionalBondMonthlyTotal
     ]
   );
+  const financialOverview = propertyFinancialSummary.overview;
   const unitLabel = financialOverview.unitLabel;
   const combinedMonthlyRent = (currentLeases as any[]).reduce((a, l) => a + Number(l.monthlyRent ?? 0), 0);
   const combinedDepositHeld = (currentLeases as any[]).reduce((a, l) => a + Number(l.depositAmount ?? 0), 0);
@@ -2107,6 +2090,8 @@ export function WorkspaceFinancialsTab({
               propertyName={propertyDisplayName}
               unitLabel={unitLabel}
               addressLine={financialOverview.addressLine}
+              cashOnCashRoi={propertyFinancialSummary.cashOnCashRoi}
+              grossYield={propertyFinancialSummary.grossYield}
             />
             <ExpenseCategoriesCard overview={financialOverview} />
           </div>

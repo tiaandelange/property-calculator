@@ -7,45 +7,15 @@ import { MetricCard } from "../../../components/ui/DashboardKit";
 import { WorkspaceTabs } from "../../../components/workspace/WorkspaceTabs";
 import { asArray } from "../../../lib/asArray";
 import { getChartCategoryPalette, getChartSemanticColors } from "../../../theme/cssTokens";
+import { compositionSlicesFromSummary } from "../../financials/buildPropertyFinancialSummary";
+import { usePropertyFinancialSummary } from "../../financials/usePropertyFinancialSummary";
 import { PropertyOverviewHero } from "./PropertyOverviewHero";
 import { PROPERTY_WORKSPACE_TABS } from "./propertyWorkspaceTabs";
-import { formatOverviewCurrency, formatOverviewPercent, unitsOccupiedLabel } from "./propertyOverviewUtils";
+import { formatOverviewCurrency, formatOverviewPercent } from "./propertyOverviewUtils";
 
 ChartJS.register(ArcElement, CategoryScale, LinearScale, LineElement, PointElement, Tooltip, Legend);
 
 type CompositionSlice = { label: string; amount: number; kind: "income" | "expense" };
-
-function nz(n: unknown) {
-  const v = Number(n);
-  return Number.isFinite(v) && v > 0 ? v : 0;
-}
-
-function slicesFromFinancialSummaryMonthly(fs: Record<string, unknown> | undefined): CompositionSlice[] | null {
-  if (!fs) return null;
-  const income: CompositionSlice[] = [];
-  const rent = nz(fs.totalRentIncome);
-  const otherInc = nz(fs.totalOtherIncome);
-  if (rent > 0) income.push({ label: "Income · Rental & invoices", amount: rent, kind: "income" });
-  if (otherInc > 0) income.push({ label: "Income · Other", amount: otherInc, kind: "income" });
-
-  const expenseDefs: Array<{ label: string; val: number }> = [
-    { label: "Rates & taxes", val: nz(fs.totalRatesTaxes) },
-    { label: "Water", val: nz(fs.totalWater) },
-    { label: "Electricity", val: nz(fs.totalElectricity) },
-    { label: "Levies", val: nz(fs.totalLevies) },
-    { label: "Insurance", val: nz(fs.totalInsurance) },
-    { label: "Maintenance & repairs", val: nz(fs.totalMaintenance) },
-    { label: "Bond / debt service", val: nz(fs.totalBondPayment) },
-    { label: "Other expenses", val: nz(fs.totalOtherExpenses) }
-  ];
-  const expenses: CompositionSlice[] = expenseDefs
-    .filter((e) => e.val > 0)
-    .sort((a, b) => b.val - a.val)
-    .map((e) => ({ label: `Expense · ${e.label}`, amount: e.val, kind: "expense" as const }));
-
-  const all = [...income, ...expenses];
-  return all.length ? all : null;
-}
 
 function doughnutFromSlices(slices: CompositionSlice[]) {
   const labels = slices.map((s) => s.label);
@@ -91,53 +61,24 @@ export function WorkspaceOverviewTab({
   finSub,
   activeTab
 }: Props) {
-  const fs = data.financialSummary?.monthly;
   const basePath = `/owned-properties/${propertyId}`;
-
-  const kNoi = perf?.kpis?.monthlyNOI;
-  const kExp = perf?.kpis?.monthlyExpenses;
-  const incomeMonth = Number(kNoi?.operatingIncomeProjectedFromLeases ?? 0);
-  const operatingExpMonth = Number(kExp?.operatingExpenses ?? 0);
-  const bondMonth = Number(kExp?.debtService ?? 0);
-  const totalExpMonth = operatingExpMonth + bondMonth;
-  const cashAfterDebt =
-    Number.isFinite(incomeMonth) && Number.isFinite(operatingExpMonth) && Number.isFinite(bondMonth)
-      ? incomeMonth - operatingExpMonth - bondMonth
-      : null;
-
-  const receivedMonth = Number(statement?.summary?.receivedThisMonth ?? 0);
-  const expectedMonth = Number(statement?.summary?.expectedThisMonth ?? 0);
-
-  const equity =
-    data.currentEstimatedValue != null && data.outstandingBondBalance != null
-      ? Number(data.currentEstimatedValue) - Number(data.outstandingBondBalance)
-      : null;
-
-  const rentalIncomeMonth = fs?.totalRentIncome ?? null;
-  const expensesMonth = fs?.totalExpenses ?? null;
-  const monthlyCashFlowForCoC =
-    rentalIncomeMonth != null && expensesMonth != null ? rentalIncomeMonth - expensesMonth : null;
-  const cashInvestedRaw = data.totalCashInvested;
-  const cashInvested =
-    cashInvestedRaw != null && cashInvestedRaw !== "" && !Number.isNaN(Number(cashInvestedRaw)) ? Number(cashInvestedRaw) : null;
-  const cocPercent =
-    cashInvested != null &&
-    cashInvested > 0 &&
-    monthlyCashFlowForCoC != null &&
-    !Number.isNaN(monthlyCashFlowForCoC)
-      ? (monthlyCashFlowForCoC * 12 * 100) / cashInvested
-      : null;
+  const { summary } = usePropertyFinancialSummary({
+    propertyId,
+    propertyDetail: data,
+    currentLeases,
+    statement
+  });
 
   const recent = asArray(statement?.statementRows).slice(-8).reverse();
   const noiTrendRows = asArray(perf?.charts?.monthlyNOITrend);
   const alertMessages = asArray<string>(data.aggregateMeta?.alerts);
   const tenantRows = asArray(data.tenants);
-  const unitsOccupied = unitsOccupiedLabel(data, currentLeases);
 
   const incomeExpenseDoughnut = useMemo(() => {
-    const fromFs = slicesFromFinancialSummaryMonthly(fs as Record<string, unknown> | undefined);
-    return fromFs ? doughnutFromSlices(fromFs) : null;
-  }, [fs]);
+    if (!summary) return null;
+    const slices = compositionSlicesFromSummary(summary);
+    return slices.length ? doughnutFromSlices(slices) : null;
+  }, [summary]);
 
   const doughnutOptions = useMemo(
     () => ({
@@ -165,7 +106,9 @@ export function WorkspaceOverviewTab({
     []
   );
 
-  const cashFlowTone = cashAfterDebt == null ? undefined : cashAfterDebt >= 0 ? "success" : "danger";
+  const monthlyCashFlow = summary?.monthlyCashFlow ?? null;
+  const cashFlowTone = monthlyCashFlow == null ? undefined : monthlyCashFlow >= 0 ? "success" : "danger";
+  const cocPercent = summary?.cashOnCashRoi ?? null;
 
   return (
     <div className="pg-workspace-overview pg-prop-overview">
@@ -182,15 +125,19 @@ export function WorkspaceOverviewTab({
       <div className="pg-prop-overview-metrics">
         <MetricCard
           title="Equity"
-          value={equity == null ? "—" : formatOverviewCurrency(equity)}
+          value={summary?.equity == null ? "—" : formatOverviewCurrency(summary.equity)}
           subtitle="Market value less outstanding debt"
           iconPreset="portfolio-value"
           iconTone="primary"
         />
         <MetricCard
           title="Monthly Income"
-          value={formatOverviewCurrency(incomeMonth)}
-          subtitle={`Collected R ${receivedMonth.toLocaleString()} · Expected R ${expectedMonth.toLocaleString()}`}
+          value={summary ? formatOverviewCurrency(summary.monthlyIncome) : "—"}
+          subtitle={
+            summary
+              ? `Collected R ${summary.receivedThisMonth.toLocaleString()} · Expected R ${summary.expectedThisMonth.toLocaleString()}`
+              : "Projected from active leases"
+          }
           iconPreset="monthly-income"
           iconTone="success"
           onClick={() => navigate(`${basePath}?tab=financials&fin=statement`)}
@@ -198,8 +145,8 @@ export function WorkspaceOverviewTab({
         />
         <MetricCard
           title="Monthly Expenses"
-          value={formatOverviewCurrency(totalExpMonth)}
-          subtitle="Current month outflows"
+          value={summary ? formatOverviewCurrency(summary.monthlyExpenses) : "—"}
+          subtitle="Operating costs and debt service"
           iconPreset="expenses"
           iconTone="warning"
           onClick={() => navigate(`${basePath}?tab=financials&fin=statement`)}
@@ -208,11 +155,11 @@ export function WorkspaceOverviewTab({
         <MetricCard
           title="Cash Flow"
           value={
-            cashAfterDebt == null ? (
+            monthlyCashFlow == null ? (
               "—"
             ) : (
-              <span style={{ color: cashAfterDebt >= 0 ? "var(--success)" : "var(--danger)" }}>
-                {formatOverviewCurrency(cashAfterDebt)}
+              <span style={{ color: monthlyCashFlow >= 0 ? "var(--success)" : "var(--danger)" }}>
+                {formatOverviewCurrency(monthlyCashFlow)}
               </span>
             )
           }
@@ -222,7 +169,7 @@ export function WorkspaceOverviewTab({
         />
         <MetricCard
           title="Units Occupied"
-          value={unitsOccupied}
+          value={summary?.unitsOccupiedDisplay ?? "—"}
           subtitle="Occupied units"
           iconPreset="total-properties"
           iconTone="info"
@@ -231,8 +178,8 @@ export function WorkspaceOverviewTab({
         />
         <MetricCard
           title="Cash on Cash ROI"
-          value={cocPercent == null ? "—" : formatOverviewPercent(cocPercent)}
-          subtitle={cocPercent == null ? "Add investment details to calculate" : "Annualised return"}
+          value={cocPercent == null ? "—" : formatOverviewPercent(cocPercent, 2)}
+          subtitle={cocPercent == null ? "Add investment details to calculate" : "Annualised return on cash invested"}
           iconPreset="yield"
           iconTone="warning"
         />
@@ -240,16 +187,16 @@ export function WorkspaceOverviewTab({
 
       <div className="pg-prop-overview-sections">
         <div className="pg-prop-overview-charts">
-          <Card title="Income vs expenses (this property · calendar month)">
+          <Card title="Income vs expenses (projected · monthly)">
             {incomeExpenseDoughnut ? (
               <>
                 <Doughnut data={incomeExpenseDoughnut} options={doughnutOptions} />
                 <div className="pg-muted" style={{ fontSize: 12, marginTop: 10 }}>
-                  Income in teal / blue tones; each expense category has its own shade.
+                  Same projected model as Property Financials — income from active leases; expenses from recurring charges and bond.
                 </div>
               </>
             ) : (
-              <div className="pg-muted">No composition data for this period. Add income or expenses for the current month.</div>
+              <div className="pg-muted">No composition data yet. Add leases or recurring expenses.</div>
             )}
           </Card>
           <Card title="NOI trend">

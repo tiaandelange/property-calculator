@@ -185,6 +185,7 @@ export const queryKeys = {
       params.endDate,
       params.includeExpected !== false
     ] as const,
+  propertyAdditionalBonds: (propertyId: string) => ["property-additional-bonds", propertyId] as const,
   tenantStatement: (tenantId: string, periodKey: string) => ["tenant-statement", tenantId, periodKey] as const,
   workspaceSearch: (workspaceId: string, q: string) => ["workspace-search", workspaceId, q.trim().toLowerCase()] as const,
   workspaceNotifications: (workspaceId: string) => ["workspace-notifications", workspaceId] as const,

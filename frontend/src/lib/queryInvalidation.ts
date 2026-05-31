@@ -79,6 +79,7 @@ export function invalidatePropertyQueries(opts: InvalidateOpts & { propertyId: s
   void qc.invalidateQueries({ queryKey: queryKeys.propertyLeases(pid) });
   void qc.invalidateQueries({ queryKey: ["property-statement", pid] });
   void qc.invalidateQueries({ queryKey: ["property-statement-range", pid] });
+  void qc.invalidateQueries({ queryKey: queryKeys.propertyAdditionalBonds(pid) });
 
   if (wid) {
     void qc.invalidateQueries({ queryKey: ["properties", wid] });

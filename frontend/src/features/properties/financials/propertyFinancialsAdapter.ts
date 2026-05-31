@@ -118,9 +118,35 @@ export function expenseCategoryLabel(value: string): string {
   return labels[value] ?? value;
 }
 
+/** Hide tenant rent / invoice-style rows from landlord charge tabs (legacy API payloads or mistaken expense rows). */
+export function isTenantFacingChargeForecast(row: {
+  description?: unknown;
+  label?: unknown;
+  kind?: unknown;
+  invoiceDescription?: unknown;
+}): boolean {
+  const kind = String(row.kind ?? "");
+  if (["LEASE_RENT", "RECURRING_INVOICE_RULE", "RECURRING_INCOME_RULE"].includes(kind)) return true;
+  const text = String(row.description ?? row.label ?? row.invoiceDescription ?? "").trim();
+  const tl = text.toLowerCase();
+  if (/^expected\s+rent\b/.test(tl)) return true;
+  if (/\brecurring\s+income\s+rule\b/.test(tl)) return true;
+  if (/^recurring\s+invoice\b/.test(tl)) return true;
+  if (/^invoice\s+line\b/.test(tl)) return true;
+  if (/^monthly\s+rent\s*$/i.test(text)) return true;
+  return false;
+}
+
 /** Recurring landlord charges used for operating expenses (excludes bond payment rows). */
 export function filterLandlordRecurringCharges(rows: unknown[]): Record<string, unknown>[] {
   return (rows as Record<string, unknown>[]).filter((rc) => String(rc.category ?? "") !== "BOND_PAYMENT");
+}
+
+/** Landlord recurring charges from statement payload — excludes tenant-facing forecasts and bond rows. */
+export function selectLandlordRecurringCharges(rows: unknown[]): Record<string, unknown>[] {
+  return filterLandlordRecurringCharges(
+    (rows as Record<string, unknown>[]).filter((rc) => !isTenantFacingChargeForecast(rc))
+  );
 }
 
 export type PropertyMonthlyFinancialSnapshot = {
