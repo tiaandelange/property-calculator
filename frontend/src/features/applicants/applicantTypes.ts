@@ -88,5 +88,7 @@ export {
   emptyFieldValues,
   fieldValuesFromRecord,
   combinedIncomeFromValues,
-  personPayloadFromValues
+  personPayloadFromValues,
+  isApplicantApplicationComplete,
+  validateApplicantApplicationValues
 } from "./applicantFormTemplate";

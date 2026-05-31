@@ -67,3 +67,41 @@ export function applicantDocumentFilenamesForGroup(
     .map((doc) => doc!.originalFilename || doc!.fileName || "Document")
     .join(", ");
 }
+
+export type ApplicantPendingDocuments = Partial<Record<ApplicantDocumentSlotId, File>>;
+
+export function applicantDocumentGroupCompleteFromPending(
+  group: ApplicantDocumentSlotDef["group"],
+  pendingBySlot: ApplicantPendingDocuments
+): boolean {
+  return applicantDocumentSlotIdsForGroup(group).every((slot) => Boolean(pendingBySlot[slot]));
+}
+
+export function applicantDocumentGroupsCompleteCountFromPending(pendingBySlot: ApplicantPendingDocuments): number {
+  return APPLICANT_DOCUMENT_GROUPS.filter((g) => applicantDocumentGroupCompleteFromPending(g.id, pendingBySlot)).length;
+}
+
+export function allApplicantDocumentGroupsComplete(pendingBySlot: ApplicantPendingDocuments): boolean {
+  return applicantDocumentGroupsCompleteCountFromPending(pendingBySlot) === APPLICANT_DOCUMENT_GROUPS.length;
+}
+
+export function applicantDocumentFilenamesForGroupFromPending(
+  group: ApplicantDocumentSlotDef["group"],
+  pendingBySlot: ApplicantPendingDocuments
+): string {
+  return applicantDocumentSlotIdsForGroup(group)
+    .map((slot) => pendingBySlot[slot]?.name)
+    .filter(Boolean)
+    .join(", ");
+}
+
+export function applicantPendingDocumentsForGroup(
+  group: ApplicantDocumentSlotDef["group"],
+  pendingBySlot: ApplicantPendingDocuments
+): ApplicantPendingDocuments {
+  const next: ApplicantPendingDocuments = {};
+  for (const slot of applicantDocumentSlotIdsForGroup(group)) {
+    if (pendingBySlot[slot]) next[slot] = pendingBySlot[slot];
+  }
+  return next;
+}

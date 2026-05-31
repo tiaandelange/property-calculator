@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { useParams } from "react-router-dom";
 import { Container } from "../components/ui/Container";
@@ -8,30 +8,30 @@ import { Button } from "../components/ui/Button";
 import { ApplicantDocumentUploadSection } from "../features/applicants/ApplicantDocumentUploadSection";
 import { ApplicantTemplateFields } from "../features/applicants/ApplicantTemplateFields";
 import {
+  allApplicantDocumentGroupsComplete,
+  type ApplicantPendingDocuments
+} from "../features/applicants/applicantDocumentSlots";
+import {
   buildSubmissionPayload,
   DEFAULT_APPLICANT_FORM_TEMPLATE,
   emptyFieldValues,
+  isApplicantApplicationComplete,
   type ApplicantFormTemplate
 } from "../features/applicants/applicantTypes";
 import {
   getApplicantInvitePublic,
   submitApplicantApplication
 } from "../services/applicantApplicationsSupabase";
+import { uploadApplicantDocumentsPublic } from "../services/tenantDocumentsSupabase";
 import { fmtZar } from "../features/tenants/tenantDirectoryUtils";
 import { isSupabaseConfigured } from "../lib/supabaseClient";
-
-const APPLICANT_TENANT_STORAGE_PREFIX = "pg-applicant-tenant:";
-
-function applicantTenantStorageKey(token: string): string {
-  return `${APPLICANT_TENANT_STORAGE_PREFIX}${token}`;
-}
 
 export function ApplicantApplyPage() {
   const { token = "" } = useParams();
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
-  const [saved, setSaved] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
   const [propertyName, setPropertyName] = useState("");
   const [propertyAddress, setPropertyAddress] = useState("");
   const [unitName, setUnitName] = useState<string | null>(null);
@@ -40,7 +40,7 @@ export function ApplicantApplyPage() {
   const [primary, setPrimary] = useState(emptyFieldValues(DEFAULT_APPLICANT_FORM_TEMPLATE));
   const [coApplicant, setCoApplicant] = useState(emptyFieldValues(DEFAULT_APPLICANT_FORM_TEMPLATE));
   const [coEnabled, setCoEnabled] = useState(false);
-  const [tenantId, setTenantId] = useState<string | null>(null);
+  const [pendingDocuments, setPendingDocuments] = useState<ApplicantPendingDocuments>({});
 
   useEffect(() => {
     if (!token) {
@@ -65,12 +65,6 @@ export function ApplicantApplyPage() {
         setPrimary(emptyFieldValues(ctx.formTemplate));
         setCoApplicant(emptyFieldValues(ctx.formTemplate));
         setCoEnabled(false);
-
-        const storedTenantId = sessionStorage.getItem(applicantTenantStorageKey(token));
-        if (storedTenantId) {
-          setTenantId(storedTenantId);
-          setSaved(true);
-        }
       })
       .catch(() => {
         if (!cancelled) setError("This application link is invalid or has expired.");
@@ -83,9 +77,16 @@ export function ApplicantApplyPage() {
     };
   }, [token]);
 
-  const saveApplication = async (e: FormEvent) => {
+  const detailsComplete = useMemo(
+    () => isApplicantApplicationComplete(template, primary, coEnabled, coApplicant, { coEmailRequired: false }),
+    [template, primary, coEnabled, coApplicant]
+  );
+  const documentsComplete = useMemo(() => allApplicantDocumentGroupsComplete(pendingDocuments), [pendingDocuments]);
+  const canSubmit = detailsComplete && documentsComplete && !submitted && !submitting;
+
+  const submitApplication = async (e: FormEvent) => {
     e.preventDefault();
-    if (!token || saved) return;
+    if (!token || submitted || !canSubmit) return;
     setSubmitting(true);
     setError("");
     try {
@@ -94,13 +95,13 @@ export function ApplicantApplyPage() {
         template,
         buildSubmissionPayload(template, primary, coEnabled, coApplicant)
       );
-      setTenantId(result.tenantId);
-      setSaved(true);
-      if (result.tenantId) {
-        sessionStorage.setItem(applicantTenantStorageKey(token), result.tenantId);
+      if (!result.tenantId) {
+        throw new Error("Application was saved but could not attach documents.");
       }
+      await uploadApplicantDocumentsPublic(token, result.tenantId, pendingDocuments);
+      setSubmitted(true);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Could not save application.");
+      setError(err instanceof Error ? err.message : "Could not submit application.");
     } finally {
       setSubmitting(false);
     }
@@ -142,7 +143,7 @@ export function ApplicantApplyPage() {
                 {targetRent > 0 ? ` · Rent ${fmtZar(targetRent)}` : ""}
               </p>
 
-              {saved ? (
+              {submitted ? (
                 <div
                   className="pg-alert"
                   role="status"
@@ -153,19 +154,19 @@ export function ApplicantApplyPage() {
                     color: "var(--text-primary)"
                   }}
                 >
-                  Application details saved. Upload your supporting documents below, then you&apos;re done.
+                  Application submitted successfully. The property owner will review your details and documents.
                 </div>
               ) : null}
 
               {error ? <div className="pg-alert pg-alert-error">{error}</div> : null}
 
-              <form onSubmit={saveApplication}>
+              <form onSubmit={submitApplication}>
                 {template.allowCoApplicant ? (
                   <label className="pg-applicant-co-toggle">
                     <input
                       type="checkbox"
                       checked={coEnabled}
-                      disabled={saved}
+                      disabled={submitted}
                       onChange={(e) => setCoEnabled(e.target.checked)}
                     />
                     <span>Add second applicant</span>
@@ -179,7 +180,7 @@ export function ApplicantApplyPage() {
                       template={template}
                       values={primary}
                       onChange={setPrimary}
-                      disabled={saved}
+                      disabled={submitted}
                     />
                   </div>
                   {coEnabled ? (
@@ -191,30 +192,35 @@ export function ApplicantApplyPage() {
                         values={coApplicant}
                         onChange={setCoApplicant}
                         emailRequired={false}
-                        disabled={saved}
+                        disabled={submitted}
                       />
                     </div>
                   ) : null}
                 </div>
 
-                {!saved ? (
+                <ApplicantDocumentUploadSection
+                  mode="draft"
+                  pendingBySlot={pendingDocuments}
+                  onPendingBySlotChange={setPendingDocuments}
+                  disabled={submitted}
+                  readOnly={submitted}
+                />
+
+                {!submitted ? (
                   <div style={{ marginTop: 20 }}>
-                    <Button id="applicant-save-details" type="submit" loading={submitting}>
-                      Save application details
+                    <Button id="applicant-submit-application" type="submit" loading={submitting} disabled={!canSubmit}>
+                      Submit application
                     </Button>
                     <p className="pg-muted pg-applicant-documents__hint" style={{ marginTop: 12, marginBottom: 0 }}>
-                      Save your details to unlock document uploads. Everything stays on this page.
+                      {canSubmit
+                        ? "Ready to submit your application and documents."
+                        : !detailsComplete
+                          ? "Complete all required fields to submit."
+                          : "Upload ID, three payslips, and three bank statements to submit."}
                     </p>
                   </div>
                 ) : null}
               </form>
-
-              <ApplicantDocumentUploadSection
-                mode="public"
-                tenantId={tenantId}
-                inviteToken={token}
-                disabled={!saved || !tenantId}
-              />
             </>
           ) : null}
         </Card>

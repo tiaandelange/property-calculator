@@ -148,6 +148,49 @@ export function validateApplicantFormTemplate(template: ApplicantFormTemplate): 
   return null;
 }
 
+function trimFieldValue(value: string | undefined): string {
+  return String(value ?? "").trim();
+}
+
+export function validateApplicantApplicationValues(
+  template: ApplicantFormTemplate,
+  primary: ApplicantFieldValues,
+  coApplicantEnabled: boolean,
+  coApplicant: ApplicantFieldValues,
+  options?: { coEmailRequired?: boolean }
+): string | null {
+  const coEmailRequired = options?.coEmailRequired ?? false;
+
+  for (const field of template.fields) {
+    if (!field.required) continue;
+    if (!trimFieldValue(primary[field.id])) {
+      return `${field.label} is required.`;
+    }
+  }
+
+  if (coApplicantEnabled) {
+    for (const field of template.fields) {
+      const required = field.required && !(field.id === "email" && !coEmailRequired);
+      if (!required) continue;
+      if (!trimFieldValue(coApplicant[field.id])) {
+        return `${field.label} is required for the second applicant.`;
+      }
+    }
+  }
+
+  return null;
+}
+
+export function isApplicantApplicationComplete(
+  template: ApplicantFormTemplate,
+  primary: ApplicantFieldValues,
+  coApplicantEnabled: boolean,
+  coApplicant: ApplicantFieldValues,
+  options?: { coEmailRequired?: boolean }
+): boolean {
+  return validateApplicantApplicationValues(template, primary, coApplicantEnabled, coApplicant, options) === null;
+}
+
 export function combinedIncomeFromValues(template: ApplicantFormTemplate, ...people: ApplicantFieldValues[]): number {
   let total = 0;
   for (const values of people) {

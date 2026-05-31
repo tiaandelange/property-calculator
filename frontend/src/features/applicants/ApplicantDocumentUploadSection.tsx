@@ -5,11 +5,15 @@ import { Button } from "../../components/ui/Button";
 import {
   APPLICANT_DOCUMENT_GROUPS,
   applicantDocumentFilenamesForGroup,
+  applicantDocumentFilenamesForGroupFromPending,
   applicantDocumentGroupComplete,
+  applicantDocumentGroupCompleteFromPending,
   applicantDocumentGroupsCompleteCount,
+  applicantDocumentGroupsCompleteCountFromPending,
   applicantDocumentSlotIdsForGroup,
   type ApplicantDocumentSlotDef,
-  type ApplicantDocumentSlotId
+  type ApplicantDocumentSlotId,
+  type ApplicantPendingDocuments
 } from "./applicantDocumentSlots";
 import type { TenantDocumentRecord } from "../../services/tenantDocumentsSupabase";
 import {
@@ -28,6 +32,23 @@ function docsBySlot(docs: TenantDocumentRecord[]): Map<ApplicantDocumentSlotId, 
     if (doc.documentSlot) map.set(doc.documentSlot, doc);
   }
   return map;
+}
+
+function assignPendingGroupFiles(
+  group: ApplicantDocumentSlotDef["group"],
+  files: FileList,
+  pendingBySlot: ApplicantPendingDocuments
+): ApplicantPendingDocuments {
+  const slots = applicantDocumentSlotIdsForGroup(group);
+  const selected = Array.from(files).slice(0, slots.length);
+  const next = { ...pendingBySlot };
+  for (const slot of slots) {
+    delete next[slot];
+  }
+  for (let i = 0; i < selected.length; i++) {
+    next[slots[i]] = selected[i];
+  }
+  return next;
 }
 
 function SlotIndicator({ uploaded, busy }: { uploaded: boolean; busy?: boolean }) {
@@ -102,32 +123,30 @@ function FileUploadTrigger({
 
 function DocumentGroupRow({
   group,
-  bySlot,
+  complete,
+  filenames,
+  uploadedCount,
   busy,
   readOnly,
   uploadsEnabled,
   mode,
   inputId,
-  onUploadSingle,
-  onUploadMultiple,
+  onFiles,
   onView
 }: {
   group: (typeof APPLICANT_DOCUMENT_GROUPS)[number];
-  bySlot: Map<ApplicantDocumentSlotId, TenantDocumentRecord>;
+  complete: boolean;
+  filenames: string;
+  uploadedCount: number;
   busy?: boolean;
   readOnly?: boolean;
   uploadsEnabled: boolean;
-  mode: "public" | "owner";
+  mode: "draft" | "public" | "owner";
   inputId: string;
-  onUploadSingle: (file: File) => void;
-  onUploadMultiple: (files: FileList) => void;
-  onView?: (doc: TenantDocumentRecord) => void;
+  onFiles: (files: FileList) => void;
+  onView?: () => void;
 }) {
   const isMulti = group.id === "payslips" || group.id === "bank";
-  const uploadedSlots = new Set(Array.from(bySlot.keys()));
-  const complete = applicantDocumentGroupComplete(group.id, uploadedSlots);
-  const filenames = applicantDocumentFilenamesForGroup(group.id, bySlot);
-  const uploadedCount = applicantDocumentSlotIdsForGroup(group.id).filter((slot) => bySlot.has(slot)).length;
 
   return (
     <li className="pg-applicant-doc-slot">
@@ -138,8 +157,8 @@ function DocumentGroupRow({
         <div className="pg-applicant-doc-slot__file pg-muted">{filenames || "Not uploaded yet"}</div>
       </div>
       <div className="pg-applicant-doc-slot__actions">
-        {mode === "owner" && group.id === "identity" && bySlot.get("ID") ? (
-          <Button type="button" variant="ghost" size="sm" onClick={() => onView?.(bySlot.get("ID")!)}>
+        {mode === "owner" && group.id === "identity" && complete ? (
+          <Button type="button" variant="ghost" size="sm" onClick={onView}>
             <ExternalLink size={14} aria-hidden style={{ marginRight: 4 }} />
             View
           </Button>
@@ -151,23 +170,17 @@ function DocumentGroupRow({
               isMulti
                 ? uploadedCount > 0
                   ? "Replace files"
-                  : "Upload files"
+                  : "Choose files"
                 : complete
                   ? "Replace"
-                  : "Upload file"
+                  : "Choose file"
             }
             multiple={isMulti}
             disabled={!uploadsEnabled}
             busy={busy}
-            disabledHint="Save your application details first to upload documents"
+            disabledHint={mode === "draft" ? undefined : "Complete your application details first"}
             variant={complete ? "soft" : "outline"}
-            onFiles={(files) => {
-              if (isMulti) onUploadMultiple(files);
-              else {
-                const file = files[0];
-                if (file) onUploadSingle(file);
-              }
-            }}
+            onFiles={onFiles}
           />
         ) : null}
       </div>
@@ -180,13 +193,17 @@ export function ApplicantDocumentUploadSection({
   tenantId,
   inviteToken,
   disabled,
-  readOnly
+  readOnly,
+  pendingBySlot,
+  onPendingBySlotChange
 }: {
-  mode: "public" | "owner";
-  tenantId: string | null;
+  mode: "draft" | "public" | "owner";
+  tenantId?: string | null;
   inviteToken?: string;
   disabled?: boolean;
   readOnly?: boolean;
+  pendingBySlot?: ApplicantPendingDocuments;
+  onPendingBySlotChange?: (next: ApplicantPendingDocuments) => void;
 }) {
   const baseId = useId();
   const [docs, setDocs] = useState<TenantDocumentRecord[]>([]);
@@ -196,7 +213,7 @@ export function ApplicantDocumentUploadSection({
   const [busyGroup, setBusyGroup] = useState<ApplicantDocumentSlotDef["group"] | null>(null);
 
   const refresh = useCallback(async () => {
-    if (!tenantId) {
+    if (mode === "draft" || !tenantId) {
       setDocs([]);
       return;
     }
@@ -221,14 +238,17 @@ export function ApplicantDocumentUploadSection({
 
   const bySlot = useMemo(() => docsBySlot(docs), [docs]);
   const uploadedSlots = useMemo(() => new Set(Array.from(bySlot.keys())), [bySlot]);
-  const groupsCompleteCount = applicantDocumentGroupsCompleteCount(uploadedSlots);
+  const groupsCompleteCount =
+    mode === "draft"
+      ? applicantDocumentGroupsCompleteCountFromPending(pendingBySlot ?? {})
+      : applicantDocumentGroupsCompleteCount(uploadedSlots);
 
   const uploadFileCore = async (slot: ApplicantDocumentSlotId, file: File) => {
     if (!tenantId || disabled || readOnly) return;
     if (mode === "public") {
       if (!inviteToken) throw new Error("Missing application link token.");
       await uploadApplicantDocumentPublic(inviteToken, tenantId, slot, file);
-    } else {
+    } else if (mode === "owner") {
       await uploadTenantDocumentOwner(tenantId, slot, file);
     }
   };
@@ -277,7 +297,7 @@ export function ApplicantDocumentUploadSection({
     }
   };
 
-  const uploadsEnabled = Boolean(tenantId) && !disabled && !readOnly;
+  const uploadsEnabled = mode === "draft" ? !disabled && !readOnly : Boolean(tenantId) && !disabled && !readOnly;
 
   return (
     <section className="pg-applicant-documents" aria-labelledby="applicant-documents-title">
@@ -287,8 +307,8 @@ export function ApplicantDocumentUploadSection({
             Supporting documents
           </h2>
           <p className="pg-muted pg-applicant-documents__desc">
-            Upload your ID, three recent payslips, and three recent bank statements. Each category shows a green check
-            when complete. Select up to three payslips or bank statements at once.
+            Choose your ID, three recent payslips, and three recent bank statements. Each category shows a green check
+            when complete. You can select up to three payslips or bank statements at once.
           </p>
         </div>
         <span className="pg-applicant-documents__progress" aria-live="polite">
@@ -296,32 +316,59 @@ export function ApplicantDocumentUploadSection({
         </span>
       </div>
 
-      {!tenantId ? (
-        <p className="pg-muted pg-applicant-documents__hint">
-          Save your application details above to unlock document uploads.
-        </p>
-      ) : null}
-
       {error ? <div className="pg-alert pg-alert-error">{error}</div> : null}
-      {loading && !docs.length ? <p className="pg-muted">Loading documents…</p> : null}
+      {loading && mode !== "draft" && !docs.length ? <p className="pg-muted">Loading documents…</p> : null}
 
       <ul className="pg-applicant-documents__slots">
         {APPLICANT_DOCUMENT_GROUPS.map((group) => {
           const groupBusy = busyGroup === group.id || (group.id === "identity" && busySlot === "ID");
+          const isMulti = group.id === "payslips" || group.id === "bank";
+          const complete =
+            mode === "draft"
+              ? applicantDocumentGroupCompleteFromPending(group.id, pendingBySlot ?? {})
+              : applicantDocumentGroupComplete(group.id, uploadedSlots);
+          const filenames =
+            mode === "draft"
+              ? applicantDocumentFilenamesForGroupFromPending(group.id, pendingBySlot ?? {})
+              : applicantDocumentFilenamesForGroup(group.id, bySlot);
+          const uploadedCount =
+            mode === "draft"
+              ? applicantDocumentSlotIdsForGroup(group.id).filter((slot) => Boolean(pendingBySlot?.[slot])).length
+              : applicantDocumentSlotIdsForGroup(group.id).filter((slot) => bySlot.has(slot)).length;
 
           return (
             <DocumentGroupRow
               key={group.id}
               group={group}
-              bySlot={bySlot}
+              complete={complete}
+              filenames={filenames}
+              uploadedCount={uploadedCount}
               busy={groupBusy}
               readOnly={readOnly}
               uploadsEnabled={uploadsEnabled}
               mode={mode}
               inputId={`${baseId}-${group.id}`.replace(/:/g, "")}
-              onUploadSingle={(file) => void uploadFile("ID", file)}
-              onUploadMultiple={(files) => void uploadMultiple(group.id, files)}
-              onView={(doc) => void openDocument(doc)}
+              onFiles={(files) => {
+                if (mode === "draft") {
+                  if (isMulti) {
+                    onPendingBySlotChange?.(assignPendingGroupFiles(group.id, files, pendingBySlot ?? {}));
+                  } else {
+                    const file = files[0];
+                    if (file) onPendingBySlotChange?.({ ...(pendingBySlot ?? {}), ID: file });
+                  }
+                  return;
+                }
+                if (isMulti) void uploadMultiple(group.id, files);
+                else {
+                  const file = files[0];
+                  if (file) void uploadFile("ID", file);
+                }
+              }}
+              onView={
+                mode === "owner" && bySlot.get("ID")
+                  ? () => void openDocument(bySlot.get("ID")!)
+                  : undefined
+              }
             />
           );
         })}

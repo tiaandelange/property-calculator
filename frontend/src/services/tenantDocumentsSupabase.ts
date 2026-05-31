@@ -5,6 +5,7 @@ import {
   sanitizeFilenameForStorage
 } from "./documentsSupabase";
 import type { ApplicantDocumentSlotId } from "../features/applicants/applicantDocumentSlots";
+import { APPLICANT_DOCUMENT_SLOTS } from "../features/applicants/applicantDocumentSlots";
 
 const BUCKET = "tenant-documents";
 
@@ -104,7 +105,7 @@ export async function uploadApplicantDocumentPublic(
 
   const { error: upErr } = await sb.storage.from(bucket).upload(storageKey, file, {
     cacheControl: "3600",
-    upsert: true,
+    upsert: false,
     contentType: file.type || "application/octet-stream"
   });
   if (upErr) throw new Error(upErr.message);
@@ -118,6 +119,17 @@ export async function uploadApplicantDocumentPublic(
   if (finErr) throw new Error(finErr.message);
 
   return mapRow(finalized as Record<string, unknown>);
+}
+
+export async function uploadApplicantDocumentsPublic(
+  token: string,
+  tenantId: string,
+  pendingBySlot: Partial<Record<ApplicantDocumentSlotId, File>>
+): Promise<void> {
+  for (const { slot } of APPLICANT_DOCUMENT_SLOTS) {
+    const file = pendingBySlot[slot];
+    if (file) await uploadApplicantDocumentPublic(token, tenantId, slot, file);
+  }
 }
 
 export async function uploadTenantDocumentOwner(
