@@ -1,17 +1,14 @@
 import { useMemo } from "react";
 import { Chart as ChartJS, ArcElement, CategoryScale, Legend, LinearScale, LineElement, PointElement, Tooltip } from "chart.js";
 import { Line, Doughnut } from "react-chartjs-2";
-import { AppSectionTabs } from "../../../components/ui/AppSectionTabs";
 import { Card } from "../../../components/ui/Card";
 import { Button } from "../../../components/ui/Button";
 import { MetricCard } from "../../../components/ui/DashboardKit";
+import { WorkspaceTabs } from "../../../components/workspace/WorkspaceTabs";
 import { asArray } from "../../../lib/asArray";
 import { getChartCategoryPalette, getChartSemanticColors } from "../../../theme/cssTokens";
 import { PropertyOverviewHero } from "./PropertyOverviewHero";
-import {
-  buildPropertyOverviewTabItems,
-  resolvePropertyWorkspaceActiveTabId
-} from "./propertyWorkspaceTabs";
+import { PROPERTY_WORKSPACE_TABS } from "./propertyWorkspaceTabs";
 import { formatOverviewCurrency, formatOverviewPercent, unitsOccupiedLabel } from "./propertyOverviewUtils";
 
 ChartJS.register(ArcElement, CategoryScale, LinearScale, LineElement, PointElement, Tooltip, Legend);
@@ -169,23 +166,17 @@ export function WorkspaceOverviewTab({
   );
 
   const cashFlowTone = cashAfterDebt == null ? undefined : cashAfterDebt >= 0 ? "success" : "danger";
-  const tabItems = buildPropertyOverviewTabItems(basePath);
-  const tabActiveId = resolvePropertyWorkspaceActiveTabId(activeTab, finSub);
 
   return (
     <div className="pg-workspace-overview pg-prop-overview">
-      <PropertyOverviewHero
-        data={data}
-        propertyId={propertyId}
-        currentLeases={currentLeases}
-        monthlyIncome={incomeMonth}
-      />
+      <PropertyOverviewHero data={data} propertyId={propertyId} currentLeases={currentLeases} />
 
-      <AppSectionTabs
+      <WorkspaceTabs
         className="pg-prop-overview__tabs"
-        ariaLabel="Property sections"
-        activeId={tabActiveId}
-        items={tabItems}
+        basePath={basePath}
+        active={activeTab}
+        tabs={[...PROPERTY_WORKSPACE_TABS]}
+        extraQueryForTab={{ financials: `fin=${encodeURIComponent(finSub)}` }}
       />
 
       <div className="pg-prop-overview-metrics">

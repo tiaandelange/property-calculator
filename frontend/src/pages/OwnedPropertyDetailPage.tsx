@@ -21,6 +21,7 @@ import {
   usePropertyTenantsQuery,
   useWorkspaceId
 } from "../features/queries";
+import { PROPERTY_WORKSPACE_TABS } from "../features/properties/workspace/propertyWorkspaceTabs";
 import { invalidatePropertyWorkspace } from "../features/properties/invalidate";
 import { prefetchPropertyWorkspaceTabs } from "../lib/routePrefetch";
 import { asArray } from "../lib/asArray";
@@ -295,14 +296,7 @@ export function OwnedPropertyDetailPage() {
                 <WorkspaceTabs
                   basePath={`/owned-properties/${id}`}
                   active={tab === "financials" && finSub === "invoice" ? "financials" : tab}
-                  tabs={[
-                    { key: "overview", label: "Overview" },
-                    { key: "financials", label: "Financials" },
-                    { key: "statement", label: "Statement" },
-                    { key: "tenants", label: "Tenants" },
-                    { key: "leases", label: "Leases" },
-                    { key: "documents", label: "Documents" }
-                  ]}
+                  tabs={[...PROPERTY_WORKSPACE_TABS]}
                   extraQueryForTab={{ financials: `fin=${encodeURIComponent(finSub)}` }}
                   style={{ marginBottom: 0 }}
                 />

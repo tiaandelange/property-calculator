@@ -9,6 +9,7 @@
   display: grid;
   grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
   grid-template-areas:
+    "toolbar toolbar"
     "media main"
     "stats stats";
   gap: 20px 24px;
@@ -16,6 +17,15 @@
   background: var(--surface);
   border: 1px solid var(--border-soft);
   border-radius: 20px;
+}
+
+.pg-prop-overview-hero__toolbar {
+  grid-area: toolbar;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
 .pg-prop-overview-hero__media {
@@ -88,54 +98,18 @@
   line-height: 1.5;
 }
 
-.pg-prop-overview-hero__actions {
+.pg-prop-overview-hero__status-row {
   display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
   align-items: center;
   margin-top: 4px;
-}
-
-.pg-prop-overview-hero__more {
-  position: relative;
-}
-
-.pg-prop-overview-hero__more-menu {
-  position: absolute;
-  top: calc(100% + 6px);
-  right: 0;
-  z-index: 20;
-  min-width: 180px;
-  padding: 6px;
-  background: var(--surface-elevated, var(--surface));
-  border: 1px solid var(--border-soft);
-  border-radius: 12px;
-  box-shadow: var(--shadow-popover, 0 8px 24px rgba(0, 0, 0, 0.12));
-}
-
-.pg-prop-overview-hero__more-item {
-  display: block;
-  width: 100%;
-  padding: 8px 10px;
-  border: 0;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--text-primary);
-  font: inherit;
-  text-align: left;
-  text-decoration: none;
-  cursor: pointer;
-}
-
-.pg-prop-overview-hero__more-item:hover {
-  background: var(--surface-muted);
 }
 
 .pg-prop-overview-hero__stats {
   grid-area: stats;
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
+  max-width: 520px;
 }
 
 .pg-prop-overview-hero__stat {
@@ -204,24 +178,29 @@
   .pg-prop-overview-metrics {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
-
-  .pg-prop-overview-hero__stats {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
 }
 
 @media (max-width: 820px) {
   .pg-prop-overview-hero {
     grid-template-columns: 1fr;
     grid-template-areas:
+      "toolbar"
       "media"
       "main"
       "stats";
   }
 
+  .pg-prop-overview-hero__toolbar {
+    justify-content: flex-start;
+  }
+
   .pg-prop-overview-hero__image,
   .pg-prop-overview-hero__image-placeholder {
     height: 180px;
+  }
+
+  .pg-prop-overview-hero__stats {
+    max-width: none;
   }
 
   .pg-prop-overview-charts,
@@ -236,19 +215,15 @@
   }
 
   .pg-prop-overview-hero__stats {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: 1fr;
   }
 
-  .pg-prop-overview-hero__actions {
+  .pg-prop-overview-hero__toolbar {
     flex-direction: column;
     align-items: stretch;
   }
 
-  .pg-prop-overview-hero__more {
-    width: 100%;
-  }
-
-  .pg-prop-overview-hero__more > .pg-btn {
+  .pg-prop-overview-hero__toolbar .pg-btn {
     width: 100%;
   }
 }
