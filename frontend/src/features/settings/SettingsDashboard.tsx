@@ -7,6 +7,7 @@ import { Button, ButtonLink } from "../../components/ui/Button";
 import { Field, Input } from "../../components/ui/Input";
 import { AppCard, AppCardDescription, AppCardHeader, AppCardTitle } from "../../components/ui/AppCard";
 import { AppFormModal } from "../../components/ui/AppModal";
+import { useRegisterSettingsUnsavedChanges } from "./settingsUnsavedChanges";
 import { useAuth } from "../../contexts/AuthContext";
 import { useMediaQuery } from "../../hooks/useMediaQuery";
 import { supabase } from "../../lib/supabaseClient";
@@ -282,10 +283,18 @@ export function SettingsDashboard() {
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
 
   useEffect(() => {
-    if (settingsQuery.data) {
-      setSaved(settingsQuery.data);
-      setDraft(settingsQuery.data);
-    }
+    if (!settingsQuery.data) return;
+    setSaved((prevSaved) => {
+      const server = settingsQuery.data;
+      setDraft((prevDraft) => {
+        if (!prevDraft || !prevSaved) return server;
+        if (JSON.stringify(prevDraft) !== JSON.stringify(prevSaved)) {
+          return prevDraft;
+        }
+        return server;
+      });
+      return server;
+    });
   }, [settingsQuery.data]);
 
   useEffect(() => {
@@ -348,12 +357,12 @@ export function SettingsDashboard() {
     setError("");
   };
 
-  const save = async () => {
-    if (!draft || !saved) return;
+  const save = async (): Promise<boolean> => {
+    if (!draft || !saved) return false;
     const validationError = validateUserSettings(draft);
     if (validationError) {
       setError(validationError);
-      return;
+      return false;
     }
     setSaving(true);
     setError("");
@@ -387,12 +396,16 @@ export function SettingsDashboard() {
       await refreshProfile();
       setSuccess(true);
       window.setTimeout(() => setSuccess(false), 4000);
+      return true;
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Could not save settings.");
+      return false;
     } finally {
       setSaving(false);
     }
   };
+
+  useRegisterSettingsUnsavedChanges(dirty, save, cancel);
 
   if (loading) {
     return (

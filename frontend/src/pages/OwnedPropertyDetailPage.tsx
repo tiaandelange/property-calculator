@@ -280,37 +280,49 @@ export function OwnedPropertyDetailPage() {
           </>
         ) : data ? (
           <>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginTop: 8, marginBottom: 12 }}>
-              <WorkspaceTabs
-                basePath={`/owned-properties/${id}`}
-                active={tab}
-                tabs={[
-                  { key: "overview", label: "Overview" },
-                  { key: "financials", label: "Financials" },
-                  { key: "statement", label: "Statement" },
-                  { key: "tenants", label: "Tenants" },
-                  { key: "leases", label: "Leases" },
-                  { key: "documents", label: "Documents" }
-                ]}
-                extraQueryForTab={{ financials: `fin=${encodeURIComponent(finSub)}` }}
-                style={{ marginBottom: 0 }}
-              />
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
-                <ButtonLink
-                  href={`/owned-properties/${id}/report`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  variant="soft"
-                >
-                  Generate report
-                </ButtonLink>
-                <ButtonLink href={`/owned-properties/${id}/edit`} variant="soft">
-                  Edit Property
-                </ButtonLink>
+            {tab !== "overview" ? (
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 12,
+                  flexWrap: "wrap",
+                  marginTop: 8,
+                  marginBottom: 12
+                }}
+              >
+                <WorkspaceTabs
+                  basePath={`/owned-properties/${id}`}
+                  active={tab === "financials" && finSub === "invoice" ? "financials" : tab}
+                  tabs={[
+                    { key: "overview", label: "Overview" },
+                    { key: "financials", label: "Financials" },
+                    { key: "statement", label: "Statement" },
+                    { key: "tenants", label: "Tenants" },
+                    { key: "leases", label: "Leases" },
+                    { key: "documents", label: "Documents" }
+                  ]}
+                  extraQueryForTab={{ financials: `fin=${encodeURIComponent(finSub)}` }}
+                  style={{ marginBottom: 0 }}
+                />
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
+                  <ButtonLink
+                    href={`/owned-properties/${id}/report`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    variant="soft"
+                  >
+                    Generate report
+                  </ButtonLink>
+                  <ButtonLink href={`/owned-properties/${id}/edit`} variant="soft">
+                    Edit Property
+                  </ButtonLink>
+                </div>
               </div>
-            </div>
+            ) : null}
 
-            <div className="pg-workspace-panel">
+            <div className={tab === "overview" ? undefined : "pg-workspace-panel"}>
               {tab === "overview" ? (
                 overviewTabLoading ? (
                   <TabPanelSkeleton variant="overview" />
@@ -323,6 +335,8 @@ export function OwnedPropertyDetailPage() {
                     navigate={(path) => navigate(path)}
                     currentLeases={currentLeases}
                     combinedContractRent={combinedContractRent}
+                    finSub={finSub}
+                    activeTab={tab}
                   />
                 )
               ) : null}

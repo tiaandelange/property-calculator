@@ -2,6 +2,7 @@ import React, { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { DashboardShell } from "../components/nav/DashboardShell";
 import { useAuth } from "../contexts/AuthContext";
+import { SettingsUnsavedChangesProvider } from "../features/settings/settingsUnsavedChanges";
 import { prefetchAuthWorkspace } from "../lib/routePrefetch";
 
 export function AuthenticatedShell({
@@ -20,5 +21,9 @@ export function AuthenticatedShell({
     prefetchAuthWorkspace(queryClient, workspaceId);
   }, [session?.user?.id, queryClient]);
 
-  return <DashboardShell>{children}</DashboardShell>;
+  return (
+    <SettingsUnsavedChangesProvider>
+      <DashboardShell>{children}</DashboardShell>
+    </SettingsUnsavedChangesProvider>
+  );
 }

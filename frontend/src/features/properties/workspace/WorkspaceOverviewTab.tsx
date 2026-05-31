@@ -1,11 +1,18 @@
 import { useMemo } from "react";
 import { Chart as ChartJS, ArcElement, CategoryScale, Legend, LinearScale, LineElement, PointElement, Tooltip } from "chart.js";
 import { Line, Doughnut } from "react-chartjs-2";
+import { AppSectionTabs } from "../../../components/ui/AppSectionTabs";
 import { Card } from "../../../components/ui/Card";
 import { Button } from "../../../components/ui/Button";
 import { MetricCard } from "../../../components/ui/DashboardKit";
 import { asArray } from "../../../lib/asArray";
 import { getChartCategoryPalette, getChartSemanticColors } from "../../../theme/cssTokens";
+import { PropertyOverviewHero } from "./PropertyOverviewHero";
+import {
+  buildPropertyOverviewTabItems,
+  resolvePropertyWorkspaceActiveTabId
+} from "./propertyWorkspaceTabs";
+import { formatOverviewCurrency, formatOverviewPercent, unitsOccupiedLabel } from "./propertyOverviewUtils";
 
 ChartJS.register(ArcElement, CategoryScale, LinearScale, LineElement, PointElement, Tooltip, Legend);
 
@@ -16,7 +23,6 @@ function nz(n: unknown) {
   return Number.isFinite(v) && v > 0 ? v : 0;
 }
 
-/** Pie chart aligned with Overview tiles — uses same buckets as GET /properties/:id financialSummary.monthly */
 function slicesFromFinancialSummaryMonthly(fs: Record<string, unknown> | undefined): CompositionSlice[] | null {
   if (!fs) return null;
   const income: CompositionSlice[] = [];
@@ -65,29 +71,6 @@ function doughnutFromSlices(slices: CompositionSlice[]) {
   return { labels, datasets: [{ data, backgroundColor, borderWidth: 1, borderColor: "rgba(0,0,0,.35)" }] };
 }
 
-const INV_LABEL: Record<string, string> = {
-  LONG_TERM_RENTAL: "Long-term rental",
-  SHORT_TERM_RENTAL: "Short-term rental",
-  VACANT_LAND: "Vacant land",
-  BRRRR: "BRRRR",
-  FLIP: "Flip",
-  PRIMARY_RESIDENCE: "Primary residence",
-  COMMERCIAL: "Commercial",
-  HOUSE_HACK: "House hack",
-  MIXED_USE: "Mixed use",
-  OTHER: "Other"
-};
-
-function occupancyHeading(inv: string | undefined, leases: any[]) {
-  if (inv === "VACANT_LAND") return "Land — no tenant required";
-  if (inv === "SHORT_TERM_RENTAL") return "Short-term rental";
-  if (inv === "FLIP") return "Flip / renovation project";
-  if (leases.length === 0) return "Vacant";
-  const m2m = leases.some((l: any) => (l.displayStatus ?? l.status) === "MONTH_TO_MONTH");
-  if (m2m) return "Occupied — month-to-month";
-  return "Occupied";
-}
-
 type Props = {
   data: any;
   statement: any | null;
@@ -96,26 +79,30 @@ type Props = {
   navigate: (path: string) => void;
   currentLeases: any[];
   combinedContractRent: number;
+  finSub: string;
+  activeTab: string;
 };
 
-export function WorkspaceOverviewTab({ data, statement, perf, propertyId, navigate, currentLeases, combinedContractRent }: Props) {
+export function WorkspaceOverviewTab({
+  data,
+  statement,
+  perf,
+  propertyId,
+  navigate,
+  currentLeases,
+  combinedContractRent,
+  finSub,
+  activeTab
+}: Props) {
   const fs = data.financialSummary?.monthly;
-  const invType = data.investmentType as string | undefined;
-  const occ = occupancyHeading(invType, currentLeases);
+  const basePath = `/owned-properties/${propertyId}`;
 
-  /**
-   * Canonical “dashboard income” used across the app:
-   * - contractual lease rent (active / month-to-month) + STR estimate (where applicable)
-   * - expenses from ledger (including bond rows / inferred bond where needed)
-   *
-   * This keeps /owned-properties/dashboard and /owned-properties/:id consistent.
-   */
   const kNoi = perf?.kpis?.monthlyNOI;
   const kExp = perf?.kpis?.monthlyExpenses;
   const incomeMonth = Number(kNoi?.operatingIncomeProjectedFromLeases ?? 0);
   const operatingExpMonth = Number(kExp?.operatingExpenses ?? 0);
   const bondMonth = Number(kExp?.debtService ?? 0);
-  const noiOp = Number.isFinite(incomeMonth) && Number.isFinite(operatingExpMonth) ? incomeMonth - operatingExpMonth : null;
+  const totalExpMonth = operatingExpMonth + bondMonth;
   const cashAfterDebt =
     Number.isFinite(incomeMonth) && Number.isFinite(operatingExpMonth) && Number.isFinite(bondMonth)
       ? incomeMonth - operatingExpMonth - bondMonth
@@ -129,7 +116,6 @@ export function WorkspaceOverviewTab({ data, statement, perf, propertyId, naviga
       ? Number(data.currentEstimatedValue) - Number(data.outstandingBondBalance)
       : null;
 
-  /** CoC uses rental income only (RENT category, received this month) vs all expenses this month — annualised ×12; denominator from Edit Property. */
   const rentalIncomeMonth = fs?.totalRentIncome ?? null;
   const expensesMonth = fs?.totalExpenses ?? null;
   const monthlyCashFlowForCoC =
@@ -145,14 +131,12 @@ export function WorkspaceOverviewTab({ data, statement, perf, propertyId, naviga
       ? (monthlyCashFlowForCoC * 12 * 100) / cashInvested
       : null;
 
-  const irrVp = perf?.portfolioIRR?.valuePercent;
-  const irrPct = irrVp != null && Number.isFinite(Number(irrVp)) ? Number(irrVp) : null;
-
   const recent = asArray(statement?.statementRows).slice(-8).reverse();
   const noiTrendRows = asArray(perf?.charts?.monthlyNOITrend);
   const alertMessages = asArray<string>(data.aggregateMeta?.alerts);
+  const tenantRows = asArray(data.tenants);
+  const unitsOccupied = unitsOccupiedLabel(data, currentLeases);
 
-  /** Ledger-aligned only — do not fall back to dashboard-summary composition (STR adds synthetic Utilities/fees unrelated to deleted expenses). */
   const incomeExpenseDoughnut = useMemo(() => {
     const fromFs = slicesFromFinancialSummaryMonthly(fs as Record<string, unknown> | undefined);
     return fromFs ? doughnutFromSlices(fromFs) : null;
@@ -184,186 +168,210 @@ export function WorkspaceOverviewTab({ data, statement, perf, propertyId, naviga
     []
   );
 
-  const tenantRows = asArray(data.tenants);
+  const cashFlowTone = cashAfterDebt == null ? undefined : cashAfterDebt >= 0 ? "success" : "danger";
+  const tabItems = buildPropertyOverviewTabItems(basePath);
+  const tabActiveId = resolvePropertyWorkspaceActiveTabId(activeTab, finSub);
 
   return (
-    <div className="pg-workspace-overview" style={{ display: "grid", gap: 16 }}>
-      <div className="pg-metric-grid">
-        <MetricCard
-          title="Occupancy status"
-          value={occ}
-          subtitle="Open leases tab"
-          iconPreset="vacancy"
-          onClick={() => navigate(`/owned-properties/${propertyId}?tab=leases`)}
-          ariaLabel="Open leases tab"
-        />
+    <div className="pg-workspace-overview pg-prop-overview">
+      <PropertyOverviewHero
+        data={data}
+        propertyId={propertyId}
+        currentLeases={currentLeases}
+        monthlyIncome={incomeMonth}
+      />
 
-        <MetricCard
-          title="Current tenants"
-          value={tenantRows.length}
-          subtitle={tenantRows.slice(0, 2).map((t: any) => `${t.firstName} ${t.lastName}`).join(", ") || "None linked"}
-          iconPreset="tenants"
-          onClick={() => navigate(`/owned-properties/${propertyId}?tab=tenants`)}
-          ariaLabel="Open tenants tab"
-        />
+      <AppSectionTabs
+        className="pg-prop-overview__tabs"
+        ariaLabel="Property sections"
+        activeId={tabActiveId}
+        items={tabItems}
+      />
 
-        <MetricCard
-          title="Monthly income"
-          value={`R ${incomeMonth.toLocaleString()}`}
-          subtitle={`Received R ${receivedMonth.toLocaleString()} · Expected R ${expectedMonth.toLocaleString()}`}
-          iconPreset="monthly-income"
-          onClick={() => navigate(`/owned-properties/${propertyId}?tab=financials&fin=statement`)}
-          ariaLabel="Open statement tab"
-        />
-
-        <MetricCard
-          title="Monthly expenses"
-          value={`R ${operatingExpMonth.toLocaleString()}`}
-          subtitle={`Bond/debt R ${bondMonth.toLocaleString()}`}
-          iconPreset="expenses"
-          onClick={() => navigate(`/owned-properties/${propertyId}?tab=financials&fin=statement`)}
-          ariaLabel="Open statement tab"
-        />
-
-        <MetricCard
-          title="Monthly NOI (operating)"
-          value={noiOp == null ? "—" : `R ${Math.round(noiOp).toLocaleString()}`}
-          subtitle="Excludes bond payment"
-          iconPreset="cash-flow"
-        />
-
-        <MetricCard
-          title="Monthly cash flow"
-          value={cashAfterDebt == null ? "—" : `R ${Math.round(cashAfterDebt).toLocaleString()}`}
-          subtitle="NOI − debt service"
-          iconPreset="cash-flow"
-        />
-
+      <div className="pg-prop-overview-metrics">
         <MetricCard
           title="Equity"
-          value={equity == null ? "Insufficient data" : `R ${Math.round(equity).toLocaleString()}`}
+          value={equity == null ? "—" : formatOverviewCurrency(equity)}
+          subtitle="Market value less outstanding debt"
           iconPreset="portfolio-value"
+          iconTone="primary"
         />
-
         <MetricCard
-          title="True cash-on-cash ROI"
-          value={cocPercent == null ? "Insufficient data" : `${cocPercent.toFixed(1)}%`}
-          subtitle="(Monthly rental income − monthly expenses) × 12 ÷ total cash invested × 100"
-          iconPreset="yield"
+          title="Monthly Income"
+          value={formatOverviewCurrency(incomeMonth)}
+          subtitle={`Collected R ${receivedMonth.toLocaleString()} · Expected R ${expectedMonth.toLocaleString()}`}
+          iconPreset="monthly-income"
+          iconTone="success"
+          onClick={() => navigate(`${basePath}?tab=financials&fin=statement`)}
+          ariaLabel="Open financial statement"
         />
-
         <MetricCard
-          title="IRR"
-          value={irrPct == null ? "Insufficient data" : `${irrPct.toFixed(2)}%`}
-          subtitle="Portfolio-level estimate when filtered"
-          iconPreset="yield"
+          title="Monthly Expenses"
+          value={formatOverviewCurrency(totalExpMonth)}
+          subtitle="Current month outflows"
+          iconPreset="expenses"
+          iconTone="warning"
+          onClick={() => navigate(`${basePath}?tab=financials&fin=statement`)}
+          ariaLabel="Open financial statement"
         />
-
         <MetricCard
-          title="Property type"
-          value={<span style={{ fontSize: 15 }}>{INV_LABEL[invType ?? "OTHER"] ?? invType ?? "—"}</span>}
+          title="Cash Flow"
+          value={
+            cashAfterDebt == null ? (
+              "—"
+            ) : (
+              <span style={{ color: cashAfterDebt >= 0 ? "var(--success)" : "var(--danger)" }}>
+                {formatOverviewCurrency(cashAfterDebt)}
+              </span>
+            )
+          }
+          subtitle="Income after expenses"
+          iconPreset="cash-flow"
+          iconTone={cashFlowTone === "danger" ? "danger" : cashFlowTone === "success" ? "success" : "primary"}
+        />
+        <MetricCard
+          title="Units Occupied"
+          value={unitsOccupied}
+          subtitle="Occupied units"
           iconPreset="total-properties"
+          iconTone="info"
+          onClick={() => navigate(`${basePath}?tab=leases`)}
+          ariaLabel="Open leases tab"
+        />
+        <MetricCard
+          title="Cash on Cash ROI"
+          value={cocPercent == null ? "—" : formatOverviewPercent(cocPercent)}
+          subtitle={cocPercent == null ? "Add investment details to calculate" : "Annualised return"}
+          iconPreset="yield"
+          iconTone="warning"
         />
       </div>
 
-      <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))" }}>
-        <Card title="Income vs expenses (this property · calendar month)">
-          {incomeExpenseDoughnut ? (
-            <>
-              <Doughnut data={incomeExpenseDoughnut} options={doughnutOptions} />
-              <div className="pg-muted" style={{ fontSize: 12, marginTop: 10 }}>
-                Income in teal / blue tones; each expense category has its own shade — largest expense this month is the darkest red, then deeper oranges.
+      <div className="pg-prop-overview-sections">
+        <div className="pg-prop-overview-charts">
+          <Card title="Income vs expenses (this property · calendar month)">
+            {incomeExpenseDoughnut ? (
+              <>
+                <Doughnut data={incomeExpenseDoughnut} options={doughnutOptions} />
+                <div className="pg-muted" style={{ fontSize: 12, marginTop: 10 }}>
+                  Income in teal / blue tones; each expense category has its own shade.
+                </div>
+              </>
+            ) : (
+              <div className="pg-muted">No composition data for this period. Add income or expenses for the current month.</div>
+            )}
+          </Card>
+          <Card title="NOI trend">
+            {noiTrendRows.length ? (
+              <Line
+                data={{
+                  labels: noiTrendRows.map((r: any) => r.label),
+                  datasets: [
+                    {
+                      label: "NOI",
+                      data: noiTrendRows.map((r: any) => r.noi),
+                      borderColor: getChartSemanticColors().info,
+                      backgroundColor: "rgba(77,150,255,0.15)"
+                    }
+                  ]
+                }}
+                options={{ plugins: { legend: { display: false } } }}
+              />
+            ) : (
+              <div className="pg-muted">No trend yet.</div>
+            )}
+          </Card>
+        </div>
+
+        <div className="pg-prop-overview-snapshot-grid">
+          <Card title="Tenants snapshot">
+            {tenantRows.length === 0 ? (
+              <div className="pg-muted">No tenants linked to this property.</div>
+            ) : (
+              <div style={{ display: "grid", gap: 8 }}>
+                {tenantRows.slice(0, 4).map((t: any) => (
+                  <div key={t.id}>
+                    <strong>
+                      {t.firstName} {t.lastName}
+                    </strong>
+                    {t.email ? <div className="pg-muted" style={{ fontSize: 13 }}>{t.email}</div> : null}
+                  </div>
+                ))}
+                {tenantRows.length > 4 ? <div className="pg-muted">+{tenantRows.length - 4} more</div> : null}
+                <Button type="button" variant="ghost" onClick={() => navigate(`${basePath}?tab=tenants`)}>
+                  Open tenants
+                </Button>
               </div>
-            </>
-          ) : (
-            <div className="pg-muted">No composition data for this period. Add income or expenses for the current month.</div>
-          )}
-        </Card>
-        <Card title="NOI trend">
-          {noiTrendRows.length ? (
-            <Line
-              data={{
-                labels: noiTrendRows.map((r: any) => r.label),
-                datasets: [
-                  {
-                    label: "NOI",
-                    data: noiTrendRows.map((r: any) => r.noi),
-                    borderColor: getChartSemanticColors().info,
-                    backgroundColor: "rgba(77,150,255,0.15)"
-                  }
-                ]
-              }}
-              options={{ plugins: { legend: { display: false } } }}
-            />
-          ) : (
-            <div className="pg-muted">No trend yet.</div>
-          )}
-        </Card>
-      </div>
+            )}
+          </Card>
 
-      <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))" }}>
-        <Card title="Lease status">
-          {currentLeases.length === 0 ? (
-            <div className="pg-muted">No current lease linked to this property.</div>
-          ) : (
-            <div style={{ display: "grid", gap: 8 }}>
-              <div>Contractual rent roll: <strong>R {combinedContractRent.toLocaleString()}</strong>/mo</div>
-              <div className="pg-muted">{currentLeases.length} active lease</div>
-              <Button type="button" variant="ghost" onClick={() => navigate(`/owned-properties/${propertyId}?tab=leases`)}>
-                Open leases
-              </Button>
-            </div>
-          )}
-        </Card>
+          <Card title="Lease status">
+            {currentLeases.length === 0 ? (
+              <div className="pg-muted">No current lease linked to this property.</div>
+            ) : (
+              <div style={{ display: "grid", gap: 8 }}>
+                <div>
+                  Contractual rent roll: <strong>R {combinedContractRent.toLocaleString()}</strong>/mo
+                </div>
+                <div className="pg-muted">{currentLeases.length} active lease</div>
+                <Button type="button" variant="ghost" onClick={() => navigate(`${basePath}?tab=leases`)}>
+                  Open leases
+                </Button>
+              </div>
+            )}
+          </Card>
 
-        <Card title="Current invoice">
-          {!statement?.currentInvoice ? (
-            <div style={{ display: "grid", gap: 8 }}>
-              <div className="pg-muted">Create your first invoice for this property.</div>
-              <Button type="button" variant="primary" onClick={() => navigate(`/owned-properties/${propertyId}?tab=financials&fin=invoice`)}>
-                Open invoice workspace
-              </Button>
-            </div>
-          ) : (
-            <div style={{ display: "grid", gap: 6 }}>
-              <div><strong>{statement.currentInvoice.invoiceNumber}</strong> ({statement.currentInvoice.status})</div>
-              <div>Due: {statement.currentInvoice.dueDate ? new Date(statement.currentInvoice.dueDate).toLocaleDateString() : "—"}</div>
-              <div>Total: R {Number(statement.currentInvoice.total ?? 0).toLocaleString()}</div>
-              <Button type="button" variant="ghost" onClick={() => navigate(`/owned-properties/${propertyId}?tab=financials&fin=invoice`)}>
-                View in financials
-              </Button>
-            </div>
-          )}
-        </Card>
+          <Card title="Current invoice">
+            {!statement?.currentInvoice ? (
+              <div style={{ display: "grid", gap: 8 }}>
+                <div className="pg-muted">Create your first invoice for this property.</div>
+                <Button type="button" variant="primary" onClick={() => navigate(`${basePath}?tab=financials&fin=invoice`)}>
+                  Open invoice workspace
+                </Button>
+              </div>
+            ) : (
+              <div style={{ display: "grid", gap: 6 }}>
+                <div>
+                  <strong>{statement.currentInvoice.invoiceNumber}</strong> ({statement.currentInvoice.status})
+                </div>
+                <div>Due: {statement.currentInvoice.dueDate ? new Date(statement.currentInvoice.dueDate).toLocaleDateString() : "—"}</div>
+                <div>Total: R {Number(statement.currentInvoice.total ?? 0).toLocaleString()}</div>
+                <Button type="button" variant="ghost" onClick={() => navigate(`${basePath}?tab=financials&fin=invoice`)}>
+                  View in financials
+                </Button>
+              </div>
+            )}
+          </Card>
 
-        <Card title="Recent ledger lines">
-          {recent.length === 0 ? (
-            <div className="pg-muted">No transactions yet.</div>
-          ) : (
-            <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13 }}>
-              {recent.map((r: any) => (
-                <li key={r.id} style={{ marginBottom: 6 }}>
-                  {r.date} — {r.description}{" "}
-                  <span className="pg-muted">
-                    {r.credit != null ? `+R ${r.credit}` : ""}
-                    {r.debit != null ? ` −R ${r.debit}` : ""}
-                  </span>
-                </li>
+          <Card title="Recent activity">
+            {recent.length === 0 ? (
+              <div className="pg-muted">No transactions yet.</div>
+            ) : (
+              <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13 }}>
+                {recent.map((r: any) => (
+                  <li key={r.id} style={{ marginBottom: 6 }}>
+                    {r.date} — {r.description}{" "}
+                    <span className="pg-muted">
+                      {r.credit != null ? `+R ${r.credit}` : ""}
+                      {r.debit != null ? ` −R ${r.debit}` : ""}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
+        </div>
+
+        {alertMessages.length > 0 ? (
+          <Card title="Alerts">
+            <ul style={{ margin: 0, paddingLeft: 18 }}>
+              {alertMessages.map((a, i) => (
+                <li key={i}>{a}</li>
               ))}
             </ul>
-          )}
-        </Card>
+          </Card>
+        ) : null}
       </div>
-
-      {alertMessages.length > 0 ? (
-        <Card title="Alerts">
-          <ul style={{ margin: 0, paddingLeft: 18 }}>
-            {alertMessages.map((a, i) => (
-              <li key={i}>{a}</li>
-            ))}
-          </ul>
-        </Card>
-      ) : null}
     </div>
   );
 }
