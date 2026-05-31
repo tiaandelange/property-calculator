@@ -100,8 +100,8 @@ export function OwnedPropertyDetailPage() {
     if (!propertyQuery.data) return null;
     return {
       ...(propertyQuery.data as Record<string, unknown>),
-      tenants: tenantsQuery.data ?? [],
-      invoices: needsInvoices ? (invoicesQuery.data ?? []) : []
+      tenants: asArray(tenantsQuery.data),
+      invoices: needsInvoices ? asArray(invoicesQuery.data) : []
     };
   }, [propertyQuery.data, tenantsQuery.data, invoicesQuery.data, needsInvoices]);
 
@@ -444,9 +444,9 @@ export function OwnedPropertyDetailPage() {
                     </div>
                     {reportsLoading ? (
                       <TabPanelSkeleton variant="default" />
-                    ) : (reportsCatalog?.reports ?? []).length ? (
+                    ) : asArray(reportsCatalog?.reports).length ? (
                       <ul style={{ margin: 0, paddingLeft: 0, listStyle: "none", display: "grid", gap: 10 }}>
-                        {(reportsCatalog?.reports ?? []).map((r: any) => (
+                        {asArray(reportsCatalog?.reports).map((r: any) => (
                           <li key={r.id} className="pg-workspace-inset">
                             <div style={{ fontWeight: 600 }}>{r.title}</div>
                             <div className="pg-muted" style={{ fontSize: 13, marginTop: 4 }}>

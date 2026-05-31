@@ -1,10 +1,13 @@
 import { useMemo } from "react";
+import { Chart as ChartJS, ArcElement, CategoryScale, Legend, LinearScale, LineElement, PointElement, Tooltip } from "chart.js";
 import { Line, Doughnut } from "react-chartjs-2";
 import { Card } from "../../../components/ui/Card";
 import { Button } from "../../../components/ui/Button";
 import { MetricCard } from "../../../components/ui/DashboardKit";
 import { asArray } from "../../../lib/asArray";
 import { getChartCategoryPalette, getChartSemanticColors } from "../../../theme/cssTokens";
+
+ChartJS.register(ArcElement, CategoryScale, LinearScale, LineElement, PointElement, Tooltip, Legend);
 
 type CompositionSlice = { label: string; amount: number; kind: "income" | "expense" };
 
@@ -181,6 +184,8 @@ export function WorkspaceOverviewTab({ data, statement, perf, propertyId, naviga
     []
   );
 
+  const tenantRows = asArray(data.tenants);
+
   return (
     <div className="pg-workspace-overview" style={{ display: "grid", gap: 16 }}>
       <div className="pg-metric-grid">
@@ -195,8 +200,8 @@ export function WorkspaceOverviewTab({ data, statement, perf, propertyId, naviga
 
         <MetricCard
           title="Current tenants"
-          value={data.tenants?.length ?? 0}
-          subtitle={(data.tenants ?? []).slice(0, 2).map((t: any) => `${t.firstName} ${t.lastName}`).join(", ") || "None linked"}
+          value={tenantRows.length}
+          subtitle={tenantRows.slice(0, 2).map((t: any) => `${t.firstName} ${t.lastName}`).join(", ") || "None linked"}
           iconPreset="tenants"
           onClick={() => navigate(`/owned-properties/${propertyId}?tab=tenants`)}
           ariaLabel="Open tenants tab"
