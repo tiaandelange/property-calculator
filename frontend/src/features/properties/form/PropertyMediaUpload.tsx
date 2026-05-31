@@ -1,5 +1,5 @@
 import { CloudUpload, Plus, X } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   deletePropertyDocument,
   getSignedDocumentUrl,
@@ -7,7 +7,11 @@ import {
   uploadPropertyDocument,
   type ClientPropertyDocument
 } from "../../../services/documentsSupabase";
-import { MAX_PROPERTY_PHOTO_BYTES, MAX_PROPERTY_PHOTOS } from "./propertyFormConstants";
+import {
+  formatPropertyPhotosTotalLimit,
+  MAX_PROPERTY_PHOTOS,
+  MAX_PROPERTY_PHOTOS_TOTAL_BYTES
+} from "./propertyFormConstants";
 
 export type PendingPhoto = {
   id: string;
@@ -22,11 +26,19 @@ function isImageDocument(doc: ClientPropertyDocument): boolean {
   return /\.(jpe?g|png|webp|gif)$/i.test(name);
 }
 
+function existingPhotoBytes(existing: ExistingPhoto[]): number {
+  return existing.reduce((sum, doc) => sum + Math.max(0, doc.fileSize || 0), 0);
+}
+
+function pendingPhotoBytes(pending: PendingPhoto[]): number {
+  return pending.reduce((sum, photo) => sum + photo.file.size, 0);
+}
+
 function assertPropertyPhotoFile(file: File): void {
   if (!file || !(file instanceof File)) throw new Error("No file selected.");
   if (file.size <= 0) throw new Error("File is empty.");
-  if (file.size > MAX_PROPERTY_PHOTO_BYTES) {
-    throw new Error(`Image too large (max ${Math.round(MAX_PROPERTY_PHOTO_BYTES / 1024)} KB).`);
+  if (file.size > MAX_PROPERTY_PHOTOS_TOTAL_BYTES) {
+    throw new Error(`A single image cannot exceed ${formatPropertyPhotosTotalLimit()}.`);
   }
   const mime = (file.type || "").toLowerCase();
   if (!["image/jpeg", "image/png", "image/webp"].includes(mime)) {
@@ -51,6 +63,11 @@ export function PropertyMediaUpload({
   const [loading, setLoading] = useState(false);
 
   const totalCount = existing.length + pendingPhotos.length;
+  const totalBytes = useMemo(
+    () => existingPhotoBytes(existing) + pendingPhotoBytes(pendingPhotos),
+    [existing, pendingPhotos]
+  );
+  const canAddMore = totalCount < MAX_PROPERTY_PHOTOS && totalBytes < MAX_PROPERTY_PHOTOS_TOTAL_BYTES;
 
   useEffect(() => {
     onCountChange(totalCount);
@@ -96,15 +113,26 @@ export function PropertyMediaUpload({
       setError(`Maximum ${MAX_PROPERTY_PHOTOS} photos allowed.`);
       return;
     }
+    if (totalBytes >= MAX_PROPERTY_PHOTOS_TOTAL_BYTES) {
+      setError(`Total photo size cannot exceed ${formatPropertyPhotosTotalLimit()}.`);
+      return;
+    }
+
     const next: PendingPhoto[] = [];
+    let usedBytes = totalBytes;
     for (const file of list.slice(0, slots)) {
       try {
         assertPropertyPhotoFile(file);
+        if (usedBytes + file.size > MAX_PROPERTY_PHOTOS_TOTAL_BYTES) {
+          setError(`Total photo size cannot exceed ${formatPropertyPhotosTotalLimit()}.`);
+          break;
+        }
         next.push({
           id: crypto.randomUUID(),
           file,
           previewUrl: URL.createObjectURL(file)
         });
+        usedBytes += file.size;
       } catch (e: unknown) {
         setError(e instanceof Error ? e.message : "Invalid file.");
       }
@@ -149,11 +177,13 @@ export function PropertyMediaUpload({
           onClick={() => inputRef.current?.click()}
           onDragOver={(e) => e.preventDefault()}
           onDrop={onDrop}
-          disabled={totalCount >= MAX_PROPERTY_PHOTOS}
+          disabled={!canAddMore}
         >
           <CloudUpload size={28} strokeWidth={1.75} aria-hidden />
           <span className="pg-prop-media__dropzone-title">Drag &amp; drop images here or click to browse</span>
-          <span className="pg-prop-media__dropzone-help">JPG, PNG or WebP up to 500 KB each (max {MAX_PROPERTY_PHOTOS} photos)</span>
+          <span className="pg-prop-media__dropzone-help">
+            JPG, PNG or WebP · {formatPropertyPhotosTotalLimit()} across all photos (max {MAX_PROPERTY_PHOTOS} photos)
+          </span>
           <input
             ref={inputRef}
             type="file"
@@ -208,7 +238,7 @@ export function PropertyMediaUpload({
                 type="button"
                 className="pg-prop-media__thumb pg-prop-media__thumb--empty"
                 onClick={() => inputRef.current?.click()}
-                disabled={totalCount >= MAX_PROPERTY_PHOTOS}
+                disabled={!canAddMore}
                 aria-label="Add photo"
               >
                 <Plus size={20} aria-hidden />
@@ -224,6 +254,15 @@ export function PropertyMediaUpload({
 
 /** Upload pending photos after property create/update (uses existing document storage). */
 export async function uploadPendingPropertyPhotos(propertyId: string, pending: PendingPhoto[]): Promise<void> {
+  if (!pending.length) return;
+
+  const existing = (await listPropertyDocuments(propertyId)).filter(isImageDocument);
+  const existingBytes = existingPhotoBytes(existing);
+  const pendingBytes = pendingPhotoBytes(pending);
+  if (existingBytes + pendingBytes > MAX_PROPERTY_PHOTOS_TOTAL_BYTES) {
+    throw new Error(`Total photo size cannot exceed ${formatPropertyPhotosTotalLimit()}.`);
+  }
+
   for (const p of pending) {
     assertPropertyPhotoFile(p.file);
     await uploadPropertyDocument(propertyId, p.file, { documentType: "OTHER" });

@@ -1,7 +1,12 @@
 export const BOND_TERM_YEAR_OPTIONS = [5, 10, 15, 20, 25, 30] as const;
 
 export const MAX_PROPERTY_PHOTOS = 5;
-export const MAX_PROPERTY_PHOTO_BYTES = 500 * 1024;
+/** Combined size budget for all property photos on create/edit. */
+export const MAX_PROPERTY_PHOTOS_TOTAL_BYTES = 5 * 1024 * 1024;
+
+export function formatPropertyPhotosTotalLimit(): string {
+  return "5 MB total";
+}
 
 export const PROPERTY_TYPE_OPTIONS = [
   { value: "HOUSE", label: "House" },
