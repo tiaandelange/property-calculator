@@ -126,6 +126,7 @@
 /* Table list panels: no inner pad — .pg-ptable-wrap is the card edge */
 .pg-dashboard-shell .pg-tenants-list-panel.pg-workspace-card,
 .pg-dashboard-shell .pg-leases-list-panel.pg-workspace-card,
+.pg-dashboard-shell .pg-property-leases-panel.pg-workspace-card,
 .pg-dashboard-shell .pg-fins-statement-panel.pg-workspace-card,
 .pg-dashboard-shell section.pg-workspace-card:has(> .pg-ptable-wrap),
 .pg-dashboard-shell section.pg-workspace-card:has(> .pg-ptable-shell) {
@@ -397,13 +398,15 @@
   list-style-position: outside;
 }
 
-.pg-property-leases-tab .pg-leases-list-panel {
+.pg-property-leases-tab > .pg-property-leases-panel,
+.pg-property-leases-history > .pg-property-leases-panel {
   padding: 0;
   overflow: hidden;
 }
 
-.pg-property-leases-tab .pg-leases-table-wrap {
-  border-radius: 0;
+.pg-property-leases-tab > .pg-property-leases-panel > .pg-property-leases-tab__head,
+.pg-property-leases-history > .pg-property-leases-panel > .pg-property-leases-tab__head {
+  padding: 16px 16px 0;
 }
 
 .pg-ptable__row--highlighted td {

@@ -384,7 +384,7 @@ export function OwnedPropertyDetailPage() {
 
               {tab === "leases" ? (
                 <div className="pg-workspace-inset-list pg-property-leases-tab">
-                  <section className="pg-leases-list-panel pg-workspace-card">
+                  <section className="pg-workspace-card pg-property-leases-panel">
                     <div className="pg-property-leases-tab__head">
                       <h2 className="pg-property-leases-tab__title">Current leases</h2>
                       <ButtonLink href={`/leases/new?propertyId=${id}`} variant="primary">
@@ -416,7 +416,7 @@ export function OwnedPropertyDetailPage() {
                     onToggle={(e) => setLeaseHistoryOpen((e.target as HTMLDetailsElement).open)}
                   >
                     <summary className="pg-property-leases-history__summary">Lease history</summary>
-                    <section className="pg-leases-list-panel pg-workspace-card" style={{ marginTop: 12 }}>
+                    <section className="pg-workspace-card pg-property-leases-panel" style={{ marginTop: 12 }}>
                       <PropertyLeasesTable
                         leases={historyLeases as PropertyLeaseTableRow[]}
                         fallbackTenants={data?.tenants}

@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import {
   ProplyticAmountCell,
+  ProplyticStatusBadge,
   ProplyticTable,
   ProplyticTableBody,
   ProplyticTableCell,
@@ -10,12 +11,10 @@ import {
   ProplyticTableRow,
   ProplyticTableWrap
 } from "../../../components/tables";
-import { fmtZar, tenantInitialsFromName } from "../../leases/leaseDirectoryUtils";
+import { fmtZar, formatDateShort, tenantInitialsFromName } from "../../leases/leaseDirectoryUtils";
 import { deriveLeaseStatus } from "../../tenants/tenantDirectoryAdapter";
 import type { PropertyLeaseCardLease } from "./PropertyLeaseCard";
 import {
-  formatLeaseCardDate,
-  leaseCardStatusTags,
   leaseReferenceDisplay,
   leaseTermTypeLabel,
   leaseTenantDisplayName,
@@ -67,8 +66,8 @@ export function PropertyLeasesTable({
   }
 
   return (
-    <ProplyticTableWrap responsive className="pg-leases-table-wrap">
-      <ProplyticTable className="pg-leases-table">
+    <ProplyticTableWrap responsive>
+      <ProplyticTable>
         <ProplyticTableHeader>
           <ProplyticTableRow>
             <ProplyticTableHeadCell columnType="text">Tenant</ProplyticTableHeadCell>
@@ -87,9 +86,7 @@ export function PropertyLeasesTable({
             const tenantName = leaseTenantDisplayName(lease, fallbackTenants);
             const tenantHref = leaseTenantHref(lease, fallbackTenants);
             const termLabel = leaseTermTypeLabel(lease);
-            const tags = leaseCardStatusTags(lease);
-            const primaryTag = tags[0];
-            const display = String(lease.displayStatus ?? lease.status ?? "").toUpperCase();
+            const displayStatus = String(lease.displayStatus ?? lease.status ?? "");
             const lifecycle = deriveLeaseStatus(
               {
                 id: leaseId,
@@ -141,22 +138,24 @@ export function PropertyLeasesTable({
                     </div>
                   </div>
                 </ProplyticTableCell>
-                <ProplyticTableCell columnType="reference">
-                  <span className="pg-leases-sub">{leaseReferenceDisplay(lease)}</span>
-                </ProplyticTableCell>
+                <ProplyticTableCell columnType="reference">{leaseReferenceDisplay(lease)}</ProplyticTableCell>
                 <ProplyticTableCell columnType="currency">
                   {rent > 0 ? <ProplyticAmountCell>{fmtZar(rent)}</ProplyticAmountCell> : "—"}
                 </ProplyticTableCell>
                 <ProplyticTableCell columnType="date">
-                  <div className="pg-leases-term">
-                    <div>{formatLeaseCardDate(lease.startDate)}</div>
-                    <div className="pg-leases-sub">
-                      to{" "}
-                      {lease.fixedTermEndDate
-                        ? formatLeaseCardDate(lease.fixedTermEndDate)
-                        : "Month-to-month"}
+                  {lease.startDate || lease.fixedTermEndDate ? (
+                    <div className="pg-leases-term">
+                      <div>{formatDateShort(lease.startDate != null ? String(lease.startDate) : null)}</div>
+                      <div className="pg-leases-sub">
+                        to{" "}
+                        {lease.fixedTermEndDate
+                          ? formatDateShort(String(lease.fixedTermEndDate))
+                          : "Month-to-month"}
+                      </div>
                     </div>
-                  </div>
+                  ) : (
+                    <span className="pg-leases-sub">—</span>
+                  )}
                 </ProplyticTableCell>
                 <ProplyticTableCell columnType="compact">
                   <div className="pg-leases-due">
@@ -168,16 +167,8 @@ export function PropertyLeasesTable({
                 </ProplyticTableCell>
                 <ProplyticTableCell columnType="status">
                   <div className="pg-leases-status-stack">
-                    {primaryTag ? (
-                      <span className={primaryTag.badgeClass}>{primaryTag.label}</span>
-                    ) : (
-                      <span className="pg-pfin-badge pg-pfin-badge--muted">{display || "—"}</span>
-                    )}
-                    {lifecycle && lifecycle !== "inactive" && primaryTag?.label.toLowerCase() !== lifecycle ? (
-                      <span className="pg-pfin-badge pg-pfin-badge--muted" style={{ fontSize: 11 }}>
-                        {lifecycle.replace(/_/g, " ")}
-                      </span>
-                    ) : null}
+                    <ProplyticStatusBadge status={lifecycle} />
+                    {displayStatus ? <ProplyticStatusBadge status={displayStatus} /> : null}
                   </div>
                 </ProplyticTableCell>
                 <ProplyticTableCell columnType="actions">
