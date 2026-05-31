@@ -30,7 +30,8 @@ import { WorkspaceOverviewTab } from "../features/properties/workspace/Workspace
 import { WorkspaceStatementTab } from "../features/properties/workspace/WorkspaceStatementTab";
 import { WorkspaceLinkTenantsTab } from "../features/properties/link-tenants/WorkspaceLinkTenantsTab";
 import { CancelLeaseDialog } from "../features/properties/workspace/CancelLeaseDialog";
-import { PropertyLeaseCard, leaseTenantLabel } from "../features/properties/workspace/PropertyLeaseCard";
+import { PropertyLeasesTable, type PropertyLeaseTableRow } from "../features/properties/workspace/PropertyLeasesTable";
+import { leaseTenantLabel } from "../features/properties/workspace/PropertyLeaseCard";
 import { ManualGenerateLeaseInvoiceFlow } from "../features/leases/ManualGenerateLeaseInvoiceFlow";
 import { isCurrentLeaseStatus } from "../utils/leaseDisplay";
 
@@ -232,8 +233,29 @@ export function OwnedPropertyDetailPage() {
     }
   };
 
-  const onEditLease = (lease: { id?: string }) => {
-    if (!lease?.id) return;
+  useEffect(() => {
+    if (!highlightLeaseId || tab !== "leases") return;
+    const el = document.getElementById(`lease-row-${highlightLeaseId}`);
+    el?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [highlightLeaseId, tab, currentLeases, historyLeases]);
+
+  const canGenerateInvoiceForLease = (lease: { displayStatus?: string; status?: string; tenantId?: unknown }) =>
+    isCurrentLeaseStatus(String(lease.displayStatus ?? lease.status ?? "")) && Boolean(lease.tenantId);
+
+  const openLeaseDelete = (lease: { id?: string | number; tenant?: unknown; tenantId?: unknown }) => {
+    if (lease.id == null) return;
+    setLeaseActionError("");
+    const tn =
+      (lease as { tenant?: { firstName?: string; lastName?: string } }).tenant ??
+      data?.tenants?.find((t: { id?: unknown }) => String(t.id) === String(lease.tenantId));
+    const name = tn
+      ? `${(tn as { firstName?: string }).firstName ?? ""} ${(tn as { lastName?: string }).lastName ?? ""}`.trim()
+      : "this lease";
+    setLeaseDeleteTarget({ id: lease.id, label: name || `lease #${lease.id}` });
+  };
+
+  const onEditLease = (lease: { id?: string | number }) => {
+    if (lease?.id == null) return;
     navigate(`/leases/${lease.id}/edit`);
   };
 
@@ -361,76 +383,58 @@ export function OwnedPropertyDetailPage() {
               ) : null}
 
               {tab === "leases" ? (
-                <div className="pg-workspace-inset-list">
-                  {currentLeases.length > 0 ? (
-                    <div className="pg-workspace-card-stack">
-                      {currentLeases.map((lease: any) => (
-                        <PropertyLeaseCard
-                          key={lease.id}
-                          lease={lease}
-                          fallbackTenants={data.tenants}
-                          cardId={`lease-card-${lease.id}`}
-                          highlighted={highlightLeaseId === String(lease.id)}
-                          showEdit
-                          showCancel
-                          showDelete
-                          canGenerateInvoice={
-                            isCurrentLeaseStatus(String(lease.displayStatus ?? lease.status ?? "")) &&
-                            Boolean(lease.tenantId)
-                          }
-                          onGenerateInvoice={() => setGenerateLeaseTarget(lease)}
-                          onEdit={() => onEditLease(lease)}
-                          onCancel={() => {
-                            setLeaseActionError("");
-                            setLeaseCancelTarget(lease);
-                          }}
-                          onDelete={() => {
-                            setLeaseActionError("");
-                            const tn = lease.tenant ?? data.tenants?.find((t: any) => t.id === lease.tenantId);
-                            const name = tn ? `${tn.firstName ?? ""} ${tn.lastName ?? ""}`.trim() : "this lease";
-                            setLeaseDeleteTarget({ id: lease.id, label: name || `lease #${lease.id}` });
-                          }}
-                        />
-                      ))}
+                <div className="pg-workspace-inset-list pg-property-leases-tab">
+                  <section className="pg-leases-list-panel pg-workspace-card">
+                    <div className="pg-property-leases-tab__head">
+                      <h2 className="pg-property-leases-tab__title">Current leases</h2>
+                      <ButtonLink href={`/leases/new?propertyId=${id}`} variant="primary">
+                        Add lease
+                      </ButtonLink>
                     </div>
-                  ) : (
-                    <div className="pg-muted">No current lease linked to this property.</div>
-                  )}
+                    <PropertyLeasesTable
+                      leases={currentLeases as PropertyLeaseTableRow[]}
+                      fallbackTenants={data?.tenants}
+                      highlightLeaseId={highlightLeaseId}
+                      emptyMessage="No current lease linked to this property."
+                      showEdit
+                      showCancel
+                      showDelete
+                      canGenerateInvoiceForLease={canGenerateInvoiceForLease}
+                      onGenerateInvoice={(lease) => setGenerateLeaseTarget(lease)}
+                      onEdit={onEditLease}
+                      onCancel={(lease) => {
+                        setLeaseActionError("");
+                        setLeaseCancelTarget(lease);
+                      }}
+                      onDelete={openLeaseDelete}
+                    />
+                  </section>
 
-                  <details open={leaseHistoryOpen || undefined} onToggle={(e) => setLeaseHistoryOpen((e.target as HTMLDetailsElement).open)}>
-                    <summary className="pg-muted" style={{ cursor: "pointer" }}>
-                      Lease history
-                    </summary>
-                    <div style={{ height: 10 }} />
-                    {historyLeases.length > 0 ? (
-                      <div className="pg-workspace-card-stack">
-                        {historyLeases.map((l: any) => (
-                            <PropertyLeaseCard
-                              key={l.id}
-                              lease={l}
-                              fallbackTenants={data.tenants}
-                              cardId={`lease-card-${l.id}`}
-                              highlighted={highlightLeaseId === String(l.id)}
-                              showEdit={!["CANCELLED", "TERMINATED", "ARCHIVED"].includes(l.status)}
-                              showCancel={false}
-                              showDelete={!["ACTIVE", "MONTH_TO_MONTH"].includes(l.status)}
-                              canGenerateInvoice={
-                                isCurrentLeaseStatus(String(l.displayStatus ?? l.status ?? "")) && Boolean(l.tenantId)
-                              }
-                              onGenerateInvoice={() => setGenerateLeaseTarget(l)}
-                              onEdit={() => onEditLease(l)}
-                              onDelete={() => {
-                                setLeaseActionError("");
-                                const tn = l.tenant ?? data.tenants?.find((t: any) => t.id === l.tenantId);
-                                const name = tn ? `${tn.firstName ?? ""} ${tn.lastName ?? ""}`.trim() : "this lease";
-                                setLeaseDeleteTarget({ id: l.id, label: name || `lease #${l.id}` });
-                              }}
-                            />
-                          ))}
-                      </div>
-                    ) : (
-                      <div className="pg-muted">No historical leases.</div>
-                    )}
+                  <details
+                    className="pg-property-leases-history"
+                    open={leaseHistoryOpen || undefined}
+                    onToggle={(e) => setLeaseHistoryOpen((e.target as HTMLDetailsElement).open)}
+                  >
+                    <summary className="pg-property-leases-history__summary">Lease history</summary>
+                    <section className="pg-leases-list-panel pg-workspace-card" style={{ marginTop: 12 }}>
+                      <PropertyLeasesTable
+                        leases={historyLeases as PropertyLeaseTableRow[]}
+                        fallbackTenants={data?.tenants}
+                        highlightLeaseId={highlightLeaseId}
+                        emptyMessage="No historical leases."
+                        showDelete
+                        canGenerateInvoiceForLease={canGenerateInvoiceForLease}
+                        onGenerateInvoice={(lease) => setGenerateLeaseTarget(lease)}
+                        onEdit={onEditLease}
+                        onDelete={openLeaseDelete}
+                        resolveShowEdit={(l) =>
+                          !["CANCELLED", "TERMINATED", "ARCHIVED"].includes(String(l.status ?? "").toUpperCase())
+                        }
+                        resolveShowDelete={(l) =>
+                          !["ACTIVE", "MONTH_TO_MONTH"].includes(String(l.displayStatus ?? l.status ?? "").toUpperCase())
+                        }
+                      />
+                    </section>
                   </details>
                 </div>
               ) : null}

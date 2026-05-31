@@ -366,3 +366,47 @@
   border-color: var(--primary, #7c5cff);
   box-shadow: 0 0 0 1px var(--primary-soft, rgba(124, 92, 255, 0.35));
 }
+
+/* Property workspace — leases tab table */
+.pg-property-leases-tab {
+  display: grid;
+  gap: var(--workspace-section-gap);
+}
+
+.pg-property-leases-tab__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.pg-property-leases-tab__title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--dash-text-primary, var(--text-primary));
+}
+
+.pg-property-leases-history__summary {
+  cursor: pointer;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--dash-text-secondary, var(--text-secondary));
+  list-style-position: outside;
+}
+
+.pg-property-leases-tab .pg-leases-list-panel {
+  padding: 0;
+  overflow: hidden;
+}
+
+.pg-property-leases-tab .pg-leases-table-wrap {
+  border-radius: 0;
+}
+
+.pg-ptable__row--highlighted td {
+  background: var(--primary-soft, rgba(124, 92, 255, 0.08));
+  box-shadow: inset 3px 0 0 var(--primary, #7c5cff);
+}
