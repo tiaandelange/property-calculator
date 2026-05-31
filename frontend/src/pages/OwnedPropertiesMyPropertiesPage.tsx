@@ -14,6 +14,7 @@ import {
   useWorkspaceId
 } from "../features/queries";
 import { prefetchPropertyFromList, listWarmHandlers } from "../lib/routePrefetch";
+import { propertyListCardFinancials } from "../features/properties/financials/propertyFinancialsAdapter";
 import { StatusPill } from "../components/ui/DashboardKit";
 import { MetricCardsSkeletonRow, MobileCardListSkeleton, PropertyCardsSkeletonGrid } from "../components/ui/PageSkeletons";
 import { QueryErrorCard, QueryRefreshingIndicator } from "../components/ui/QueryState";
@@ -199,11 +200,11 @@ export function OwnedPropertiesMyPropertiesPage() {
               {filtered.map((p) => {
                 const typeKey = (p.investmentType ?? p.propertyType) as string | undefined;
                 const { label: statusLabel, tone } = occupancyDisplay(p as Parameters<typeof occupancyDisplay>[0]);
+                const fin = propertyListCardFinancials(p);
                 const v = p.currentEstimatedValue;
                 const b = p.outstandingBondBalance;
                 const equity = v != null && b != null ? Number(v) - Number(b) : null;
-                const cash = Number(p.monthlyCashFlowAfterDebtService ?? p.netCashFlow ?? 0);
-                const noi = Number(p.monthlyNOI ?? 0);
+                const { monthlyNOI: noi, monthlyCashFlow: cash } = fin;
                 const currentTenant = p.currentTenant as { firstName?: string; lastName?: string } | null | undefined;
                 return (
                   <div key={String(p.id)} className="pg-workspace-inset" {...propertyWarmProps(String(p.id))}>
@@ -226,8 +227,8 @@ export function OwnedPropertiesMyPropertiesPage() {
                         <div>Equity: {equity == null ? <span className="pg-muted">Missing</span> : `R ${equity.toLocaleString()}`}</div>
                       </div>
                       <div style={{ display: "grid", gap: 4, minWidth: 280 }}>
-                        <div>Monthly income: R {Number(p.monthlyIncome ?? 0).toLocaleString()}</div>
-                        <div>Operating expenses: R {Number(p.monthlyOperatingExpenses ?? 0).toLocaleString()}</div>
+                        <div>Monthly income: R {fin.monthlyIncome.toLocaleString()}</div>
+                        <div>Operating expenses: R {fin.monthlyOperatingExpenses.toLocaleString()}</div>
                         <div>
                           Monthly NOI:{" "}
                           <strong style={{ color: noi >= 0 ? "var(--success)" : "var(--danger)" }}>R {noi.toLocaleString()}</strong>
@@ -286,11 +287,11 @@ export function OwnedPropertiesMyPropertiesPage() {
               const isLand = typeKey === "VACANT_LAND";
               const isStr = typeKey === "SHORT_TERM_RENTAL";
               const { label: statusLabel, tone } = occupancyDisplay(p as Parameters<typeof occupancyDisplay>[0]);
+              const fin = propertyListCardFinancials(p);
               const v = p.currentEstimatedValue;
               const b = p.outstandingBondBalance;
               const equity = v != null && b != null ? Number(v) - Number(b) : null;
-              const cash = Number(p.monthlyCashFlowAfterDebtService ?? p.netCashFlow ?? 0);
-              const noi = Number(p.monthlyNOI ?? 0);
+              const { monthlyNOI: noi, monthlyCashFlow: cash } = fin;
               const currentLease = p.currentLease as { displayStatus?: string } | null | undefined;
               const currentTenant = p.currentTenant as { firstName?: string; lastName?: string } | null | undefined;
               return (

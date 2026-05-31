@@ -1,4 +1,5 @@
 import type { PropertyListItem } from "../../services/propertiesSupabase";
+import { propertyListCardFinancials } from "./financials/propertyFinancialsAdapter";
 import {
   countCurrentLeasesByProperty,
   derivePropertyOccupancy,
@@ -79,8 +80,8 @@ export function sortPropertyDirectoryItems(
     const b = asNum(p.outstandingBondBalance);
     return v != null && b != null ? v - b : null;
   };
-  const cashFlow = (p: PropertyListItem) => Number(p.monthlyCashFlowAfterDebtService ?? p.netCashFlow ?? 0);
-  const noi = (p: PropertyListItem) => Number(p.monthlyNOI ?? 0);
+  const cashFlow = (p: PropertyListItem) => propertyListCardFinancials(p).monthlyCashFlow;
+  const noi = (p: PropertyListItem) => propertyListCardFinancials(p).monthlyNOI;
   const leaseEnd = (p: PropertyListItem) => {
     const cl = p.currentLeases as Array<{ fixedTermEndDate?: string }> | undefined;
     const end = cl?.[0]?.fixedTermEndDate ?? (p as { currentLease?: { fixedTermEndDate?: string } }).currentLease?.fixedTermEndDate;

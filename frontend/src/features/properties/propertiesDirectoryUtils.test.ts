@@ -39,7 +39,10 @@ describe("propertiesDirectoryUtils", () => {
 
   it("sorts by NOI descending", () => {
     const sorted = sortPropertyDirectoryItems(
-      [baseProperty({ id: "a", monthlyNOI: 100 }), baseProperty({ id: "b", monthlyNOI: 500 })],
+      [
+        baseProperty({ id: "a", monthlyIncome: 100, monthlyOperatingExpenses: 0 }),
+        baseProperty({ id: "b", monthlyIncome: 500, monthlyOperatingExpenses: 0 })
+      ],
       "HIGHEST_NOI"
     );
     expect(sorted.map((p) => p.id)).toEqual(["b", "a"]);

@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { computePropertyMonthlyFinancialSnapshot } from "./propertyFinancialsAdapter";
+import {
+  computePropertyMonthlyFinancialSnapshot,
+  propertyListCardFinancials
+} from "./propertyFinancialsAdapter";
 
 describe("computePropertyMonthlyFinancialSnapshot", () => {
   it("uses active lease rent for income when present", () => {
@@ -40,5 +43,29 @@ describe("computePropertyMonthlyFinancialSnapshot", () => {
     expect(snap.monthlyDebtService).toBeGreaterThan(0);
     expect(snap.monthlyNOI).toBe(10_000 - 1_800);
     expect(snap.netCashFlow).toBeLessThan(snap.monthlyNOI);
+  });
+});
+
+describe("propertyListCardFinancials", () => {
+  it("computes NOI as income minus operating expenses only", () => {
+    const fin = propertyListCardFinancials({
+      monthlyIncome: 12_000,
+      monthlyOperatingExpenses: 2_500,
+      monthlyDebtService: 4_000
+    });
+    expect(fin.monthlyNOI).toBe(9_500);
+    expect(fin.monthlyCashFlow).toBe(5_500);
+  });
+
+  it("ignores stale monthlyNOI and netCashFlow fields on the payload", () => {
+    const fin = propertyListCardFinancials({
+      monthlyIncome: 10_000,
+      monthlyOperatingExpenses: 1_800,
+      monthlyDebtService: 3_000,
+      monthlyNOI: 6_200,
+      netCashFlow: 6_200
+    });
+    expect(fin.monthlyNOI).toBe(8_200);
+    expect(fin.monthlyCashFlow).toBe(5_200);
   });
 });

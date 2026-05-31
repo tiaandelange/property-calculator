@@ -189,6 +189,46 @@ export function computePropertyMonthlyFinancialSnapshot({
   };
 }
 
+/** List-card metrics — NOI excludes debt; cash flow subtracts debt (matches Financials tab). */
+export function propertyListCardFinancials(property: Record<string, unknown>): {
+  monthlyIncome: number;
+  monthlyOperatingExpenses: number;
+  monthlyDebtService: number;
+  monthlyNOI: number;
+  monthlyCashFlow: number;
+} {
+  const monthlyIncome = n(property.monthlyIncome);
+  const monthlyOperatingExpenses = n(property.monthlyOperatingExpenses);
+  const monthlyDebtService = n(
+    property.monthlyDebtService ??
+      n(property.monthlyBondPayment) + n(property.monthlyAdditionalBondPayment)
+  );
+  const monthlyNOI = monthlyIncome - monthlyOperatingExpenses;
+  const monthlyCashFlow = monthlyIncome - monthlyOperatingExpenses - monthlyDebtService;
+  return {
+    monthlyIncome,
+    monthlyOperatingExpenses,
+    monthlyDebtService,
+    monthlyNOI,
+    monthlyCashFlow
+  };
+}
+
+/** Recompute list-card NOI/cash from income, operating expenses, and debt — never trust stale aggregates. */
+export function normalizePropertyListCardFinancials<T extends Record<string, unknown>>(property: T): T {
+  const fin = propertyListCardFinancials(property);
+  return {
+    ...property,
+    monthlyIncome: fin.monthlyIncome,
+    monthlyOperatingExpenses: fin.monthlyOperatingExpenses,
+    monthlyDebtService: fin.monthlyDebtService,
+    monthlyNOI: fin.monthlyNOI,
+    netCashFlow: fin.monthlyCashFlow,
+    monthlyCashFlowAfterDebtService: fin.monthlyCashFlow,
+    monthlyExpenses: fin.monthlyOperatingExpenses + fin.monthlyDebtService
+  };
+}
+
 export function buildPropertyFinancialOverview({
   propertyId,
   propertyDetail,

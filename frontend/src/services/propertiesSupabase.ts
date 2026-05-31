@@ -9,7 +9,7 @@ import {
   snakeRowToCamel
 } from "../api/propertyRowMapping";
 import { dbToExpense } from "../api/financialRowMapping";
-import { computePropertyMonthlyFinancialSnapshot } from "../features/properties/financials/propertyFinancialsAdapter";
+import { computePropertyMonthlyFinancialSnapshot, normalizePropertyListCardFinancials } from "../features/properties/financials/propertyFinancialsAdapter";
 import { mapAdditionalBondPayments } from "../features/properties/financials/propertyBondAdapter";
 import * as leasesSupabase from "./leasesSupabase";
 import * as invoicesSupabase from "./invoicesSupabase";
@@ -179,7 +179,7 @@ export async function enrichPropertyListItems(uid: string, items: PropertyListIt
       additionalBondMonthlyTotal: additionalBondByProperty.get(pid) ?? 0
     });
 
-    return {
+    return normalizePropertyListCardFinancials({
       ...p,
       occupancyStatus: occupancy.code,
       tenantStatus: occupancyCodeToTenantStatus(occupancy.code),
@@ -195,7 +195,7 @@ export async function enrichPropertyListItems(uid: string, items: PropertyListIt
       monthlyNOI: financials.monthlyNOI,
       monthlyCashFlowAfterDebtService: financials.monthlyCashFlowAfterDebtService,
       netCashFlow: financials.netCashFlow
-    };
+    }) as PropertyListItem;
   });
 }
 

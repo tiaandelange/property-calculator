@@ -1,5 +1,6 @@
 import { getSupabase } from "../lib/supabaseClient";
 import type { PropertiesDirectoryParams } from "../lib/queryKeys";
+import { normalizePropertyListCardFinancials } from "../features/properties/financials/propertyFinancialsAdapter";
 import { PROPERTIES_DIRECTORY_PAGE_SIZE } from "../features/properties/propertiesDirectoryUtils";
 import { dbToProperty, type PropertyListItem } from "./propertiesSupabase";
 
@@ -16,7 +17,7 @@ function mapPropertyDirectoryItem(item: Record<string, unknown>): PropertyListIt
     if (key === "row") continue;
     extra[key] = value;
   }
-  return { ...base, ...extra };
+  return normalizePropertyListCardFinancials({ ...base, ...extra }) as PropertyListItem;
 }
 
 /** Portfolio property directory — single RPC with server-side filter/sort/pagination. */
