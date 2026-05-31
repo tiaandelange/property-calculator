@@ -1,48 +1,47 @@
 import { lazy, type ComponentType, type LazyExoticComponent } from "react";
+import { clearChunkReloadFlag, isChunkLoadError } from "./chunkLoadError";
+import { logLazyImportFailure, logLazyImportStart } from "./routeLoadLog";
 
-const CHUNK_RELOAD_KEY = "pg-chunk-reload";
+export type LazyWithRetryOptions = {
+  /** Human-readable route label for dev logging only. */
+  label?: string;
+  /** Total import attempts (default 3). Chunk-load errors retry with backoff. */
+  retries?: number;
+};
 
 /**
- * Retry lazy route imports — recovers from transient network errors and stale
- * chunk hashes after deploy (common cause of blank pages until hard refresh).
+ * Safe lazy route helper — wraps React.lazy with chunk-load detection, retries,
+ * and structured logging. Failures propagate to RouteErrorBoundary (no infinite reload).
  */
 export function lazyWithRetry<T extends ComponentType<unknown>>(
   factory: () => Promise<{ default: T }>,
-  retries = 3
+  options: LazyWithRetryOptions = {}
 ): LazyExoticComponent<T> {
+  const { label, retries = 3 } = options;
+
   return lazy(async () => {
+    logLazyImportStart(label);
     let lastError: unknown;
 
     for (let attempt = 0; attempt < retries; attempt++) {
       try {
         const module = await factory();
-        try {
-          sessionStorage.removeItem(CHUNK_RELOAD_KEY);
-        } catch {
-          /* ignore */
-        }
+        clearChunkReloadFlag();
         return module;
       } catch (error) {
         lastError = error;
-        if (attempt < retries - 1) {
+        logLazyImportFailure(label, error);
+
+        const shouldRetry = attempt < retries - 1 && (isChunkLoadError(error) || attempt === 0);
+        if (shouldRetry) {
           await new Promise((resolve) => setTimeout(resolve, 400 * (attempt + 1)));
         }
       }
     }
 
-    try {
-      const reloaded = sessionStorage.getItem(CHUNK_RELOAD_KEY) === "1";
-      if (!reloaded) {
-        sessionStorage.setItem(CHUNK_RELOAD_KEY, "1");
-        window.location.reload();
-        await new Promise(() => {
-          /* wait for reload */
-        });
-      }
-    } catch {
-      /* ignore storage errors */
-    }
-
     throw lastError instanceof Error ? lastError : new Error("Failed to load page.");
   });
 }
+
+/** Alias for lazyWithRetry — same safe dynamic import wrapper. */
+export const safeLazy = lazyWithRetry;

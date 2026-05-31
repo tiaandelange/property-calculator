@@ -5,6 +5,7 @@
  */
 import type React from "react";
 import { Navigate, useLocation } from "react-router-dom";
+import { RouteFallback } from "../ui/RouteFallback";
 import { isSupabaseConfigured } from "../../lib/supabaseClient";
 import { useAuth } from "../../contexts/AuthContext";
 
@@ -23,11 +24,7 @@ export function RequireAuth({ children }: { children: React.ReactElement }) {
   }
 
   if (initializing) {
-    return (
-      <div className="pg-muted" style={{ padding: 24 }}>
-        Checking session…
-      </div>
-    );
+    return <RouteFallback />;
   }
 
   if (!session) {

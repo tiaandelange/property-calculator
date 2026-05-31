@@ -1,10 +1,14 @@
 import React, { Component, type ErrorInfo, type ReactNode } from "react";
+import { hasChunkReloadBeenAttempted, isChunkLoadError } from "../../lib/chunkLoadError";
+import { logRouteRenderError } from "../../lib/routeLoadLog";
 import { Button } from "./Button";
 
 type Props = {
   children: ReactNode;
   /** Remount boundary when route changes. */
   resetKey?: string;
+  /** Reset TanStack Query errors (from QueryErrorResetBoundary). */
+  onReset?: () => void;
 };
 
 type State = {
@@ -25,10 +29,11 @@ export class RouteErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
-    console.error("[RouteErrorBoundary]", error, info.componentStack);
+    logRouteRenderError(error, info.componentStack ?? undefined);
   }
 
   private retry = () => {
+    this.props.onReset?.();
     this.setState({ error: null });
   };
 
@@ -37,21 +42,26 @@ export class RouteErrorBoundary extends Component<Props, State> {
   };
 
   render() {
-    if (this.state.error) {
+    const { error } = this.state;
+    if (error) {
+      const staleDeploy = isChunkLoadError(error) || hasChunkReloadBeenAttempted();
+
       return (
         <div className="pg-route-error" role="alert">
           <h1 className="pg-h3" style={{ marginTop: 0 }}>
-            This page could not be loaded
+            This page failed to load
           </h1>
           <p className="pg-muted">
-            A temporary loading error occurred. Try again, or refresh the page if the problem continues.
+            {staleDeploy
+              ? "A new version of Proplytic is available. Reload to continue, or try again if you are offline."
+              : "Something went wrong while loading this page. Try again, or reload the app if the problem continues."}
           </p>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 16 }}>
             <Button type="button" variant="primary" onClick={this.retry}>
               Try again
             </Button>
             <Button type="button" variant="soft" onClick={this.reload}>
-              Refresh page
+              Reload app
             </Button>
           </div>
         </div>

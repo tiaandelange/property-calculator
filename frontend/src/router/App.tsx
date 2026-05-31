@@ -1,5 +1,5 @@
-import { Suspense, type ReactElement, type ReactNode } from "react";
-import { Navigate, Route, Routes, useLocation, useParams } from "react-router-dom";
+import type { ReactElement } from "react";
+import { Navigate, Route, Routes, useParams } from "react-router-dom";
 import { AppChrome } from "../layouts/AppChrome";
 import { HomePage } from "../pages/HomePage";
 import { LoginPage } from "../pages/LoginPage";
@@ -8,8 +8,7 @@ import { SimplePage } from "../pages/SimplePage";
 import { SubscriptionPage } from "../pages/SubscriptionPage";
 import { SubscriptionResultPage } from "../pages/SubscriptionResultPage";
 import { RequireAuth } from "../components/auth/RequireAuth";
-import { RouteErrorBoundary } from "../components/ui/RouteErrorBoundary";
-import { RouteFallback } from "../components/ui/RouteFallback";
+import { RouteBoundary } from "../components/ui/RouteBoundary";
 import { lazyWithRetry } from "../lib/lazyWithRetry";
 
 const CalculatorHubPage = lazyWithRetry(() =>
@@ -103,19 +102,10 @@ function OwnedPropertyFinancialsRedirect() {
   return <Navigate to={`/owned-properties/${id}?tab=financials`} replace />;
 }
 
-function Lazy({ children }: { children: ReactNode }) {
-  const location = useLocation();
-  return (
-    <RouteErrorBoundary resetKey={location.pathname}>
-      <Suspense fallback={<RouteFallback />}>{children}</Suspense>
-    </RouteErrorBoundary>
-  );
-}
-
 function Auth({ children }: { children: ReactElement }) {
   return (
     <RequireAuth>
-      <Lazy>{children}</Lazy>
+      <RouteBoundary>{children}</RouteBoundary>
     </RequireAuth>
   );
 }
@@ -128,26 +118,26 @@ export function App() {
         <Route
           path="/calculators"
           element={
-            <Lazy>
+            <RouteBoundary>
               <CalculatorHubPage />
-            </Lazy>
+            </RouteBoundary>
           }
         />
         <Route
           path="/calculators/:slug"
           element={
-            <Lazy>
+            <RouteBoundary>
               <CalculatorPage />
-            </Lazy>
+            </RouteBoundary>
           }
         />
         <Route path="/login" element={<LoginPage />} />
         <Route
           path="/apply/:token"
           element={
-            <Lazy>
+            <RouteBoundary>
               <ApplicantApplyPage />
-            </Lazy>
+            </RouteBoundary>
           }
         />
         <Route path="/confirm-email" element={<ConfirmEmailPage />} />

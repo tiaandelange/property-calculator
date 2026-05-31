@@ -27,6 +27,7 @@ import {
   STALE_TIME_PROPERTY_OPTIONS_MS,
   STALE_TIME_STATEMENT_MS
 } from "./queryClient";
+import { logQueryPrefetchFailure, logRoutePrefetchFailure } from "./routeLoadLog";
 
 type RoutePrefetchTarget =
   | "dashboard"
@@ -62,14 +63,38 @@ const navTargetByPath: Array<{ prefix: string; target: RoutePrefetchTarget }> = 
   { prefix: "/settings", target: "settings" }
 ];
 
+/** Segments under /owned-properties that are list/form routes, not property detail. */
+const OWNED_PROPERTIES_RESERVED = new Set([
+  "dashboard",
+  "my-properties",
+  "new",
+  "reports",
+  "recurring-invoices",
+  "metrics",
+  "tenants",
+  "leases",
+  "financials",
+  "invoices",
+  "documents"
+]);
+
 const prefetchedChunks = new Set<string>();
 const inflightPrefetches = new Map<string, Promise<unknown>>();
 
-function dedupedPrefetch(key: string, run: () => Promise<unknown>): void {
+function safePrefetch(key: string, run: () => Promise<unknown>): void {
   if (inflightPrefetches.has(key)) return;
-  const promise = run().finally(() => {
-    inflightPrefetches.delete(key);
-  });
+  const promise = run()
+    .catch((error) => {
+      if (key.startsWith("chunk:")) {
+        const target = key.slice("chunk:".length);
+        logRoutePrefetchFailure(target, undefined, error);
+      } else {
+        logQueryPrefetchFailure(key, error);
+      }
+    })
+    .finally(() => {
+      inflightPrefetches.delete(key);
+    });
   inflightPrefetches.set(key, promise);
 }
 
@@ -78,24 +103,40 @@ function prefetchQueryDeduped(
   key: string,
   options: Parameters<QueryClient["prefetchQuery"]>[0]
 ): void {
-  dedupedPrefetch(key, () => queryClient.prefetchQuery(options));
+  safePrefetch(key, () => queryClient.prefetchQuery(options));
 }
 
 export function routePrefetchTarget(path: string): RoutePrefetchTarget | null {
-  if (/^\/owned-properties\/[^/]+$/.test(path) && !path.includes("dashboard") && !path.includes("reports")) {
-    return "property-detail";
-  }
-  if (/^\/invoices\/[^/]+$/.test(path) && !path.endsWith("/new")) {
+  // Exact sidebar destinations first.
+  const exactHit = navTargetByPath.find((entry) => path === entry.prefix);
+  if (exactHit) return exactHit.target;
+
+  // Invoice detail (including /invoices/new) before /invoices list prefix match.
+  if (/^\/invoices\/[^/]+$/.test(path) && path !== "/invoices/legacy") {
     return "invoice-detail";
   }
-  const hit = navTargetByPath.find((entry) => path === entry.prefix || path.startsWith(`${entry.prefix}/`));
-  return hit?.target ?? null;
+
+  const ownedMatch = /^\/owned-properties\/([^/]+)$/.exec(path);
+  if (ownedMatch && !OWNED_PROPERTIES_RESERVED.has(ownedMatch[1])) {
+    return "property-detail";
+  }
+
+  const prefixHit = navTargetByPath.find((entry) => path.startsWith(`${entry.prefix}/`));
+  return prefixHit?.target ?? null;
 }
 
-export function prefetchRouteChunk(target: RoutePrefetchTarget): void {
+/** Prefetch route chunk — never throws; failures are logged and do not block navigation. */
+export function prefetchRouteChunk(target: RoutePrefetchTarget, path?: string): void {
   if (prefetchedChunks.has(target)) return;
-  prefetchedChunks.add(target);
-  void routeChunkLoaders[target]();
+
+  safePrefetch(`chunk:${target}`, async () => {
+    try {
+      await routeChunkLoaders[target]();
+      prefetchedChunks.add(target);
+    } catch (error) {
+      logRoutePrefetchFailure(target, path, error);
+    }
+  });
 }
 
 /** Shared hover/focus/touch handlers for nav links — one prefetch burst per interaction type. */
@@ -119,7 +160,7 @@ export function navWarmHandlers(
 export function prefetchWorkspaceRoute(path: string, queryClient: QueryClient, workspaceId: string | null): void {
   const target = routePrefetchTarget(path);
   if (!target) return;
-  prefetchRouteChunk(target);
+  prefetchRouteChunk(target, path);
   if (!workspaceId) return;
 
   switch (target) {
