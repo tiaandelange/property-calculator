@@ -1,11 +1,9 @@
 import { useCallback, useEffect, useId, useMemo, useState } from "react";
-import { Check, Circle, ExternalLink, Upload } from "lucide-react";
+import { Check, Circle, ExternalLink, Upload, X } from "lucide-react";
 import { buttonClassName } from "../../components/ui/buttonStyles";
 import { Button } from "../../components/ui/Button";
 import {
   APPLICANT_DOCUMENT_GROUPS,
-  applicantDocumentFilenamesForGroup,
-  applicantDocumentFilenamesForGroupFromPending,
   applicantDocumentGroupComplete,
   applicantDocumentGroupCompleteFromPending,
   applicantDocumentGroupsCompleteCount,
@@ -48,6 +46,39 @@ function assignPendingGroupFiles(
   for (let i = 0; i < selected.length; i++) {
     next[slots[i]] = selected[i];
   }
+  return next;
+}
+
+function pendingFilesForGroup(
+  group: ApplicantDocumentSlotDef["group"],
+  pendingBySlot: ApplicantPendingDocuments
+): Array<{ slot: ApplicantDocumentSlotId; name: string }> {
+  return applicantDocumentSlotIdsForGroup(group)
+    .map((slot) => {
+      const file = pendingBySlot[slot];
+      return file ? { slot, name: file.name } : null;
+    })
+    .filter((entry): entry is { slot: ApplicantDocumentSlotId; name: string } => Boolean(entry));
+}
+
+function uploadedFilesForGroup(
+  group: ApplicantDocumentSlotDef["group"],
+  bySlot: Map<ApplicantDocumentSlotId, TenantDocumentRecord>
+): Array<{ slot: ApplicantDocumentSlotId; name: string }> {
+  return applicantDocumentSlotIdsForGroup(group)
+    .map((slot) => {
+      const doc = bySlot.get(slot);
+      return doc ? { slot, name: doc.originalFilename || doc.fileName || "Document" } : null;
+    })
+    .filter((entry): entry is { slot: ApplicantDocumentSlotId; name: string } => Boolean(entry));
+}
+
+function removePendingSlot(
+  pendingBySlot: ApplicantPendingDocuments,
+  slot: ApplicantDocumentSlotId
+): ApplicantPendingDocuments {
+  const next = { ...pendingBySlot };
+  delete next[slot];
   return next;
 }
 
@@ -124,7 +155,7 @@ function FileUploadTrigger({
 function DocumentGroupRow({
   group,
   complete,
-  filenames,
+  files,
   uploadedCount,
   busy,
   readOnly,
@@ -132,11 +163,12 @@ function DocumentGroupRow({
   mode,
   inputId,
   onFiles,
+  onRemoveSlot,
   onView
 }: {
   group: (typeof APPLICANT_DOCUMENT_GROUPS)[number];
   complete: boolean;
-  filenames: string;
+  files: Array<{ slot: ApplicantDocumentSlotId; name: string }>;
   uploadedCount: number;
   busy?: boolean;
   readOnly?: boolean;
@@ -144,9 +176,11 @@ function DocumentGroupRow({
   mode: "draft" | "public" | "owner";
   inputId: string;
   onFiles: (files: FileList) => void;
+  onRemoveSlot?: (slot: ApplicantDocumentSlotId) => void;
   onView?: () => void;
 }) {
   const isMulti = group.id === "payslips" || group.id === "bank";
+  const canRemove = !readOnly && Boolean(onRemoveSlot);
 
   return (
     <li className="pg-applicant-doc-slot">
@@ -154,7 +188,27 @@ function DocumentGroupRow({
       <div className="pg-applicant-doc-slot__copy">
         <div className="pg-applicant-doc-slot__label">{group.title}</div>
         <p className="pg-muted pg-applicant-documents__group-desc">{group.description}</p>
-        <div className="pg-applicant-doc-slot__file pg-muted">{filenames || "Not uploaded yet"}</div>
+        {files.length ? (
+          <ul className="pg-applicant-doc-slot__files">
+            {files.map(({ slot, name }) => (
+              <li key={slot} className="pg-applicant-doc-slot__file-item">
+                <span className="pg-applicant-doc-slot__file-name">{name}</span>
+                {canRemove ? (
+                  <button
+                    type="button"
+                    className="pg-applicant-doc-slot__file-remove"
+                    aria-label={`Remove ${name}`}
+                    onClick={() => onRemoveSlot?.(slot)}
+                  >
+                    <X size={14} aria-hidden />
+                  </button>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <div className="pg-applicant-doc-slot__file pg-muted">Not uploaded yet</div>
+        )}
       </div>
       <div className="pg-applicant-doc-slot__actions">
         {mode === "owner" && group.id === "identity" && complete ? (
@@ -327,27 +381,29 @@ export function ApplicantDocumentUploadSection({
             mode === "draft"
               ? applicantDocumentGroupCompleteFromPending(group.id, pendingBySlot ?? {})
               : applicantDocumentGroupComplete(group.id, uploadedSlots);
-          const filenames =
+          const files =
             mode === "draft"
-              ? applicantDocumentFilenamesForGroupFromPending(group.id, pendingBySlot ?? {})
-              : applicantDocumentFilenamesForGroup(group.id, bySlot);
-          const uploadedCount =
-            mode === "draft"
-              ? applicantDocumentSlotIdsForGroup(group.id).filter((slot) => Boolean(pendingBySlot?.[slot])).length
-              : applicantDocumentSlotIdsForGroup(group.id).filter((slot) => bySlot.has(slot)).length;
+              ? pendingFilesForGroup(group.id, pendingBySlot ?? {})
+              : uploadedFilesForGroup(group.id, bySlot);
+          const uploadedCount = files.length;
 
           return (
             <DocumentGroupRow
               key={group.id}
               group={group}
               complete={complete}
-              filenames={filenames}
+              files={files}
               uploadedCount={uploadedCount}
               busy={groupBusy}
               readOnly={readOnly}
               uploadsEnabled={uploadsEnabled}
               mode={mode}
               inputId={`${baseId}-${group.id}`.replace(/:/g, "")}
+              onRemoveSlot={
+                mode === "draft" && onPendingBySlotChange
+                  ? (slot) => onPendingBySlotChange(removePendingSlot(pendingBySlot ?? {}, slot))
+                  : undefined
+              }
               onFiles={(files) => {
                 if (mode === "draft") {
                   if (isMulti) {
