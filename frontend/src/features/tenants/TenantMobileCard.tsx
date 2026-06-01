@@ -4,7 +4,13 @@ import { fmtZar, tenantInitials } from "./tenantDirectoryUtils";
 import { LeaseStatusBadge, PaymentStatusBadge } from "./TenantStatusBadges";
 import { TenantRowActions } from "./TenantRowActions";
 
-export function TenantMobileCard({ tenant }: { tenant: TenantListItem }) {
+export function TenantMobileCard({
+  tenant,
+  onDelete
+}: {
+  tenant: TenantListItem;
+  onDelete?: (tenant: TenantListItem) => void;
+}) {
   return (
     <article className="pg-tenants-mobile-card pg-workspace-card">
       <div className="pg-tenants-mobile-card-top">
@@ -33,7 +39,7 @@ export function TenantMobileCard({ tenant }: { tenant: TenantListItem }) {
           <PaymentStatusBadge status={tenant.paymentStatus} />
           <LeaseStatusBadge status={tenant.leaseStatus} />
         </div>
-        <TenantRowActions tenant={tenant} />
+        <TenantRowActions tenant={tenant} onDelete={onDelete} />
       </div>
     </article>
   );
@@ -41,10 +47,12 @@ export function TenantMobileCard({ tenant }: { tenant: TenantListItem }) {
 
 export function TenantMobileList({
   items,
-  loading
+  loading,
+  onDelete
 }: {
   items: TenantListItem[];
   loading?: boolean;
+  onDelete?: (tenant: TenantListItem) => void;
 }) {
   if (loading) {
     return (
@@ -58,7 +66,7 @@ export function TenantMobileList({
   return (
     <div className="pg-tenants-mobile-list">
       {items.map((t) => (
-        <TenantMobileCard key={t.id} tenant={t} />
+        <TenantMobileCard key={t.id} tenant={t} onDelete={onDelete} />
       ))}
     </div>
   );

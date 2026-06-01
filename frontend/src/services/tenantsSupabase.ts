@@ -10,6 +10,7 @@ import type {
 import { PAGE_SIZE } from "../features/tenants/tenantDirectoryUtils";
 import type { TenantsDirectoryParams } from "../lib/queryKeys";
 import { leaseDisplayStatus } from "../utils/leaseDisplay";
+import { listTenantDocumentsOwner } from "./tenantDocumentsSupabase";
 
 const ACTIVE_LEASE = ["ACTIVE", "MONTH_TO_MONTH"] as const;
 
@@ -373,30 +374,45 @@ export async function updateTenant(id: string | number, input: Record<string, un
 }
 
 /**
- * Soft-delete if any lease exists for tenant; else hard delete (Express parity).
+ * Permanently deletes tenant and related rows (leases, invoices, documents, etc.).
  */
-export async function deleteTenant(id: string | number): Promise<{ message: string; tenant?: Record<string, unknown> }> {
+export async function deleteTenant(id: string | number): Promise<{ message: string }> {
   const uid = await requireUserId();
   const sb = getSupabase();
+  const tid = String(id);
 
-  const { data: leaseCheck, error: lcErr } = await sb.from("leases").select("id").eq("tenant_id", String(id)).eq("user_id", uid).limit(1);
-  if (lcErr) throw toError(lcErr);
-
-  if ((leaseCheck ?? []).length > 0) {
-    const { data, error } = await sb
-      .from("tenants")
-      .update({ status: "PAST" })
-      .eq("id", String(id))
-      .eq("user_id", uid)
-      .select(TENANT_SELECT_WITH_PROPERTY)
-      .single();
-    if (error) throw toError(error);
-    return { message: "Tenant marked as past (historical leases retained).", tenant: dbToTenant(data as Record<string, unknown>) };
+  const docs = await listTenantDocumentsOwner(tid);
+  for (const doc of docs) {
+    const bucket = doc.storageBucket?.trim();
+    const key = doc.storageKey?.trim();
+    if (bucket && key) {
+      await sb.storage.from(bucket).remove([key]);
+    }
   }
 
-  const { error } = await sb.from("tenants").delete().eq("id", String(id)).eq("user_id", uid);
-  if (error) throw toError(error);
-  return { message: "Deleted" };
+  const { data: invoiceRows, error: invListErr } = await sb
+    .from("invoices")
+    .select("pdf_storage_bucket, pdf_storage_key")
+    .eq("tenant_id", tid)
+    .eq("user_id", uid);
+  if (invListErr) throw toError(invListErr);
+
+  for (const row of invoiceRows ?? []) {
+    const r = row as { pdf_storage_bucket?: string | null; pdf_storage_key?: string | null };
+    if (r.pdf_storage_key && r.pdf_storage_bucket) {
+      await sb.storage.from(String(r.pdf_storage_bucket)).remove([String(r.pdf_storage_key)]);
+    }
+  }
+
+  const { data, error } = await sb.rpc("hard_delete_tenant", { p_tenant_id: tid });
+  if (error) {
+    const raw = error.message ?? "";
+    if (raw.includes("TENANT_NOT_FOUND")) throw new Error("Tenant not found");
+    if (raw.includes("NOT_AUTHENTICATED")) throw new Error("Not signed in");
+    throw toError(error);
+  }
+  const out = (data ?? {}) as Record<string, unknown>;
+  return { message: String(out.message ?? "Tenant permanently deleted") };
 }
 
 async function assertNoConflictingActiveLeaseElsewhere(

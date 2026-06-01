@@ -51,6 +51,7 @@ export function TenantsListPage() {
   const [showInviteCard, setShowInviteCard] = useState(false);
   const [viewApplicantId, setViewApplicantId] = useState<string | null>(null);
   const [deleteApplicant, setDeleteApplicant] = useState<TenantListItem | null>(null);
+  const [deleteTenantItem, setDeleteTenantItem] = useState<TenantListItem | null>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [actionError, setActionError] = useState("");
   const [filters, setFilters] = useState<TenantFilters>({
@@ -119,6 +120,21 @@ export function TenantsListPage() {
       setDeleteApplicant(null);
     } catch (e: unknown) {
       setActionError(e instanceof Error ? e.message : "Failed to delete applicant.");
+    } finally {
+      setDeleteBusy(false);
+    }
+  };
+
+  const confirmDeleteTenant = async () => {
+    if (!deleteTenantItem) return;
+    setDeleteBusy(true);
+    setActionError("");
+    try {
+      await deleteTenant(deleteTenantItem.id);
+      invalidateTenantQueries({ workspaceId, tenantId: deleteTenantItem.id });
+      setDeleteTenantItem(null);
+    } catch (e: unknown) {
+      setActionError(e instanceof Error ? e.message : "Failed to delete tenant.");
     } finally {
       setDeleteBusy(false);
     }
@@ -219,7 +235,7 @@ export function TenantsListPage() {
             </section>
           ) : (
             <section className="pg-tenants-list-panel pg-workspace-card pg-tenants-desktop-only" aria-busy={directoryQuery.isFetching}>
-              <TenantDesktopTable items={pageItems} loading={loading} />
+              <TenantDesktopTable items={pageItems} loading={loading} onDelete={(item) => setDeleteTenantItem(item)} />
               <TenantPagination page={page} totalItems={totalCount} onPageChange={setPage} />
             </section>
           )}
@@ -232,7 +248,7 @@ export function TenantsListPage() {
                 onDelete={(item) => setDeleteApplicant(item)}
               />
             ) : (
-              <TenantMobileList items={pageItems} loading={loading} />
+              <TenantMobileList items={pageItems} loading={loading} onDelete={(item) => setDeleteTenantItem(item)} />
             )}
             <section className="pg-workspace-card pg-tenants-pagination-panel">
               <TenantPagination page={page} totalItems={totalCount} onPageChange={setPage} />
@@ -262,6 +278,23 @@ export function TenantsListPage() {
         {deleteApplicant ? (
           <p className="pg-muted" style={{ margin: 0 }}>
             Permanently delete applicant {deleteApplicant.fullName}? This cannot be undone.
+          </p>
+        ) : null}
+      </ConfirmDialog>
+
+      <ConfirmDialog
+        open={deleteTenantItem != null}
+        title="Delete tenant"
+        confirmLabel="Delete permanently"
+        confirmVariant="danger"
+        loading={deleteBusy}
+        onClose={() => setDeleteTenantItem(null)}
+        onConfirm={() => void confirmDeleteTenant()}
+      >
+        {deleteTenantItem ? (
+          <p className="pg-muted" style={{ margin: 0 }}>
+            Permanently delete {deleteTenantItem.fullName} and all related leases, invoices, documents, and
+            financial records? This cannot be undone.
           </p>
         ) : null}
       </ConfirmDialog>

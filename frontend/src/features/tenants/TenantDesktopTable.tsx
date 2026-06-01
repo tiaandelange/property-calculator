@@ -25,10 +25,12 @@ function TenantAvatar({ tenant }: { tenant: TenantListItem }) {
 
 export function TenantDesktopTable({
   items,
-  loading
+  loading,
+  onDelete
 }: {
   items: TenantListItem[];
   loading?: boolean;
+  onDelete?: (tenant: TenantListItem) => void;
 }) {
   if (loading) {
     return <ProplyticTableSkeleton rows={6} />;
@@ -103,7 +105,7 @@ export function TenantDesktopTable({
                 <ProplyticStatusBadge status={t.leaseStatus} />
               </ProplyticTableCell>
               <ProplyticTableCell columnType="actions">
-                <TenantRowActions tenant={t} />
+                <TenantRowActions tenant={t} onDelete={onDelete} />
               </ProplyticTableCell>
             </ProplyticTableRow>
           ))}

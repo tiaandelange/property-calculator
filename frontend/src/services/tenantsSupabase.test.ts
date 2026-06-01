@@ -36,11 +36,20 @@ const tenantRowSnake = {
 
 const getUser = vi.fn();
 const from = vi.fn();
+const rpc = vi.fn();
+const storageRemove = vi.fn(() => Promise.resolve({ error: null }));
+const storageFrom = vi.fn(() => ({ remove: storageRemove }));
+
+vi.mock("./tenantDocumentsSupabase", () => ({
+  listTenantDocumentsOwner: vi.fn(() => Promise.resolve([]))
+}));
 
 vi.mock("../lib/supabaseClient", () => ({
   getSupabase: () => ({
     auth: { getUser },
-    from
+    from,
+    rpc,
+    storage: { from: storageFrom }
   })
 }));
 
@@ -48,6 +57,9 @@ describe("tenantsSupabase", () => {
   beforeEach(() => {
     getUser.mockReset();
     from.mockReset();
+    rpc.mockReset();
+    storageFrom.mockClear();
+    storageRemove.mockClear();
   });
 
   it("throws when logged out (no user)", async () => {
@@ -301,59 +313,28 @@ describe("tenantsSupabase", () => {
     expect(updated.firstName).toBe("Janet");
   });
 
-  it("deleteTenant hard-deletes when no leases exist", async () => {
+  it("deleteTenant calls hard_delete_tenant RPC after storage cleanup", async () => {
     getUser.mockResolvedValue({ data: { user: { id: userId } }, error: null });
+    rpc.mockResolvedValue({
+      data: { message: "Tenant permanently deleted" },
+      error: null
+    });
     from.mockImplementation((table: string) => {
-      if (table === "leases") {
+      if (table === "invoices") {
         return {
           select: vi.fn(() => ({
             eq: vi.fn(() => ({
-              eq: vi.fn(() => ({
-                limit: vi.fn(() => Promise.resolve({ data: [], error: null }))
-              }))
+              eq: vi.fn(() => Promise.resolve({ data: [], error: null }))
             }))
           }))
         };
       }
-      const eqUser = vi.fn(() => Promise.resolve({ error: null }));
-      const eqId = vi.fn(() => ({ eq: eqUser }));
-      return { delete: vi.fn(() => ({ eq: eqId })) };
+      return {};
     });
 
     const out = await deleteTenant(tenantId);
-    expect(out.message).toMatch(/Deleted/i);
-  });
-
-  it("deleteTenant soft-marks PAST when leases exist", async () => {
-    getUser.mockResolvedValue({ data: { user: { id: userId } }, error: null });
-    from.mockImplementation((table: string) => {
-      if (table === "leases") {
-        return {
-          select: vi.fn(() => ({
-            eq: vi.fn(() => ({
-              eq: vi.fn(() => ({
-                limit: vi.fn(() => Promise.resolve({ data: [{ id: "lease-1" }], error: null }))
-              }))
-            }))
-          }))
-        };
-      }
-      const single = vi.fn(() =>
-        Promise.resolve({ data: { ...tenantRowSnake, status: "PAST" }, error: null })
-      );
-      const update = vi.fn(() => ({
-        eq: vi.fn(() => ({
-          eq: vi.fn(() => ({
-            select: vi.fn(() => ({ single }))
-          }))
-        }))
-      }));
-      return { update };
-    });
-
-    const out = await deleteTenant(tenantId);
-    expect(out.message).toMatch(/past/i);
-    expect(out.tenant?.status).toBe("PAST");
+    expect(out.message).toMatch(/permanently deleted/i);
+    expect(rpc).toHaveBeenCalledWith("hard_delete_tenant", { p_tenant_id: tenantId });
   });
 
   it("linkTenantToProperty is deprecated", async () => {

@@ -1,7 +1,13 @@
 import type { TenantListItem } from "./tenantDirectoryTypes";
 import { ProplyticTableRowActionsMenu } from "../../components/tables";
 
-export function TenantRowActions({ tenant }: { tenant: TenantListItem }) {
+export function TenantRowActions({
+  tenant,
+  onDelete
+}: {
+  tenant: TenantListItem;
+  onDelete?: (tenant: TenantListItem) => void;
+}) {
   const mailHref =
     tenant.email && tenant.email.trim()
       ? `mailto:${encodeURIComponent(tenant.email.trim())}`
@@ -29,6 +35,15 @@ export function TenantRowActions({ tenant }: { tenant: TenantListItem }) {
           icon: "email",
           href: mailHref,
           disabled: !mailHref
+        },
+        {
+          key: "delete",
+          label: "Delete tenant",
+          menuLabel: "Delete permanently",
+          icon: "delete",
+          onClick: onDelete ? () => onDelete(tenant) : undefined,
+          disabled: !onDelete,
+          destructive: true
         }
       ]}
     />
