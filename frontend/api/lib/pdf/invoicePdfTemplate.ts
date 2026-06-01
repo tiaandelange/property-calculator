@@ -112,7 +112,7 @@ export function buildInvoicePdfDocumentDefinition(data: InvoicePdfDocumentData):
     }),
     pdfDivider(theme),
     {
-      ...recipientBlock({ label: "Bill To", lines: tenantLines(data) }),
+      stack: [recipientBlock({ label: "Bill To", lines: tenantLines(data) })],
       margin: pdfMargin(0, 0, 0, PDF_SPACING.section)
     },
     buildLineItemTable(data),
