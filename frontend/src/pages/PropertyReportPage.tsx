@@ -1,38 +1,25 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Helmet } from "react-helmet-async";
-import { useParams } from "react-router-dom";
-import { ExternalLink, List } from "lucide-react";
-import { AppPage, AppPageActions, AppPageContent, AppPageHeader, AppPageSubtitle, AppPageTitle } from "../components/ui/AppPage";
-import { Card } from "../components/ui/Card";
-import { Button, ButtonLink } from "../components/ui/Button";
-import { generateReportViaVercel } from "../services/reportsVercel";
+import { Link, useParams } from "react-router-dom";
+import { AppPage, AppPageContent, AppPageHeader, AppPageSubtitle, AppPageTitle } from "../components/ui/AppPage";
+import { ButtonLink } from "../components/ui/Button";
+import { openPropertyInvestmentReport } from "../services/propertyReportOpen";
 
+/** Generates the property PDF and opens it in the browser viewer (no in-app iframe). */
 export function PropertyReportPage() {
   const { id } = useParams();
   const propertyId = String(id ?? "").trim();
-  const [loading, setLoading] = useState(true);
-  const [downloadUrl, setDownloadUrl] = useState<string>("");
-  const [reportId, setReportId] = useState<string>("");
   const [error, setError] = useState("");
-  const fileName = useMemo(() => `property-report-${propertyId || "property"}.pdf`, [propertyId]);
 
   useEffect(() => {
     if (!propertyId) return;
     let cancelled = false;
-    setLoading(true);
-    setError("");
     void (async () => {
       try {
-        const gen = await generateReportViaVercel({ reportType: "PROPERTY_SUMMARY", propertyId });
-        if (cancelled) return;
-        if (!gen.downloadUrl) throw new Error(gen.error ?? "Report could not be generated.");
-        setDownloadUrl(gen.downloadUrl);
-        setReportId(gen.reportId || "");
-      } catch (e: any) {
-        if (cancelled) return;
-        setError(e?.message ?? "Failed to generate report.");
-      } finally {
-        if (!cancelled) setLoading(false);
+        await openPropertyInvestmentReport(propertyId);
+        if (!cancelled) setError("");
+      } catch (e: unknown) {
+        if (!cancelled) setError(e instanceof Error ? e.message : "Failed to generate report.");
       }
     })();
     return () => {
@@ -43,57 +30,45 @@ export function PropertyReportPage() {
   return (
     <AppPage variant="report">
       <Helmet>
-        <title>Property report | PropLytic</title>
+        <title>Property report | Proplytic</title>
       </Helmet>
       <AppPageContent>
         {error ? (
           <div className="pg-alert pg-alert-error" role="alert">
             {error}
           </div>
-        ) : null}
+        ) : (
+          <p className="pg-muted" role="status">
+            Opening property report in a new tab…
+          </p>
+        )}
 
         <AppPageHeader>
           <div className="pg-app-page-header__main">
             <AppPageTitle as="h2">Property report</AppPageTitle>
             <AppPageSubtitle>
-              {loading ? "Generating PDF…" : downloadUrl ? "Saved to Reports. You can export or revisit it later." : "—"}
+              {error
+                ? "Generation failed. Try again from the property workspace."
+                : "If the PDF did not open, allow pop-ups for this site and try again."}
             </AppPageSubtitle>
           </div>
-          <AppPageActions>
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => (downloadUrl ? window.open(downloadUrl, "_blank", "noopener,noreferrer") : null)}
-              disabled={!downloadUrl}
-            >
-              <ExternalLink size={16} style={{ marginRight: 6 }} aria-hidden />
-              View / Download
-            </Button>
-            <ButtonLink
-              href="/owned-properties/reports"
-              variant="primary"
-              disabled={!downloadUrl}
-              title={reportId ? `Report id: ${reportId}` : undefined}
-            >
-              <List size={16} style={{ marginRight: 6 }} aria-hidden />
-              Open Reports
-            </ButtonLink>
-          </AppPageActions>
         </AppPageHeader>
 
-        <Card title="Preview">
-          {downloadUrl ? (
-            <iframe
-              title="Property report PDF"
-              src={downloadUrl}
-              style={{ width: "100%", height: "75vh", border: "1px solid var(--border-soft)", borderRadius: 12 }}
-            />
-          ) : (
-            <div className="pg-muted">{loading ? "Generating preview…" : "No preview available."}</div>
-          )}
-        </Card>
+        {propertyId ? (
+          <ButtonLink href={`/owned-properties/${propertyId}?tab=financials`} variant="soft">
+            Back to property
+          </ButtonLink>
+        ) : (
+          <ButtonLink href="/owned-properties" variant="soft">
+            Back to properties
+          </ButtonLink>
+        )}
+        {error && propertyId ? (
+          <p style={{ marginTop: 12 }}>
+            <Link to={`/owned-properties/${propertyId}/report`}>Retry opening report</Link>
+          </p>
+        ) : null}
       </AppPageContent>
     </AppPage>
   );
 }
-

@@ -3,10 +3,32 @@ import { randomUUID } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 import { assertInvestmentReportQuota } from "../lib/investmentReportQuota.js";
 import { renderPdfDefinitionToBuffer } from "../lib/pdfMakeServer.js";
-import {
-  buildCalculationReportPdfDefinition,
-  buildPropertySummaryPdfDefinition
-} from "../lib/reportPdfBuilders.js";
+import { buildCalculationReportPdfDefinition, buildPropertySummaryPdfDefinition } from "../lib/reportPdfBuilders.js";
+import { assemblePropertyInvestmentReportData } from "../lib/propertyInvestmentReportData.js";
+
+const PROPERTY_REPORT_SELECT = `
+  id, name, property_type, investment_type,
+  address_line1, address_line2, suburb, city, province, postal_code,
+  purchase_price, current_estimated_value, after_repair_value,
+  transfer_costs, bond_costs, rehab_budget, total_cash_invested,
+  outstanding_bond_balance, monthly_bond_payment,
+  bond_annual_interest_rate_percent, bond_term_years, bond_start_date,
+  bond_remaining_term_months, bond_interest_portion_override, bond_principal_portion_override,
+  expected_monthly_income, expected_monthly_expenses,
+  expected_annual_appreciation_percent, management_fee_percent,
+  maintenance_monthly, rates_and_taxes_monthly, levies_monthly
+`;
+
+const INVOICE_REPORT_SELECT = `
+  id, invoice_number, status, total, total_amount, balance_due, tenant_id, due_date, invoice_date,
+  invoice_payments ( id, payment_date, payment_reference, amount )
+`;
+
+const LEASE_REPORT_SELECT = `
+  id, status, start_date, fixed_term_end_date, monthly_rent, rent_due_day, unit_id,
+  lease_tenants ( role, is_primary, tenants ( first_name, last_name ) ),
+  property_units ( unit_name )
+`;
 
 const REPORTS_BUCKET = "reports";
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -186,53 +208,66 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
         return;
       }
 
-      const { data: prop, error: pErr } = await sb
-        .from("properties")
-        .select("id,name,address_line1,city,province,postal_code")
-        .eq("id", pid)
-        .maybeSingle();
+      const [propRes, profileRes, stmtRes, leaseRes, invRes] = await Promise.all([
+        sb.from("properties").select(PROPERTY_REPORT_SELECT).eq("id", pid).maybeSingle(),
+        sb.from("profiles").select("accent_color").eq("id", uid).maybeSingle(),
+        (() => {
+          const now = new Date();
+          return sb.rpc("get_property_monthly_statement", {
+            p_property_id: pid,
+            p_year: now.getUTCFullYear(),
+            p_month: now.getUTCMonth() + 1,
+            p_include_expected: true
+          });
+        })(),
+        sb.from("leases").select(LEASE_REPORT_SELECT).eq("property_id", pid).eq("user_id", uid),
+        sb.from("invoices").select(INVOICE_REPORT_SELECT).eq("property_id", pid).eq("user_id", uid)
+      ]);
 
+      const { data: prop, error: pErr } = propRes;
       if (pErr || !prop) {
         res.status(404).json({ error: "Property not found." });
         return;
       }
 
-      const now = new Date();
-      const year = now.getUTCFullYear();
-      const month = now.getUTCMonth() + 1;
-
-      const { data: stmtRaw, error: rpcErr } = await sb.rpc("get_property_monthly_statement", {
-        p_property_id: pid,
-        p_year: year,
-        p_month: month,
-        p_include_expected: true
-      });
-
-      if (rpcErr) {
-        console.error("[reports/generate] get_property_monthly_statement", rpcErr);
-        res.status(500).json({ error: rpcErr.message ?? "Failed to load statement." });
+      if (stmtRes.error) {
+        console.error("[reports/generate] get_property_monthly_statement", stmtRes.error);
+        res.status(500).json({ error: stmtRes.error.message ?? "Failed to load statement." });
         return;
       }
 
-      const stmt = (typeof stmtRaw === "string" ? JSON.parse(stmtRaw) : stmtRaw) as Record<string, unknown>;
-      const summary = (stmt.summary as Record<string, unknown>) ?? {};
-      const rows = (stmt.statementRows as unknown[]) ?? [];
+      const stmt = (typeof stmtRes.data === "string" ? JSON.parse(stmtRes.data) : stmtRes.data) as Record<
+        string,
+        unknown
+      >;
+      const leases = (leaseRes.data ?? []) as Record<string, unknown>[];
+      const invoices = (invRes.data ?? []) as Record<string, unknown>[];
+
+      const reportModel = assemblePropertyInvestmentReportData({
+        propertyRow: prop as Record<string, unknown>,
+        statement: stmt,
+        leases,
+        invoices
+      });
+
+      const accentColor =
+        (profileRes.data?.accent_color as string | undefined) ??
+        (profileRes.data as { accentColor?: string } | null)?.accentColor ??
+        null;
 
       const definition = buildPropertySummaryPdfDefinition({
-        property: {
-          name: String(prop.name ?? ""),
-          addressLine1: String(prop.address_line1 ?? ""),
-          city: String(prop.city ?? ""),
-          province: String(prop.province ?? ""),
-          postalCode: String(prop.postal_code ?? "")
-        },
-        summary,
-        statementRows: rows,
+        reportModel,
+        accentColor,
         scenarioName
       });
 
+      const safeName = String(prop.name ?? "property")
+        .replace(/[^\w\s-]/g, "")
+        .trim()
+        .replace(/\s+/g, "-")
+        .slice(0, 60);
       const pdfBuffer = await renderPdfDefinitionToBuffer(definition);
-      const fileName = `property-${pid}.pdf`;
+      const fileName = `property-investment-report-${safeName || pid}.pdf`;
 
       const { error: upErr } = await sb.storage.from(REPORTS_BUCKET).upload(storageKey, pdfBuffer, {
         contentType: "application/pdf",

@@ -253,13 +253,11 @@ export function OwnedPropertiesMyPropertiesPage() {
                         </ButtonLink>
                       </div>
                     </div>
-                    {(p.rentOverdue || p.leaseExpiringSoon || p.leaseMonthToMonth) ? (
+                    {p.rentOverdue || p.leaseExpiringSoon ? (
                       <div className="pg-muted" style={{ marginTop: 8 }}>
                         Attention: {p.rentOverdue ? "overdue rent" : null}
-                        {p.rentOverdue && (p.leaseExpiringSoon || p.leaseMonthToMonth) ? " · " : null}
+                        {p.rentOverdue && p.leaseExpiringSoon ? " · " : null}
                         {p.leaseExpiringSoon ? "lease expiring soon" : null}
-                        {p.leaseExpiringSoon && p.leaseMonthToMonth ? " · " : null}
-                        {p.leaseMonthToMonth ? "month-to-month lease" : null}
                       </div>
                     ) : null}
                   </div>
@@ -340,13 +338,11 @@ export function OwnedPropertiesMyPropertiesPage() {
                       )}
                     </div>
                   </div>
-                  {(p.rentOverdue || p.leaseExpiringSoon || p.leaseMonthToMonth) ? (
+                  {p.rentOverdue || p.leaseExpiringSoon ? (
                     <div className="pg-alert" style={{ marginTop: 10 }}>
                       Needs attention: {p.rentOverdue ? "overdue rent" : null}
-                      {p.rentOverdue && (p.leaseExpiringSoon || p.leaseMonthToMonth) ? " · " : null}
+                      {p.rentOverdue && p.leaseExpiringSoon ? " · " : null}
                       {p.leaseExpiringSoon ? "lease expiring soon" : null}
-                      {p.leaseExpiringSoon && p.leaseMonthToMonth ? " · " : null}
-                      {p.leaseMonthToMonth ? "month-to-month lease" : null}
                     </div>
                   ) : null}
                   <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>

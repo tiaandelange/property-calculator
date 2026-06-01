@@ -56,7 +56,7 @@ import { Field, Input } from "../../../components/ui/Input";
 import { AppConfirmDialog, AppFormModal } from "../../../components/ui/AppModal";
 import { fetchPdfBlob, isAbsoluteHttpUrl, openPdfBlobInNewTab } from "../../../api/pdfBlob";
 import { isSupabaseConfigured } from "../../../lib/supabaseClient";
-import { generateReportViaVercel } from "../../../services/reportsVercel";
+import { openPropertyInvestmentReport } from "../../../services/propertyReportOpen";
 import {
   createCurrentInvoiceFromLease,
   generateInvoicePdf,
@@ -663,15 +663,7 @@ export function WorkspaceFinancialsTab({
     setSummaryPdfBusy(true);
     setStatementFeedback(null);
     try {
-      const gen = await generateReportViaVercel({ reportType: "PROPERTY_SUMMARY", propertyId });
-      const downloadUrl = gen.downloadUrl;
-      if (!downloadUrl) throw new Error(gen.error ?? "No download URL returned.");
-      if (isAbsoluteHttpUrl(downloadUrl)) {
-        window.open(downloadUrl, "_blank", "noopener,noreferrer");
-      } else {
-        const blob = await fetchPdfBlob(downloadUrl);
-        openPdfBlobInNewTab(blob);
-      }
+      await openPropertyInvestmentReport(propertyId);
     } catch (e: unknown) {
       setStatementFeedback(e instanceof Error ? e.message : String(e));
     } finally {

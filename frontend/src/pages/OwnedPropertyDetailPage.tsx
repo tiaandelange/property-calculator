@@ -5,7 +5,8 @@ import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { AppDetailPage } from "../components/ui/AppPage";
 import { Card } from "../components/ui/Card";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
-import { ButtonLink } from "../components/ui/Button";
+import { Button, ButtonLink } from "../components/ui/Button";
+import { openPropertyInvestmentReport } from "../services/propertyReportOpen";
 import { TabPanelSkeleton, WorkspaceTabsSkeleton } from "../components/ui/PageSkeletons";
 import { QueryErrorCard } from "../components/ui/QueryState";
 import { cancelLease, createPropertyIncome, deleteLease } from "../api/ownedProperties";
@@ -64,6 +65,7 @@ export function OwnedPropertyDetailPage() {
   const [leaseActionLoading, setLeaseActionLoading] = useState(false);
   const [leaseActionError, setLeaseActionError] = useState("");
   const [leaseHistoryOpen, setLeaseHistoryOpen] = useState(false);
+  const [reportBusy, setReportBusy] = useState(false);
   const [generateLeaseTarget, setGenerateLeaseTarget] = useState<any>(null);
   const tabRaw = useMemo(() => new URLSearchParams(search).get("tab") ?? "overview", [search]);
   const tab =
@@ -323,14 +325,18 @@ export function OwnedPropertyDetailPage() {
                   style={{ marginBottom: 0 }}
                 />
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
-                  <ButtonLink
-                    href={`/owned-properties/${id}/report`}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <Button
+                    type="button"
                     variant="soft"
+                    loading={reportBusy}
+                    onClick={() => {
+                      if (!id) return;
+                      setReportBusy(true);
+                      void openPropertyInvestmentReport(String(id)).finally(() => setReportBusy(false));
+                    }}
                   >
                     Generate report
-                  </ButtonLink>
+                  </Button>
                   <ButtonLink href={`/owned-properties/${id}/edit`} variant="soft">
                     Edit Property
                   </ButtonLink>

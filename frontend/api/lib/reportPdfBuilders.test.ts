@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { assemblePropertyInvestmentReportData } from "./propertyInvestmentReportData";
 import { buildCalculationReportPdfDefinition, buildPropertySummaryPdfDefinition } from "./reportPdfBuilders";
 
 describe("reportPdfBuilders", () => {
@@ -22,24 +23,51 @@ describe("reportPdfBuilders", () => {
     expect(text).toContain("11111111-1111-1111-1111-111111111111");
   });
 
-  it("buildPropertySummaryPdfDefinition includes property name and summary", () => {
-    const definition = buildPropertySummaryPdfDefinition({
-      property: {
+  it("buildPropertySummaryPdfDefinition renders investment report sections", () => {
+    const model = assemblePropertyInvestmentReportData({
+      propertyRow: {
         name: "Unit 4",
-        addressLine1: "1 Main Rd",
+        address_line1: "1 Main Rd",
         city: "Cape Town",
         province: "WC",
-        postalCode: "8001"
+        purchase_price: 1_500_000,
+        current_estimated_value: 1_500_000,
+        outstanding_bond_balance: 1_200_000,
+        bond_annual_interest_rate_percent: 11,
+        bond_term_years: 30,
+        expected_monthly_income: 12_500
       },
-      summary: { netCashFlow: 12000 },
-      statementRows: [{ date: "2026-05-01", description: "Rent", amount: 10000 }],
-      scenarioName: null
+      statement: {
+        summary: { receivedThisMonth: 10_000, expensesThisMonth: 8_000, balanceDue: 0 },
+        recurringCharges: [],
+        bondFinance: {}
+      },
+      leases: [
+        {
+          status: "ACTIVE",
+          monthly_rent: 12_500,
+          start_date: "2025-01-01",
+          lease_tenants: [{ tenants: { first_name: "Jane", last_name: "Doe" } }]
+        }
+      ],
+      invoices: [
+        {
+          id: "inv-1",
+          invoice_number: "INV-1",
+          status: "PARTIALLY_PAID",
+          total: 12_500,
+          invoice_payments: [{ id: "p1", payment_date: "2026-06-01", amount: 5_000 }]
+        }
+      ]
     });
 
+    const definition = buildPropertySummaryPdfDefinition({ reportModel: model });
+
     const text = JSON.stringify(definition.content);
+    expect(text).toContain("Property Investment Report");
     expect(text).toContain("Unit 4");
-    expect(text).toContain("1 Main Rd");
-    expect(text).toContain("Net cash flow");
-    expect(text).toContain("12,000");
+    expect(text).toContain("Analysis over time");
+    expect(text).toContain("50% rule projection");
+    expect(text).toContain("Proplytic at the time of generation");
   });
 });

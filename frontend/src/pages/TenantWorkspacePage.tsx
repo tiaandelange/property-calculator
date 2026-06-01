@@ -8,8 +8,7 @@ import { Button, ButtonLink } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { cancelLease, deleteTenant } from "../api/ownedProperties";
 import { invalidateTenantQueries, useWorkspaceId } from "../features/queries";
-import { fetchPdfBlob, isAbsoluteHttpUrl, openPdfBlobInNewTab } from "../api/pdfBlob";
-import { generateReportViaVercel } from "../services/reportsVercel";
+import { openPropertyInvestmentReport } from "../services/propertyReportOpen";
 import { useMediaQuery } from "../hooks/useMediaQuery";
 import { TenantInvoiceEditorForm } from "../features/tenants/workspace/TenantInvoiceEditorForm";
 import {
@@ -111,15 +110,7 @@ export function TenantWorkspacePage() {
     setDownloadBusy(true);
     setDownloadError("");
     try {
-      const gen = await generateReportViaVercel({ reportType: "PROPERTY_SUMMARY", propertyId });
-      const downloadUrl = gen.downloadUrl;
-      if (!downloadUrl) throw new Error(gen.error ?? "No download URL returned.");
-      if (isAbsoluteHttpUrl(downloadUrl)) {
-        window.open(downloadUrl, "_blank", "noopener,noreferrer");
-      } else {
-        const blob = await fetchPdfBlob(downloadUrl);
-        openPdfBlobInNewTab(blob);
-      }
+      await openPropertyInvestmentReport(propertyId);
     } catch (e: unknown) {
       setDownloadError(e instanceof Error ? e.message : String(e));
     } finally {

@@ -1,4 +1,6 @@
 import type { Content, TDocumentDefinitions } from "pdfmake/interfaces";
+import { assemblePropertyInvestmentReportData, type PropertyInvestmentReportModel } from "./propertyInvestmentReportData.js";
+import { buildPropertyInvestmentReportPdfDefinition } from "./propertyInvestmentReportPdf.js";
 
 const m = (l: number, t: number, r: number, b: number) => [l, t, r, b] as [number, number, number, number];
 
@@ -213,76 +215,27 @@ export type PropertyHeader = {
 };
 
 export function buildPropertySummaryPdfDefinition(opts: {
-  property: PropertyHeader;
-  summary: Record<string, unknown>;
-  statementRows: unknown[];
+  property?: PropertyHeader;
+  summary?: Record<string, unknown>;
+  statementRows?: unknown[];
   scenarioName?: string | null;
+  reportModel?: PropertyInvestmentReportModel;
+  accentColor?: string | null;
 }): TDocumentDefinitions {
-  const rowsRaw = Array.isArray(opts.statementRows) ? opts.statementRows : [];
-  const tail = rowsRaw.slice(-40) as Array<Record<string, unknown>>;
-
-  const tableBody: unknown[] = [
-    [
-      { text: "Date", style: "th" },
-      { text: "Description", style: "th" },
-      { text: "Debit", style: "th" },
-      { text: "Credit", style: "th" },
-      { text: "Balance", style: "th" }
-    ],
-    ...tail.map((r) => {
-      const debit = r.debit;
-      const credit = r.credit;
-      const bal = r.balance;
-      return [
-        String(r.date ?? ""),
-        String(r.description ?? ""),
-        debit != null ? `R ${Number(debit).toLocaleString()}` : "—",
-        credit != null ? `R ${Number(credit).toLocaleString()}` : "—",
-        bal != null ? `R ${Number(bal).toLocaleString()}` : "—"
-      ];
-    })
-  ];
-
-  const s = opts.summary;
-  const num = (k: string) => Number(s[k] ?? 0);
-
-  return {
-    info: { title: `PropLytics — ${opts.property.name}` },
-    content: [
-      { text: "PropLytics", style: "brand" },
-      { text: "(logo placeholder)", style: "muted", margin: m(0, 0, 0, 8) },
-      { text: "Property ledger summary", style: "tagline" },
-      { text: opts.scenarioName?.trim() ? `Note: ${opts.scenarioName}` : "", margin: m(0, 4, 0, 8) },
-      { text: opts.property.name, style: "h2", margin: m(0, 8, 0, 4) },
-      {
-        text: [opts.property.addressLine1, opts.property.city, opts.property.province, opts.property.postalCode]
-          .filter(Boolean)
-          .join(", "),
-        margin: m(0, 0, 0, 12)
-      },
-      { text: "Summary (this month)", style: "subheader" },
-      {
-        ul: [
-          `Balance due (open invoices): R ${num("balanceDue").toLocaleString()}`,
-          `Received this month: R ${num("receivedThisMonth").toLocaleString()}`,
-          `Expected income (outstanding): R ${num("expectedThisMonth").toLocaleString()}`,
-          `Operating expenses (excl. bond): R ${num("expensesThisMonth").toLocaleString()}`,
-          `Net cash flow: R ${num("netCashFlow").toLocaleString()}`
-        ],
-        margin: m(0, 0, 0, 12)
-      },
-      { text: "Recent statement lines (latest 40)", style: "subheader" },
-      { table: { headerRows: 1, widths: [55, "*", 52, 52, 52], body: tableBody as Content[][] }, layout: "lightHorizontalLines", margin: m(0, 0, 0, 12) },
-      { text: "Disclaimer: Summary is based on workspace ledger data and is not tax or legal advice.", style: "muted" }
-    ],
-    styles: {
-      brand: { fontSize: 22, bold: true, color: "#1a56db" },
-      muted: { fontSize: 9, color: "#666666" },
-      tagline: { fontSize: 12, color: "#333333" },
-      h2: { fontSize: 16, bold: true },
-      subheader: { fontSize: 13, bold: true, margin: [0, 10, 0, 6] },
-      th: { bold: true, fontSize: 9 }
+  if (opts.reportModel) {
+    return buildPropertyInvestmentReportPdfDefinition(opts.reportModel, opts.accentColor);
+  }
+  const model = assemblePropertyInvestmentReportData({
+    propertyRow: {
+      name: opts.property?.name ?? "Property",
+      address_line1: opts.property?.addressLine1 ?? "",
+      city: opts.property?.city ?? "",
+      province: opts.property?.province ?? "",
+      postal_code: opts.property?.postalCode ?? ""
     },
-    defaultStyle: { font: "Roboto", fontSize: 9 }
-  };
+    statement: { summary: opts.summary ?? {}, recurringCharges: [], bondFinance: {} },
+    leases: [],
+    invoices: []
+  });
+  return buildPropertyInvestmentReportPdfDefinition(model, opts.accentColor);
 }

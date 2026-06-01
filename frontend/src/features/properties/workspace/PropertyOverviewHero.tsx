@@ -1,5 +1,6 @@
 import { AppIcon } from "../../../components/icons";
-import { ButtonLink } from "../../../components/ui/Button";
+import { Button, ButtonLink } from "../../../components/ui/Button";
+import { openPropertyInvestmentReport } from "../../../services/propertyReportOpen";
 import { StatusPill } from "../../../components/ui/DashboardKit";
 import {
   buildPropertyAddress,
@@ -31,6 +32,7 @@ export function PropertyOverviewHero({
 }) {
   const { imageUrl, loading: imageLoading } = usePropertyMainImage(propertyId);
   const [imageBroken, setImageBroken] = useState(false);
+  const [reportBusy, setReportBusy] = useState(false);
 
   useEffect(() => {
     setImageBroken(false);
@@ -79,9 +81,17 @@ export function PropertyOverviewHero({
             <ButtonLink href={`/owned-properties/${propertyId}/edit`} variant="soft">
               Edit Property
             </ButtonLink>
-            <ButtonLink href={`/owned-properties/${propertyId}/report`} target="_blank" rel="noopener noreferrer" variant="soft">
+            <Button
+              type="button"
+              variant="soft"
+              loading={reportBusy}
+              onClick={() => {
+                setReportBusy(true);
+                void openPropertyInvestmentReport(propertyId).finally(() => setReportBusy(false));
+              }}
+            >
               Export Report
-            </ButtonLink>
+            </Button>
           </div>
         </div>
 
