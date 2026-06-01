@@ -64,7 +64,6 @@ export function TenantDocumentsCard({
   if (!hasAny) {
     return (
       <section className="pg-tstmt-documents-card pg-workspace-card">
-        <h2 className="pg-tstmt-documents-card__title">Documents</h2>
         <p className="pg-muted" style={{ margin: 0 }}>
           No supporting documents or lease contracts uploaded yet.
         </p>
@@ -76,8 +75,7 @@ export function TenantDocumentsCard({
     <section className="pg-tstmt-documents-card pg-workspace-card">
       <div className="pg-tstmt-documents-card__head">
         <div>
-          <h2 className="pg-tstmt-documents-card__title">Documents</h2>
-          <p className="pg-muted pg-tstmt-documents-card__desc">
+          <p className="pg-muted pg-tstmt-documents-card__desc" style={{ margin: 0 }}>
             Vetting documents and signed lease agreements on file.
           </p>
         </div>

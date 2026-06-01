@@ -41,10 +41,20 @@ function useFinTab() {
 
 function useWorkspaceTab() {
   const [search, setSearch] = useSearchParams();
-  const tab = search.get("tab") ?? "statement";
+  const raw = search.get("tab") ?? "statement";
+  const tab = raw === "settings" ? "documents" : raw;
+
+  useEffect(() => {
+    if (search.get("tab") === "settings") {
+      const s = new URLSearchParams(search);
+      s.set("tab", "documents");
+      setSearch(s, { replace: true });
+    }
+  }, [search, setSearch]);
+
   const setTab = (next: string) => {
     const s = new URLSearchParams(search);
-    s.set("tab", next);
+    s.set("tab", next === "settings" ? "documents" : next);
     if (next === "statement" && !s.get("fin")) s.set("fin", "statement");
     setSearch(s, { replace: true });
   };
@@ -190,7 +200,7 @@ export function TenantWorkspacePage() {
             items={[
               { id: "statement", label: "Financials" },
               { id: "overview", label: "Details" },
-              { id: "settings", label: "Invoice settings" }
+              { id: "documents", label: "Documents" }
             ]}
           />
 
@@ -198,7 +208,6 @@ export function TenantWorkspacePage() {
             <>
               <TenantSummaryCard summary={summary} leaseStatus={leaseStatus} loading={loading} />
               <TenantApplicantDetailsCard record={applicantRecord} loading={applicantLoading} />
-              <TenantDocumentsCard tenantId={id} loading={loading || applicantLoading} />
 
               <div className="pg-tstmt-actions pg-tstmt-actions--mobile-only" style={{ marginTop: 0 }}>
                 <Button variant="secondary" loading={downloadBusy} onClick={() => void downloadStatement()} disabled={!propertyId}>
@@ -241,7 +250,6 @@ export function TenantWorkspacePage() {
           {tab === "overview" ? (
             <>
               <TenantApplicantDetailsCard record={applicantRecord} loading={applicantLoading} />
-              <TenantDocumentsCard tenantId={id} loading={overviewLoading || applicantLoading} />
               <TenantOverviewPanel
               id={id}
               data={tenantOverview}
@@ -253,15 +261,8 @@ export function TenantWorkspacePage() {
             </>
           ) : null}
 
-          {tab === "settings" ? (
-            <Card title="Invoice payment details">
-              <p className="pg-muted">
-                Banking details shown on tenant invoices are managed in your account profile.
-              </p>
-              <ButtonLink href="/account" variant="primary" style={{ marginTop: 12, display: "inline-flex" }}>
-                Edit invoice settings
-              </ButtonLink>
-            </Card>
+          {tab === "documents" ? (
+            <TenantDocumentsCard tenantId={id} loading={applicantLoading} />
           ) : null}
       </AppDetailPage>
 
