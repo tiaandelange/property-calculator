@@ -1,5 +1,5 @@
 import { snakeRowToCamel } from "./propertyRowMapping";
-import { isInvoiceEditable, normalizeInvoiceStatus } from "../features/invoices/invoiceFoundation";
+import { isInvoiceContentEditable, normalizeInvoiceStatus } from "../features/invoices/invoiceFoundation";
 import { mapInvoicePayments } from "../features/invoices/invoicePaymentUtils";
 
 function coerceIsoDateField(v: unknown): string {
@@ -64,7 +64,7 @@ export function dbInvoiceToClient(row: Record<string, unknown>): Record<string, 
     balanceDue: c.balanceDue ?? c.balance_due ?? null,
     taxAmount: c.taxAmount ?? c.tax_amount ?? 0,
     status: normalizeInvoiceStatus(c.status),
-    isEditable: isInvoiceEditable(c.status),
+    isEditable: isInvoiceContentEditable(c.status),
     deletedAt: c.archivedAt != null ? coerceIsoDateField(c.archivedAt) : c.archivedAt,
     createdAt: c.createdAt != null ? coerceIsoDateField(c.createdAt) : c.createdAt,
     updatedAt: c.updatedAt != null ? coerceIsoDateField(c.updatedAt) : c.updatedAt,

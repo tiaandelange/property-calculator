@@ -30,6 +30,18 @@ export function isInvoiceEditable(status: unknown): boolean {
   return INVOICE_EDITABLE_STATUSES.has(normalizeInvoiceStatus(status));
 }
 
+/** Header and line items may be edited (includes sent / partially paid; not paid or void). */
+export function isInvoiceContentEditable(status: unknown): boolean {
+  const s = normalizeInvoiceStatus(status);
+  return s !== "PAID" && s !== "CANCELLED" && s !== "VOID";
+}
+
+/** Invoice was sent or is in a post-send lifecycle state (confirm before editing). */
+export function isInvoicePostSendStatus(status: unknown): boolean {
+  const s = normalizeInvoiceStatus(status);
+  return s === "SENT" || s === "PARTIALLY_PAID" || s === "DUE" || s === "OVERDUE";
+}
+
 /** Statement/UI grouping: GENERATED is shown as draft. */
 export function invoiceStatementUiStatus(status: unknown): InvoiceStatus {
   const s = normalizeInvoiceStatus(status);

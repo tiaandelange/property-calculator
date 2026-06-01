@@ -31,7 +31,12 @@ import {
   fmtZar
 } from "./invoiceDirectoryUtils";
 import { InvoiceStatusBadge } from "./InvoiceStatusBadge";
-import { canRecordInvoicePayment, isInvoiceEditable } from "./invoiceFoundation";
+import {
+  canRecordInvoicePayment,
+  isInvoiceContentEditable,
+  isInvoiceEditable,
+  isInvoicePostSendStatus
+} from "./invoiceFoundation";
 import { InvoiceLineItemsEditor } from "./InvoiceLineItemsEditor";
 import { InvoicePaymentsTable } from "./InvoicePaymentsTable";
 import { InvoiceRecordPaymentModal, type InvoicePaymentFormState } from "./InvoiceRecordPaymentModal";
@@ -59,8 +64,10 @@ import {
   INVOICE_MARK_SENT_MODAL_MESSAGE,
   INVOICE_MARK_SENT_MODAL_TITLE,
   INVOICE_SEND_COMING_SOON_MESSAGE,
+  INVOICE_SENT_EDIT_MODAL_MESSAGE,
+  INVOICE_SENT_EDIT_MODAL_TITLE,
   canMarkInvoiceSent,
-  invoiceMarkAsPaidMenuLabel,
+  invoiceAddPaymentMenuLabel,
   invoiceMarkAsSentConfirmLabel,
   invoiceMarkAsSentMenuLabel,
   invoiceSendButtonLabel,
@@ -129,6 +136,8 @@ export function InvoiceDetailPanel({
   const [actionBusy, setActionBusy] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<"delete" | "void" | null>(null);
   const [confirmSend, setConfirmSend] = useState(false);
+  const [confirmSentEdit, setConfirmSentEdit] = useState(false);
+  const [sentEditUnlocked, setSentEditUnlocked] = useState(false);
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [paymentBusy, setPaymentBusy] = useState(false);
   const [paymentRowBusy, setPaymentRowBusy] = useState<string | null>(null);
@@ -151,8 +160,11 @@ export function InvoiceDetailPanel({
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
-  const editable = !activeId || isInvoiceEditable(status);
-  const locked = Boolean(activeId) && !editable;
+  const draftEditable = !activeId || isInvoiceEditable(status);
+  const contentEditable = !activeId || isInvoiceContentEditable(status);
+  const postSend = Boolean(activeId) && isInvoicePostSendStatus(status);
+  const needsSentEditUnlock = postSend && !sentEditUnlocked;
+  const fieldsEnabled = contentEditable && (!postSend || sentEditUnlocked);
   const pageTitle = activeId ? "Edit Invoice" : "Create Invoice";
   const displayNumber = invoiceNumber === "Draft" && !activeId ? "New invoice" : invoiceNumber;
 
@@ -292,12 +304,18 @@ export function InvoiceDetailPanel({
   }, [balanceDue, total]);
 
   useEffect(() => {
-    if (!editable) return;
+    if (!isInvoicePostSendStatus(status)) {
+      setSentEditUnlocked(false);
+    }
+  }, [status, activeId]);
+
+  useEffect(() => {
+    if (!fieldsEnabled) return;
     setDueDate(dueDateFromIssueDate(issueDate, gracePeriodDays));
-  }, [issueDate, gracePeriodDays, editable]);
+  }, [issueDate, gracePeriodDays, fieldsEnabled]);
 
   const handleTenantChange = (nextTenantId: string) => {
-    if (!editable) return;
+    if (!fieldsEnabled) return;
     const tenant = propertyTenants.find((t) => t.id === nextTenantId);
     if (!tenant) return;
     setTenantId(nextTenantId);
@@ -317,30 +335,34 @@ export function InvoiceDetailPanel({
   };
 
   const displayBalanceDue =
-    payments.length > 0 || (activeId && !editable)
+    payments.length > 0 || (activeId && !fieldsEnabled)
       ? Math.max(0, Number.isFinite(balanceDue) ? balanceDue : total - paymentsTotal)
       : total;
   const bankLines = bankingLines(paymentDetails);
-  const showSendActions =
-    Boolean(activeId) &&
-    (canRecordInvoicePayment(status) || (editable && canMarkInvoiceSent(status)));
+  const showMarkAsSent = Boolean(activeId) && canMarkInvoiceSent(status);
+  const saveButtonLabel = draftEditable ? "Save Draft" : "Save";
 
-  const buildPayload = () => ({
-    tenantId,
-    leaseId: leaseId ?? undefined,
-    invoiceDate: issueDate,
-    issueDate,
-    dueDate,
-    status: "DRAFT",
-    notes: notes.trim() || null,
-    subtotal,
-    taxAmount,
-    total,
-    lineItems: invoiceLineItemsForSave(lineItems)
-  });
+  const buildPayload = () => {
+    const payload: Record<string, unknown> = {
+      tenantId,
+      leaseId: leaseId ?? undefined,
+      invoiceDate: issueDate,
+      issueDate,
+      dueDate,
+      notes: notes.trim() || null,
+      subtotal,
+      taxAmount,
+      total,
+      lineItems: invoiceLineItemsForSave(lineItems)
+    };
+    if (draftEditable) {
+      payload.status = "DRAFT";
+    }
+    return payload;
+  };
 
   const saveInvoice = async (): Promise<string | null> => {
-    if (!editable && activeId) return activeId;
+    if (!fieldsEnabled && activeId) return activeId;
     setSaving(true);
     setError("");
     setSuccess("");
@@ -519,7 +541,7 @@ export function InvoiceDetailPanel({
   };
 
   const confirmMarkAsSent = async () => {
-    if (!editable) return;
+    if (!canMarkInvoiceSent(status)) return;
     setError("");
     setSuccess("");
     const statusBeforeSend = status;
@@ -581,8 +603,8 @@ export function InvoiceDetailPanel({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           required
-          readOnly={readOnlyAlways || !editable}
-          disabled={readOnlyAlways || !editable}
+          readOnly={readOnlyAlways || !fieldsEnabled}
+          disabled={readOnlyAlways || !fieldsEnabled}
           aria-label={label}
         />
       </div>
@@ -590,7 +612,7 @@ export function InvoiceDetailPanel({
   );
 
   const renderTenantField = (showLabel = true) => {
-    const canSelect = editable && propertyTenants.length > 0;
+    const canSelect = fieldsEnabled && propertyTenants.length > 0;
     const control = (
       <div
         className={`pg-inv-editor__tenant-select${canSelect ? " pg-inv-editor__tenant-select--editable" : ""}`}
@@ -632,20 +654,10 @@ export function InvoiceDetailPanel({
   };
 
   const sendMenuItems: SplitButtonMenuItem[] = [
-    ...(editable && canMarkInvoiceSent(status)
-      ? [
-          {
-            label: invoiceMarkAsSentMenuLabel(),
-            icon: "send",
-            disabled: sendBusy,
-            onClick: () => setConfirmSend(true)
-          } satisfies SplitButtonMenuItem
-        ]
-      : []),
     ...(canRecordInvoicePayment(status)
       ? [
           {
-            label: invoiceMarkAsPaidMenuLabel(),
+            label: invoiceAddPaymentMenuLabel(),
             icon: "payments",
             disabled: paymentBusy,
             onClick: () => void openMarkPaidModal()
@@ -663,6 +675,37 @@ export function InvoiceDetailPanel({
         ]
       : [])
   ];
+
+  const showSendSplit = Boolean(activeId) && sendMenuItems.length > 0;
+
+  const renderActionButtons = (splitMobileLarge: boolean) => (
+    <>
+      <Button type="button" variant="outline" loading={pdfBusy} iconLeft="view" onClick={() => void exportPdf()}>
+        Preview
+      </Button>
+      {fieldsEnabled ? (
+        <Button type="submit" variant="soft" loading={saving} iconLeft="save">
+          {saveButtonLabel}
+        </Button>
+      ) : null}
+      {showMarkAsSent ? (
+        <Button type="button" variant="outline" loading={sendBusy} iconLeft="send" onClick={() => setConfirmSend(true)}>
+          {invoiceMarkAsSentMenuLabel()}
+        </Button>
+      ) : null}
+      {showSendSplit ? (
+        <SplitButton
+          mainLabel={invoiceSendButtonLabel()}
+          mainIcon="send"
+          loading={sendBusy || paymentBusy}
+          disabled={sendBusy || paymentBusy}
+          mobileLarge={splitMobileLarge}
+          onMainClick={handleSendClick}
+          menuItems={sendMenuItems}
+        />
+      ) : null}
+    </>
+  );
 
   const renderMoreMenu = () => (
     <div className="pg-inv-editor__more-wrap" ref={moreRef}>
@@ -762,25 +805,7 @@ export function InvoiceDetailPanel({
             <p className="pg-inv-editor__subtitle">Create and send professional invoices to your tenants.</p>
           </div>
           <div className="pg-inv-editor__actions pg-inv-editor__actions--desktop">
-            <Button type="button" variant="outline" loading={pdfBusy} iconLeft="view" onClick={() => void exportPdf()}>
-              Preview
-            </Button>
-            {editable ? (
-              <Button type="submit" variant="soft" loading={saving} iconLeft="save">
-                Save Draft
-              </Button>
-            ) : null}
-            {showSendActions && sendMenuItems.length > 0 ? (
-              <SplitButton
-                mainLabel={invoiceSendButtonLabel()}
-                mainIcon="send"
-                loading={sendBusy || paymentBusy}
-                disabled={sendBusy || paymentBusy}
-                mobileLarge={false}
-                onMainClick={handleSendClick}
-                menuItems={sendMenuItems}
-              />
-            ) : null}
+            {renderActionButtons(false)}
             {renderMoreMenu()}
           </div>
         </header>
@@ -808,9 +833,17 @@ export function InvoiceDetailPanel({
         ) : null}
 
         <div className="pg-inv-editor__card">
-          {locked ? (
+          {needsSentEditUnlock ? (
             <div className="pg-inv-editor__locked" role="status">
-              This invoice has been sent and can no longer be edited.
+              <span>This invoice has been sent.</span>
+              <Button type="button" variant="soft" size="sm" onClick={() => setConfirmSentEdit(true)}>
+                Edit invoice
+              </Button>
+            </div>
+          ) : null}
+          {postSend && sentEditUnlocked ? (
+            <div className="pg-inv-editor__locked pg-inv-editor__locked--editing" role="status">
+              You are editing a sent invoice. Save when you are done.
             </div>
           ) : null}
 
@@ -870,8 +903,8 @@ export function InvoiceDetailPanel({
                       value={issueDate}
                       onChange={(e) => setIssueDate(e.target.value)}
                       required
-                      readOnly={!editable}
-                      disabled={!editable}
+                      readOnly={!fieldsEnabled}
+                      disabled={!fieldsEnabled}
                       aria-label="Issue Date"
                       style={{ border: "none", background: "transparent", textAlign: "right", padding: 0, minHeight: 0 }}
                     />
@@ -893,7 +926,7 @@ export function InvoiceDetailPanel({
             </div>
           </div>
 
-          <InvoiceLineItemsEditor lineItems={lineItems} editable={editable} defaultRent={defaultRent} onChange={setLineItems} />
+          <InvoiceLineItemsEditor lineItems={lineItems} editable={fieldsEnabled} defaultRent={defaultRent} onChange={setLineItems} />
 
           <div className="pg-inv-editor__footer-grid">
             <div className="pg-inv-editor__notes-stack">
@@ -907,8 +940,8 @@ export function InvoiceDetailPanel({
                   rows={4}
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  readOnly={!editable}
-                  disabled={!editable}
+                  readOnly={!fieldsEnabled}
+                  disabled={!fieldsEnabled}
                   placeholder="Thank you for your prompt payment."
                 />
               </div>
@@ -939,7 +972,7 @@ export function InvoiceDetailPanel({
             </aside>
           </div>
 
-          {activeId && !editable ? (
+          {activeId && payments.length > 0 ? (
             <InvoicePaymentsTable
               payments={payments}
               invoiceTotal={total}
@@ -961,31 +994,7 @@ export function InvoiceDetailPanel({
           ) : null}
         </div>
 
-        <div className="pg-inv-editor__mobile-bar">
-          {editable ? (
-            <Button type="submit" variant="soft" loading={saving} iconLeft="save">
-              Save Draft
-            </Button>
-          ) : (
-            <Button type="button" variant="outline" loading={pdfBusy} iconLeft="view" onClick={() => void exportPdf()}>
-              Preview
-            </Button>
-          )}
-          {showSendActions && sendMenuItems.length > 0 ? (
-            <SplitButton
-              mainLabel={invoiceSendButtonLabel()}
-              mainIcon="send"
-              loading={sendBusy || paymentBusy}
-              disabled={sendBusy || paymentBusy}
-              onMainClick={handleSendClick}
-              menuItems={sendMenuItems}
-            />
-          ) : locked ? (
-            <Button type="button" variant="outline" loading={pdfBusy} iconLeft="pdf" onClick={() => void exportPdf()}>
-              Export PDF
-            </Button>
-          ) : null}
-        </div>
+        <div className="pg-inv-editor__mobile-bar">{renderActionButtons(true)}</div>
       </form>
 
       <ConfirmDialog
@@ -1006,8 +1015,24 @@ export function InvoiceDetailPanel({
         ) : null}
       </ConfirmDialog>
 
+      <ConfirmDialog
+        open={confirmSentEdit}
+        title={INVOICE_SENT_EDIT_MODAL_TITLE}
+        confirmLabel="Edit invoice"
+        onClose={() => setConfirmSentEdit(false)}
+        onConfirm={() => {
+          setSentEditUnlocked(true);
+          setConfirmSentEdit(false);
+        }}
+      >
+        <p className="pg-muted" style={{ margin: 0 }}>
+          {INVOICE_SENT_EDIT_MODAL_MESSAGE}
+        </p>
+      </ConfirmDialog>
+
       <InvoiceRecordPaymentModal
         open={paymentModalOpen}
+        title="Add payment"
         loading={paymentBusy}
         defaultReference={leaseReference}
         defaultAmount={defaultPaymentAmount}

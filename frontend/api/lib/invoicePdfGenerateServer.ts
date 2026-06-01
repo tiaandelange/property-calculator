@@ -3,9 +3,8 @@ import { renderPdfDefinitionToBuffer } from "./pdfMakeServer.js";
 import {
   buildInvoicePdfDefinition,
   paymentDetailsLines,
-  threeMonthBoundsFromInvoiceDate,
-  type InvoicePdfLedgerRow,
-  type InvoicePdfLineItem
+  type InvoicePdfLineItem,
+  type InvoicePdfPayment
 } from "./invoicePdfBuilder.js";
 import {
   invoiceHasStoredPdf,
@@ -14,10 +13,6 @@ import {
 } from "./invoicePdfPolicy.js";
 
 const INVOICES_BUCKET = "invoices";
-
-function formatMoney(n: number) {
-  return `R ${Number(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-}
 
 function isoDate(v: unknown): string {
   if (v == null) return new Date().toISOString();
@@ -98,6 +93,7 @@ export async function buildInvoicePdfForUser(
         pdf_storage_bucket,
         pdf_storage_key,
         invoice_line_items ( id, description, quantity, unit_price, total, category, sort_order ),
+        invoice_payments ( id, payment_date, payment_reference, amount ),
         tenants ( first_name, last_name, email, phone, id_number ),
         properties (
           name,
@@ -109,7 +105,7 @@ export async function buildInvoicePdfForUser(
           postal_code
         ),
         property_units ( unit_name ),
-        leases ( id, start_date, fixed_term_end_date, status )
+        leases ( id, start_date, fixed_term_end_date, status, lease_reference )
       `
     )
     .eq("id", invoiceId)
@@ -145,72 +141,6 @@ export async function buildInvoicePdfForUser(
     .maybeSingle();
 
   const invoiceDateIso = isoDate(invoice.issue_date ?? invoice.invoice_date);
-  const { windowStart, windowEnd } = threeMonthBoundsFromInvoiceDate(invoiceDateIso);
-
-  const propertyId = String(invoice.property_id);
-  const tenantId = String(invoice.tenant_id);
-
-  const [historyInvoicesRes, historyIncomeRes, openInvoicesRes] = await Promise.all([
-    sb
-      .from("invoices")
-      .select("id, invoice_number, invoice_date, status, total")
-      .eq("property_id", propertyId)
-      .eq("tenant_id", tenantId)
-      .gte("invoice_date", windowStart.toISOString())
-      .lt("invoice_date", windowEnd.toISOString())
-      .neq("status", "CANCELLED")
-      .order("invoice_date", { ascending: true })
-      .order("id", { ascending: true }),
-    sb
-      .from("income_entries")
-      .select("income_date, category, description, amount, status")
-      .eq("property_id", propertyId)
-      .eq("tenant_id", tenantId)
-      .gte("income_date", windowStart.toISOString())
-      .lt("income_date", windowEnd.toISOString())
-      .neq("status", "ARCHIVED")
-      .order("income_date", { ascending: true })
-      .order("id", { ascending: true }),
-    sb
-      .from("invoices")
-      .select("total, status, balance_due, total_amount")
-      .eq("property_id", propertyId)
-      .eq("tenant_id", tenantId)
-      .in("status", ["DRAFT", "GENERATED", "SENT", "OVERDUE", "DUE", "PARTIALLY_PAID"])
-  ]);
-
-  if (historyInvoicesRes.error) throw new Error(historyInvoicesRes.error.message);
-  if (historyIncomeRes.error) throw new Error(historyIncomeRes.error.message);
-  if (openInvoicesRes.error) throw new Error(openInvoicesRes.error.message);
-
-  const ledgerRows: InvoicePdfLedgerRow[] = [];
-
-  for (const hi of historyInvoicesRes.data ?? []) {
-    const paid = hi.status === "PAID";
-    ledgerRows.push({
-      date: isoDate(hi.invoice_date).slice(0, 10),
-      desc: `Invoice ${hi.invoice_number} (${hi.status})`,
-      charge: paid ? "—" : formatMoney(Number(hi.total ?? 0)),
-      payment: paid ? formatMoney(Number(hi.total ?? 0)) : "—"
-    });
-  }
-
-  for (const inc of historyIncomeRes.data ?? []) {
-    if (inc.status !== "RECEIVED") continue;
-    ledgerRows.push({
-      date: isoDate(inc.income_date).slice(0, 10),
-      desc: `Payment recorded · ${inc.category}: ${inc.description}`,
-      charge: "—",
-      payment: formatMoney(Number(inc.amount ?? 0))
-    });
-  }
-
-  ledgerRows.sort((a, b) => a.date.localeCompare(b.date) || a.desc.localeCompare(b.desc));
-
-  const totalDueOutstanding = (openInvoicesRes.data ?? []).reduce(
-    (a, i) => a + Number(i.balance_due ?? i.total_amount ?? i.total ?? 0),
-    0
-  );
 
   const tenant = firstEmbed<Record<string, unknown>>(invoice.tenants);
   const tenantLines = tenant
@@ -257,8 +187,21 @@ export async function buildInvoicePdfForUser(
       total: Number(li.total) || 0
     }));
 
+  const rawPayments = invoice.invoice_payments as Array<Record<string, unknown>> | null;
+  const payments: InvoicePdfPayment[] = (rawPayments ?? [])
+    .sort(
+      (a, b) =>
+        String(a.payment_date ?? "").localeCompare(String(b.payment_date ?? "")) ||
+        String(a.created_at ?? "").localeCompare(String(b.created_at ?? ""))
+    )
+    .map((p) => ({
+      date: isoDate(p.payment_date).slice(0, 10),
+      reference: p.payment_reference != null ? String(p.payment_reference) : null,
+      amount: Number(p.amount) || 0
+    }));
+
   const total = Number(invoice.total_amount ?? invoice.total) || 0;
-  const balanceDue = Number(invoice.balance_due ?? total) || 0;
+  const balanceDue = Number(invoice.balance_due ?? Math.max(0, total)) || 0;
   const paymentReference = paymentReferenceFromProfile(profile?.invoice_payment_details, invoiceNumber);
 
   const definition = buildInvoicePdfDefinition({
@@ -277,8 +220,7 @@ export async function buildInvoicePdfForUser(
     leaseLabel: leaseLabelFromRow(lease),
     paymentReference,
     lineItems,
-    ledgerRows,
-    totalDueOutstanding,
+    payments,
     paymentDetailLines: paymentDetailsLines(profile?.invoice_payment_details),
     isDraftPreview: !persistPdf
   });

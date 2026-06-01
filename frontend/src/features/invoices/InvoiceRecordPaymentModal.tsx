@@ -23,7 +23,7 @@ type Props = {
 
 export function InvoiceRecordPaymentModal({
   open,
-  title = "Record payment",
+  title = "Add payment",
   confirmLabel = "Save payment",
   loading = false,
   defaultReference,

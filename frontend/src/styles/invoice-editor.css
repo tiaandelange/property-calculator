@@ -192,12 +192,21 @@
 }
 
 .pg-inv-editor__locked {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   padding: 12px 16px;
   border-radius: 14px;
   background: var(--warning-soft);
   color: var(--text-primary);
   font-size: 14px;
   line-height: 1.45;
+}
+
+.pg-inv-editor__locked--editing {
+  background: var(--primary-soft);
 }
 
 /* —— Field grid —— */
@@ -223,6 +232,10 @@
 }
 
 .pg-inv-editor__field--number {
+  grid-column: span 3;
+}
+
+.pg-inv-editor__field--reference {
   grid-column: span 3;
 }
 
@@ -745,6 +758,7 @@
 
   .pg-inv-editor__field--date,
   .pg-inv-editor__field--number,
+  .pg-inv-editor__field--reference,
   .pg-inv-editor__field--status {
     grid-column: span 6;
   }
@@ -757,6 +771,7 @@
 
   .pg-inv-editor__field--date,
   .pg-inv-editor__field--number,
+  .pg-inv-editor__field--reference,
   .pg-inv-editor__field--status {
     grid-column: span 12;
   }

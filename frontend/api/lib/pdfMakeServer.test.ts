@@ -30,8 +30,7 @@ describe("pdfMakeServer", () => {
       leaseLabel: null,
       paymentReference: "INV-SMOKE",
       lineItems: [{ description: "Rent", quantity: 1, unitPrice: 1000, total: 1000 }],
-      ledgerRows: [],
-      totalDueOutstanding: 1000,
+      payments: [],
       paymentDetailLines: ["Bank: Test"],
       isDraftPreview: true
     });

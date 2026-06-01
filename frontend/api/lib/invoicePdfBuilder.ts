@@ -9,6 +9,13 @@ export type InvoicePdfLineItem = {
   total: number;
 };
 
+export type InvoicePdfPayment = {
+  date: string;
+  reference: string | null;
+  amount: number;
+};
+
+/** @deprecated Ledger section removed from invoice PDFs */
 export type InvoicePdfLedgerRow = {
   date: string;
   desc: string;
@@ -32,8 +39,11 @@ export type InvoicePdfData = {
   leaseLabel: string | null;
   paymentReference: string | null;
   lineItems: InvoicePdfLineItem[];
-  ledgerRows: InvoicePdfLedgerRow[];
-  totalDueOutstanding: number;
+  payments: InvoicePdfPayment[];
+  /** @deprecated Unused — ledger removed from PDF */
+  ledgerRows?: InvoicePdfLedgerRow[];
+  /** @deprecated Unused */
+  totalDueOutstanding?: number;
   paymentDetailLines: string[];
   isDraftPreview?: boolean;
 };
@@ -93,24 +103,33 @@ export function buildInvoicePdfDefinition(data: InvoicePdfData): TDocumentDefini
     ...lineItemRows
   ];
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const ledgerTableBody: any[] = [
-    [
-      { text: "Date", style: "th" },
-      { text: "Details", style: "th" },
-      { text: "Invoiced / charged", style: "th", alignment: "right" },
-      { text: "Payments", style: "th", alignment: "right" }
-    ],
-    ...(data.ledgerRows.length
-      ? data.ledgerRows.map((r) => [r.date, r.desc, r.charge, r.payment])
-      : [[{ text: "—", colSpan: 4 }, {}, {}, {}]])
+  const paymentsTotal = data.payments.reduce((sum, p) => sum + p.amount, 0);
+  const totalStack: Content[] = [
+    { text: `Subtotal ${formatMoney(data.subtotal)}`, alignment: "right" }
   ];
+  for (const p of data.payments) {
+    const ref = p.reference?.trim() ? ` · ${p.reference.trim()}` : "";
+    totalStack.push({
+      text: `Payment ${p.date.slice(0, 10)}${ref}  −${formatMoney(p.amount)}`,
+      alignment: "right",
+      color: "#166534",
+      margin: m(0, 2, 0, 0)
+    });
+  }
+  if (paymentsTotal > 0) {
+    totalStack.push({
+      text: `Payments received  −${formatMoney(paymentsTotal)}`,
+      alignment: "right",
+      margin: m(0, 4, 0, 0)
+    });
+  }
+  totalStack.push(
+    { text: `Invoice total ${formatMoney(data.total)}`, alignment: "right", bold: true, margin: m(0, 4, 0, 0) },
+    { text: `Balance due ${formatMoney(data.balanceDue)}`, alignment: "right", bold: true, margin: m(0, 4, 0, 0) }
+  );
 
   const invDateLabel = data.invoiceDate.slice(0, 10);
   const statusLabel = data.isDraftPreview ? `${data.status} (preview — not finalised)` : data.status;
-  const windowStartLabel = data.ledgerRows.length
-    ? data.ledgerRows[0]?.date?.slice(0, 7) ?? invDateLabel.slice(0, 7)
-    : invDateLabel.slice(0, 7);
 
   const metaStack: Content[] = [
     { text: "TAX INVOICE", style: "h2", alignment: "right" },
@@ -172,41 +191,7 @@ export function buildInvoicePdfDefinition(data: InvoicePdfData): TDocumentDefini
         margin: m(0, 0, 0, 8)
       },
       {
-        columns: [
-          { width: "*", text: "" },
-          {
-            width: 200,
-            stack: [
-              { text: `Subtotal ${formatMoney(data.subtotal)}`, alignment: "right" },
-              { text: `Total ${formatMoney(data.total)}`, alignment: "right", bold: true, margin: m(0, 4, 0, 0) },
-              {
-                text: `Balance due ${formatMoney(data.balanceDue)}`,
-                alignment: "right",
-                bold: true,
-                margin: m(0, 4, 0, 0)
-              }
-            ]
-          }
-        ],
-        margin: m(0, 0, 0, 14)
-      },
-      {
-        text: `Recent ledger activity (tenant) — ${windowStartLabel} through ${invDateLabel.slice(0, 7)} window`,
-        style: "subheader"
-      },
-      {
-        text: "Includes invoices and received payments recorded against this tenant for the property.",
-        style: "muted",
-        margin: m(0, 0, 0, 6)
-      },
-      {
-        table: { headerRows: 1, widths: [52, "*", 78, 78], body: ledgerTableBody },
-        layout: "lightHorizontalLines",
-        margin: m(0, 0, 0, 12)
-      },
-      {
-        text: `Total outstanding (all open invoices for this tenant on this property): ${formatMoney(data.totalDueOutstanding)}`,
-        bold: true,
+        columns: [{ width: "*", text: "" }, { width: 240, stack: totalStack }],
         margin: m(0, 0, 0, 14)
       },
       { text: "Payment details (landlord)", style: "subheader" },
