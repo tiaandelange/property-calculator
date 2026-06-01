@@ -339,7 +339,6 @@ export function InvoiceDetailPanel({
       ? Math.max(0, Number.isFinite(balanceDue) ? balanceDue : total - paymentsTotal)
       : total;
   const bankLines = bankingLines(paymentDetails);
-  const showMarkAsSent = Boolean(activeId) && canMarkInvoiceSent(status);
   const saveButtonLabel = draftEditable ? "Save Draft" : "Save";
 
   const buildPayload = () => {
@@ -654,6 +653,16 @@ export function InvoiceDetailPanel({
   };
 
   const sendMenuItems: SplitButtonMenuItem[] = [
+    ...(activeId && canMarkInvoiceSent(status)
+      ? [
+          {
+            label: invoiceMarkAsSentMenuLabel(),
+            icon: "send",
+            disabled: sendBusy,
+            onClick: () => setConfirmSend(true)
+          } satisfies SplitButtonMenuItem
+        ]
+      : []),
     ...(canRecordInvoicePayment(status)
       ? [
           {
@@ -686,11 +695,6 @@ export function InvoiceDetailPanel({
       {fieldsEnabled ? (
         <Button type="submit" variant="soft" loading={saving} iconLeft="save">
           {saveButtonLabel}
-        </Button>
-      ) : null}
-      {showMarkAsSent ? (
-        <Button type="button" variant="outline" loading={sendBusy} iconLeft="send" onClick={() => setConfirmSend(true)}>
-          {invoiceMarkAsSentMenuLabel()}
         </Button>
       ) : null}
       {showSendSplit ? (
