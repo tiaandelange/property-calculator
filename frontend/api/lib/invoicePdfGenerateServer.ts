@@ -86,6 +86,7 @@ async function loadPdfBuildContext(
     theme: buildGlobalPdfTheme({ accentColor: settings?.accent_color }),
     logoDataUrl: loadProplyticLogoDataUrl(),
     pdfBrandingEnabled: settings?.pdf_branding_enabled !== false,
+    useBusinessForFinancials: financial.useBusinessForFinancials,
     landlord: {
       name: financial.landlord.name,
       email: financial.landlord.email,

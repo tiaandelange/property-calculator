@@ -6,10 +6,8 @@ import {
   buildDefaultPdfStyles,
   buildPdfFooter,
   detailsTable,
-  documentSummaryStrip,
   landlordRightStack,
   notesBlock,
-  optionalSummaryStack,
   PDF_PAGE_MARGINS,
   pdfDivider,
   pdfMargin,
@@ -21,6 +19,7 @@ import {
 import type { InvoicePdfDocumentData } from "./invoicePdfTypes.js";
 
 const BANKING_EMPTY = "Banking details have not been configured.";
+const VAT_RATE_LABEL = "VAT (15%)";
 
 function bankingLines(data: InvoicePdfDocumentData): string[] {
   const b = data.banking;
@@ -37,9 +36,11 @@ function bankingLines(data: InvoicePdfDocumentData): string[] {
   return lines;
 }
 
-function landlordLines(data: InvoicePdfDocumentData): string[] {
+/** Issuer lines for the header — business when enabled in settings, otherwise personal/landlord. */
+function issuerLines(data: InvoicePdfDocumentData): string[] {
   const l = data.landlord;
-  return [l.name, l.email, l.phone, l.address].filter((x): x is string => Boolean(x?.trim()));
+  const lines = [l.name, l.email, l.phone, l.address].filter((x): x is string => Boolean(x?.trim()));
+  return lines.length ? lines : ["—"];
 }
 
 function tenantLines(data: InvoicePdfDocumentData): string[] {
@@ -82,41 +83,23 @@ function buildLineItemTable(data: InvoicePdfDocumentData): Content {
   return detailsTable({ theme, columns, rows });
 }
 
+function vatAmountForInvoice(data: InvoicePdfDocumentData): number {
+  if (data.taxTotal != null && Number.isFinite(data.taxTotal)) return Math.max(0, data.taxTotal);
+  const diff = (Number(data.total) || 0) - (Number(data.subtotal) || 0);
+  return Math.max(0, diff);
+}
+
 function buildTotals(data: InvoicePdfDocumentData): Content {
-  const lines: TotalLine[] = [{ label: "Subtotal", value: formatPdfZar(data.subtotal) }];
-
-  if (data.taxTotal != null && data.taxTotal > 0) {
-    lines.push({ label: "VAT", value: formatPdfZar(data.taxTotal) });
-  }
-
-  for (const p of data.payments) {
-    const ref = p.reference?.trim() ? ` · ${p.reference.trim()}` : "";
-    lines.push({
-      label: `Payment ${p.date.slice(0, 10)}${ref}`,
-      value: `−${formatPdfZar(p.amount)}`,
-      success: true
-    });
-  }
-
-  if (data.amountPaid != null && data.amountPaid > 0) {
-    lines.push({
-      label: "Payments received",
-      value: `−${formatPdfZar(data.amountPaid)}`,
-      success: true
-    });
-  }
-
-  lines.push(
-    { label: "Invoice total", value: formatPdfZar(data.total), emphasis: true },
+  const lines: TotalLine[] = [
+    { label: "Subtotal", value: formatPdfZar(data.subtotal) },
+    { label: VAT_RATE_LABEL, value: formatPdfZar(vatAmountForInvoice(data)) },
     { label: "Balance due", value: formatPdfZar(data.balanceDue), emphasis: true }
-  );
-
+  ];
   return totalsBlock(lines);
 }
 
 export function buildInvoicePdfDocumentDefinition(data: InvoicePdfDocumentData): TDocumentDefinitions {
   const theme = data.branding.theme;
-  const statusLabel = data.isDraftPreview ? `${data.status} (preview — not finalised)` : data.status;
   const showLogo = data.branding.pdfBrandingEnabled;
 
   const content: Content[] = [
@@ -124,35 +107,14 @@ export function buildInvoicePdfDocumentDefinition(data: InvoicePdfDocumentData):
       logoDataUrl: showLogo ? data.branding.logoDataUrl : null,
       rightStack: landlordRightStack({
         title: "TAX INVOICE",
-        landlordLines: landlordLines(data),
-        invoiceNumber: data.invoiceNumber,
-        invoiceDate: data.invoiceDate,
-        dueDate: data.dueDate,
-        statusLabel
+        landlordLines: issuerLines(data)
       })
     }),
     pdfDivider(theme),
-    (() => {
-      const summaryStack = optionalSummaryStack({
-        dueDate: data.dueDate,
-        statusLabel,
-        balanceDueLabel: formatPdfZar(data.balanceDue)
-      });
-      return {
-        columns: [
-          { width: "*", stack: [recipientBlock({ label: "To", lines: tenantLines(data) })] },
-          summaryStack ? { width: 160, stack: summaryStack } : { width: 0, text: "" }
-        ],
-        columnGap: 16,
-        margin: pdfMargin(0, 0, 0, PDF_SPACING.section)
-      };
-    })(),
-    documentSummaryStrip([
-      { label: "Invoice number", value: data.invoiceNumber },
-      { label: "Invoice date", value: data.invoiceDate.slice(0, 10) },
-      { label: "Due date", value: data.dueDate.slice(0, 10) },
-      { label: "Status", value: statusLabel }
-    ]),
+    {
+      ...recipientBlock({ label: "Bill To", lines: tenantLines(data) }),
+      margin: pdfMargin(0, 0, 0, PDF_SPACING.section)
+    },
     buildLineItemTable(data),
     buildTotals(data),
     bankingDetailsBlock({

@@ -231,27 +231,12 @@ export function buildPdfFooter(theme: GlobalPdfTheme, brandName = "Proplytic"): 
   });
 }
 
-export function landlordRightStack(opts: {
-  title: string;
-  landlordLines: string[];
-  invoiceNumber: string;
-  invoiceDate: string;
-  dueDate?: string;
-  statusLabel?: string;
-}): Content[] {
-  const stack: Content[] = [
+/** Top-right block: document title + issuer (landlord or business) lines only. */
+export function landlordRightStack(opts: { title: string; landlordLines: string[] }): Content[] {
+  return [
     { text: opts.title, style: "documentTitle", alignment: "right" },
-    ...opts.landlordLines.map((line) => ({ text: line, style: "bodyText", alignment: "right" as const })),
-    { text: `Invoice date: ${formatPdfDate(opts.invoiceDate)}`, style: "bodyText", alignment: "right", margin: pdfMargin(0, 6, 0, 0) },
-    { text: `Invoice no. ${opts.invoiceNumber}`, style: "bodyText", alignment: "right" },
-    ...(opts.dueDate
-      ? [{ text: `Due date: ${formatPdfDate(opts.dueDate)}`, style: "bodyText", alignment: "right" as const }]
-      : []),
-    ...(opts.statusLabel
-      ? [{ text: `Status: ${opts.statusLabel}`, style: "mutedText", alignment: "right" as const, margin: pdfMargin(0, 2, 0, 0) }]
-      : [])
+    ...opts.landlordLines.map((line) => ({ text: line, style: "bodyText", alignment: "right" as const }))
   ];
-  return stack;
 }
 
 /** Stack items for the optional right column beside the recipient block. */

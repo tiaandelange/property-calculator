@@ -49,8 +49,11 @@ describe("invoicePdfBuilder", () => {
     expect(text).toContain("INV-00042");
     expect(text).toContain("Jane Tenant");
     expect(text).toContain("1 Main Rd, Cape Town");
-    expect(text).toContain("Payments received");
+    expect(text).toContain("Bill To");
+    expect(text).toContain("VAT (15%)");
     expect(text).toContain("Balance due");
+    expect(text).not.toContain("Invoice total");
+    expect(text).not.toContain("Payments received");
     expect(def.footer).toBeDefined();
     expect(text).not.toMatch(/Recent ledger activity/i);
   });

@@ -7,6 +7,7 @@ export type InvoicePdfBuildContext = {
   theme: GlobalPdfTheme;
   logoDataUrl?: string | null;
   pdfBrandingEnabled?: boolean;
+  useBusinessForFinancials?: boolean;
   landlord: {
     name: string;
     email?: string;
@@ -132,6 +133,7 @@ export function mapToInvoicePdfDocument(
       pdfBrandingEnabled: ctx.pdfBrandingEnabled !== false,
       theme: ctx.theme
     },
+    useBusinessForFinancials: ctx.useBusinessForFinancials === true,
     isDraftPreview: data.isDraftPreview
   };
 }

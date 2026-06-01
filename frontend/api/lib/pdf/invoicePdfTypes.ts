@@ -59,5 +59,7 @@ export type InvoicePdfDocumentData = {
     pdfBrandingEnabled: boolean;
     theme: GlobalPdfTheme;
   };
+  /** When true, header issuer lines are business details from settings. */
+  useBusinessForFinancials?: boolean;
   isDraftPreview?: boolean;
 };
