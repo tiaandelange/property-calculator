@@ -115,10 +115,12 @@ export function ApplicantDesktopTable({
               <ProplyticTableCell columnType="text">
                 <div className="pg-ptable-desc">
                   <div className="pg-ptable-desc__main">{item.fullName}</div>
-                  {item.phone ? <div className="pg-ptable-desc__sub">{item.phone}</div> : null}
+                  {item.phone ? <div className="pg-ptable-desc__sub pg-muted">{item.phone}</div> : null}
                 </div>
               </ProplyticTableCell>
-              <ProplyticTableCell columnType="text">{item.email?.trim() || "—"}</ProplyticTableCell>
+              <ProplyticTableCell columnType="text">
+                <span className="pg-ptable-desc__main">{item.email?.trim() || "—"}</span>
+              </ProplyticTableCell>
               <ProplyticTableCell columnType="currency">
                 {item.monthlyIncome != null ? (
                   <ProplyticAmountCell>{fmtZar(item.monthlyIncome)}</ProplyticAmountCell>

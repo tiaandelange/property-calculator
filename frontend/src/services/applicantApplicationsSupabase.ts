@@ -91,21 +91,38 @@ export async function getApplicantApplicationOwner(tenantId: string): Promise<Ap
   if (error) throw toError(error);
   const row = data as Record<string, unknown>;
   const tenant = (row.tenant ?? {}) as Record<string, unknown>;
+  const activeTenant = (row.activeTenant ?? tenant) as Record<string, unknown>;
   const application = (row.application ?? {}) as Record<string, unknown>;
   const formData = application.formData as Record<string, unknown> | null;
   const primaryRaw = (formData?.primary ?? {}) as Record<string, unknown>;
-  const firstName = String(tenant.firstName ?? primaryRaw.firstName ?? "");
-  const lastName = String(tenant.lastName ?? primaryRaw.lastName ?? "");
+  const coApplicantRaw = application.coApplicant as Record<string, unknown> | null | undefined;
+  const coEnabled = Boolean(application.coApplicantEnabled ?? formData?.coApplicantEnabled ?? coApplicantRaw);
+  const firstName = String(activeTenant.firstName ?? primaryRaw.firstName ?? "");
+  const lastName = String(activeTenant.lastName ?? primaryRaw.lastName ?? "");
+
   return {
-    tenantId,
+    tenantId: String(activeTenant.id ?? tenantId),
     firstName,
     lastName,
     fullName: `${firstName} ${lastName}`.trim(),
     email:
-      tenant.email != null ? String(tenant.email) : primaryRaw.email != null ? String(primaryRaw.email) : null,
+      activeTenant.email != null
+        ? String(activeTenant.email)
+        : primaryRaw.email != null
+          ? String(primaryRaw.email)
+          : null,
     phone:
-      tenant.phone != null ? String(tenant.phone) : primaryRaw.phone != null ? String(primaryRaw.phone) : null,
-    propertyId: tenant.appliedPropertyId != null ? String(tenant.appliedPropertyId) : null,
+      activeTenant.phone != null
+        ? String(activeTenant.phone)
+        : primaryRaw.phone != null
+          ? String(primaryRaw.phone)
+          : null,
+    propertyId:
+      activeTenant.appliedPropertyId != null
+        ? String(activeTenant.appliedPropertyId)
+        : tenant.appliedPropertyId != null
+          ? String(tenant.appliedPropertyId)
+          : null,
     propertyName: null,
     monthlyIncome: Number(application.monthlyIncome ?? 0),
     fitScore: Number(application.fitScore ?? 0),
@@ -114,10 +131,12 @@ export async function getApplicantApplicationOwner(tenantId: string): Promise<Ap
     formData: formData
       ? {
           primary: primaryRaw as ApplicantSubmissionPayload["primary"],
-          coApplicantEnabled: Boolean(formData.coApplicantEnabled),
-          coApplicant: formData.coApplicant
-            ? (formData.coApplicant as ApplicantSubmissionPayload["coApplicant"])
-            : null,
+          coApplicantEnabled: coEnabled,
+          coApplicant: coApplicantRaw
+            ? (coApplicantRaw as ApplicantSubmissionPayload["coApplicant"])
+            : formData.coApplicant
+              ? (formData.coApplicant as ApplicantSubmissionPayload["coApplicant"])
+              : null,
           template: formData.template
             ? normalizeApplicantFormTemplate(formData.template)
             : DEFAULT_APPLICANT_FORM_TEMPLATE
@@ -187,67 +206,81 @@ export async function listApplicantApplicationDetailsByTenantIds(
 export async function fetchApplicantApplicationDetailsByTenantId(
   tenantId: string
 ): Promise<ApplicantApplicationRecord | null> {
+  try {
+    return await getApplicantApplicationOwner(tenantId);
+  } catch {
+    return null;
+  }
+}
+
+/** Every applicant tenant row (primary and co) for picklists — not grouped. */
+export async function listApplicantPicklist(): Promise<
+  Array<{
+    id: string;
+    fullName: string;
+    email?: string | null;
+    phone?: string | null;
+    propertyName?: string | null;
+    fitScore?: number | null;
+    monthlyIncome?: number | null;
+  }>
+> {
   await requireUserId();
   const sb = getSupabase();
-  const { data: detail, error: detailErr } = await sb
-    .from("applicant_application_details")
-    .select(
-      "tenant_id, monthly_income, fit_score, target_rent, submitted_at, previous_residency, landlord_contact, time_rented, form_data, co_applicant, property_id"
-    )
-    .eq("tenant_id", tenantId)
-    .maybeSingle();
-  if (detailErr) throw toError(detailErr);
-  if (!detail) return null;
-
-  const { data: tenant, error: tenantErr } = await sb
+  const { data, error } = await sb
     .from("tenants")
-    .select("first_name, last_name, email, phone, applied_property_id")
-    .eq("id", tenantId)
-    .maybeSingle();
-  if (tenantErr) throw toError(tenantErr);
-  if (!tenant) return null;
+    .select(
+      `
+      id,
+      first_name,
+      last_name,
+      email,
+      phone,
+      application_group_id,
+      applicant_group_role,
+      applied_property_id,
+      properties:applied_property_id ( name )
+    `
+    )
+    .eq("status", "APPLICANT")
+    .order("created_at", { ascending: false });
+  if (error) throw toError(error);
 
-  const row = detail as Record<string, unknown>;
-  const t = tenant as Record<string, unknown>;
-  const formData = row.form_data as Record<string, unknown> | null;
-  const primaryRaw = (formData?.primary ?? {}) as Record<string, unknown>;
-  const firstName = String(t.first_name ?? primaryRaw.firstName ?? "");
-  const lastName = String(t.last_name ?? primaryRaw.lastName ?? "");
+  const rows = (data ?? []) as Record<string, unknown>[];
 
-  return {
-    tenantId,
-    firstName,
-    lastName,
-    fullName: `${firstName} ${lastName}`.trim(),
-    email: t.email != null ? String(t.email) : primaryRaw.email != null ? String(primaryRaw.email) : null,
-    phone: t.phone != null ? String(t.phone) : primaryRaw.phone != null ? String(primaryRaw.phone) : null,
-    propertyId:
-      t.applied_property_id != null
-        ? String(t.applied_property_id)
-        : row.property_id != null
-          ? String(row.property_id)
-          : null,
-    propertyName: null,
-    monthlyIncome: Number(row.monthly_income ?? 0),
-    fitScore: Number(row.fit_score ?? 0),
-    targetRent: Number(row.target_rent ?? 0),
-    submittedAt: row.submitted_at != null ? String(row.submitted_at) : null,
-    formData: formData
-      ? {
-          primary: primaryRaw as ApplicantSubmissionPayload["primary"],
-          coApplicantEnabled: Boolean(formData.coApplicantEnabled),
-          coApplicant: formData.coApplicant
-            ? (formData.coApplicant as ApplicantSubmissionPayload["coApplicant"])
-            : null,
-          template: formData.template
-            ? normalizeApplicantFormTemplate(formData.template)
-            : DEFAULT_APPLICANT_FORM_TEMPLATE
-        }
-      : null,
-    previousResidency: row.previous_residency != null ? String(row.previous_residency) : null,
-    landlordContact: row.landlord_contact != null ? String(row.landlord_contact) : null,
-    timeRented: row.time_rented != null ? String(row.time_rented) : null
+  const resolvePrimaryId = (row: Record<string, unknown>): string => {
+    const id = String(row.id ?? "");
+    if (row.applicant_group_role === "CO" && row.application_group_id) {
+      const match = rows.find(
+        (r) =>
+          r.application_group_id === row.application_group_id && r.applicant_group_role === "PRIMARY"
+      );
+      if (match?.id) return String(match.id);
+    }
+    return id;
   };
+
+  const primaryIds = [...new Set(rows.map((row) => resolvePrimaryId(row)))];
+  const detailsByPrimary = await listApplicantApplicationDetailsByTenantIds(primaryIds);
+
+  return rows.map((row) => {
+    const id = String(row.id ?? "");
+    const firstName = String(row.first_name ?? "");
+    const lastName = String(row.last_name ?? "");
+    const props = row.properties as Record<string, unknown> | null | undefined;
+    const propertyName = props?.name != null ? String(props.name) : null;
+    const primaryId = resolvePrimaryId(row);
+    const detail = detailsByPrimary.get(primaryId);
+    return {
+      id,
+      fullName: `${firstName} ${lastName}`.trim(),
+      email: row.email != null ? String(row.email) : null,
+      phone: row.phone != null ? String(row.phone) : null,
+      propertyName,
+      fitScore: detail?.fitScore ?? null,
+      monthlyIncome: detail?.monthlyIncome ?? null
+    };
+  });
 }
 
 export function applicantApplyUrl(token: string): string {

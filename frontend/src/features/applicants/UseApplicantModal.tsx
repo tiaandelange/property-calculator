@@ -2,11 +2,12 @@ import { useEffect, useMemo, useState } from "react";
 import { AppModal } from "../../components/ui/AppModal";
 import { Button } from "../../components/ui/Button";
 import { Field, Input } from "../../components/ui/Input";
-import { getTenantsDirectory } from "../../api/ownedProperties";
-import { isApplicantListItem } from "../tenants/tenantDirectoryAdapter";
 import type { TenantListItem } from "../tenants/tenantDirectoryTypes";
 import { fmtZar } from "../tenants/tenantDirectoryUtils";
-import { getApplicantApplicationOwner } from "../../services/applicantApplicationsSupabase";
+import {
+  getApplicantApplicationOwner,
+  listApplicantPicklist
+} from "../../services/applicantApplicationsSupabase";
 import type { ApplicantApplicationRecord } from "./applicantTypes";
 
 export type ApplicantPrefill = {
@@ -24,8 +25,22 @@ export type ApplicantPrefill = {
   };
 };
 
-function applicantToPrefill(record: ApplicantApplicationRecord): ApplicantPrefill {
+function applicantPersonFields(record: ApplicantApplicationRecord) {
   const primary = record.formData?.primary;
+  const co = record.formData?.coApplicant;
+  if (
+    co &&
+    record.formData?.coApplicantEnabled &&
+    String(co.firstName ?? "").trim() === record.firstName.trim() &&
+    String(co.lastName ?? "").trim() === record.lastName.trim()
+  ) {
+    return co;
+  }
+  return primary;
+}
+
+function applicantToPrefill(record: ApplicantApplicationRecord): ApplicantPrefill {
+  const person = applicantPersonFields(record);
   return {
     applicantId: record.tenantId,
     applicantName: record.fullName,
@@ -35,7 +50,7 @@ function applicantToPrefill(record: ApplicantApplicationRecord): ApplicantPrefil
       lastName: record.lastName,
       email: record.email ?? "",
       phone: record.phone ?? "",
-      idNumber: primary?.idNumber != null ? String(primary.idNumber) : "",
+      idNumber: person?.idNumber != null ? String(person.idNumber) : "",
       emergencyContactName: "",
       emergencyContactPhone: ""
     }
@@ -55,7 +70,17 @@ export function UseApplicantModal({
   const [loading, setLoading] = useState(false);
   const [selectingId, setSelectingId] = useState<string | null>(null);
   const [error, setError] = useState("");
-  const [applicants, setApplicants] = useState<TenantListItem[]>([]);
+  const [applicants, setApplicants] = useState<
+    Array<{
+      id: string;
+      fullName: string;
+      email?: string | null;
+      phone?: string | null;
+      propertyName?: string | null;
+      fitScore?: number | null;
+      monthlyIncome?: number | null;
+    }>
+  >([]);
 
   useEffect(() => {
     if (!open) {
@@ -67,10 +92,10 @@ export function UseApplicantModal({
     let cancelled = false;
     setLoading(true);
     setError("");
-    void getTenantsDirectory()
-      .then((directory) => {
+    void listApplicantPicklist()
+      .then((rows) => {
         if (cancelled) return;
-        setApplicants(directory.items.filter(isApplicantListItem));
+        setApplicants(rows);
       })
       .catch((e: unknown) => {
         if (!cancelled) setError(e instanceof Error ? e.message : "Failed to load applicants.");
@@ -92,7 +117,15 @@ export function UseApplicantModal({
     });
   }, [applicants, query]);
 
-  const pick = async (item: TenantListItem) => {
+  const pick = async (item: {
+    id: string;
+    fullName: string;
+    email?: string | null;
+    phone?: string | null;
+    propertyName?: string | null;
+    fitScore?: number | null;
+    monthlyIncome?: number | null;
+  }) => {
     setSelectingId(item.id);
     setError("");
     try {

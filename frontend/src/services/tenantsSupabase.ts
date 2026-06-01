@@ -94,7 +94,12 @@ function mapTenantDirectoryItem(raw: Record<string, unknown>): TenantListItem {
     monthlyIncome: raw.monthlyIncome != null ? Number(raw.monthlyIncome) : null,
     fitScore: raw.fitScore != null ? Number(raw.fitScore) : null,
     targetRent: raw.targetRent != null ? Number(raw.targetRent) : null,
-    applicationSubmittedAt: raw.applicationSubmittedAt != null ? String(raw.applicationSubmittedAt) : null
+    applicationSubmittedAt: raw.applicationSubmittedAt != null ? String(raw.applicationSubmittedAt) : null,
+    applicationGroupId: raw.applicationGroupId != null ? String(raw.applicationGroupId) : null,
+    coApplicantTenantId: raw.coApplicantTenantId != null ? String(raw.coApplicantTenantId) : null,
+    memberTenantIds: Array.isArray(raw.memberTenantIds)
+      ? (raw.memberTenantIds as unknown[]).map((id) => String(id))
+      : undefined
   };
 }
 

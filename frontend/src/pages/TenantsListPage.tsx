@@ -115,9 +115,16 @@ export function TenantsListPage() {
     setDeleteBusy(true);
     setActionError("");
     try {
-      await deleteTenant(deleteApplicant.id);
-      invalidateTenantQueries({ workspaceId, tenantId: deleteApplicant.id });
+      const ids =
+        deleteApplicant.memberTenantIds?.length && deleteApplicant.memberTenantIds.length > 0
+          ? deleteApplicant.memberTenantIds
+          : [deleteApplicant.id];
+      for (const tid of ids) {
+        await deleteTenant(tid);
+        invalidateTenantQueries({ workspaceId, tenantId: tid });
+      }
       setDeleteApplicant(null);
+      refreshDirectory();
     } catch (e: unknown) {
       setActionError(e instanceof Error ? e.message : "Failed to delete applicant.");
     } finally {

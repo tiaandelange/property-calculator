@@ -29,6 +29,10 @@ export type TenantListItem = {
   fitScore?: number | null;
   targetRent?: number | null;
   applicationSubmittedAt?: string | null;
+  applicationGroupId?: string | null;
+  coApplicantTenantId?: string | null;
+  /** All tenant ids in a joint application (for delete). */
+  memberTenantIds?: string[];
 };
 
 export type TenantDirectoryMetrics = {
