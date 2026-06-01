@@ -9,7 +9,7 @@ import {
   documentSummaryStrip,
   landlordRightStack,
   notesBlock,
-  optionalSummaryColumn,
+  optionalSummaryStack,
   PDF_PAGE_MARGINS,
   pdfDivider,
   pdfMargin,
@@ -132,18 +132,21 @@ export function buildInvoicePdfDocumentDefinition(data: InvoicePdfDocumentData):
       })
     }),
     pdfDivider(theme),
-    {
-      columns: [
-        { width: "*", stack: [recipientBlock({ label: "To", lines: tenantLines(data) })] },
-        optionalSummaryColumn({
-          dueDate: data.dueDate,
-          statusLabel,
-          balanceDueLabel: formatPdfZar(data.balanceDue)
-        }) ?? { width: 0, text: "" }
-      ],
-      columnGap: 16,
-      margin: pdfMargin(0, 0, 0, PDF_SPACING.section)
-    },
+    (() => {
+      const summaryStack = optionalSummaryStack({
+        dueDate: data.dueDate,
+        statusLabel,
+        balanceDueLabel: formatPdfZar(data.balanceDue)
+      });
+      return {
+        columns: [
+          { width: "*", stack: [recipientBlock({ label: "To", lines: tenantLines(data) })] },
+          summaryStack ? { width: 160, stack: summaryStack } : { width: 0, text: "" }
+        ],
+        columnGap: 16,
+        margin: pdfMargin(0, 0, 0, PDF_SPACING.section)
+      };
+    })(),
     documentSummaryStrip([
       { label: "Invoice number", value: data.invoiceNumber },
       { label: "Invoice date", value: data.invoiceDate.slice(0, 10) },

@@ -254,11 +254,12 @@ export function landlordRightStack(opts: {
   return stack;
 }
 
-export function optionalSummaryColumn(opts: {
+/** Stack items for the optional right column beside the recipient block. */
+export function optionalSummaryStack(opts: {
   dueDate?: string;
   statusLabel?: string;
   balanceDueLabel?: string;
-}): Content | null {
+}): Content[] | null {
   const items: Content[] = [];
   if (opts.dueDate) {
     items.push({ text: "Due date", style: "sectionLabel" });
@@ -272,6 +273,5 @@ export function optionalSummaryColumn(opts: {
     items.push({ text: "Balance due", style: "sectionLabel", margin: pdfMargin(0, 8, 0, 0) });
     items.push({ text: opts.balanceDueLabel, style: "totalEmphasis" });
   }
-  if (!items.length) return null;
-  return { width: 160, stack: items };
+  return items.length ? items : null;
 }
