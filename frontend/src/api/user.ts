@@ -2,12 +2,14 @@ import type { UiColorScheme } from "../theme/uiColorScheme";
 import { assertSupabaseConfigured } from "../lib/supabaseClient";
 import {
   getCurrentProfile,
+  meFinancialDisplayName,
   updateProfile,
   type InvoicePaymentDetailsPayload,
   type MeResponse
 } from "../services/profileSupabase";
 
 export type { UiColorScheme, InvoicePaymentDetailsPayload, MeResponse };
+export { meFinancialDisplayName };
 
 export async function fetchMe(): Promise<MeResponse> {
   assertSupabaseConfigured();

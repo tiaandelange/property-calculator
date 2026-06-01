@@ -110,6 +110,15 @@ export function profileDetailsToPayload(details: NormalizedProfileDetails): Reco
   };
 }
 
+/** Display name for invoices/emails from a loaded Me profile. */
+export function financialDisplayNameFromProfile(opts: {
+  name?: string | null;
+  email?: string;
+  financialLandlord?: FinancialLandlordParty;
+}): string {
+  return opts.financialLandlord?.name?.trim() || opts.name?.trim() || opts.email?.trim() || "Proplytic";
+}
+
 export function businessDetailsToPayload(details: NormalizedBusinessDetails): Record<string, string> {
   return {
     businessName: details.businessName,

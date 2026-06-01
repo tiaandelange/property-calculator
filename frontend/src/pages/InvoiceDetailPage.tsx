@@ -3,7 +3,7 @@ import { Helmet } from "react-helmet-async";
 import { Link, Navigate, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { getTenant } from "../api/ownedProperties";
 import { AppEditorPage } from "../components/ui/AppPage";
-import { fetchMe } from "../api/user";
+import { fetchMe, meFinancialDisplayName } from "../api/user";
 import { InvoiceDetailPanel } from "../features/invoices/InvoiceDetailPanel";
 import { invoiceDetailPath } from "../features/invoices/invoiceRoutes";
 
@@ -73,7 +73,7 @@ export function InvoiceDetailPage() {
           tenantName,
           tenantEmail: tenant.email != null ? String(tenant.email) : null,
           leaseId: leaseIdFromUrl || (currentLease?.id != null ? String(currentLease.id) : null),
-          profileName: String(me.name ?? me.email ?? "Proplytic"),
+          profileName: meFinancialDisplayName(me),
           invoicePaymentDetails: me.invoicePaymentDetails ?? null,
           defaultRent:
             currentLease?.monthlyRent != null && Number.isFinite(Number(currentLease.monthlyRent))

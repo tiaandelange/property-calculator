@@ -59,6 +59,18 @@ describe("profileSupabase", () => {
           }))
         };
       }
+      if (table === "user_settings") {
+        return {
+          select: vi.fn(() => ({
+            eq: vi.fn(() => ({
+              maybeSingle: vi.fn().mockResolvedValue({
+                data: { use_business_for_financials: false },
+                error: null
+              })
+            }))
+          }))
+        };
+      }
       return {};
     });
 
@@ -70,6 +82,8 @@ describe("profileSupabase", () => {
     expect(me.uiColorScheme).toBe("light");
     expect(me.freeUsesRemaining).toBe(3);
     expect(me.emailConfirmed).toBe(true);
+    expect(me.financialLandlord?.name).toBe("Alex");
+    expect(me.useBusinessForFinancials).toBe(false);
   });
 
   it("updateProfile uses RPC for invoice payment details", async () => {

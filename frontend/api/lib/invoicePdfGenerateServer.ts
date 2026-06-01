@@ -11,11 +11,7 @@ import {
   invoicePaymentReferenceForInvoice,
   leaseReferenceFromEmbed
 } from "./invoicePaymentDetailsShared.js";
-import {
-  normalizeBusinessDetails,
-  normalizeProfileDetails,
-  resolveFinancialLandlordParty
-} from "./profileContactShared.js";
+import { loadFinancialLandlordContext } from "./financialLandlordContext.js";
 import {
   invoiceHasStoredPdf,
   invoicePdfStorageKey,
@@ -77,46 +73,27 @@ async function loadPdfBuildContext(
   uid: string,
   tenantPropertyAddress: string
 ): Promise<InvoicePdfBuildContext> {
-  const [{ data: profile }, { data: settings }, { data: authData }] = await Promise.all([
-    sb
-      .from("profiles")
-      .select("full_name, invoice_payment_details, profile_details, business_details")
-      .eq("id", uid)
-      .maybeSingle(),
+  const [{ data: settings }, financial] = await Promise.all([
     sb
       .from("user_settings")
-      .select("accent_color, pdf_branding_enabled, use_business_for_financials")
+      .select("accent_color, pdf_branding_enabled")
       .eq("user_id", uid)
       .maybeSingle(),
-    sb.auth.getUser()
+    loadFinancialLandlordContext(sb, uid)
   ]);
-
-  const paymentRaw = profile?.invoice_payment_details;
-  const profileDetails = normalizeProfileDetails(profile?.profile_details);
-  const businessDetails = normalizeBusinessDetails(profile?.business_details, paymentRaw);
-  const ccEmail = str((paymentRaw as Record<string, unknown> | null)?.ccEmail ?? (paymentRaw as Record<string, unknown> | null)?.cc_email);
-
-  const landlord = resolveFinancialLandlordParty({
-    useBusinessForFinancials: settings?.use_business_for_financials === true,
-    fullName: profile?.full_name,
-    authEmail: authData.user?.email,
-    profileDetails,
-    businessDetails,
-    invoiceCcEmail: ccEmail
-  });
 
   return {
     theme: buildGlobalPdfTheme({ accentColor: settings?.accent_color }),
     logoDataUrl: loadProplyticLogoDataUrl(),
     pdfBrandingEnabled: settings?.pdf_branding_enabled !== false,
     landlord: {
-      name: landlord.name,
-      email: landlord.email,
-      phone: landlord.phone,
-      address: landlord.address
+      name: financial.landlord.name,
+      email: financial.landlord.email,
+      phone: financial.landlord.phone,
+      address: financial.landlord.address
     },
     tenantPropertyAddress: tenantPropertyAddress || undefined,
-    paymentDetailsRaw: paymentRaw
+    paymentDetailsRaw: financial.invoicePaymentDetails
   };
 }
 

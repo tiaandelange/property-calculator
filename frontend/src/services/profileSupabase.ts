@@ -1,8 +1,11 @@
 import type { PostgrestError } from "@supabase/supabase-js";
 import type { UiColorScheme } from "../theme/uiColorScheme";
 import {
+  financialDisplayNameFromProfile,
   normalizeBusinessDetails,
   normalizeProfileDetails,
+  resolveFinancialLandlordParty,
+  type FinancialLandlordParty,
   type NormalizedBusinessDetails,
   type NormalizedProfileDetails
 } from "../../api/lib/profileContactShared";
@@ -24,7 +27,7 @@ export type ProfileForApp = {
   free_uses_remaining: number | null;
 };
 
-export type { NormalizedProfileDetails, NormalizedBusinessDetails };
+export type { NormalizedProfileDetails, NormalizedBusinessDetails, FinancialLandlordParty };
 
 export type InvoicePaymentDetailsPayload = {
   bankName?: string;
@@ -51,6 +54,8 @@ export type MeResponse = {
   businessDetails?: NormalizedBusinessDetails;
   /** Signed URL for avatar preview when avatarStorageKey is set. */
   avatarUrl?: string | null;
+  useBusinessForFinancials?: boolean;
+  financialLandlord?: FinancialLandlordParty;
   uiColorScheme?: UiColorScheme;
   freeUsesRemaining?: number | null;
   emailConfirmed?: boolean;
@@ -132,6 +137,28 @@ export async function getCurrentProfile(): Promise<MeResponse> {
   );
   const avatarUrl = await signedProfileAvatarUrl(profileDetails.avatarStorageKey);
 
+  const { data: settingsRow } = await sb
+    .from("user_settings")
+    .select("use_business_for_financials")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  const useBusinessForFinancials = settingsRow?.use_business_for_financials === true;
+  const ccEmail = String(
+    (profile?.invoice_payment_details as Record<string, unknown> | null)?.ccEmail ??
+      (profile?.invoice_payment_details as Record<string, unknown> | null)?.cc_email ??
+      ""
+  ).trim();
+
+  const financialLandlord = resolveFinancialLandlordParty({
+    useBusinessForFinancials,
+    fullName: profile?.full_name,
+    authEmail: user.email,
+    profileDetails,
+    businessDetails,
+    invoiceCcEmail: ccEmail
+  });
+
   return {
     id: user.id,
     email: user.email ?? "",
@@ -141,10 +168,20 @@ export async function getCurrentProfile(): Promise<MeResponse> {
     profileDetails,
     businessDetails,
     avatarUrl,
+    useBusinessForFinancials,
+    financialLandlord,
     uiColorScheme: profile?.ui_color_scheme === "light" ? "light" : "dark",
     freeUsesRemaining: profile?.free_uses_remaining ?? null,
     emailConfirmed: Boolean(user.email_confirmed_at)
   };
+}
+
+export function meFinancialDisplayName(me: MeResponse): string {
+  return financialDisplayNameFromProfile({
+    name: me.name,
+    email: me.email,
+    financialLandlord: me.financialLandlord
+  });
 }
 
 /**

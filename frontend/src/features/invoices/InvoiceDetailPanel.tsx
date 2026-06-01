@@ -107,8 +107,7 @@ export function InvoiceDetailPanel({
   onDeleted?: () => void;
 }) {
   const queryClient = useQueryClient();
-  const needsProfileFromCache = invoicePaymentDetails == null;
-  const profileQuery = useProfileQuery({ enabled: needsProfileFromCache });
+  const profileQuery = useProfileQuery();
   const [activeId, setActiveId] = useState<string | undefined>(initialInvoiceId);
   const [propertyId, setPropertyId] = useState(bootstrapPropertyId ?? "");
   const [tenantId, setTenantId] = useState(bootstrapTenantId ?? "");
@@ -166,15 +165,17 @@ export function InvoiceDetailPanel({
   }, [profileName]);
 
   useEffect(() => {
+    const me = profileQuery.data;
+    if (!me) return;
+    const displayName =
+      me.financialLandlord?.name?.trim() || me.name?.trim() || me.email?.trim() || "Proplytic";
+    setFromName(displayName);
     if (invoicePaymentDetails != null) {
       setPaymentDetails(invoicePaymentDetails);
       return;
     }
-    const me = profileQuery.data;
-    if (!me) return;
-    setFromName(String(me.name ?? me.email ?? "Proplytic"));
     setPaymentDetails(me.invoicePaymentDetails ?? null);
-  }, [invoicePaymentDetails, profileQuery.data]);
+  }, [invoicePaymentDetails, profileQuery.data, profileQuery.dataUpdatedAt]);
 
   useEffect(() => {
     if (!moreOpen) return;
