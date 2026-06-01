@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { patchProfileInvoicePaymentDetails } from "../../api/user";
 import { useAuth } from "../../contexts/AuthContext";
 import { AppFormModal } from "../../components/ui/AppModal";
 import { Button } from "../../components/ui/Button";
 import { Field, Input } from "../../components/ui/Input";
-import { useProfileQuery } from "../queries";
+import { queryKeys, useProfileQuery, useWorkspaceId } from "../queries";
 import {
   invoicePaymentDetailsFormFromApi,
   invoicePaymentDetailsFormToPayload,
@@ -18,6 +19,8 @@ type Props = {
 
 export function InvoiceBankingDetailsModal({ open, onClose }: Props) {
   const { refreshProfile } = useAuth();
+  const queryClient = useQueryClient();
+  const workspaceId = useWorkspaceId();
   const profileQuery = useProfileQuery({ enabled: open });
   const [form, setForm] = useState<InvoicePaymentDetailsFormState>(() =>
     invoicePaymentDetailsFormFromApi(null)
@@ -34,6 +37,11 @@ export function InvoiceBankingDetailsModal({ open, onClose }: Props) {
       setSavedFlash(false);
       return;
     }
+    void profileQuery.refetch();
+  }, [open, profileQuery]);
+
+  useEffect(() => {
+    if (!open) return;
     const me = profileQuery.data;
     if (!me) return;
     const loaded = invoicePaymentDetailsFormFromApi(me.invoicePaymentDetails);
@@ -41,7 +49,7 @@ export function InvoiceBankingDetailsModal({ open, onClose }: Props) {
       ...loaded,
       ccEmail: loaded.ccEmail.trim() || (me.email ?? "").trim()
     });
-  }, [open, profileQuery.data]);
+  }, [open, profileQuery.data, profileQuery.dataUpdatedAt]);
 
   const save = async () => {
     setSaving(true);
@@ -49,13 +57,20 @@ export function InvoiceBankingDetailsModal({ open, onClose }: Props) {
     setSavedFlash(false);
     try {
       const updated = await patchProfileInvoicePaymentDetails(invoicePaymentDetailsFormToPayload(form));
-      setForm(invoicePaymentDetailsFormFromApi(updated.invoicePaymentDetails));
+      if (workspaceId) {
+        await queryClient.invalidateQueries({ queryKey: queryKeys.profile(workspaceId) });
+      }
       await refreshProfile();
+      const refetched = await profileQuery.refetch();
+      const me = refetched.data;
+      const loaded = invoicePaymentDetailsFormFromApi(
+        updated.invoicePaymentDetails ?? me?.invoicePaymentDetails
+      );
+      setForm({
+        ...loaded,
+        ccEmail: loaded.ccEmail.trim() || (me?.email ?? "").trim()
+      });
       setSavedFlash(true);
-      window.setTimeout(() => {
-        setSavedFlash(false);
-        onClose();
-      }, 1200);
     } catch (e: unknown) {
       const ax = e as { response?: { data?: { message?: string } } };
       setError(ax.response?.data?.message ?? (e instanceof Error ? e.message : "Could not save. Try again."));
@@ -64,7 +79,7 @@ export function InvoiceBankingDetailsModal({ open, onClose }: Props) {
     }
   };
 
-  const loading = open && profileQuery.isLoading && !profileQuery.data;
+  const loading = open && (profileQuery.isLoading || profileQuery.isFetching) && !profileQuery.data;
 
   return (
     <AppFormModal
@@ -73,7 +88,7 @@ export function InvoiceBankingDetailsModal({ open, onClose }: Props) {
         if (!next) onClose();
       }}
       title="Invoice & banking details"
-      description="Shown on invoice PDFs and used when emailing invoices to tenants."
+      description="Banking lines appear on invoice PDFs. Each invoice uses its lease reference as the payment reference."
       size="md"
       loading={saving}
       closeOnOverlayClick={!saving}
@@ -149,14 +164,6 @@ export function InvoiceBankingDetailsModal({ open, onClose }: Props) {
               disabled={saving}
             />
           </Field>
-          <Field label="Payment reference note" help="What tenants should put on their proof of payment.">
-            <Input
-              value={form.referenceNote}
-              onChange={(e) => setForm({ ...form, referenceNote: e.target.value })}
-              autoComplete="off"
-              disabled={saving}
-            />
-          </Field>
           <Field label="Extra lines" help="Optional — one line per row (e.g. SWIFT, VAT number, instructions).">
             <textarea
               className="pg-input pg-inv-banking-modal-textarea"
@@ -166,6 +173,9 @@ export function InvoiceBankingDetailsModal({ open, onClose }: Props) {
               disabled={saving}
             />
           </Field>
+          <p className="pg-text-helper" style={{ margin: 0 }}>
+            Payment reference on each invoice is taken from the linked lease reference (not configured here).
+          </p>
         </div>
       )}
     </AppFormModal>

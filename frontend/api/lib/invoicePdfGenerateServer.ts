@@ -7,6 +7,10 @@ import {
   type InvoicePdfPayment
 } from "./invoicePdfBuilder.js";
 import {
+  invoicePaymentReferenceForInvoice,
+  leaseReferenceFromEmbed
+} from "./invoicePaymentDetailsShared.js";
+import {
   invoiceHasStoredPdf,
   invoicePdfStorageKey,
   shouldPersistInvoicePdf
@@ -41,14 +45,6 @@ function leaseLabelFromRow(lease: Record<string, unknown> | null): string | null
   const start = lease.start_date ?? lease.startDate;
   if (start) return `From ${String(start).slice(0, 10)}`;
   return "Active lease";
-}
-
-function paymentReferenceFromProfile(raw: unknown, invoiceNumber: string): string | null {
-  if (raw && typeof raw === "object" && !Array.isArray(raw)) {
-    const note = (raw as Record<string, unknown>).referenceNote;
-    if (note != null && String(note).trim()) return String(note).trim();
-  }
-  return invoiceNumber.trim() || null;
 }
 
 export type InvoicePdfGenerateResult = {
@@ -202,7 +198,8 @@ export async function buildInvoicePdfForUser(
 
   const total = Number(invoice.total_amount ?? invoice.total) || 0;
   const balanceDue = Number(invoice.balance_due ?? Math.max(0, total)) || 0;
-  const paymentReference = paymentReferenceFromProfile(profile?.invoice_payment_details, invoiceNumber);
+  const leaseRef = leaseReferenceFromEmbed(lease);
+  const paymentReference = invoicePaymentReferenceForInvoice(leaseRef, invoiceNumber);
 
   const definition = buildInvoicePdfDefinition({
     invoiceId,
@@ -221,7 +218,7 @@ export async function buildInvoicePdfForUser(
     paymentReference,
     lineItems,
     payments,
-    paymentDetailLines: paymentDetailsLines(profile?.invoice_payment_details),
+    paymentDetailLines: paymentDetailsLines(profile?.invoice_payment_details, leaseRef),
     isDraftPreview: !persistPdf
   });
 

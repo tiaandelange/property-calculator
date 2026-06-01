@@ -1,11 +1,11 @@
 import type { InvoicePaymentDetailsPayload } from "../../services/profileSupabase";
+import { normalizeInvoicePaymentDetails } from "../../../api/lib/invoicePaymentDetailsShared";
 
 export type InvoicePaymentDetailsFormState = {
   bankName: string;
   accountHolder: string;
   accountNumber: string;
   branchCode: string;
-  referenceNote: string;
   extraLinesText: string;
   ccEmail: string;
 };
@@ -16,28 +16,20 @@ export function emptyInvoicePaymentDetailsForm(): InvoicePaymentDetailsFormState
     accountHolder: "",
     accountNumber: "",
     branchCode: "",
-    referenceNote: "",
     extraLinesText: "",
     ccEmail: ""
   };
 }
 
 export function invoicePaymentDetailsFormFromApi(raw: unknown): InvoicePaymentDetailsFormState {
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
-    return emptyInvoicePaymentDetailsForm();
-  }
-  const d = raw as Record<string, unknown>;
-  const extraLines = Array.isArray(d.extraLines)
-    ? d.extraLines.filter((x): x is string => typeof x === "string")
-    : [];
+  const d = normalizeInvoicePaymentDetails(raw);
   return {
-    bankName: typeof d.bankName === "string" ? d.bankName : "",
-    accountHolder: typeof d.accountHolder === "string" ? d.accountHolder : "",
-    accountNumber: typeof d.accountNumber === "string" ? d.accountNumber : "",
-    branchCode: typeof d.branchCode === "string" ? d.branchCode : "",
-    referenceNote: typeof d.referenceNote === "string" ? d.referenceNote : "",
-    extraLinesText: extraLines.join("\n"),
-    ccEmail: typeof d.ccEmail === "string" ? d.ccEmail : ""
+    bankName: d.bankName,
+    accountHolder: d.accountHolder,
+    accountNumber: d.accountNumber,
+    branchCode: d.branchCode,
+    extraLinesText: d.extraLines.join("\n"),
+    ccEmail: d.ccEmail
   };
 }
 
@@ -53,7 +45,6 @@ export function invoicePaymentDetailsFormToPayload(
     accountHolder: form.accountHolder.trim(),
     accountNumber: form.accountNumber.trim(),
     branchCode: form.branchCode.trim(),
-    referenceNote: form.referenceNote.trim(),
     extraLines,
     ccEmail: form.ccEmail.trim()
   };

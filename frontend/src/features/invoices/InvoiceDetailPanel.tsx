@@ -77,23 +77,6 @@ import {
   isInvoiceEmailDeliveryAvailable
 } from "./invoiceSendWorkflow";
 
-function bankingLines(details: unknown): string[] {
-  if (!details || typeof details !== "object" || Array.isArray(details)) return [];
-  const d = details as Record<string, unknown>;
-  const lines: string[] = [];
-  if (d.bankName) lines.push(String(d.bankName));
-  if (d.accountHolder) lines.push(`Account holder: ${d.accountHolder}`);
-  if (d.accountNumber) lines.push(`Account: ${d.accountNumber}`);
-  if (d.branchCode) lines.push(`Branch: ${d.branchCode}`);
-  if (d.referenceNote) lines.push(String(d.referenceNote));
-  if (Array.isArray(d.extraLines)) {
-    for (const x of d.extraLines) {
-      if (typeof x === "string" && x.trim()) lines.push(x.trim());
-    }
-  }
-  return lines;
-}
-
 export function InvoiceDetailPanel({
   invoiceId: initialInvoiceId,
   propertyId: bootstrapPropertyId,
@@ -348,7 +331,6 @@ export function InvoiceDetailPanel({
     payments.length > 0 || (activeId && !fieldsEnabled)
       ? Math.max(0, Number.isFinite(balanceDue) ? balanceDue : total - paymentsTotal)
       : total;
-  const bankLines = bankingLines(paymentDetails);
   const saveButtonLabel = draftEditable ? "Save Draft" : "Save";
   const showMarkAsSent = canMarkInvoiceSent(status);
 
@@ -422,7 +404,7 @@ export function InvoiceDetailPanel({
     }
     setPdfBusy(true);
     try {
-      const gen = await generateInvoicePdf(id);
+      const gen = await generateInvoicePdf(id, { force: true });
       await openInvoicePdfExport(gen);
       if (invoicePdfWasStored(gen)) setHasPdf(true);
       setSuccess(gen.reused ? "PDF opened (stored copy)." : "PDF opened in a new tab.");
@@ -440,13 +422,10 @@ export function InvoiceDetailPanel({
     setPdfBusy(true);
     setMoreOpen(false);
     try {
-      let inv = await getInvoice(id);
-      let url = inv.downloadUrl as string | null | undefined;
-      if (!url) {
-        const gen = await generateInvoicePdf(id);
-        url = gen.downloadUrl ?? null;
-        if (invoicePdfWasStored(gen)) setHasPdf(true);
-      }
+      const inv = await getInvoice(id);
+      const gen = await generateInvoicePdf(id, { force: true });
+      const url = gen.downloadUrl ?? null;
+      if (invoicePdfWasStored(gen)) setHasPdf(true);
       if (!url) throw new Error("Generate the PDF first.");
       const blob = await fetchPdfBlob(url);
       triggerPdfFileDownload(blob, `${String(inv.invoiceNumber ?? "invoice").replace(/\s+/g, "_")}.pdf`);
@@ -610,7 +589,7 @@ export function InvoiceDetailPanel({
         id = saved;
       }
       await markInvoiceSent(id);
-      await generateInvoicePdf(id);
+      await generateInvoicePdf(id, { force: true });
       setHasPdf(true);
       invalidatePropertyWorkspace(propertyId);
       await loadInvoice(id);
@@ -1068,16 +1047,6 @@ export function InvoiceDetailPanel({
             />
           ) : null}
 
-          {bankLines.length ? (
-            <div className="pg-inv-editor__banking">
-              <strong style={{ color: "var(--text-primary)" }}>Payment details</strong>
-              <ul>
-                {bankLines.map((line) => (
-                  <li key={line}>{line}</li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
         </div>
 
         <div className="pg-inv-editor__mobile-bar">{renderActionButtons(true)}</div>

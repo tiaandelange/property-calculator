@@ -11,7 +11,10 @@ import type { InvoicesDirectoryQueryOpts } from "../services/invoicesDirectorySu
 import * as financialsSupabase from "../services/financialsSupabase";
 import * as financialsDirectorySupabase from "../services/financialsDirectorySupabase";
 import * as invoicesSupabase from "../services/invoicesSupabase";
-import { generateInvoicePdfViaVercel } from "../services/invoicesVercel";
+import {
+  generateInvoicePdfViaVercel,
+  type GenerateInvoicePdfOptions
+} from "../services/invoicesVercel";
 import * as dashboardSupabase from "../services/dashboardSupabase";
 import * as statementsSupabase from "../services/statementsSupabase";
 import * as operationsSupabase from "../services/operationsSupabase";
@@ -422,9 +425,12 @@ export async function deleteInvoicePayment(paymentId: string) {
 }
 
 /** Generate invoice PDF (Vercel + Storage when Supabase env is set). */
-export async function generateInvoicePdf(invoiceId: string | number) {
+export async function generateInvoicePdf(
+  invoiceId: string | number,
+  opts?: GenerateInvoicePdfOptions
+) {
   assertSupabaseConfigured();
-  return generateInvoicePdfViaVercel(String(invoiceId));
+  return generateInvoicePdfViaVercel(String(invoiceId), opts);
 }
 
 export async function updatePropertyIncome(incomeId: string | number, payload: Record<string, unknown>) {

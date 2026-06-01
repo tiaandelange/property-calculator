@@ -4,7 +4,15 @@ import { buildInvoicePdfDefinition, paymentDetailsLines } from "./invoicePdfBuil
 describe("invoicePdfBuilder", () => {
   it("paymentDetailsLines returns default when profile JSON missing", () => {
     const lines = paymentDetailsLines(null);
-    expect(lines[0]).toMatch(/Account \/ profile/i);
+    expect(lines[0]).toMatch(/Invoice & banking details/i);
+  });
+
+  it("paymentDetailsLines includes lease reference when provided", () => {
+    const lines = paymentDetailsLines(
+      { bankName: "FNB", accountNumber: "123" },
+      "LEASE-2026-001"
+    );
+    expect(lines.some((l) => l === "Reference: LEASE-2026-001")).toBe(true);
   });
 
   it("buildInvoicePdfDefinition includes invoice number, tenant, and payments", () => {

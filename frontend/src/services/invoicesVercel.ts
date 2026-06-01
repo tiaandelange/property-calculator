@@ -20,7 +20,15 @@ export type GenerateInvoicePdfResponse = {
  * Calls `POST /api/invoices/generate` (Vercel serverless) — same pattern as reports.
  * Requires a Supabase session access token.
  */
-export async function generateInvoicePdfViaVercel(invoiceId: string): Promise<GenerateInvoicePdfResponse> {
+export type GenerateInvoicePdfOptions = {
+  /** Regenerate even when a stored PDF exists (picks up latest banking / lease reference). */
+  force?: boolean;
+};
+
+export async function generateInvoicePdfViaVercel(
+  invoiceId: string,
+  opts: GenerateInvoicePdfOptions = {}
+): Promise<GenerateInvoicePdfResponse> {
   const sb = getSupabase();
   const { data: sessionData, error: sessionErr } = await sb.auth.getSession();
   if (sessionErr) throw sessionErr;
@@ -33,7 +41,10 @@ export async function generateInvoicePdfViaVercel(invoiceId: string): Promise<Ge
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`
     },
-    body: JSON.stringify({ invoiceId })
+    body: JSON.stringify({
+      invoiceId,
+      ...(opts.force ? { force: true } : {})
+    })
   });
 
   if (!res.ok) {

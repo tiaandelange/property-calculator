@@ -1,4 +1,5 @@
 import type { Content, TDocumentDefinitions } from "pdfmake/interfaces";
+import { paymentDetailsLinesForInvoice } from "./invoicePaymentDetailsShared.js";
 
 const m = (l: number, t: number, r: number, b: number) => [l, t, r, b] as [number, number, number, number];
 
@@ -52,25 +53,8 @@ function formatMoney(n: number) {
   return `R ${Number(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
-export function paymentDetailsLines(raw: unknown): string[] {
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
-    return ["Add your banking and payment instructions under Account / profile (invoice payment details)."];
-  }
-  const d = raw as Record<string, unknown>;
-  const lines: string[] = [];
-  if (d.bankName) lines.push(`Bank: ${String(d.bankName)}`);
-  if (d.accountHolder) lines.push(`Account holder: ${String(d.accountHolder)}`);
-  if (d.accountNumber) lines.push(`Account number: ${String(d.accountNumber)}`);
-  if (d.branchCode) lines.push(`Branch / universal code: ${String(d.branchCode)}`);
-  if (d.referenceNote) lines.push(`Reference: ${String(d.referenceNote)}`);
-  if (Array.isArray(d.extraLines)) {
-    for (const x of d.extraLines) {
-      if (typeof x === "string" && x.trim()) lines.push(x.trim());
-    }
-  }
-  return lines.length
-    ? lines
-    : ["Add your banking and payment instructions under Account / profile (invoice payment details)."];
+export function paymentDetailsLines(raw: unknown, leaseReference?: string | null): string[] {
+  return paymentDetailsLinesForInvoice(raw, leaseReference);
 }
 
 export function threeMonthBoundsFromInvoiceDate(invoiceDateIso: string, from = new Date()) {
