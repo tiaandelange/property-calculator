@@ -90,6 +90,12 @@ export async function deleteProperty(id: string | number) {
   return { message: "Deleted" };
 }
 
+export async function deletePropertyWorkspace(id: string | number) {
+  assertSupabaseConfigured();
+  await propertiesSupabase.deletePropertyWorkspace(id);
+  return { message: "Deleted" };
+}
+
 export async function listPropertyUnits(propertyId: string | number) {
   assertSupabaseConfigured();
   return propertyUnitsSupabase.listPropertyUnits(String(propertyId));

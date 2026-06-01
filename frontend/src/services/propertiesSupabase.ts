@@ -305,6 +305,16 @@ export async function deleteProperty(id: string | number): Promise<void> {
   if (error) throw toError(error);
 }
 
+/**
+ * Deletes a property workspace: hard-deletes all leases, de-links tenants, then removes the property.
+ */
+export async function deletePropertyWorkspace(id: string | number): Promise<void> {
+  await requireUserId();
+  const sb = getSupabase();
+  const { error } = await sb.rpc("delete_property_workspace", { p_property_id: String(id) });
+  if (error) throw toError(error);
+}
+
 /** Property workspace “Reports” tab — stored PDFs linked to this property. */
 export async function listPropertyWorkspaceReports(propertyId: string | number): Promise<{
   reports: Array<{

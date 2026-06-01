@@ -7,7 +7,7 @@ import { useSubscriptionLimits } from "../features/subscription/useSubscriptionL
 import { AppFormPage, AppPageActions, AppPageHeader } from "../components/ui/AppPage";
 import {
   createProperty,
-  deleteProperty,
+  deletePropertyWorkspace,
   getProperty,
   listPropertyUnits,
   propertyApiErrorMessage,
@@ -229,7 +229,7 @@ export function OwnedPropertyFormPage() {
     setDeleting(true);
     setError("");
     try {
-      await deleteProperty(id);
+      await deletePropertyWorkspace(id);
       invalidatePropertyWorkspace(id);
       navigate("/owned-properties");
     } catch (e: unknown) {

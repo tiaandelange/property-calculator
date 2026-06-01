@@ -2,11 +2,16 @@ import { useEffect, useMemo, useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "react-router-dom";
+import { propertyApiErrorMessage } from "../api/ownedProperties";
+import { IconButton } from "../components/icons";
 import { AppListPage } from "../components/ui/AppPage";
 import { Grid } from "../components/ui/Grid";
 import { Card, WorkspaceFilterCard } from "../components/ui/Card";
-import { Button, ButtonLink } from "../components/ui/Button";
+import { Button } from "../components/ui/Button";
+import { ConfirmDialog } from "../components/ui/ConfirmDialog";
 import { AddPropertyButton } from "../features/subscription/AddPropertyButton";
+import { PropertyDirectoryRowActions } from "../features/properties/PropertyDirectoryRowActions";
+import { invalidatePropertyWorkspace } from "../features/properties/invalidate";
 import {
   isInitialQueryLoad,
   isQueryRefreshing,
@@ -21,6 +26,7 @@ import { MetricCardsSkeletonRow, MobileCardListSkeleton, PropertyCardsSkeletonGr
 import { QueryErrorCard, QueryRefreshingIndicator } from "../components/ui/QueryState";
 import { LeasePagination } from "../features/leases/LeasePagination";
 import { PROPERTIES_DIRECTORY_PAGE_SIZE } from "../features/properties/propertiesDirectoryUtils";
+import { deletePropertyWorkspace } from "../services/propertiesSupabase";
 
 function occupancyDisplay(p: {
   occupancyStatus?: string;
@@ -67,6 +73,9 @@ export function OwnedPropertiesMyPropertiesPage() {
   const [status, setStatus] = useState<string>(new URLSearchParams(search).get("filter") ?? "ALL");
   const [sort, setSort] = useState<string>(new URLSearchParams(search).get("sort") ?? "RECENT");
   const [view, setView] = useState<"cards" | "list">((new URLSearchParams(search).get("view") as "cards" | "list") ?? "cards");
+  const [pendingDelete, setPendingDelete] = useState<Record<string, unknown> | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
 
   const directoryParams = useMemo(
     () => ({
@@ -104,6 +113,26 @@ export function OwnedPropertiesMyPropertiesPage() {
   const propertyWarmProps = (propertyId: string) => listWarmHandlers(() => warmProperty(propertyId));
 
   const hasFilters = q.trim() !== "" || type !== "ALL" || status !== "ALL";
+
+  const confirmDeleteProperty = async () => {
+    if (!pendingDelete?.id) return;
+    const propertyId = String(pendingDelete.id);
+    setDeleteLoading(true);
+    setDeleteError("");
+    try {
+      await deletePropertyWorkspace(propertyId);
+      invalidatePropertyWorkspace(propertyId);
+      if (workspaceId) {
+        void queryClient.invalidateQueries({ queryKey: queryKeys.propertiesDirectory(workspaceId) });
+        void queryClient.invalidateQueries({ queryKey: queryKeys.properties(workspaceId) });
+      }
+      setPendingDelete(null);
+    } catch (e: unknown) {
+      setDeleteError(propertyApiErrorMessage(e) || "Failed to delete property.");
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
 
   return (
     <AppListPage>
@@ -208,7 +237,7 @@ export function OwnedPropertiesMyPropertiesPage() {
                 return (
                   <div key={String(p.id)} className="pg-workspace-inset" {...propertyWarmProps(String(p.id))}>
                     <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "start" }}>
-                      <div style={{ minWidth: 260 }}>
+                      <div style={{ minWidth: 260, flex: 1 }}>
                         <div style={{ display: "flex", gap: 10, alignItems: "baseline", flexWrap: "wrap" }}>
                           <strong>{String(p.name ?? "")}</strong>
                           <StatusPill label={statusLabel} tone={tone as "success" | "warning" | "info" | "accent"} />
@@ -220,6 +249,15 @@ export function OwnedPropertiesMyPropertiesPage() {
                           {displayType(typeKey)}
                         </div>
                       </div>
+                      <IconButton
+                        icon="delete"
+                        aria-label="Delete property"
+                        variant="danger-outline"
+                        onClick={() => {
+                          setDeleteError("");
+                          setPendingDelete(p);
+                        }}
+                      />
                       <div style={{ display: "grid", gap: 4, minWidth: 280 }}>
                         <div>Value: {v == null ? <span className="pg-muted">Missing</span> : `R ${Number(v).toLocaleString()}`}</div>
                         <div>Bond: {b == null ? <span className="pg-muted">Missing</span> : `R ${Number(b).toLocaleString()}`}</div>
@@ -238,20 +276,7 @@ export function OwnedPropertiesMyPropertiesPage() {
                           <span className="pg-muted" style={{ fontSize: 12 }}> (after bond)</span>
                         </div>
                       </div>
-                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                        <ButtonLink href={`/owned-properties/${p.id}`} variant="ghost" {...propertyWarmProps(String(p.id))}>
-                          View
-                        </ButtonLink>
-                        <ButtonLink href={`/owned-properties/${p.id}?tab=financials`} variant="ghost">
-                          Financials
-                        </ButtonLink>
-                        <ButtonLink href={`/owned-properties/${p.id}?tab=leases`} variant="ghost">
-                          Leases
-                        </ButtonLink>
-                        <ButtonLink href={`/owned-properties/${p.id}?tab=documents`} variant="ghost">
-                          Documents
-                        </ButtonLink>
-                      </div>
+                      <PropertyDirectoryRowActions propertyId={String(p.id)} warmHandlers={propertyWarmProps(String(p.id))} />
                     </div>
                     {p.rentOverdue || p.leaseExpiringSoon ? (
                       <div className="pg-muted" style={{ marginTop: 8 }}>
@@ -294,9 +319,12 @@ export function OwnedPropertiesMyPropertiesPage() {
               const currentTenant = p.currentTenant as { firstName?: string; lastName?: string } | null | undefined;
               return (
                 <div key={String(p.id)} className="pg-property-card pg-workspace-card" {...propertyWarmProps(String(p.id))}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start" }}>
-                    <div>
-                      <h3 style={{ margin: 0 }}>{String(p.name ?? "")}</h3>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start", gap: 12 }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <h3 style={{ margin: 0, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                        <span>{String(p.name ?? "")}</span>
+                        <StatusPill label={statusLabel} tone={tone as "success" | "warning" | "info" | "accent"} />
+                      </h3>
                       <div className="pg-muted">
                         {String(p.addressLine1 ?? "")}, {String(p.city ?? "")}
                       </div>
@@ -304,7 +332,15 @@ export function OwnedPropertiesMyPropertiesPage() {
                         {displayType(typeKey)}
                       </div>
                     </div>
-                    <StatusPill label={statusLabel} tone={tone as "success" | "warning" | "info" | "accent"} />
+                    <IconButton
+                      icon="delete"
+                      aria-label="Delete property"
+                      variant="danger-outline"
+                      onClick={() => {
+                        setDeleteError("");
+                        setPendingDelete(p);
+                      }}
+                    />
                   </div>
                   <div className="pg-property-metrics" style={{ marginTop: 10 }}>
                     <div>Market value: {v == null ? <span className="pg-muted">Missing</span> : `R ${Number(v).toLocaleString()}`}</div>
@@ -345,19 +381,8 @@ export function OwnedPropertiesMyPropertiesPage() {
                       {p.leaseExpiringSoon ? "lease expiring soon" : null}
                     </div>
                   ) : null}
-                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
-                    <ButtonLink href={`/owned-properties/${p.id}`} variant="ghost" {...propertyWarmProps(String(p.id))}>
-                      View
-                    </ButtonLink>
-                    <ButtonLink href={`/owned-properties/${p.id}?tab=financials`} variant="ghost">
-                      Financials
-                    </ButtonLink>
-                    <ButtonLink href={`/owned-properties/${p.id}?tab=leases`} variant="ghost">
-                      Leases
-                    </ButtonLink>
-                    <ButtonLink href={`/owned-properties/${p.id}?tab=documents`} variant="ghost">
-                      Documents
-                    </ButtonLink>
+                  <div style={{ marginTop: 12 }}>
+                    <PropertyDirectoryRowActions propertyId={String(p.id)} warmHandlers={propertyWarmProps(String(p.id))} />
                   </div>
                 </div>
               );
@@ -373,6 +398,24 @@ export function OwnedPropertiesMyPropertiesPage() {
           </section>
         </>
       )}
+
+      <ConfirmDialog
+        open={pendingDelete != null}
+        title="Delete property?"
+        confirmLabel="Confirm"
+        confirmVariant="danger"
+        loading={deleteLoading}
+        onClose={() => {
+          if (!deleteLoading) setPendingDelete(null);
+        }}
+        onConfirm={() => void confirmDeleteProperty()}
+      >
+        <p style={{ marginTop: 0 }}>
+          Permanently delete <strong>{String(pendingDelete?.name ?? "this property")}</strong>? All linked leases will be
+          removed and tenants will be de-linked from this property. Tenant records are not deleted.
+        </p>
+        {deleteError ? <div className="pg-alert pg-alert-error" style={{ marginTop: 12 }}>{deleteError}</div> : null}
+      </ConfirmDialog>
     </AppListPage>
   );
 }

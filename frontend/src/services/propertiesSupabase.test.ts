@@ -5,6 +5,7 @@ import {
   createProperty,
   updateProperty,
   deleteProperty,
+  deletePropertyWorkspace,
   dbToProperty,
   propertyToDb
 } from "./propertiesSupabase";
@@ -79,11 +80,13 @@ const mockRow = {
 
 const getUser = vi.fn();
 const from = vi.fn();
+const rpc = vi.fn();
 
 vi.mock("../lib/supabaseClient", () => ({
   getSupabase: () => ({
     auth: { getUser },
-    from
+    from,
+    rpc
   })
 }));
 
@@ -91,6 +94,7 @@ describe("propertiesSupabase", () => {
   beforeEach(() => {
     getUser.mockReset();
     from.mockReset();
+    rpc.mockReset();
   });
 
   it("throws when logged out (no user)", async () => {
@@ -240,6 +244,14 @@ describe("propertiesSupabase", () => {
     expect(del).toHaveBeenCalled();
     expect(eqId).toHaveBeenCalledWith("id", propertyId);
     expect(eqUser).toHaveBeenCalledWith("user_id", userId);
+  });
+
+  it("deletePropertyWorkspace calls delete_property_workspace RPC", async () => {
+    getUser.mockResolvedValue({ data: { user: { id: userId } }, error: null });
+    rpc.mockResolvedValue({ data: null, error: null });
+
+    await deletePropertyWorkspace(propertyId);
+    expect(rpc).toHaveBeenCalledWith("delete_property_workspace", { p_property_id: propertyId });
   });
 
   it("propertyToDb maps camelCase keys", () => {
