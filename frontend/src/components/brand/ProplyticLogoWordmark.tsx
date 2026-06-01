@@ -21,7 +21,7 @@ export function ProplyticLogoWordmark({
         className="proplytic-logo-wordmark__icon"
         width={size}
         height={size}
-        gradientId={compact ? "proplytic-wordmark-gradient-compact" : "proplytic-wordmark-gradient"}
+        gradientId={compact ? "proplytic-wordmark-fill-compact" : "proplytic-wordmark-fill"}
         aria-hidden
         role="presentation"
         focusable="false"

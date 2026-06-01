@@ -1,17 +1,16 @@
 import type { SVGProps } from "react";
-import { ProplyticHouseMark, proplyticGradientDef } from "./proplyticLogoShared";
+import { PROPLYTIC_MARK_VIEWBOX, ProplyticHouseMark, proplyticMarkGradientDef } from "./proplyticLogoShared";
 
 export type ProplyticLogoIconProps = SVGProps<SVGSVGElement> & {
-  /** Unique gradient id when multiple icons render on one page. */
   gradientId?: string;
 };
 
-/** House icon only — purple gradient outline with window + growth bars. */
+/** House mark — gradient fill, window grid, growth bars. */
 export function ProplyticLogoIcon({
-  gradientId = "proplytic-logo-gradient",
+  gradientId = "proplytic-logo-icon-fill",
   width = 32,
   height = 32,
-  viewBox = "0 0 48 48",
+  viewBox = PROPLYTIC_MARK_VIEWBOX,
   role = "img",
   "aria-label": ariaLabel = "Proplytic",
   ...props
@@ -26,7 +25,7 @@ export function ProplyticLogoIcon({
       aria-label={ariaLabel}
       {...props}
     >
-      <defs>{proplyticGradientDef(gradientId)}</defs>
+      <defs>{proplyticMarkGradientDef(gradientId)}</defs>
       <ProplyticHouseMark gradientId={gradientId} />
     </svg>
   );

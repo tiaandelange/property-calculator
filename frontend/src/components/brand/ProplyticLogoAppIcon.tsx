@@ -1,5 +1,5 @@
 import type { SVGProps } from "react";
-import { ProplyticHouseMark, proplyticGradientDef } from "./proplyticLogoShared";
+import { ProplyticHouseMark, proplyticMarkGradientDef } from "./proplyticLogoShared";
 
 export type ProplyticLogoAppIconProps = SVGProps<SVGSVGElement> & {
   gradientId?: string;
@@ -7,7 +7,7 @@ export type ProplyticLogoAppIconProps = SVGProps<SVGSVGElement> & {
 
 /** Rounded app-icon tile with centered house mark. */
 export function ProplyticLogoAppIcon({
-  gradientId = "proplytic-app-gradient",
+  gradientId = "proplytic-app-icon-fill",
   width = 64,
   height = 64,
   viewBox = "0 0 64 64",
@@ -26,13 +26,21 @@ export function ProplyticLogoAppIcon({
       {...props}
     >
       <defs>
-        {proplyticGradientDef(gradientId)}
-        <filter id={`${gradientId}-shadow`} x="-20%" y="-20%" width="140%" height="140%">
+        {proplyticMarkGradientDef(gradientId)}
+        <filter id="proplytic-app-shadow" x="-20%" y="-20%" width="140%" height="140%">
           <feDropShadow dx="0" dy="2" stdDeviation="3" floodColor="#6C4CFF" floodOpacity="0.18" />
         </filter>
       </defs>
-      <rect x="4" y="4" width="56" height="56" rx="14" fill="var(--surface, #ffffff)" filter={`url(#${gradientId}-shadow)`} />
-      <g transform="translate(8 8) scale(1)">
+      <rect
+        x="4"
+        y="4"
+        width="56"
+        height="56"
+        rx="14"
+        fill="var(--surface, #ffffff)"
+        filter="url(#proplytic-app-shadow)"
+      />
+      <g transform="translate(8 8) scale(0.48)" aria-hidden>
         <ProplyticHouseMark gradientId={gradientId} />
       </g>
     </svg>
