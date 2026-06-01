@@ -25,22 +25,14 @@ export type ApplicantPrefill = {
   };
 };
 
-function applicantPersonFields(record: ApplicantApplicationRecord) {
-  const primary = record.formData?.primary;
-  const co = record.formData?.coApplicant;
-  if (
-    co &&
-    record.formData?.coApplicantEnabled &&
-    String(co.firstName ?? "").trim() === record.firstName.trim() &&
-    String(co.lastName ?? "").trim() === record.lastName.trim()
-  ) {
-    return co;
-  }
-  return primary;
-}
-
 function applicantToPrefill(record: ApplicantApplicationRecord): ApplicantPrefill {
-  const person = applicantPersonFields(record);
+  const person =
+    record.formData?.coApplicantEnabled &&
+    record.formData?.coApplicant &&
+    String(record.formData.coApplicant.firstName ?? "").trim() === record.firstName.trim() &&
+    String(record.formData.coApplicant.lastName ?? "").trim() === record.lastName.trim()
+      ? record.formData.coApplicant
+      : record.formData?.primary;
   return {
     applicantId: record.tenantId,
     applicantName: record.fullName,

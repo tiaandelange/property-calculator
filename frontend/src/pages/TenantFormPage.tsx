@@ -71,7 +71,17 @@ export function TenantFormPage() {
             lastName: record.lastName,
             email: record.email ?? "",
             phone: record.phone ?? "",
-            idNumber: record.formData?.primary?.idNumber != null ? String(record.formData.primary.idNumber) : "",
+            idNumber:
+              record.formData?.coApplicantEnabled &&
+              record.formData?.coApplicant &&
+              String(record.formData.coApplicant.firstName ?? "").trim() === record.firstName.trim() &&
+              String(record.formData.coApplicant.lastName ?? "").trim() === record.lastName.trim()
+                ? record.formData.coApplicant.idNumber != null
+                  ? String(record.formData.coApplicant.idNumber)
+                  : ""
+                : record.formData?.primary?.idNumber != null
+                  ? String(record.formData.primary.idNumber)
+                  : "",
             emergencyContactName: "",
             emergencyContactPhone: ""
           }

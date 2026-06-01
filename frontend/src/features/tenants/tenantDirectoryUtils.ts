@@ -13,6 +13,14 @@ export function formatDateShort(iso: string | null | undefined): string {
   return d.toLocaleDateString("en-ZA", { day: "numeric", month: "short", year: "numeric" });
 }
 
+/** Individual tenant name (never the joint "A & B" label used on the applicants tab). */
+export function tenantRowDisplayName(
+  item: Pick<TenantListItem, "firstName" | "lastName" | "fullName">
+): string {
+  const individual = `${String(item.firstName ?? "").trim()} ${String(item.lastName ?? "").trim()}`.trim();
+  return individual || String(item.fullName ?? "").trim() || "Tenant";
+}
+
 export function tenantInitials(item: Pick<TenantListItem, "firstName" | "lastName" | "fullName">): string {
   const a = String(item.firstName ?? "").trim()[0] ?? "";
   const b = String(item.lastName ?? "").trim()[0] ?? "";

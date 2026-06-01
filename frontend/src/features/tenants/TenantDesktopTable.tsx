@@ -12,7 +12,7 @@ import {
   ProplyticTableWrap
 } from "../../components/tables";
 import type { TenantListItem } from "./tenantDirectoryTypes";
-import { fmtZar, formatDateShort, tenantInitials } from "./tenantDirectoryUtils";
+import { fmtZar, formatDateShort, tenantInitials, tenantRowDisplayName } from "./tenantDirectoryUtils";
 import { TenantRowActions } from "./TenantRowActions";
 
 function TenantAvatar({ tenant }: { tenant: TenantListItem }) {
@@ -63,7 +63,7 @@ export function TenantDesktopTable({
                   <TenantAvatar tenant={t} />
                   <div className="pg-tenants-cell-tenant-text">
                     <Link className="pg-tenants-name" to={`/tenants/${t.id}`}>
-                      {t.fullName}
+                      {tenantRowDisplayName(t)}
                     </Link>
                     <div className="pg-tenants-sub">{t.email?.trim() || "No email"}</div>
                   </div>

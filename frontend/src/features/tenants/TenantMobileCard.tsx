@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import type { TenantListItem } from "./tenantDirectoryTypes";
-import { fmtZar, tenantInitials } from "./tenantDirectoryUtils";
+import { fmtZar, tenantInitials, tenantRowDisplayName } from "./tenantDirectoryUtils";
 import { LeaseStatusBadge, PaymentStatusBadge } from "./TenantStatusBadges";
 import { TenantRowActions } from "./TenantRowActions";
 
@@ -20,7 +20,7 @@ export function TenantMobileCard({
           </span>
           <div>
             <Link className="pg-tenants-name" to={`/tenants/${tenant.id}`}>
-              {tenant.fullName}
+              {tenantRowDisplayName(tenant)}
             </Link>
             <div className="pg-tenants-sub pg-tenants-mobile-property">
               {tenant.propertyName || "No property assigned"}
