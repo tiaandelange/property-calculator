@@ -340,6 +340,7 @@ export function InvoiceDetailPanel({
       : total;
   const bankLines = bankingLines(paymentDetails);
   const saveButtonLabel = draftEditable ? "Save Draft" : "Save";
+  const showMarkAsSent = canMarkInvoiceSent(status);
 
   const buildPayload = () => {
     const payload: Record<string, unknown> = {
@@ -653,16 +654,6 @@ export function InvoiceDetailPanel({
   };
 
   const sendMenuItems: SplitButtonMenuItem[] = [
-    ...(activeId && canMarkInvoiceSent(status)
-      ? [
-          {
-            label: invoiceMarkAsSentMenuLabel(),
-            icon: "send",
-            disabled: sendBusy,
-            onClick: () => setConfirmSend(true)
-          } satisfies SplitButtonMenuItem
-        ]
-      : []),
     ...(canRecordInvoicePayment(status)
       ? [
           {
@@ -685,7 +676,7 @@ export function InvoiceDetailPanel({
       : [])
   ];
 
-  const showSendSplit = Boolean(activeId) && sendMenuItems.length > 0;
+  const showSendSplit = sendMenuItems.length > 0;
 
   const renderActionButtons = (splitMobileLarge: boolean) => (
     <>
@@ -695,6 +686,11 @@ export function InvoiceDetailPanel({
       {fieldsEnabled ? (
         <Button type="submit" variant="soft" loading={saving} iconLeft="save">
           {saveButtonLabel}
+        </Button>
+      ) : null}
+      {showMarkAsSent ? (
+        <Button type="button" variant="outline" loading={sendBusy} iconLeft="send" onClick={() => setConfirmSend(true)}>
+          {invoiceMarkAsSentMenuLabel()}
         </Button>
       ) : null}
       {showSendSplit ? (
@@ -725,6 +721,36 @@ export function InvoiceDetailPanel({
       />
       {moreOpen ? (
         <div className="pg-inv-editor__more-menu" role="menu">
+          {showMarkAsSent ? (
+            <button
+              type="button"
+              className="pg-inv-editor__more-item"
+              role="menuitem"
+              disabled={sendBusy}
+              onClick={() => {
+                setMoreOpen(false);
+                setConfirmSend(true);
+              }}
+            >
+              <AppIcon name="send" size="sm" />
+              {invoiceMarkAsSentMenuLabel()}
+            </button>
+          ) : null}
+          {canRecordInvoicePayment(status) ? (
+            <button
+              type="button"
+              className="pg-inv-editor__more-item"
+              role="menuitem"
+              disabled={paymentBusy}
+              onClick={() => {
+                setMoreOpen(false);
+                void openMarkPaidModal();
+              }}
+            >
+              <AppIcon name="payments" size="sm" />
+              {invoiceAddPaymentMenuLabel()}
+            </button>
+          ) : null}
           {activeId ? (
             <button type="button" className="pg-inv-editor__more-item" role="menuitem" disabled={pdfBusy} onClick={() => void downloadPdf()}>
               <AppIcon name="download" size="sm" />
