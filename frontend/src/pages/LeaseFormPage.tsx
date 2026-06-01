@@ -26,6 +26,8 @@ import { Card } from "../components/ui/Card";
 import { Field, Input } from "../components/ui/Input";
 import { Button, ButtonLink } from "../components/ui/Button";
 import { getOrCreateUserSettings } from "../services/settingsSupabase";
+import { LeaseContractUploadSection } from "../features/leases/LeaseContractUploadSection";
+import { uploadLeaseContractOwner } from "../services/tenantDocumentsSupabase";
 
 type RentDueMode = "first" | "last" | "custom";
 
@@ -86,6 +88,7 @@ export function LeaseFormPage() {
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [loadingLease, setLoadingLease] = useState(isEdit);
+  const [pendingLeaseContract, setPendingLeaseContract] = useState<File | null>(null);
   const [form, setForm] = useState({
     unitId: "",
     startDate: "",
@@ -354,6 +357,10 @@ export function LeaseFormPage() {
           rentDueDay,
           notes: form.notes || null
         });
+        if (pendingLeaseContract && primaryTenantId) {
+          await uploadLeaseContractOwner(primaryTenantId, editLeaseId, pendingLeaseContract);
+          setPendingLeaseContract(null);
+        }
         invalidatePropertyWorkspace(propertyId);
         navigate(`/owned-properties/${propertyId}?tab=tenants`);
         return;
@@ -371,7 +378,7 @@ export function LeaseFormPage() {
               : null
       }));
 
-      await createLease(propertyId, {
+      const created = await createLease(propertyId, {
         tenantId: primaryTenantId,
         unitId: form.unitId || null,
         leaseTenants,
@@ -385,6 +392,11 @@ export function LeaseFormPage() {
         rentDueDay,
         notes: form.notes || undefined
       });
+      const newLeaseId = created.id != null ? String(created.id) : "";
+      if (pendingLeaseContract && newLeaseId && primaryTenantId) {
+        await uploadLeaseContractOwner(primaryTenantId, newLeaseId, pendingLeaseContract);
+        setPendingLeaseContract(null);
+      }
       invalidatePropertyWorkspace(propertyId);
       navigate(`/owned-properties/${propertyId}?tab=tenants`);
     } catch (err: unknown) {
@@ -716,6 +728,14 @@ export function LeaseFormPage() {
               <Field label="Notes (optional)">
                 <Input value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
               </Field>
+
+              <LeaseContractUploadSection
+                tenantId={primaryTenantId || null}
+                leaseId={editLeaseId}
+                disabled={saving || tenantsLoading}
+                pendingFile={pendingLeaseContract}
+                onPendingFileChange={setPendingLeaseContract}
+              />
 
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 8 }}>
                 <Button type="submit" loading={saving}>

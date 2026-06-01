@@ -5,6 +5,7 @@ import {
   APPLICANT_DOCUMENT_SLOTS,
   applicantDocumentsCompleteCount
 } from "../../applicants/applicantDocumentSlots";
+import { LEASE_CONTRACT_SLOT_DEF, isLeaseContractSlot } from "../../documents/tenantDocumentSlots";
 import type { TenantDocumentRecord } from "../../../services/tenantDocumentsSupabase";
 import { getTenantDocumentSignedUrl, listTenantDocumentsOwner } from "../../../services/tenantDocumentsSupabase";
 
@@ -39,8 +40,11 @@ export function TenantDocumentsCard({
     void refresh();
   }, [refresh]);
 
-  const bySlot = useMemo(() => new Map(docs.map((d) => [d.documentSlot, d])), [docs]);
-  const uploadedCount = applicantDocumentsCompleteCount(new Set(Array.from(bySlot.keys())));
+  const applicantDocs = useMemo(() => docs.filter((d) => !isLeaseContractSlot(d.documentSlot)), [docs]);
+  const leaseContracts = useMemo(() => docs.filter((d) => isLeaseContractSlot(d.documentSlot)), [docs]);
+
+  const bySlot = useMemo(() => new Map(applicantDocs.map((d) => [d.documentSlot, d])), [applicantDocs]);
+  const applicantUploadedCount = applicantDocumentsCompleteCount(new Set(Array.from(bySlot.keys())));
 
   const openDocument = async (doc: TenantDocumentRecord) => {
     try {
@@ -55,12 +59,14 @@ export function TenantDocumentsCard({
     return <div className="pg-tstmt-documents-card pg-workspace-card pg-tstmt-skeleton" aria-busy="true" />;
   }
 
-  if (!uploadedCount) {
+  const hasAny = applicantUploadedCount > 0 || leaseContracts.length > 0;
+
+  if (!hasAny) {
     return (
       <section className="pg-tstmt-documents-card pg-workspace-card">
         <h2 className="pg-tstmt-documents-card__title">Documents</h2>
         <p className="pg-muted" style={{ margin: 0 }}>
-          No supporting documents uploaded yet.
+          No supporting documents or lease contracts uploaded yet.
         </p>
       </section>
     );
@@ -72,7 +78,7 @@ export function TenantDocumentsCard({
         <div>
           <h2 className="pg-tstmt-documents-card__title">Documents</h2>
           <p className="pg-muted pg-tstmt-documents-card__desc">
-            Vetting documents from the applicant submission ({uploadedCount} of {APPLICANT_DOCUMENT_SLOTS.length}).
+            Vetting documents and signed lease agreements on file.
           </p>
         </div>
       </div>
@@ -93,6 +99,18 @@ export function TenantDocumentsCard({
             </li>
           );
         })}
+        {leaseContracts.map((doc) => (
+          <li key={doc.id} className="pg-tstmt-documents-list__item">
+            <div>
+              <div className="pg-tstmt-documents-list__label">{LEASE_CONTRACT_SLOT_DEF.label}</div>
+              <div className="pg-muted pg-tstmt-documents-list__file">{doc.originalFilename || doc.fileName}</div>
+            </div>
+            <Button type="button" variant="ghost" size="sm" onClick={() => void openDocument(doc)}>
+              <ExternalLink size={14} aria-hidden style={{ marginRight: 4 }} />
+              View
+            </Button>
+          </li>
+        ))}
       </ul>
     </section>
   );

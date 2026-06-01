@@ -6,12 +6,16 @@ import {
 } from "./documentsSupabase";
 import type { ApplicantDocumentSlotId } from "../features/applicants/applicantDocumentSlots";
 import { APPLICANT_DOCUMENT_SLOTS } from "../features/applicants/applicantDocumentSlots";
+import {
+  LEASE_CONTRACT_SLOT,
+  type TenantDocumentSlotId
+} from "../features/documents/tenantDocumentSlots";
 
 const BUCKET = "tenant-documents";
 
 export type TenantDocumentRecord = {
   id: string;
-  documentSlot: ApplicantDocumentSlotId;
+  documentSlot: TenantDocumentSlotId;
   fileName: string;
   mimeType: string | null;
   sizeBytes: number;
@@ -20,12 +24,19 @@ export type TenantDocumentRecord = {
   originalFilename: string | null;
   source?: string;
   uploadedAt: string;
+  leaseId?: string | null;
 };
 
 function mapRow(row: Record<string, unknown>): TenantDocumentRecord {
   return {
     id: String(row.id ?? ""),
-    documentSlot: String(row.documentSlot ?? row.document_slot ?? "") as ApplicantDocumentSlotId,
+    documentSlot: String(row.documentSlot ?? row.document_slot ?? "") as TenantDocumentSlotId,
+    leaseId:
+      row.leaseId != null
+        ? String(row.leaseId)
+        : row.lease_id != null
+          ? String(row.lease_id)
+          : null,
     fileName: String(row.fileName ?? row.file_name ?? ""),
     mimeType: row.mimeType != null ? String(row.mimeType) : row.mime_type != null ? String(row.mime_type) : null,
     sizeBytes: Number(row.sizeBytes ?? row.size_bytes ?? 0),
@@ -46,6 +57,17 @@ function mapRow(row: Record<string, unknown>): TenantDocumentRecord {
 function buildTenantDocumentStorageKey(userId: string, tenantId: string, documentId: string, filename: string): string {
   const safe = sanitizeFilenameForStorage(filename);
   return `${userId}/tenants/${tenantId}/${documentId}-${safe}`;
+}
+
+function buildLeaseContractStorageKey(
+  userId: string,
+  tenantId: string,
+  leaseId: string,
+  documentId: string,
+  filename: string
+): string {
+  const safe = sanitizeFilenameForStorage(filename);
+  return `${userId}/tenants/${tenantId}/leases/${leaseId}/${documentId}-${safe}`;
 }
 
 function parseDocumentList(data: unknown): TenantDocumentRecord[] {
@@ -217,6 +239,105 @@ export async function uploadTenantDocumentOwner(
     }
     throw e instanceof Error ? e : new Error(String(e));
   }
+}
+
+export async function uploadLeaseContractOwner(
+  tenantId: string,
+  leaseId: string,
+  file: File
+): Promise<TenantDocumentRecord> {
+  assertAllowedPropertyDocumentFile(file);
+  const sb = getSupabase();
+  const { data: userData, error: userErr } = await sb.auth.getUser();
+  if (userErr) throw new Error(userErr.message);
+  const uid = userData.user?.id;
+  if (!uid) throw new Error("Not signed in.");
+
+  const { data: leaseRow, error: leaseErr } = await sb
+    .from("leases")
+    .select("id, tenant_id")
+    .eq("id", leaseId)
+    .eq("user_id", uid)
+    .maybeSingle();
+  if (leaseErr) throw new Error(leaseErr.message);
+  if (!leaseRow) throw new Error("Lease not found.");
+
+  const { data: existing, error: existingErr } = await sb
+    .from("tenant_documents")
+    .select("id, storage_key")
+    .eq("lease_id", leaseId)
+    .eq("document_slot", LEASE_CONTRACT_SLOT)
+    .maybeSingle();
+  if (existingErr) throw new Error(existingErr.message);
+
+  const existingRow = existing as { id?: string; storage_key?: string } | null;
+  const docId = existingRow?.id ?? crypto.randomUUID();
+  const oldKey = existingRow?.storage_key ?? null;
+  const key = buildLeaseContractStorageKey(uid, tenantId, leaseId, docId, file.name);
+  const displayName = sanitizeFilenameForStorage(file.name, 200);
+  const originalFilename = file.name.slice(0, 255);
+
+  let uploadedKey: string | null = null;
+  try {
+    const { error: upErr } = await sb.storage.from(BUCKET).upload(key, file, {
+      cacheControl: "3600",
+      upsert: true,
+      contentType: file.type || "application/octet-stream"
+    });
+    if (upErr) throw new Error(upErr.message);
+    uploadedKey = key;
+
+    const rowPayload = {
+      id: docId,
+      user_id: uid,
+      tenant_id: tenantId,
+      lease_id: leaseId,
+      document_slot: LEASE_CONTRACT_SLOT,
+      file_name: displayName,
+      mime_type: file.type || "application/octet-stream",
+      size_bytes: file.size,
+      storage_bucket: BUCKET,
+      storage_key: key,
+      original_filename: originalFilename,
+      source: "lease",
+      uploaded_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+
+    const { data, error } = existingRow?.id
+      ? await sb.from("tenant_documents").update(rowPayload).eq("id", docId).select("*").single()
+      : await sb.from("tenant_documents").insert(rowPayload).select("*").single();
+
+    if (error) throw new Error(error.message);
+
+    if (oldKey && oldKey !== key) {
+      await sb.storage.from(BUCKET).remove([oldKey]);
+    }
+
+    const row = data as Record<string, unknown>;
+    return mapRow({
+      id: row.id,
+      documentSlot: row.document_slot,
+      fileName: row.file_name,
+      mimeType: row.mime_type,
+      sizeBytes: row.size_bytes,
+      storageBucket: row.storage_bucket,
+      storageKey: row.storage_key,
+      originalFilename: row.original_filename,
+      source: row.source,
+      uploadedAt: row.uploaded_at,
+      leaseId: row.lease_id
+    });
+  } catch (e) {
+    if (uploadedKey && uploadedKey !== oldKey) {
+      await sb.storage.from(BUCKET).remove([uploadedKey]);
+    }
+    throw e instanceof Error ? e : new Error(String(e));
+  }
+}
+
+export function findLeaseContractDocument(docs: TenantDocumentRecord[], leaseId: string): TenantDocumentRecord | null {
+  return docs.find((d) => d.documentSlot === LEASE_CONTRACT_SLOT && d.leaseId === leaseId) ?? null;
 }
 
 export async function getTenantDocumentSignedUrl(document: TenantDocumentRecord, expiresInSeconds = 3600): Promise<string> {
