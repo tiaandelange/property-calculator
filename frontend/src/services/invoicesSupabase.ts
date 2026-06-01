@@ -108,6 +108,7 @@ const INVOICE_PROPERTY_LIST_SELECT = `
 const INVOICE_DETAIL_SELECT = `
   *,
   invoice_line_items (*),
+  invoice_payments (*),
   tenants ( id, first_name, last_name, email, phone ),
   properties ( id, name ),
   property_units ( id, unit_name ),
@@ -424,19 +425,59 @@ export async function markInvoiceSent(id: string | number): Promise<Record<strin
 }
 
 export async function markInvoicePaid(id: string | number): Promise<Record<string, unknown>> {
-  const uid = await requireUserId();
+  const inv = await getInvoice(id);
+  const total = n(inv.totalAmount ?? inv.total);
+  const balance = inv.balanceDue != null ? n(inv.balanceDue) : total;
+  const amount = balance > 0 ? balance : total;
+  return recordInvoicePayment(id, {
+    paymentDate: new Date().toISOString().slice(0, 10),
+    amount
+  });
+}
+
+export type RecordInvoicePaymentInput = {
+  paymentDate: string;
+  paymentReference?: string | null;
+  amount: number;
+};
+
+export async function recordInvoicePayment(
+  invoiceId: string | number,
+  input: RecordInvoicePaymentInput
+): Promise<Record<string, unknown>> {
+  await requireUserId();
   const sb = getSupabase();
-  const { data, error } = await sb
-    .from("invoices")
-    .update({
-      status: "PAID",
-      paid_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    })
-    .eq("id", String(id))
-    .eq("user_id", uid)
-    .select("*")
-    .single();
+  const { data, error } = await sb.rpc("record_invoice_payment", {
+    p_invoice_id: String(invoiceId),
+    p_payment_date: input.paymentDate.slice(0, 10),
+    p_payment_reference: input.paymentReference?.trim() || null,
+    p_amount: input.amount
+  });
   if (error) throw toError(error);
-  return dbInvoiceToClient(data as Record<string, unknown>);
+  return rpcInvoiceCreateResultToClient(data as Record<string, unknown>);
+}
+
+export async function updateInvoicePayment(
+  paymentId: string,
+  input: Partial<RecordInvoicePaymentInput>
+): Promise<Record<string, unknown>> {
+  await requireUserId();
+  const sb = getSupabase();
+  const payload: Record<string, unknown> = { p_payment_id: paymentId };
+  if (input.paymentDate != null) payload.p_payment_date = input.paymentDate.slice(0, 10);
+  if (input.paymentReference !== undefined) {
+    payload.p_payment_reference = input.paymentReference?.trim() || null;
+  }
+  if (input.amount != null) payload.p_amount = input.amount;
+  const { data, error } = await sb.rpc("update_invoice_payment", payload);
+  if (error) throw toError(error);
+  return rpcInvoiceCreateResultToClient(data as Record<string, unknown>);
+}
+
+export async function deleteInvoicePayment(paymentId: string): Promise<Record<string, unknown>> {
+  await requireUserId();
+  const sb = getSupabase();
+  const { data, error } = await sb.rpc("delete_invoice_payment", { p_payment_id: paymentId });
+  if (error) throw toError(error);
+  return rpcInvoiceCreateResultToClient(data as Record<string, unknown>);
 }

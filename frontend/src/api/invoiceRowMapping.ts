@@ -1,5 +1,6 @@
 import { snakeRowToCamel } from "./propertyRowMapping";
 import { isInvoiceEditable, normalizeInvoiceStatus } from "../features/invoices/invoiceFoundation";
+import { mapInvoicePayments } from "../features/invoices/invoicePaymentUtils";
 
 function coerceIsoDateField(v: unknown): string {
   if (v == null) return new Date(0).toISOString();
@@ -89,6 +90,12 @@ function nestedLineItems(row: Record<string, unknown>): unknown[] | null {
   return li;
 }
 
+function nestedPayments(row: Record<string, unknown>): unknown[] | null {
+  const p = row.invoice_payments ?? row.invoicePayments ?? row.payments;
+  if (!Array.isArray(p)) return null;
+  return p;
+}
+
 function nestedTenant(row: Record<string, unknown>): Record<string, unknown> | null {
   const t = row.tenants ?? row.tenant;
   if (!t || typeof t !== "object" || Array.isArray(t)) return null;
@@ -124,7 +131,10 @@ function stripInvoiceNestedKeys(row: Record<string, unknown>): Record<string, un
     "property_units",
     "propertyUnits",
     "leases",
-    "lease"
+    "lease",
+    "invoice_payments",
+    "invoicePayments",
+    "payments"
   ]);
   return Object.fromEntries(Object.entries(row).filter(([k]) => !omit.has(k)));
 }
@@ -136,12 +146,14 @@ function stripInvoiceNestedKeys(row: Record<string, unknown>): Record<string, un
 export function dbInvoiceBundleToClient(row: Record<string, unknown>): Record<string, unknown> {
   const rawLines = nestedLineItems(row);
   const lineItems = rawLines?.map((x) => mapLineItem(x as Record<string, unknown>)) ?? [];
+  const rawPayments = nestedPayments(row);
+  const payments = rawPayments ? mapInvoicePayments(rawPayments) : mapInvoicePayments(row.payments);
   const tenant = nestedTenant(row);
   const property = nestedEmbed(row, ["properties", "property"]);
   const unit = nestedEmbed(row, ["property_units", "propertyUnits"]);
   const lease = nestedEmbed(row, ["leases", "lease"]);
   const base = dbInvoiceToClient(stripInvoiceNestedKeys(row));
-  const out: Record<string, unknown> = { ...base, lineItems };
+  const out: Record<string, unknown> = { ...base, lineItems, payments };
   if (tenant) out.tenant = tenant;
   if (property) out.property = property;
   if (unit) out.unit = unit;
@@ -152,9 +164,11 @@ export function dbInvoiceBundleToClient(row: Record<string, unknown>): Record<st
 export function rpcInvoiceCreateResultToClient(payload: Record<string, unknown>): Record<string, unknown> {
   const inv = payload.invoice ?? payload;
   const lines = (payload.line_items ?? payload.lineItems) as unknown;
+  const pays = (payload.payments ?? payload.invoice_payments) as unknown;
   const synthetic = {
     ...(typeof inv === "object" && inv !== null ? (inv as Record<string, unknown>) : {}),
-    line_items: Array.isArray(lines) ? lines : []
+    line_items: Array.isArray(lines) ? lines : [],
+    invoice_payments: Array.isArray(pays) ? pays : []
   };
   return dbInvoiceBundleToClient(synthetic);
 }

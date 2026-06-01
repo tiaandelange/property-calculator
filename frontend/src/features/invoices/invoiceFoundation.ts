@@ -46,6 +46,12 @@ export function isInvoiceTerminal(status: unknown): boolean {
   return ["CANCELLED", "VOID"].includes(normalizeInvoiceStatus(status));
 }
 
+/** Invoice can accept a payment (full or partial). */
+export function canRecordInvoicePayment(status: unknown): boolean {
+  const s = normalizeInvoiceStatus(status);
+  return s !== "PAID" && s !== "CANCELLED" && s !== "VOID";
+}
+
 /** Line-item categories that post as tenant recoveries (invoice-linked credit on statements). */
 export const UTILITY_RECOVERY_CATEGORIES = ["UTILITIES_RECOVERY"] as const;
 

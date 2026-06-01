@@ -4,12 +4,15 @@ import { useQueryClient } from "@tanstack/react-query";
 import { AppIcon, IconButton } from "../../components/icons";
 import {
   createPropertyInvoice,
+  deleteInvoicePayment,
   generateInvoicePdf,
   getInvoice,
   getPropertyTenants,
   hardDeleteInvoice,
   markInvoiceSent,
+  recordInvoicePayment,
   updateInvoice,
+  updateInvoicePayment,
   voidInvoice
 } from "../../api/ownedProperties";
 import { fetchPdfBlob, triggerPdfFileDownload } from "../../api/pdfBlob";
@@ -28,8 +31,16 @@ import {
   fmtZar
 } from "./invoiceDirectoryUtils";
 import { InvoiceStatusBadge } from "./InvoiceStatusBadge";
-import { isInvoiceEditable } from "./invoiceFoundation";
+import { canRecordInvoicePayment, isInvoiceEditable } from "./invoiceFoundation";
 import { InvoiceLineItemsEditor } from "./InvoiceLineItemsEditor";
+import { InvoicePaymentsTable } from "./InvoicePaymentsTable";
+import { InvoiceRecordPaymentModal, type InvoicePaymentFormState } from "./InvoiceRecordPaymentModal";
+import {
+  formatPaymentDateLabel,
+  mapInvoicePayments,
+  sumInvoicePayments,
+  type InvoicePaymentRow
+} from "./invoicePaymentUtils";
 import { getInvoiceAutomationSettings } from "../../services/invoiceAutomationSupabase";
 import {
   calcInvoiceSubtotal,
@@ -49,6 +60,7 @@ import {
   INVOICE_MARK_SENT_MODAL_TITLE,
   INVOICE_SEND_COMING_SOON_MESSAGE,
   canMarkInvoiceSent,
+  invoiceMarkAsPaidMenuLabel,
   invoiceMarkAsSentConfirmLabel,
   invoiceMarkAsSentMenuLabel,
   invoiceSendButtonLabel,
@@ -117,6 +129,10 @@ export function InvoiceDetailPanel({
   const [actionBusy, setActionBusy] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<"delete" | "void" | null>(null);
   const [confirmSend, setConfirmSend] = useState(false);
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const [paymentBusy, setPaymentBusy] = useState(false);
+  const [paymentRowBusy, setPaymentRowBusy] = useState<string | null>(null);
+  const [payments, setPayments] = useState<InvoicePaymentRow[]>([]);
   const [moreOpen, setMoreOpen] = useState(false);
   const moreRef = useRef<HTMLDivElement>(null);
   const [invoiceNumber, setInvoiceNumber] = useState("Draft");
@@ -233,6 +249,7 @@ export function InvoiceDetailPanel({
       if (lines.length) {
         setLineItems(sortInvoiceLineItems(lines.map((l, i) => mapDbLineItem(l, i))));
       }
+      setPayments(mapInvoicePayments(inv.payments));
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Could not load invoice.");
     } finally {
@@ -268,6 +285,11 @@ export function InvoiceDetailPanel({
   const subtotal = useMemo(() => calcInvoiceSubtotal(lineItems), [lineItems]);
   const taxAmount = useMemo(() => calcInvoiceTaxAmount(lineItems), [lineItems]);
   const total = useMemo(() => calcInvoiceTotal(lineItems), [lineItems]);
+  const paymentsTotal = useMemo(() => sumInvoicePayments(payments), [payments]);
+  const defaultPaymentAmount = useMemo(() => {
+    const due = balanceDue > 0 ? balanceDue : total;
+    return due > 0 ? due : total;
+  }, [balanceDue, total]);
 
   useEffect(() => {
     if (!editable) return;
@@ -294,8 +316,14 @@ export function InvoiceDetailPanel({
     }
   };
 
-  const displayBalanceDue = activeId && !editable ? balanceDue : total;
+  const displayBalanceDue =
+    payments.length > 0 || (activeId && !editable)
+      ? Math.max(0, Number.isFinite(balanceDue) ? balanceDue : total - paymentsTotal)
+      : total;
   const bankLines = bankingLines(paymentDetails);
+  const showSendActions =
+    Boolean(activeId) &&
+    (canRecordInvoicePayment(status) || (editable && canMarkInvoiceSent(status)));
 
   const buildPayload = () => ({
     tenantId,
@@ -402,6 +430,92 @@ export function InvoiceDetailPanel({
   const handleSendClick = () => {
     setError("");
     setSuccess(INVOICE_SEND_COMING_SOON_MESSAGE);
+  };
+
+  const openMarkPaidModal = async () => {
+    setError("");
+    if (!activeId) {
+      const saved = await saveInvoice();
+      if (!saved) return;
+    }
+    setPaymentModalOpen(true);
+  };
+
+  const submitRecordedPayment = async (values: InvoicePaymentFormState) => {
+    const amount = Number(values.amount);
+    if (!values.paymentDate || !Number.isFinite(amount) || amount <= 0) {
+      setError("Enter a valid payment date and amount.");
+      return;
+    }
+    setPaymentBusy(true);
+    setError("");
+    setSuccess("");
+    try {
+      let id = activeId;
+      if (!id) {
+        const saved = await saveInvoice();
+        if (!saved) return;
+        id = saved;
+      }
+      const result = await recordInvoicePayment(id, {
+        paymentDate: values.paymentDate,
+        paymentReference: values.paymentReference.trim() || leaseReference,
+        amount
+      });
+      const nextStatus = String((result as { status?: string }).status ?? "");
+      if (nextStatus) setStatus(nextStatus);
+      invalidatePropertyWorkspace(propertyId);
+      await loadInvoice(id);
+      setPaymentModalOpen(false);
+      setSuccess(
+        nextStatus === "PAID"
+          ? "Payment recorded. Invoice marked as paid."
+          : "Payment recorded. Invoice marked as partially paid."
+      );
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Could not record payment.");
+    } finally {
+      setPaymentBusy(false);
+    }
+  };
+
+  const savePaymentRow = async (
+    paymentId: string,
+    patch: { paymentDate: string; paymentReference: string; amount: number }
+  ) => {
+    if (!activeId) return;
+    setPaymentRowBusy(paymentId);
+    setError("");
+    try {
+      await updateInvoicePayment(paymentId, {
+        paymentDate: patch.paymentDate,
+        paymentReference: patch.paymentReference || null,
+        amount: patch.amount
+      });
+      invalidatePropertyWorkspace(propertyId);
+      await loadInvoice(activeId);
+      setSuccess("Payment updated.");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Could not update payment.");
+    } finally {
+      setPaymentRowBusy(null);
+    }
+  };
+
+  const removePaymentRow = async (paymentId: string) => {
+    if (!activeId) return;
+    setPaymentRowBusy(paymentId);
+    setError("");
+    try {
+      await deleteInvoicePayment(paymentId);
+      invalidatePropertyWorkspace(propertyId);
+      await loadInvoice(activeId);
+      setSuccess("Payment removed.");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Could not remove payment.");
+    } finally {
+      setPaymentRowBusy(null);
+    }
   };
 
   const confirmMarkAsSent = async () => {
@@ -518,12 +632,26 @@ export function InvoiceDetailPanel({
   };
 
   const sendMenuItems: SplitButtonMenuItem[] = [
-    {
-      label: invoiceMarkAsSentMenuLabel(),
-      icon: "send",
-      disabled: sendBusy,
-      onClick: () => setConfirmSend(true)
-    },
+    ...(editable && canMarkInvoiceSent(status)
+      ? [
+          {
+            label: invoiceMarkAsSentMenuLabel(),
+            icon: "send",
+            disabled: sendBusy,
+            onClick: () => setConfirmSend(true)
+          } satisfies SplitButtonMenuItem
+        ]
+      : []),
+    ...(canRecordInvoicePayment(status)
+      ? [
+          {
+            label: invoiceMarkAsPaidMenuLabel(),
+            icon: "payments",
+            disabled: paymentBusy,
+            onClick: () => void openMarkPaidModal()
+          } satisfies SplitButtonMenuItem
+        ]
+      : []),
     ...(activeId
       ? [
           {
@@ -642,12 +770,12 @@ export function InvoiceDetailPanel({
                 Save Draft
               </Button>
             ) : null}
-            {editable && canMarkInvoiceSent(status) ? (
+            {showSendActions && sendMenuItems.length > 0 ? (
               <SplitButton
                 mainLabel={invoiceSendButtonLabel()}
                 mainIcon="send"
-                loading={sendBusy}
-                disabled={sendBusy}
+                loading={sendBusy || paymentBusy}
+                disabled={sendBusy || paymentBusy}
                 mobileLarge={false}
                 onMainClick={handleSendClick}
                 menuItems={sendMenuItems}
@@ -787,6 +915,15 @@ export function InvoiceDetailPanel({
             </div>
 
             <aside className="pg-inv-editor__totals" aria-label="Invoice totals">
+              {payments.map((p) => (
+                <div key={p.id} className="pg-inv-editor__totals-row pg-inv-editor__totals-payment">
+                  <span>
+                    Payment · {formatPaymentDateLabel(p.paymentDate)}
+                    {p.paymentReference?.trim() ? ` · ${p.paymentReference.trim()}` : ""}
+                  </span>
+                  <strong>−{fmtZar(p.amount)}</strong>
+                </div>
+              ))}
               <div className="pg-inv-editor__totals-row">
                 <span>Subtotal</span>
                 <strong>{fmtZar(subtotal)}</strong>
@@ -801,6 +938,16 @@ export function InvoiceDetailPanel({
               </div>
             </aside>
           </div>
+
+          {activeId && !editable ? (
+            <InvoicePaymentsTable
+              payments={payments}
+              invoiceTotal={total}
+              busyId={paymentRowBusy}
+              onSave={(paymentId, patch) => void savePaymentRow(paymentId, patch)}
+              onDelete={(paymentId) => void removePaymentRow(paymentId)}
+            />
+          ) : null}
 
           {bankLines.length ? (
             <div className="pg-inv-editor__banking">
@@ -824,12 +971,12 @@ export function InvoiceDetailPanel({
               Preview
             </Button>
           )}
-          {editable && canMarkInvoiceSent(status) ? (
+          {showSendActions && sendMenuItems.length > 0 ? (
             <SplitButton
               mainLabel={invoiceSendButtonLabel()}
               mainIcon="send"
-              loading={sendBusy}
-              disabled={sendBusy}
+              loading={sendBusy || paymentBusy}
+              disabled={sendBusy || paymentBusy}
               onMainClick={handleSendClick}
               menuItems={sendMenuItems}
             />
@@ -858,6 +1005,15 @@ export function InvoiceDetailPanel({
           </p>
         ) : null}
       </ConfirmDialog>
+
+      <InvoiceRecordPaymentModal
+        open={paymentModalOpen}
+        loading={paymentBusy}
+        defaultReference={leaseReference}
+        defaultAmount={defaultPaymentAmount}
+        onClose={() => setPaymentModalOpen(false)}
+        onSubmit={(values) => void submitRecordedPayment(values)}
+      />
 
       <ConfirmDialog
         open={confirmDelete != null}

@@ -19,6 +19,10 @@ export function invoiceMarkAsSentMenuLabel(): string {
   return "Mark as sent";
 }
 
+export function invoiceMarkAsPaidMenuLabel(): string {
+  return "Mark as paid";
+}
+
 export function invoiceMarkAsSentConfirmLabel(): string {
   return "Mark as sent";
 }

@@ -588,6 +588,15 @@
   font-weight: 700;
 }
 
+.pg-inv-editor__totals-payment span:first-child {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}
+
+.pg-inv-editor__totals-payment strong {
+  color: var(--success);
+}
+
 .pg-inv-editor__totals-balance {
   padding-top: 8px;
 }

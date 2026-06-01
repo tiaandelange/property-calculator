@@ -400,6 +400,27 @@ export async function markInvoiceSent(invoiceId: string | number) {
   return invoicesSupabase.markInvoiceSent(invoiceId);
 }
 
+export async function recordInvoicePayment(
+  invoiceId: string | number,
+  payload: invoicesSupabase.RecordInvoicePaymentInput
+) {
+  assertSupabaseConfigured();
+  return invoicesSupabase.recordInvoicePayment(invoiceId, payload);
+}
+
+export async function updateInvoicePayment(
+  paymentId: string,
+  payload: Partial<invoicesSupabase.RecordInvoicePaymentInput>
+) {
+  assertSupabaseConfigured();
+  return invoicesSupabase.updateInvoicePayment(paymentId, payload);
+}
+
+export async function deleteInvoicePayment(paymentId: string) {
+  assertSupabaseConfigured();
+  return invoicesSupabase.deleteInvoicePayment(paymentId);
+}
+
 /** Generate invoice PDF (Vercel + Storage when Supabase env is set). */
 export async function generateInvoicePdf(invoiceId: string | number) {
   assertSupabaseConfigured();
