@@ -21,6 +21,8 @@ export type InvoicePaymentDetailsPayload = {
   branchCode?: string;
   referenceNote?: string;
   extraLines?: string[];
+  /** CC address when invoice emails are sent (defaults to account login email). */
+  ccEmail?: string;
 };
 
 export type MeResponse = {

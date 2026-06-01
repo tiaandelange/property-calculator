@@ -16,6 +16,7 @@ type FormState = {
   branchCode: string;
   referenceNote: string;
   extraLinesText: string;
+  ccEmail: string;
 };
 
 function emptyForm(): FormState {
@@ -25,7 +26,8 @@ function emptyForm(): FormState {
     accountNumber: "",
     branchCode: "",
     referenceNote: "",
-    extraLinesText: ""
+    extraLinesText: "",
+    ccEmail: ""
   };
 }
 
@@ -43,7 +45,8 @@ function formFromApi(raw: unknown): FormState {
     accountNumber: typeof d.accountNumber === "string" ? d.accountNumber : "",
     branchCode: typeof d.branchCode === "string" ? d.branchCode : "",
     referenceNote: typeof d.referenceNote === "string" ? d.referenceNote : "",
-    extraLinesText: extraLines.join("\n")
+    extraLinesText: extraLines.join("\n"),
+    ccEmail: typeof d.ccEmail === "string" ? d.ccEmail : ""
   };
 }
 
@@ -58,7 +61,8 @@ function toPayload(form: FormState): InvoicePaymentDetailsPayload {
     accountNumber: form.accountNumber.trim(),
     branchCode: form.branchCode.trim(),
     referenceNote: form.referenceNote.trim(),
-    extraLines
+    extraLines,
+    ccEmail: form.ccEmail.trim()
   };
 }
 
@@ -80,7 +84,11 @@ export function AccountPage() {
         const me = await fetchMe();
         if (cancelled) return;
         setEmail(me.email ?? "");
-        setForm(formFromApi(me.invoicePaymentDetails));
+        const loaded = formFromApi(me.invoicePaymentDetails);
+        setForm({
+          ...loaded,
+          ccEmail: loaded.ccEmail.trim() || (me.email ?? "").trim()
+        });
       } catch (e: unknown) {
         if (!cancelled) setError((e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? "Could not load account.");
       } finally {
@@ -140,13 +148,25 @@ export function AccountPage() {
         <div id="invoice-payment">
           <Card title="Invoice payment details">
             <p className="pg-muted" style={{ marginTop: 0 }}>
-              These lines appear on generated tenant invoices (PDF). They are not shown on the public website.
+              Banking lines appear on tenant invoice PDFs. The CC email is used when invoice email sending is enabled (tenant receives the invoice; you receive a copy).
             </p>
 
             {loading ? (
               <p className="pg-muted">Loading…</p>
             ) : (
               <div style={{ display: "grid", gap: 16, maxWidth: 520 }}>
+                <Field
+                  label="Invoice copy (CC) email"
+                  help="Copied on invoice emails when sending is enabled. Defaults to your login email."
+                >
+                  <Input
+                    type="email"
+                    value={form.ccEmail}
+                    onChange={(e) => setForm({ ...form, ccEmail: e.target.value })}
+                    autoComplete="email"
+                    placeholder={email || "you@example.com"}
+                  />
+                </Field>
                 <Field label="Bank name">
                   <Input value={form.bankName} onChange={(e) => setForm({ ...form, bankName: e.target.value })} autoComplete="organization" />
                 </Field>

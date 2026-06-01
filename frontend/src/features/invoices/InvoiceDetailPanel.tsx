@@ -45,12 +45,13 @@ import {
 import { dueDateFromIssueDate, mapPropertyTenantRow, type PropertyTenantOption } from "./invoiceEditorUtils";
 import { invoiceStatementPath } from "./invoiceRoutes";
 import {
-  INVOICE_SEND_EMAIL_COMING_SOON,
-  INVOICE_SEND_MODAL_MESSAGE,
-  INVOICE_SEND_MODAL_TITLE,
+  INVOICE_MARK_SENT_MODAL_MESSAGE,
+  INVOICE_MARK_SENT_MODAL_TITLE,
+  INVOICE_SEND_COMING_SOON_MESSAGE,
   canMarkInvoiceSent,
+  invoiceMarkAsSentConfirmLabel,
+  invoiceMarkAsSentMenuLabel,
   invoiceSendButtonLabel,
-  invoiceSendConfirmLabel,
   invoiceSendSuccessMessage,
   isInvoiceEmailDeliveryAvailable
 } from "./invoiceSendWorkflow";
@@ -302,6 +303,7 @@ export function InvoiceDetailPanel({
     invoiceDate: issueDate,
     issueDate,
     dueDate,
+    status: "DRAFT",
     notes: notes.trim() || null,
     subtotal,
     taxAmount,
@@ -397,7 +399,12 @@ export function InvoiceDetailPanel({
     }
   };
 
-  const confirmSendInvoice = async () => {
+  const handleSendClick = () => {
+    setError("");
+    setSuccess(INVOICE_SEND_COMING_SOON_MESSAGE);
+  };
+
+  const confirmMarkAsSent = async () => {
     if (!editable) return;
     setError("");
     setSuccess("");
@@ -512,10 +519,10 @@ export function InvoiceDetailPanel({
 
   const sendMenuItems: SplitButtonMenuItem[] = [
     {
-      label: "Preview",
-      icon: "view",
-      disabled: pdfBusy,
-      onClick: () => void exportPdf()
+      label: invoiceMarkAsSentMenuLabel(),
+      icon: "send",
+      disabled: sendBusy,
+      onClick: () => setConfirmSend(true)
     },
     ...(activeId
       ? [
@@ -642,7 +649,7 @@ export function InvoiceDetailPanel({
                 loading={sendBusy}
                 disabled={sendBusy}
                 mobileLarge={false}
-                onMainClick={() => setConfirmSend(true)}
+                onMainClick={handleSendClick}
                 menuItems={sendMenuItems}
               />
             ) : null}
@@ -823,7 +830,7 @@ export function InvoiceDetailPanel({
               mainIcon="send"
               loading={sendBusy}
               disabled={sendBusy}
-              onMainClick={() => setConfirmSend(true)}
+              onMainClick={handleSendClick}
               menuItems={sendMenuItems}
             />
           ) : locked ? (
@@ -836,18 +843,18 @@ export function InvoiceDetailPanel({
 
       <ConfirmDialog
         open={confirmSend}
-        title={INVOICE_SEND_MODAL_TITLE}
-        confirmLabel={invoiceSendConfirmLabel()}
+        title={INVOICE_MARK_SENT_MODAL_TITLE}
+        confirmLabel={invoiceMarkAsSentConfirmLabel()}
         loading={sendBusy}
         onClose={() => setConfirmSend(false)}
-        onConfirm={() => void confirmSendInvoice()}
+        onConfirm={() => void confirmMarkAsSent()}
       >
         <p className="pg-muted" style={{ margin: 0 }}>
-          {INVOICE_SEND_MODAL_MESSAGE}
+          {INVOICE_MARK_SENT_MODAL_MESSAGE}
         </p>
         {!isInvoiceEmailDeliveryAvailable() ? (
           <p className="pg-text-helper" style={{ margin: "12px 0 0" }}>
-            {INVOICE_SEND_EMAIL_COMING_SOON}
+            Email delivery is not enabled yet. This marks the invoice as sent without emailing the tenant.
           </p>
         ) : null}
       </ConfirmDialog>

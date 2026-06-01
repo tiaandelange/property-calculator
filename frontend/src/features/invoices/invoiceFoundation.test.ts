@@ -1,10 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { isInvoiceEditable, normalizeInvoiceStatus } from "./invoiceFoundation";
+import { invoiceStatementUiStatus, invoiceStatusLabel, isInvoiceEditable, normalizeInvoiceStatus } from "./invoiceFoundation";
 
 describe("invoiceFoundation", () => {
   it("normalizes unknown status to DRAFT", () => {
     expect(normalizeInvoiceStatus("draft")).toBe("DRAFT");
     expect(normalizeInvoiceStatus("bogus")).toBe("DRAFT");
+  });
+
+  it("maps GENERATED to DRAFT for statement display", () => {
+    expect(invoiceStatementUiStatus("GENERATED")).toBe("DRAFT");
+    expect(invoiceStatusLabel("GENERATED")).toBe("Draft");
   });
 
   it("allows edit only for draft and generated", () => {

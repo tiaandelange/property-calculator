@@ -2,8 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   INVOICE_EMAIL_DELIVERY_ENABLED,
   canMarkInvoiceSent,
+  invoiceMarkAsSentConfirmLabel,
+  invoiceMarkAsSentMenuLabel,
   invoiceSendButtonLabel,
-  invoiceSendConfirmLabel,
   isInvoiceEmailDeliveryAvailable
 } from "./invoiceSendWorkflow";
 
@@ -15,10 +16,11 @@ describe("invoiceSendWorkflow", () => {
     expect(canMarkInvoiceSent("PAID")).toBe(false);
   });
 
-  it("uses Mark as Sent labels when email delivery is disabled", () => {
+  it("uses Send as main action and Mark as sent in menu when email delivery is disabled", () => {
     expect(INVOICE_EMAIL_DELIVERY_ENABLED).toBe(false);
     expect(isInvoiceEmailDeliveryAvailable()).toBe(false);
-    expect(invoiceSendButtonLabel()).toBe("Mark as Sent");
-    expect(invoiceSendConfirmLabel()).toBe("Mark as Sent");
+    expect(invoiceSendButtonLabel()).toBe("Send");
+    expect(invoiceMarkAsSentMenuLabel()).toBe("Mark as sent");
+    expect(invoiceMarkAsSentConfirmLabel()).toBe("Mark as sent");
   });
 });

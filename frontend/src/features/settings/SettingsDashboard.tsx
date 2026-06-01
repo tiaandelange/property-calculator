@@ -634,6 +634,10 @@ export function SettingsDashboard() {
         </SettingsCard>
 
         <SettingsCard icon="invoices" title="Invoices & Statements" description="Automation and PDF preferences.">
+          <p className="pg-settings-field-hint" style={{ marginTop: 0 }}>
+            Banking details and the email address copied when invoices are sent are under{" "}
+            <Link to="/account#invoice-payment">Account → Invoice payment details</Link>.
+          </p>
           <div className="pg-settings-field">
             <label htmlFor="settings-inv-format">Invoice number format</label>
             <input

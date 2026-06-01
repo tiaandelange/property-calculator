@@ -30,10 +30,15 @@ export function isInvoiceEditable(status: unknown): boolean {
   return INVOICE_EDITABLE_STATUSES.has(normalizeInvoiceStatus(status));
 }
 
+/** Statement/UI grouping: GENERATED is shown as draft. */
+export function invoiceStatementUiStatus(status: unknown): InvoiceStatus {
+  const s = normalizeInvoiceStatus(status);
+  return s === "GENERATED" ? "DRAFT" : s;
+}
+
 /** User-facing status label (GENERATED displays as Draft). */
 export function invoiceStatusLabel(status: unknown): string {
-  const s = normalizeInvoiceStatus(status);
-  if (s === "GENERATED") return "Draft";
+  const s = invoiceStatementUiStatus(status);
   return s.replace(/_/g, " ").toLowerCase().replace(/^\w/, (c) => c.toUpperCase());
 }
 

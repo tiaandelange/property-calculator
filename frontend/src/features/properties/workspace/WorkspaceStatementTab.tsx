@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { ChevronDown } from "lucide-react";
 import { AppIcon, IconButton } from "../../../components/icons";
 import { asArray } from "../../../lib/asArray";
+import { invoiceStatementUiStatus } from "../../invoices/invoiceFoundation";
 import { invoiceDetailPath } from "../../invoices/invoiceRoutes";
 import {
   canEditStatementRow,
@@ -50,7 +51,6 @@ type StatementDraft = {
 
 const INVOICE_STATUS_UI = [
   { value: "DRAFT", label: "Draft", api: "DRAFT" },
-  { value: "GENERATED", label: "Generated", api: "GENERATED" },
   { value: "SENT", label: "Sent", api: "SENT" },
   { value: "DUE", label: "Due", api: "DUE" },
   { value: "UNPAID", label: "Unpaid", api: "SENT" },
@@ -103,14 +103,10 @@ function canEditRow(r: Record<string, unknown>): boolean {
 }
 
 function invoiceUiStatus(raw: string): string {
-  const s = String(raw ?? "").toUpperCase();
-  if (s === "PAID") return "PAID";
-  if (s === "OVERDUE") return "OVERDUE";
-  if (s === "CANCELLED") return "CANCELLED";
-  if (s === "DRAFT") return "DRAFT";
-  if (s === "GENERATED") return "GENERATED";
-  if (s === "DUE") return "DUE";
-  if (s === "PARTIALLY_PAID") return "PARTIALLY_PAID";
+  const s = invoiceStatementUiStatus(raw);
+  if (s === "PAID" || s === "OVERDUE" || s === "CANCELLED" || s === "DRAFT" || s === "DUE" || s === "PARTIALLY_PAID") {
+    return s;
+  }
   return "SENT";
 }
 

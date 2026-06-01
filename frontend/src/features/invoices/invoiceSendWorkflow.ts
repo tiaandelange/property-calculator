@@ -12,26 +12,47 @@ export function canMarkInvoiceSent(status: unknown): boolean {
 }
 
 export function invoiceSendButtonLabel(): string {
-  return isInvoiceEmailDeliveryAvailable() ? "Send Invoice" : "Mark as Sent";
+  return "Send";
 }
 
+export function invoiceMarkAsSentMenuLabel(): string {
+  return "Mark as sent";
+}
+
+export function invoiceMarkAsSentConfirmLabel(): string {
+  return "Mark as sent";
+}
+
+export const INVOICE_SEND_COMING_SOON_MESSAGE =
+  "Sending invoices by email is coming soon. The invoice will be emailed to the tenant, with a copy to the CC address in your account invoice settings.";
+
+export const INVOICE_MARK_SENT_MODAL_TITLE = "Mark invoice as sent?";
+
+export const INVOICE_MARK_SENT_MODAL_MESSAGE =
+  "The invoice will be locked for editing. You can still view, export, or delete/void it according to your accounting rules.";
+
+/** @deprecated Use INVOICE_MARK_SENT_MODAL_TITLE */
+export const INVOICE_SEND_MODAL_TITLE = INVOICE_MARK_SENT_MODAL_TITLE;
+
+/** @deprecated Use INVOICE_MARK_SENT_MODAL_MESSAGE */
+export const INVOICE_SEND_MODAL_MESSAGE = INVOICE_MARK_SENT_MODAL_MESSAGE;
+
+/** @deprecated Email delivery not enabled yet */
+export const INVOICE_SEND_EMAIL_COMING_SOON = INVOICE_SEND_COMING_SOON_MESSAGE;
+
+/** @deprecated Use invoiceMarkAsSentConfirmLabel */
 export function invoiceSendConfirmLabel(): string {
-  return isInvoiceEmailDeliveryAvailable() ? "Send Invoice" : "Mark as Sent";
+  return invoiceMarkAsSentConfirmLabel();
 }
 
-export const INVOICE_SEND_MODAL_TITLE = "Send invoice?";
-
-export const INVOICE_SEND_MODAL_MESSAGE =
-  "Once this invoice is sent, it can no longer be edited. You will still be able to view, export or delete/void it according to your accounting rules.";
-
-export const INVOICE_SEND_EMAIL_COMING_SOON = "Email sending coming later.";
+export function invoiceMarkAsSentSuccessMessage(): string {
+  return "Invoice marked as sent and locked for editing.";
+}
 
 export function invoiceSendSuccessMessage(statusBeforeSend: unknown): string {
-  const wasGenerated = normalizeInvoiceStatus(statusBeforeSend) === "GENERATED";
+  void statusBeforeSend;
   if (isInvoiceEmailDeliveryAvailable()) {
-    return wasGenerated ? "Invoice sent to tenant." : "Invoice sent to tenant.";
+    return "Invoice sent to tenant.";
   }
-  return wasGenerated
-    ? "Invoice marked as sent and locked for editing."
-    : "Invoice marked as sent and locked for editing.";
+  return invoiceMarkAsSentSuccessMessage();
 }
