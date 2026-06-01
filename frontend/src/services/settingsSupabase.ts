@@ -61,6 +61,8 @@ function mapRow(row: DbRow | null): UserSettings {
       Number(row.invoice_generate_days_before_due ?? DEFAULT_USER_SETTINGS.invoiceGenerateDaysBeforeDue),
     invoiceNumberFormat: row.invoice_number_format ?? DEFAULT_USER_SETTINGS.invoiceNumberFormat,
     pdfBrandingEnabled: row.pdf_branding_enabled ?? DEFAULT_USER_SETTINGS.pdfBrandingEnabled,
+    useBusinessForFinancials:
+      row.use_business_for_financials ?? DEFAULT_USER_SETTINGS.useBusinessForFinancials,
     paymentReminderDaysBeforeDue:
       Number(row.payment_reminder_days_before_due ?? DEFAULT_USER_SETTINGS.paymentReminderDaysBeforeDue),
     overdueAlertsEnabled: row.overdue_alerts_enabled ?? DEFAULT_USER_SETTINGS.overdueAlertsEnabled,

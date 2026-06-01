@@ -34,12 +34,12 @@ import type {
 import { queryKeys } from "../../lib/queryKeys";
 import { useWorkspaceId } from "./useWorkspaceId";
 
-export function useSettingsQuery() {
+export function useSettingsQuery(opts?: { enabled?: boolean }) {
   const workspaceId = useWorkspaceId();
   return useQuery({
     queryKey: workspaceId ? queryKeys.settings(workspaceId) : ["settings", "anonymous"],
     queryFn: getOrCreateUserSettings,
-    enabled: Boolean(workspaceId),
+    enabled: Boolean(workspaceId) && (opts?.enabled ?? true),
     staleTime: STALE_TIME_METADATA_MS,
     gcTime: GC_TIME_MS
   });
