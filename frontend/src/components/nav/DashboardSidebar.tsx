@@ -32,18 +32,24 @@ function SidebarLink({
   const icon = <AppIcon name={item.icon} size="lg" strokeWidth={active ? 2.25 : 2} />;
   const label = <span className="pg-dashboard-sidebar-link-label">{item.label}</span>;
 
-  const inner =
-    item.disabled || !item.to ? (
-      <span className={className} aria-disabled="true">
-        {icon}
-        {label}
-      </span>
-    ) : onClick ? (
-      <button type="button" className={className} onClick={onClick}>
-        {icon}
-        {label}
-      </button>
-    ) : (
+  if (!collapsed) {
+    if (item.disabled || !item.to) {
+      return (
+        <span className={className} aria-disabled="true">
+          {icon}
+          {label}
+        </span>
+      );
+    }
+    if (onClick) {
+      return (
+        <button type="button" className={className} onClick={onClick}>
+          {icon}
+          {label}
+        </button>
+      );
+    }
+    return (
       <Link
         to={item.to}
         className={className}
@@ -54,18 +60,36 @@ function SidebarLink({
         {label}
       </Link>
     );
-
-  if (!collapsed) {
-    return inner;
   }
 
+  const iconOnly =
+    item.disabled || !item.to ? (
+      <span className={className} aria-disabled="true" aria-label={item.label}>
+        {icon}
+      </span>
+    ) : onClick ? (
+      <button type="button" className={className} onClick={onClick} aria-label={item.label}>
+        {icon}
+      </button>
+    ) : (
+      <Link
+        to={item.to}
+        className={className}
+        aria-label={item.label}
+        aria-current={active ? "page" : undefined}
+        {...(onWarm ? onWarm() : {})}
+      >
+        {icon}
+      </Link>
+    );
+
   return (
-    <div className="pg-workspace-rail-tooltip-wrap">
-      {inner}
-      <span className="pg-workspace-rail-tooltip" role="tooltip">
+    <span className="pg-icon-action-wrap pg-dashboard-sidebar-icon-wrap">
+      {iconOnly}
+      <span className="pg-icon-action-tooltip pg-dashboard-sidebar-icon-tooltip" role="tooltip">
         {item.label}
       </span>
-    </div>
+    </span>
   );
 }
 
@@ -129,15 +153,19 @@ export function DashboardSidebar({
 
       <div className="pg-dashboard-sidebar-footer">
         {collapsed ? (
-          <div className="pg-workspace-rail-tooltip-wrap">
-            <button type="button" className="pg-dashboard-sidebar-link pg-dashboard-sidebar-logout" onClick={() => void logout()}>
+          <span className="pg-icon-action-wrap pg-dashboard-sidebar-icon-wrap">
+            <button
+              type="button"
+              className="pg-dashboard-sidebar-link pg-dashboard-sidebar-logout"
+              onClick={() => void logout()}
+              aria-label="Log out"
+            >
               <AppIcon name="logout" size="lg" strokeWidth={2} />
-              <span className="pg-dashboard-sidebar-link-label">Log out</span>
             </button>
-            <span className="pg-workspace-rail-tooltip" role="tooltip">
+            <span className="pg-icon-action-tooltip pg-dashboard-sidebar-icon-tooltip" role="tooltip">
               Log out
             </span>
-          </div>
+          </span>
         ) : (
           <button type="button" className="pg-dashboard-sidebar-link pg-dashboard-sidebar-logout" onClick={() => void logout()}>
             <AppIcon name="logout" size="lg" strokeWidth={2} />
