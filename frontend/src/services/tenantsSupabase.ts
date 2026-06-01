@@ -238,8 +238,8 @@ export async function listTenantsForProperty(propertyId: string | number): Promi
 }
 
 /**
- * Global tenants eligible for a new lease on this property.
- * Uses the single tenants directory — excludes past tenants and anyone with an active lease.
+ * Active tenants eligible for a new lease on this property.
+ * Excludes applicants (promote to tenant first), past tenants, and anyone with an active lease.
  */
 export async function listTenantsEligibleForProperty(
   propertyId: string | number
@@ -277,7 +277,7 @@ export async function listTenantsEligibleForProperty(
     .filter((row) => {
       const r = row as { id: string; status?: string };
       const status = String(r.status ?? "ACTIVE").toUpperCase();
-      if (status === "PAST") return false;
+      if (status === "PAST" || status === "APPLICANT") return false;
       return !tenantsWithActiveLease.has(String(r.id));
     })
     .map((row) => dbToTenant(row as Record<string, unknown>));

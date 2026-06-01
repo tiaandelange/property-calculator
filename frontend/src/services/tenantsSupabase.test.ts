@@ -117,8 +117,9 @@ describe("tenantsSupabase", () => {
     });
 
     const rows = await listTenantsEligibleForProperty(propertyId);
-    expect(rows.map((r) => r.id)).toEqual(expect.arrayContaining(["t-applicant", tenantId]));
+    expect(rows.map((r) => r.id)).toEqual(expect.arrayContaining([tenantId]));
     expect(rows.map((r) => r.id)).not.toContain("t-past");
+    expect(rows.map((r) => r.id)).not.toContain("t-applicant");
   });
 
   it("listTenantsEligibleForProperty excludes tenants with an active lease", async () => {

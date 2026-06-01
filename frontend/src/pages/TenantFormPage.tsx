@@ -148,7 +148,7 @@ export function TenantFormPage() {
           <AppPageTitle>{pageTitle}</AppPageTitle>
           <AppPageSubtitle>
             {isApplicant
-              ? "Applicants are contact records in your vetting pipeline. Link to a property and create a lease when ready."
+              ? "Applicants are contact records in your vetting pipeline. Promote to a tenant before creating a lease."
               : "Tenants are global contact records. Link a tenant to a property and unit by creating a lease."}
           </AppPageSubtitle>
         </div>

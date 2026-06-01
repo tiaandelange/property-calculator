@@ -216,6 +216,8 @@ export async function getCurrentLease(propertyId: string | number): Promise<{
 function mapRpcExceptionMessage(code: string): string {
   const map: Record<string, string> = {
     TENANT_HAS_ACTIVE_LEASE: "This tenant already has a current lease. Cancel the existing lease before creating a new one.",
+    APPLICANT_NOT_ELIGIBLE_FOR_LEASE:
+      "Applicants cannot be added to a lease. Create or promote a tenant from the applicant first.",
     NOT_AUTHENTICATED: "Not signed in.",
     PROPERTY_NOT_FOUND: "Property not found",
     INVALID_TENANT: "Invalid tenant",
@@ -368,6 +370,7 @@ export async function createLease(propertyId: string | number, input: Record<str
     const raw = error.message ?? "";
     if (
       raw.includes("TENANT_HAS_ACTIVE_LEASE") ||
+      raw.includes("APPLICANT_NOT_ELIGIBLE_FOR_LEASE") ||
       raw.includes("PROPERTY_NOT_FOUND") ||
       raw.includes("INVALID_TENANT") ||
       raw.includes("INVALID_UNIT") ||
