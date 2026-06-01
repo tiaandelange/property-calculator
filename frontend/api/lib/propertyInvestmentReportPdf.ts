@@ -1,4 +1,4 @@
-import type { Content, TDocumentDefinitions } from "pdfmake/interfaces";
+import type { Content, StyleDictionary, TDocumentDefinitions } from "pdfmake/interfaces";
 import {
   brandedHeader,
   buildDefaultPdfStyles,
@@ -11,9 +11,14 @@ import {
   PDF_SPACING
 } from "./pdf/globalPdfLayout.js";
 import { buildGlobalPdfTheme } from "./pdf/globalPdfTheme.js";
-import { formatPdfDate } from "./pdf/pdfFormat.js";
+import { formatPdfDate, formatPdfZar } from "./pdf/pdfFormat.js";
+import { loadProplyticLogoDataUrl } from "./pdf/pdfLogoAsset.js";
 import type { PropertyInvestmentReportModel } from "./propertyInvestmentReportData.js";
-import { formatPct, formatZar } from "./propertyInvestmentReportData.js";
+import { formatPct } from "./propertyInvestmentReportData.js";
+
+function formatZar(amount: number): string {
+  return formatPdfZar(amount);
+}
 
 function sectionTitle(text: string, pageBreak = false): Content {
   return {
@@ -120,10 +125,14 @@ export function buildPropertyInvestmentReportPdfDefinition(
   accentColor?: string | null
 ): TDocumentDefinitions {
   const theme = buildGlobalPdfTheme({ accentColor });
-  const styles = {
+  const styles: StyleDictionary = {
     ...buildDefaultPdfStyles(theme),
-    sectionHeading: { fontSize: 13, bold: true, color: theme.primaryColor, margin: [0, 8, 0, 6] },
-    cardFill: { fillColor: theme.lightFill }
+    sectionHeading: {
+      fontSize: 13,
+      bold: true,
+      color: theme.primaryColor,
+      margin: pdfMargin(0, 8, 0, 6)
+    }
   };
 
   const generatedLabel = formatPdfDate(model.generatedAt.slice(0, 10));
@@ -144,6 +153,7 @@ export function buildPropertyInvestmentReportPdfDefinition(
 
   const content: Content[] = [
     brandedHeader({
+      logoDataUrl: loadProplyticLogoDataUrl(),
       brandTitle: "Proplytic",
       rightStack: [
         { text: "Property Investment Report", style: "documentTitle", alignment: "right" },
@@ -279,9 +289,21 @@ export function buildPropertyInvestmentReportPdfDefinition(
   return {
     info: { title: `Proplytic — ${model.property.name}` },
     pageMargins: PDF_PAGE_MARGINS,
+    background: () => ({
+      canvas: [
+        {
+          type: "rect",
+          x: 0,
+          y: 0,
+          w: 595.28,
+          h: 841.89,
+          color: theme.backgroundColor
+        }
+      ]
+    }),
     content,
     styles,
-    defaultStyle: { font: "Roboto", fontSize: 9, color: theme.textColor },
+    defaultStyle: { font: theme.fontFamily, fontSize: 10, color: theme.textColor },
     footer: buildPdfFooter(theme, "Proplytic")
   };
 }
