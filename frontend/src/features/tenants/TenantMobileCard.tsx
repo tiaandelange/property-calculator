@@ -1,6 +1,12 @@
 import { Link } from "react-router-dom";
 import type { TenantListItem } from "./tenantDirectoryTypes";
-import { fmtZar, tenantInitials, tenantRowDisplayName } from "./tenantDirectoryUtils";
+import {
+  fmtZar,
+  tenantInitials,
+  tenantRowContactEmail,
+  tenantRowContactPhone,
+  tenantRowDisplayName
+} from "./tenantDirectoryUtils";
 import { LeaseStatusBadge, PaymentStatusBadge } from "./TenantStatusBadges";
 import { TenantRowActions } from "./TenantRowActions";
 
@@ -33,7 +39,8 @@ export function TenantMobileCard({
           {tenant.monthlyRent != null ? <span className="pg-tenants-sub"> /mo</span> : null}
         </div>
       </div>
-      <div className="pg-tenants-sub">{tenant.phone?.trim() || "No phone"}</div>
+      <div className="pg-tenants-sub">{tenantRowContactEmail(tenant) || "No email"}</div>
+      <div className="pg-tenants-sub">{tenantRowContactPhone(tenant) || "No phone"}</div>
       <div className="pg-tenants-mobile-card-foot">
         <div className="pg-tenants-mobile-badges">
           <PaymentStatusBadge status={tenant.paymentStatus} />

@@ -30,6 +30,7 @@ export type TenantListItem = {
   targetRent?: number | null;
   applicationSubmittedAt?: string | null;
   applicationGroupId?: string | null;
+  applicantGroupRole?: string | null;
   coApplicantTenantId?: string | null;
   /** All tenant ids in a joint application (for delete). */
   memberTenantIds?: string[];

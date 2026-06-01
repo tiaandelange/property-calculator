@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type { TenantListItem } from "./tenantDirectoryTypes";
-import { matchesTenantDirectoryFilters, paginate, PAGE_SIZE } from "./tenantDirectoryUtils";
+import {
+  matchesTenantDirectoryFilters,
+  paginate,
+  PAGE_SIZE,
+  tenantRowContactField
+} from "./tenantDirectoryUtils";
 
 const baseItem = (patch: Partial<TenantListItem>): TenantListItem =>
   ({
@@ -28,6 +33,21 @@ const baseItem = (patch: Partial<TenantListItem>): TenantListItem =>
     nextPaymentDueDate: null,
     ...patch
   }) as TenantListItem;
+
+describe("tenantRowContactField", () => {
+  it("returns the value unchanged when not grouped", () => {
+    expect(tenantRowContactField("jane@example.com", "PRIMARY")).toBe("jane@example.com");
+  });
+
+  it("splits grouped values for primary and co roles", () => {
+    expect(tenantRowContactField("a@x.com & b@y.com", "PRIMARY")).toBe("a@x.com");
+    expect(tenantRowContactField("a@x.com & b@y.com", "CO")).toBe("b@y.com");
+  });
+
+  it("dedupes identical grouped values", () => {
+    expect(tenantRowContactField("082 & 082", "PRIMARY")).toBe("082");
+  });
+});
 
 describe("tenantDirectoryUtils pagination", () => {
   it("paginates with stable page size", () => {

@@ -7,7 +7,7 @@ import type {
   TenantDirectoryMetrics,
   TenantListItem
 } from "../features/tenants/tenantDirectoryTypes";
-import { PAGE_SIZE } from "../features/tenants/tenantDirectoryUtils";
+import { PAGE_SIZE, sanitizeTenantContactFields } from "../features/tenants/tenantDirectoryUtils";
 import type { TenantsDirectoryParams } from "../lib/queryKeys";
 import { leaseDisplayStatus } from "../utils/leaseDisplay";
 import { listTenantDocumentsOwner } from "./tenantDocumentsSupabase";
@@ -96,6 +96,7 @@ function mapTenantDirectoryItem(raw: Record<string, unknown>): TenantListItem {
     targetRent: raw.targetRent != null ? Number(raw.targetRent) : null,
     applicationSubmittedAt: raw.applicationSubmittedAt != null ? String(raw.applicationSubmittedAt) : null,
     applicationGroupId: raw.applicationGroupId != null ? String(raw.applicationGroupId) : null,
+    applicantGroupRole: raw.applicantGroupRole != null ? String(raw.applicantGroupRole) : null,
     coApplicantTenantId: raw.coApplicantTenantId != null ? String(raw.coApplicantTenantId) : null,
     memberTenantIds: Array.isArray(raw.memberTenantIds)
       ? (raw.memberTenantIds as unknown[]).map((id) => String(id))
@@ -280,7 +281,7 @@ export async function listTenantsEligibleForProperty(
       if (status === "PAST" || status === "APPLICANT") return false;
       return !tenantsWithActiveLease.has(String(r.id));
     })
-    .map((row) => dbToTenant(row as Record<string, unknown>));
+    .map((row) => sanitizeTenantContactFields(dbToTenant(row as Record<string, unknown>)));
 }
 
 /** `GET /tenants/:id` shape: `{ tenant, currentLease }`. */
@@ -315,7 +316,10 @@ export async function getTenant(
 
   const current = leaseRows.find((lr) => isCurrentLeaseStatus((lr as { status: string }).status)) ?? null;
 
-  const tenant = { ...dbToTenant(row as Record<string, unknown>), leases: leasesCamel };
+  const tenant = sanitizeTenantContactFields({
+    ...dbToTenant(row as Record<string, unknown>),
+    leases: leasesCamel
+  });
 
   return {
     tenant,

@@ -1,4 +1,5 @@
 import type { TenantListItem } from "./tenantDirectoryTypes";
+import { tenantRowContactEmail } from "./tenantDirectoryUtils";
 import { ProplyticTableRowActionsMenu } from "../../components/tables";
 
 export function TenantRowActions({
@@ -8,10 +9,8 @@ export function TenantRowActions({
   tenant: TenantListItem;
   onDelete?: (tenant: TenantListItem) => void;
 }) {
-  const mailHref =
-    tenant.email && tenant.email.trim()
-      ? `mailto:${encodeURIComponent(tenant.email.trim())}`
-      : undefined;
+  const email = tenantRowContactEmail(tenant);
+  const mailHref = email ? `mailto:${encodeURIComponent(email)}` : undefined;
 
   return (
     <ProplyticTableRowActionsMenu

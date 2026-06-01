@@ -13,6 +13,46 @@ export function formatDateShort(iso: string | null | undefined): string {
   return d.toLocaleDateString("en-ZA", { day: "numeric", month: "short", year: "numeric" });
 }
 
+const GROUPED_CONTACT_SEP = " & ";
+
+/** One person's email or phone; splits legacy "a & b" combined values from joint applications. */
+export function tenantRowContactField(
+  raw: string | null | undefined,
+  applicantGroupRole?: string | null
+): string | null {
+  const value = raw?.trim();
+  if (!value) return null;
+  if (!value.includes(GROUPED_CONTACT_SEP)) return value;
+  const parts = value.split(GROUPED_CONTACT_SEP).map((p) => p.trim()).filter(Boolean);
+  if (!parts.length) return null;
+  const unique = [...new Set(parts)];
+  if (unique.length === 1) return unique[0] ?? null;
+  if (applicantGroupRole === "CO") return parts[parts.length - 1] ?? unique[0] ?? null;
+  return parts[0] ?? null;
+}
+
+export function tenantRowContactEmail(
+  item: Pick<TenantListItem, "email" | "applicantGroupRole">
+): string | null {
+  return tenantRowContactField(item.email, item.applicantGroupRole);
+}
+
+export function tenantRowContactPhone(
+  item: Pick<TenantListItem, "phone" | "applicantGroupRole">
+): string | null {
+  return tenantRowContactField(item.phone, item.applicantGroupRole);
+}
+
+/** Normalize tenant record contact fields after load (lease form, workspace, edit). */
+export function sanitizeTenantContactFields(tenant: Record<string, unknown>): Record<string, unknown> {
+  const role = tenant.applicantGroupRole != null ? String(tenant.applicantGroupRole) : null;
+  return {
+    ...tenant,
+    email: tenantRowContactField(tenant.email != null ? String(tenant.email) : null, role),
+    phone: tenantRowContactField(tenant.phone != null ? String(tenant.phone) : null, role)
+  };
+}
+
 /** Individual tenant name (never the joint "A & B" label used on the applicants tab). */
 export function tenantRowDisplayName(
   item: Pick<TenantListItem, "firstName" | "lastName" | "fullName">
