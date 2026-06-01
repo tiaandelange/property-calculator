@@ -16,9 +16,9 @@ describe("invoiceSendWorkflow", () => {
     expect(canMarkInvoiceSent("PAID")).toBe(false);
   });
 
-  it("uses Send as main action and Mark as sent in menu when email delivery is disabled", () => {
-    expect(INVOICE_EMAIL_DELIVERY_ENABLED).toBe(false);
-    expect(isInvoiceEmailDeliveryAvailable()).toBe(false);
+  it("enables email delivery for Send button flow", () => {
+    expect(INVOICE_EMAIL_DELIVERY_ENABLED).toBe(true);
+    expect(isInvoiceEmailDeliveryAvailable()).toBe(true);
     expect(invoiceSendButtonLabel()).toBe("Send");
     expect(invoiceMarkAsSentMenuLabel()).toBe("Mark as sent");
     expect(invoiceMarkAsSentConfirmLabel()).toBe("Mark as sent");

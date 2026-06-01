@@ -23,6 +23,10 @@ export type InvoicePaymentDetailsPayload = {
   extraLines?: string[];
   /** CC address when invoice emails are sent (defaults to account login email). */
   ccEmail?: string;
+  /** Optional default invoice email subject ({propertyName}, {invoiceNumber}, …). */
+  defaultInvoiceEmailSubject?: string;
+  /** Optional default invoice email body ({tenantFirstName}, {formattedTotalAmount}, …). */
+  defaultInvoiceEmailBody?: string;
 };
 
 export type MeResponse = {

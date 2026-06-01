@@ -1,7 +1,7 @@
 import { isInvoiceEditable } from "./invoiceFoundation";
 
 /** True only when the Vercel email route delivers mail (not scaffold / SMTP-only). */
-export const INVOICE_EMAIL_DELIVERY_ENABLED = false;
+export const INVOICE_EMAIL_DELIVERY_ENABLED = true;
 
 export function isInvoiceEmailDeliveryAvailable(): boolean {
   return INVOICE_EMAIL_DELIVERY_ENABLED;

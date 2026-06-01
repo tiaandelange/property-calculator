@@ -470,9 +470,15 @@ export async function createCurrentInvoiceFromLease(propertyId: string | number,
   return operationsSupabase.createInvoiceFromLease(String(propertyId), leaseUuid);
 }
 
-export async function sendInvoiceEmail(invoiceId: string | number) {
+export async function sendInvoiceEmail(
+  invoiceId: string | number,
+  payload: Omit<import("../services/invoicesEmailVercel").SendInvoiceEmailPayload, "invoiceId">
+) {
   assertSupabaseConfigured();
-  return sendInvoiceEmailViaVercel(String(invoiceId));
+  return sendInvoiceEmailViaVercel({
+    invoiceId: String(invoiceId),
+    ...payload
+  });
 }
 
 export async function getPropertyWorkspaceReports(propertyId: string | number) {

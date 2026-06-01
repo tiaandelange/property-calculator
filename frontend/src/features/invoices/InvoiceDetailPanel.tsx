@@ -11,6 +11,7 @@ import {
   hardDeleteInvoice,
   markInvoiceSent,
   recordInvoicePayment,
+  sendInvoiceEmail,
   updateInvoice,
   updateInvoicePayment,
   voidInvoice
@@ -40,6 +41,7 @@ import {
 import { InvoiceLineItemsEditor } from "./InvoiceLineItemsEditor";
 import { InvoicePaymentsTable } from "./InvoicePaymentsTable";
 import { InvoiceRecordPaymentModal, type InvoicePaymentFormState } from "./InvoiceRecordPaymentModal";
+import { InvoiceSendEmailModal, type InvoiceSendEmailFormState } from "./InvoiceSendEmailModal";
 import {
   formatPaymentDateLabel,
   mapInvoicePayments,
@@ -139,6 +141,8 @@ export function InvoiceDetailPanel({
   const [confirmSentEdit, setConfirmSentEdit] = useState(false);
   const [sentEditUnlocked, setSentEditUnlocked] = useState(false);
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const [sendEmailModalOpen, setSendEmailModalOpen] = useState(false);
+  const [emailSending, setEmailSending] = useState(false);
   const [paymentBusy, setPaymentBusy] = useState(false);
   const [paymentRowBusy, setPaymentRowBusy] = useState<string | null>(null);
   const [payments, setPayments] = useState<InvoicePaymentRow[]>([]);
@@ -149,6 +153,8 @@ export function InvoiceDetailPanel({
   const [balanceDue, setBalanceDue] = useState(0);
   const [fromName, setFromName] = useState(profileName);
   const [toName, setToName] = useState(bootstrapTenantName ?? "Tenant");
+  const [tenantFirstName, setTenantFirstName] = useState("");
+  const [propertyName, setPropertyName] = useState("");
   const [issueDate, setIssueDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [dueDate, setDueDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [gracePeriodDays, setGracePeriodDays] = useState(7);
@@ -250,8 +256,12 @@ export function InvoiceDetailPanel({
       const tenant = inv.tenant as Record<string, unknown> | undefined;
       if (tenant) {
         setToName(`${String(tenant.firstName ?? "")} ${String(tenant.lastName ?? "")}`.trim() || "Tenant");
+        setTenantFirstName(String(tenant.firstName ?? "").trim());
         setTenantEmail(tenant.email != null ? String(tenant.email) : null);
       }
+
+      const property = inv.property as Record<string, unknown> | undefined;
+      setPropertyName(String(property?.name ?? property?.propertyName ?? "").trim());
 
       const lease = inv.lease as Record<string, unknown> | undefined;
       const refRaw = lease?.leaseReference ?? lease?.lease_reference;
@@ -449,9 +459,55 @@ export function InvoiceDetailPanel({
     }
   };
 
-  const handleSendClick = () => {
+  const openSendEmailModal = async () => {
     setError("");
-    setSuccess(INVOICE_SEND_COMING_SOON_MESSAGE);
+    if (!isInvoiceEmailDeliveryAvailable()) {
+      setSuccess(INVOICE_SEND_COMING_SOON_MESSAGE);
+      return;
+    }
+    if (!activeId) {
+      const saved = await saveInvoice();
+      if (!saved) return;
+    }
+    setSendEmailModalOpen(true);
+  };
+
+  const handleSendClick = () => {
+    void openSendEmailModal();
+  };
+
+  const submitSendEmail = async (values: InvoiceSendEmailFormState) => {
+    setEmailSending(true);
+    setError("");
+    setSuccess("");
+    try {
+      let id = activeId;
+      if (!id) {
+        const saved = await saveInvoice();
+        if (!saved) return;
+        id = saved;
+      }
+      const result = await sendInvoiceEmail(id, {
+        to: values.recipientEmails,
+        subject: values.subject,
+        message: values.message,
+        copyMe: values.copyMe
+      });
+      invalidatePropertyWorkspace(propertyId);
+      await loadInvoice(id);
+      setSendEmailModalOpen(false);
+      setSuccess(result.message || "Invoice sent.");
+      setStatus((prev) => {
+        const s = String(prev).toUpperCase();
+        if (s === "PAID" || s === "CANCELLED" || s === "VOID") return prev;
+        if (s === "DRAFT" || s === "GENERATED") return "SENT";
+        return prev;
+      });
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Could not send invoice email.");
+    } finally {
+      setEmailSending(false);
+    }
   };
 
   const openMarkPaidModal = async () => {
@@ -1059,6 +1115,22 @@ export function InvoiceDetailPanel({
           {INVOICE_SENT_EDIT_MODAL_MESSAGE}
         </p>
       </ConfirmDialog>
+
+      <InvoiceSendEmailModal
+        open={sendEmailModalOpen}
+        loading={emailSending}
+        tenantEmail={tenantEmail}
+        tenantFirstName={tenantFirstName || toName.split(/\s+/)[0]}
+        propertyName={propertyName}
+        invoiceNumber={displayNumber}
+        totalAmount={total}
+        balanceDue={displayBalanceDue}
+        dueDate={dueDate}
+        userOrBusinessName={fromName}
+        invoicePaymentDetails={paymentDetails}
+        onClose={() => setSendEmailModalOpen(false)}
+        onSubmit={(values) => void submitSendEmail(values)}
+      />
 
       <InvoiceRecordPaymentModal
         open={paymentModalOpen}

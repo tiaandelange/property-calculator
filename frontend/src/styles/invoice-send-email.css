@@ -1,0 +1,56 @@
+.pg-inv-send-email {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.pg-inv-send-email__section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pg-inv-send-email__section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.pg-inv-send-email__recipients {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pg-inv-send-email__recipient-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pg-inv-send-email__recipient-row .pg-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.pg-inv-send-email__checkbox {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: var(--type-base);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.pg-inv-send-email__checkbox input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--primary);
+}
+
+@media (max-width: 640px) {
+  .pg-inv-send-email__recipient-row {
+    flex-wrap: wrap;
+  }
+}

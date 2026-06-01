@@ -13,6 +13,7 @@
 @import "./financials-dashboard.css";
 @import "./invoices-dashboard.css";
 @import "./invoice-editor.css";
+@import "./invoice-send-email.css";
 @import "./proplytic-logo.css";
 @import "./workspace-cards.css";
 @import "./property-form.css";

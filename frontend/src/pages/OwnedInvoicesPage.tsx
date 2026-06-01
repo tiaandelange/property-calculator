@@ -1,4 +1,5 @@
 import { FormEvent, useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { fetchPdfBlob, triggerPdfFileDownload } from "../api/pdfBlob";
 import {
@@ -7,8 +8,7 @@ import {
   getTenantsEligibleForProperty,
   listPropertyInvoices,
   createPropertyInvoice,
-  markInvoicePaid,
-  sendInvoiceEmail
+  markInvoicePaid
 } from "../api/ownedProperties";
 import { invalidatePropertyWorkspace } from "../features/properties/invalidate";
 import { usePropertyWorkspaceRefresh } from "../features/properties/usePropertyWorkspaceRefresh";
@@ -97,10 +97,6 @@ export function OwnedInvoicesPage() {
     if (propertyId) await loadData(propertyId);
     invalidatePropertyWorkspace(propertyId);
   };
-  const sendEmail = async (id: string | number) => {
-    await sendInvoiceEmail(id);
-    if (propertyId) await loadData(propertyId);
-  };
 
   return (
     <Section>
@@ -136,7 +132,9 @@ export function OwnedInvoicesPage() {
                     Download PDF
                   </Button>
                   <Button variant="ghost" onClick={() => markPaid(inv.id)}>Mark Paid</Button>
-                  <Button variant="ghost" onClick={() => sendEmail(inv.id)}>Send Email</Button>
+                  <Link className="pg-btn pg-btn--ghost" to={`/invoices/${inv.id}`}>
+                    Send email
+                  </Link>
                 </div>
               </div>
             ))}

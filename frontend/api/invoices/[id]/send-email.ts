@@ -1,6 +1,25 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { sendInvoiceEmail } from "../../lib/invoiceEmail";
-import { authenticateSupabaseRequest, isUuid } from "../../lib/supabaseServerAuth";
+import { resendEmailDeliveryConfigured } from "../../lib/invoiceEmail.js";
+import { processInvoiceSendEmail, type InvoiceSendEmailBody } from "../../lib/invoiceSendEmailServer.js";
+import { authenticateSupabaseRequest, isUuid } from "../../lib/supabaseServerAuth.js";
+
+export const config = {
+  maxDuration: 60
+};
+
+function parseJsonBody(req: VercelRequest): Record<string, unknown> {
+  const b = req.body;
+  if (b == null) return {};
+  if (typeof b === "string") {
+    try {
+      return JSON.parse(b) as Record<string, unknown>;
+    } catch {
+      return {};
+    }
+  }
+  if (typeof b === "object" && !Array.isArray(b)) return b as Record<string, unknown>;
+  return {};
+}
 
 export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
   if (req.method !== "POST") {
@@ -14,60 +33,40 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     return;
   }
 
+  if (!resendEmailDeliveryConfigured()) {
+    res.status(503).json({ error: "Email delivery is not configured on the server (RESEND_API_KEY missing)." });
+    return;
+  }
+
   const auth = await authenticateSupabaseRequest(req);
   if (!auth.ok) {
     res.status(auth.status).json({ error: auth.error });
     return;
   }
 
-  const { sb, uid } = auth.ctx;
+  const bodyRaw = parseJsonBody(req);
+  const payload: InvoiceSendEmailBody = {
+    to: Array.isArray(bodyRaw.to) ? (bodyRaw.to as unknown[]).map((x) => String(x)) : [],
+    subject: String(bodyRaw.subject ?? ""),
+    message: String(bodyRaw.message ?? ""),
+    copyMe: bodyRaw.copyMe === true || bodyRaw.copyMe === 1 || String(bodyRaw.copyMe ?? "") === "true"
+  };
 
   try {
-    const { data: invoice, error: invErr } = await sb
-      .from("invoices")
-      .select("id, user_id, invoice_number, total, status, tenants ( email )")
-      .eq("id", invoiceId)
-      .eq("user_id", uid)
-      .maybeSingle();
+    const result = await processInvoiceSendEmail(auth.ctx.sb, auth.ctx.user, auth.ctx.uid, invoiceId, payload);
 
-    if (invErr || !invoice) {
-      res.status(404).json({ error: "Invoice not found." });
+    if (!result.ok) {
+      res.status(result.status).json({ error: result.error });
       return;
     }
 
-    const tenant = invoice.tenants as { email?: string | null } | null;
-    const email = tenant?.email?.trim();
-    if (!email) {
-      res.status(400).json({ error: "Tenant email is missing." });
-      return;
-    }
-
-    const sent = await sendInvoiceEmail({
-      to: email,
-      subject: `Invoice ${invoice.invoice_number}`,
-      text: `Invoice ${invoice.invoice_number} total ${Number(invoice.total).toFixed(2)}`
+    res.status(200).json({
+      message: result.message,
+      providerEmailId: result.providerEmailId
     });
-
-    if (!sent.ok) {
-      res.status(400).json({ error: sent.message });
-      return;
-    }
-
-    const { error: updErr } = await sb
-      .from("invoices")
-      .update({ status: "SENT", sent_at: new Date().toISOString(), updated_at: new Date().toISOString() })
-      .eq("id", invoiceId)
-      .eq("user_id", uid);
-
-    if (updErr) {
-      res.status(500).json({ error: updErr.message });
-      return;
-    }
-
-    res.status(200).json({ message: sent.message });
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : "Send email failed.";
-    console.error("[send-email]", msg);
+    console.error("[send-email]", msg, e);
     res.status(500).json({ error: msg });
   }
 }
