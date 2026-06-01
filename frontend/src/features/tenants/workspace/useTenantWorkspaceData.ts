@@ -143,12 +143,14 @@ export function useTenantWorkspaceData(
       period: bundle.period,
       transactions: bundle.transactions,
       invoices: bundle.invoices,
+      paymentLineItems: bundle.payments,
       rentDueDay: ctx.rentDueDay
     });
   }, [ctx, bundle, tenantId]);
 
   const transactions = bundle?.transactions ?? [];
   const invoices = bundle?.invoices ?? [];
+  const payments = bundle?.payments ?? [];
 
   const leaseStatus = useMemo(() => {
     if (!ctx) return "inactive";
@@ -156,11 +158,6 @@ export function useTenantWorkspaceData(
   }, [ctx, invoices]);
 
   const paymentStatus = useMemo(() => deriveTenantPaymentStatus(invoices), [invoices]);
-
-  const paidInvoices = useMemo(
-    () => invoices.filter((i) => String(i.status).toUpperCase() === "PAID"),
-    [invoices]
-  );
 
   const reload = async () => {
     if (!tenantId) return;
@@ -176,7 +173,7 @@ export function useTenantWorkspaceData(
     summary,
     transactions,
     invoices,
-    paidInvoices,
+    payments,
     loading,
     error,
     leaseStatus,

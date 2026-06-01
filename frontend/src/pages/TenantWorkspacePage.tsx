@@ -75,7 +75,7 @@ export function TenantWorkspacePage() {
 
   const needsFinancials = tab === "statement";
   const workspaceId = useWorkspaceId();
-  const { ctx, summary, transactions, invoices, paidInvoices, loading, error, leaseStatus, reload, tenantOverview, overviewLoading } =
+  const { ctx, summary, transactions, invoices, payments, loading, error, leaseStatus, reload, tenantOverview, overviewLoading } =
     useTenantWorkspaceData(id, periodKey, { loadFinancials: needsFinancials });
   const { record: applicantRecord, loading: applicantLoading } = useTenantApplicantDetails(id);
 
@@ -235,7 +235,7 @@ export function TenantWorkspacePage() {
               {fin === "invoices" ? (
                 <TenantInvoicesTable invoices={invoices} loading={loading} />
               ) : null}
-              {fin === "payments" ? <TenantPaymentsTable paidInvoices={paidInvoices} loading={loading} /> : null}
+              {fin === "payments" ? <TenantPaymentsTable payments={payments} loading={loading} /> : null}
               {fin === "ledger" ? (
                 <TenantLedgerPanel
                   transactions={transactions}

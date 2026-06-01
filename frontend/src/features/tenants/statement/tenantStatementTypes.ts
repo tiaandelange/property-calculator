@@ -57,3 +57,13 @@ export type TenantInvoiceListItem = {
   paidAt?: string | null;
   hasPdf?: boolean;
 };
+
+/** One recorded payment against an invoice (from invoice_payments). */
+export type TenantPaymentListItem = {
+  id: string;
+  invoiceId: string;
+  invoiceNumber: string;
+  paymentDate: string;
+  paymentReference: string | null;
+  amount: number;
+};

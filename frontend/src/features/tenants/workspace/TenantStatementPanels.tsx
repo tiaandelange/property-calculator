@@ -38,6 +38,7 @@ import { fmtZar, paymentTermsNote } from "../statement/tenantStatementAdapter";
 import { formatDateShort, tenantInitials } from "../tenantDirectoryUtils";
 import type {
   TenantInvoiceListItem,
+  TenantPaymentListItem,
   TenantLedgerTransaction,
   TenantStatementPeriodKey,
   TenantStatementSummary
@@ -527,16 +528,16 @@ export function TenantInvoicesTable({
 }
 
 export function TenantPaymentsTable({
-  paidInvoices,
+  payments,
   loading
 }: {
-  paidInvoices: TenantInvoiceListItem[];
+  payments: TenantPaymentListItem[];
   loading?: boolean;
 }) {
   const isMobile = useMediaQuery("(max-width: 767px)");
 
   if (loading) return <ProplyticTableSkeleton rows={4} />;
-  if (!paidInvoices.length) {
+  if (!payments.length) {
     return (
       <div className="pg-tstmt-card">
         <p className="pg-muted">No payments recorded.</p>
@@ -548,17 +549,17 @@ export function TenantPaymentsTable({
     return (
       <div className="pg-tstmt-card">
         <ProplyticMobileRowList>
-          {paidInvoices.map((inv) => (
-            <li key={inv.id}>
+          {payments.map((p) => (
+            <li key={p.id}>
               <ProplyticMobileRowCard
-                title={inv.invoiceNumber}
-                subtitle={formatDateShort(inv.paidAt ?? inv.invoiceDate)}
-                badge={
-                  <ProplyticAmountCell tone="credit-paid">{fmtZar(inv.total)}</ProplyticAmountCell>
-                }
+                title={p.invoiceNumber}
+                subtitle={formatDateShort(p.paymentDate)}
+                badge={<ProplyticAmountCell tone="credit-paid">{fmtZar(p.amount)}</ProplyticAmountCell>}
                 fields={[
-                  { label: "Invoice date", value: formatDateShort(inv.invoiceDate) },
-                  { label: "Status", value: <ProplyticStatusBadge status={inv.status} /> }
+                  {
+                    label: "Reference",
+                    value: p.paymentReference?.trim() ? p.paymentReference : "—"
+                  }
                 ]}
               />
             </li>
@@ -576,16 +577,20 @@ export function TenantPaymentsTable({
             <ProplyticTableRow>
               <ProplyticTableHeadCell columnType="date">Date</ProplyticTableHeadCell>
               <ProplyticTableHeadCell columnType="reference">Invoice</ProplyticTableHeadCell>
+              <ProplyticTableHeadCell columnType="reference">Reference</ProplyticTableHeadCell>
               <ProplyticTableHeadCell columnType="currency">Amount</ProplyticTableHeadCell>
             </ProplyticTableRow>
           </ProplyticTableHeader>
           <ProplyticTableBody>
-            {paidInvoices.map((inv) => (
-              <ProplyticTableRow key={inv.id}>
-                <ProplyticTableCell columnType="date">{formatDateShort(inv.paidAt ?? inv.invoiceDate)}</ProplyticTableCell>
-                <ProplyticTableCell columnType="reference">{inv.invoiceNumber}</ProplyticTableCell>
+            {payments.map((p) => (
+              <ProplyticTableRow key={p.id}>
+                <ProplyticTableCell columnType="date">{formatDateShort(p.paymentDate)}</ProplyticTableCell>
+                <ProplyticTableCell columnType="reference">{p.invoiceNumber}</ProplyticTableCell>
+                <ProplyticTableCell columnType="reference">
+                  {p.paymentReference?.trim() ? p.paymentReference : "—"}
+                </ProplyticTableCell>
                 <ProplyticTableCell columnType="currency">
-                  <ProplyticAmountCell tone="credit-paid">{fmtZar(inv.total)}</ProplyticAmountCell>
+                  <ProplyticAmountCell tone="credit-paid">{fmtZar(p.amount)}</ProplyticAmountCell>
                 </ProplyticTableCell>
               </ProplyticTableRow>
             ))}

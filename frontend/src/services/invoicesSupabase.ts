@@ -102,7 +102,14 @@ const INVOICE_PROPERTY_LIST_SELECT = `
   paid_at,
   created_at,
   pdf_storage_key,
-  pdf_storage_bucket
+  pdf_storage_bucket,
+  invoice_payments (
+    id,
+    payment_date,
+    payment_reference,
+    amount,
+    created_at
+  )
 `;
 
 const INVOICE_DETAIL_SELECT = `

@@ -1,9 +1,11 @@
 import { getPropertyStatement, listPropertyInvoices } from "../../../api/ownedProperties";
+import { mapInvoicePayments } from "../../invoices/invoicePaymentUtils";
 import { deriveLeaseStatus, derivePaymentStatus } from "../tenantDirectoryAdapter";
 import { fmtZar } from "../tenantDirectoryUtils";
 import type {
   TenantInvoiceListItem,
   TenantLedgerTransaction,
+  TenantPaymentListItem,
   TenantStatementPeriodKey,
   TenantStatementSummary
 } from "./tenantStatementTypes";
@@ -121,6 +123,30 @@ function mapStatementRow(row: Record<string, unknown>): TenantLedgerTransaction 
   };
 }
 
+/** Flatten invoice_payments rows for the tenant Payments tab (includes partial payments). */
+export function buildTenantPaymentLineItems(invRaw: Record<string, unknown>[]): TenantPaymentListItem[] {
+  const items: TenantPaymentListItem[] = [];
+  for (const inv of invRaw) {
+    const invoiceId = String(inv.id ?? "");
+    const invoiceNumber = String(inv.invoiceNumber ?? invoiceId);
+    for (const p of mapInvoicePayments(inv.payments)) {
+      if (!p.id) continue;
+      items.push({
+        id: p.id,
+        invoiceId,
+        invoiceNumber,
+        paymentDate: p.paymentDate,
+        paymentReference: p.paymentReference,
+        amount: p.amount
+      });
+    }
+  }
+  return items.sort((a, b) => {
+    const cmp = b.paymentDate.localeCompare(a.paymentDate);
+    return cmp !== 0 ? cmp : a.id.localeCompare(b.id);
+  });
+}
+
 export async function loadTenantFinancialBundle(opts: {
   propertyId: string;
   tenantId: string;
@@ -132,6 +158,7 @@ export async function loadTenantFinancialBundle(opts: {
 }): Promise<{
   transactions: TenantLedgerTransaction[];
   invoices: TenantInvoiceListItem[];
+  payments: TenantPaymentListItem[];
   period: ReturnType<typeof resolveStatementPeriod>;
 }> {
   const period = resolveStatementPeriod(opts.periodKey, opts.leaseStartDate);
@@ -179,7 +206,9 @@ export async function loadTenantFinancialBundle(opts: {
       hasPdf: Boolean(inv.hasPdf)
     }));
 
-  return { transactions, invoices, period };
+  const payments = buildTenantPaymentLineItems(invRaw as Record<string, unknown>[]);
+
+  return { transactions, invoices, payments, period };
 }
 
 export function buildTenantStatementSummary(opts: {
@@ -192,6 +221,7 @@ export function buildTenantStatementSummary(opts: {
   period: ReturnType<typeof resolveStatementPeriod>;
   transactions: TenantLedgerTransaction[];
   invoices: TenantInvoiceListItem[];
+  paymentLineItems?: TenantPaymentListItem[];
   rentDueDay?: number | null;
 }): TenantStatementSummary {
   const { period, transactions, invoices } = opts;
@@ -214,9 +244,13 @@ export function buildTenantStatementSummary(opts: {
   const monthCharges = monthInvoices
     .filter((i) => !PAID.has(i.status.toUpperCase()))
     .reduce((s, i) => s + i.total, 0);
-  const monthPayments = monthInvoices
-    .filter((i) => i.status.toUpperCase() === "PAID")
-    .reduce((s, i) => s + i.total, 0);
+  const monthPayments = opts.paymentLineItems
+    ? opts.paymentLineItems
+        .filter((p) => p.paymentDate.slice(0, 7) === thisYm)
+        .reduce((s, p) => s + (Number.isFinite(p.amount) ? p.amount : 0), 0)
+    : monthInvoices
+        .filter((i) => i.status.toUpperCase() === "PAID")
+        .reduce((s, i) => s + i.total, 0);
 
   const closingBalance = outstandingBalance;
   const openingBalance = closingBalance - charges + payments - adjustments;
