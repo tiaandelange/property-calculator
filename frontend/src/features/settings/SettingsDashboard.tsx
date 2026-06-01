@@ -3,7 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Link, useSearchParams } from "react-router-dom";
 import { AppIcon, type IconName } from "../../components/icons";
 import { AppPage, AppPageContent, AppPageHeader, AppPageSubtitle, AppPageTitle } from "../../components/ui/AppPage";
-import { Button, ButtonLink } from "../../components/ui/Button";
+import { Button } from "../../components/ui/Button";
 import { Field, Input } from "../../components/ui/Input";
 import { AppCard, AppCardDescription, AppCardHeader, AppCardTitle } from "../../components/ui/AppCard";
 import { AppFormModal } from "../../components/ui/AppModal";
@@ -18,6 +18,7 @@ import {
   STATEMENT_FILTER_OPTIONS
 } from "./settingsDefaults";
 import { ApplicantFormTemplateSettingsCard } from "../applicants/ApplicantFormTemplateSettingsCard";
+import { InvoiceBankingDetailsModal } from "./InvoiceBankingDetailsModal";
 import { SubscriptionSettingsSection } from "./SubscriptionSettingsSection";
 import type { AccentColor, ThemePreference, UserSettings } from "./settingsTypes";
 import { previewWorkspaceAppearance } from "../../theme/workspaceAppearance";
@@ -281,6 +282,7 @@ export function SettingsDashboard() {
   const [role, setRole] = useState("");
   const [editProfileOpen, setEditProfileOpen] = useState(false);
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
+  const [invoiceBankingOpen, setInvoiceBankingOpen] = useState(false);
 
   useEffect(() => {
     if (!settingsQuery.data) return;
@@ -314,6 +316,12 @@ export function SettingsDashboard() {
       setError(profileQuery.error instanceof Error ? profileQuery.error.message : "Could not load profile.");
     }
   }, [settingsQuery.error, profileQuery.error]);
+
+  useEffect(() => {
+    if (searchParams.get("invoiceBanking") === "1") {
+      setInvoiceBankingOpen(true);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     if (loading || !draft) return;
@@ -489,9 +497,9 @@ export function SettingsDashboard() {
             <Button variant="outline" onClick={() => setChangePasswordOpen(true)}>
               Change password
             </Button>
-            <ButtonLink href="/account" variant="ghost">
-              Banking details
-            </ButtonLink>
+            <Button variant="ghost" onClick={() => setInvoiceBankingOpen(true)}>
+              Invoice & banking details
+            </Button>
           </div>
         </SettingsCard>
 
@@ -635,9 +643,14 @@ export function SettingsDashboard() {
 
         <SettingsCard icon="invoices" title="Invoices & Statements" description="Automation and PDF preferences.">
           <p className="pg-settings-field-hint" style={{ marginTop: 0 }}>
-            Banking details and the email address copied when invoices are sent are under{" "}
-            <Link to="/account#invoice-payment">Account → Invoice payment details</Link>.
+            Banking lines on invoice PDFs and the CC address used when emailing invoices are configured in invoice &amp;
+            banking details.
           </p>
+          <div className="pg-settings-actions" style={{ marginBottom: 16 }}>
+            <Button variant="outline" onClick={() => setInvoiceBankingOpen(true)}>
+              Invoice & banking details
+            </Button>
+          </div>
           <div className="pg-settings-field">
             <label htmlFor="settings-inv-format">Invoice number format</label>
             <input
@@ -852,6 +865,10 @@ export function SettingsDashboard() {
         onSaved={setFullName}
       />
       <ChangePasswordModal open={changePasswordOpen} onClose={() => setChangePasswordOpen(false)} />
+      <InvoiceBankingDetailsModal
+        open={invoiceBankingOpen}
+        onClose={() => setInvoiceBankingOpen(false)}
+      />
       </AppPageContent>
     </AppPage>
   );

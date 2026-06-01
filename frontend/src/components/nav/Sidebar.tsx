@@ -114,9 +114,13 @@ export function Sidebar({
               <NavLink to="/owned-properties/reports" className="pg-nav-link" data-active={pathname.includes("/owned-properties/reports") ? "true" : "false"} onClick={onClose}>
                 Reports <span className="pg-nav-muted">→</span>
               </NavLink>
-              <div className="pg-nav-group-title">Account</div>
-              <NavLink to="/account" className="pg-nav-link" data-active={pathname === "/account" ? "true" : "false"} onClick={onClose}>
-                Account <span className="pg-nav-muted">→</span>
+              <NavLink
+                to="/settings?invoiceBanking=1"
+                className="pg-nav-link"
+                data-active={pathname.startsWith("/settings") ? "true" : "false"}
+                onClick={onClose}
+              >
+                Invoice & banking details <span className="pg-nav-muted">→</span>
               </NavLink>
             </>
           ) : null}

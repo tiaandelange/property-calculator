@@ -381,14 +381,14 @@ export function WorkspaceRail({ userRole }: WorkspaceRailProps) {
                 <li role="none">
                   <Link
                     role="menuitem"
-                    to="/account"
+                    to="/settings?invoiceBanking=1"
                     className="pg-workspace-flyout-link"
-                    data-active={location.pathname === "/account" ? "true" : "false"}
+                    data-active={location.pathname.startsWith("/settings") ? "true" : "false"}
                     onClick={onFlyoutLinkNavigate}
                   >
-                    <span style={{ display: "block", fontWeight: 700 }}>Account</span>
+                    <span style={{ display: "block", fontWeight: 700 }}>Invoice & banking details</span>
                     <span className="pg-muted" style={{ display: "block", fontSize: 12, marginTop: 2, opacity: 0.85 }}>
-                      Invoice banking details
+                      Payment info on invoices & email CC
                     </span>
                   </Link>
                 </li>

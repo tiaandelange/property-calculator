@@ -63,7 +63,7 @@ export function workspacePageTitle(pathname: string): string {
   if (pathname.includes("/owned-properties/reports")) return "Reports";
   if (pathname.startsWith("/documents")) return "Documents";
   if (pathname.startsWith("/settings")) return "Settings";
-  if (pathname.startsWith("/account")) return "Account";
+  if (pathname.startsWith("/account")) return "Settings";
   if (pathname.startsWith("/subscription")) return "Subscription";
   if (pathname === "/admin") return "Admin";
   return "Dashboard";

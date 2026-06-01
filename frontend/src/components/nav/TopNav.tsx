@@ -101,11 +101,11 @@ export function TopNav({
                       Open workspace
                     </NavLink>
                     <NavLink
-                      to="/account"
+                      to="/settings?invoiceBanking=1"
                       className={({ isActive }) => `pg-profile-item${isActive ? " pg-main-nav-link-active" : ""}`}
                       onClick={() => setOpen(false)}
                     >
-                      Account
+                      Invoice & banking details
                     </NavLink>
                     <NavLink
                       to="/settings"

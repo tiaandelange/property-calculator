@@ -967,7 +967,7 @@ export function InvoiceDetailPanel({
             <div className="pg-inv-editor__branding">
               <span>PDF Branding:</span>
               <strong>{fromName ? `${fromName} Standard` : "Proplytic Standard"}</strong>
-              <Link className="pg-inv-editor__branding-link" to="/settings">
+              <Link className="pg-inv-editor__branding-link" to="/settings?invoiceBanking=1">
                 Change
               </Link>
             </div>

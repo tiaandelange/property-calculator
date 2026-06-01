@@ -24,10 +24,6 @@ const DashboardPage = lazyWithRetry(
   () => import("../pages/DashboardPage").then((m) => ({ default: m.DashboardPage })),
   { label: "Dashboard" }
 );
-const AccountPage = lazyWithRetry(
-  () => import("../pages/AccountPage").then((m) => ({ default: m.AccountPage })),
-  { label: "Account" }
-);
 const ApplicantApplyPage = lazyWithRetry(
   () => import("../pages/ApplicantApplyPage").then((m) => ({ default: m.ApplicantApplyPage })),
   { label: "Applicant Apply" }
@@ -325,7 +321,7 @@ export function App() {
         <Route path="/tenants/:id/invoices/:invoiceId" element={<Auth label="Tenant Invoice Redirect"><LegacyTenantInvoiceRedirect /></Auth>} />
         <Route path="/tenants/:id" element={<Auth label="Tenant Workspace"><TenantWorkspacePage /></Auth>} />
         <Route path="/tenants/:id/edit" element={<Auth label="Tenant Form"><TenantFormPage /></Auth>} />
-        <Route path="/account" element={<Auth label="Account"><AccountPage /></Auth>} />
+        <Route path="/account" element={<Navigate to="/settings?invoiceBanking=1" replace />} />
         <Route path="/subscription" element={<SubscriptionPage />} />
         <Route path="/subscription/success" element={<SubscriptionResultPage mode="success" />} />
         <Route path="/subscription/cancel" element={<SubscriptionResultPage mode="cancel" />} />

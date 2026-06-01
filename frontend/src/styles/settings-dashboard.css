@@ -247,6 +247,17 @@
   flex-wrap: wrap;
 }
 
+.pg-inv-banking-modal-fields {
+  display: grid;
+  gap: 16px;
+}
+
+.pg-inv-banking-modal-textarea {
+  width: 100%;
+  min-height: 120px;
+  resize: vertical;
+}
+
 .pg-settings-badge {
   display: inline-flex;
   align-items: center;

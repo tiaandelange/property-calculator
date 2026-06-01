@@ -199,8 +199,13 @@ export function WorkspaceShellHeader({ mobile = false }: { mobile?: boolean }) {
               <Link to="/settings" role="menuitem" className="pg-dashboard-shell-user-menu-item" onClick={() => setUserMenuOpen(false)}>
                 Settings
               </Link>
-              <Link to="/account" role="menuitem" className="pg-dashboard-shell-user-menu-item" onClick={() => setUserMenuOpen(false)}>
-                Account
+              <Link
+                to="/settings?invoiceBanking=1"
+                role="menuitem"
+                className="pg-dashboard-shell-user-menu-item"
+                onClick={() => setUserMenuOpen(false)}
+              >
+                Invoice & banking details
               </Link>
             </div>
           ) : null}
