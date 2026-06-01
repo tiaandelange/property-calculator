@@ -4,17 +4,21 @@ import {
   buildInvoicePdfDefinition,
   paymentDetailsLines,
   type InvoicePdfLineItem,
-  type InvoicePdfPayment
+  type InvoicePdfPayment,
+  type InvoicePdfBuildContext
 } from "./invoicePdfBuilder.js";
 import {
   invoicePaymentReferenceForInvoice,
-  leaseReferenceFromEmbed
+  leaseReferenceFromEmbed,
+  normalizeInvoicePaymentDetails
 } from "./invoicePaymentDetailsShared.js";
 import {
   invoiceHasStoredPdf,
   invoicePdfStorageKey,
   shouldPersistInvoicePdf
 } from "./invoicePdfPolicy.js";
+import { buildGlobalPdfTheme } from "./pdf/globalPdfTheme.js";
+import { loadProplyticLogoDataUrl } from "./pdf/pdfLogoAsset.js";
 
 const INVOICES_BUCKET = "invoices";
 
@@ -34,17 +38,23 @@ function firstEmbed<T extends Record<string, unknown>>(raw: unknown): T | null {
   return raw as T;
 }
 
-function unitLabelFromRow(unit: Record<string, unknown> | null): string | null {
-  if (!unit) return null;
-  const name = String(unit.unit_name ?? unit.unitName ?? unit.unit_label ?? unit.unitLabel ?? "").trim();
-  return name || null;
+function str(v: unknown): string {
+  return v != null ? String(v).trim() : "";
 }
 
-function leaseLabelFromRow(lease: Record<string, unknown> | null): string | null {
-  if (!lease) return null;
-  const start = lease.start_date ?? lease.startDate;
-  if (start) return `From ${String(start).slice(0, 10)}`;
-  return "Active lease";
+function propertyStreetAddress(property: Record<string, unknown> | null): string {
+  if (!property) return "";
+  return [
+    property.address_line1,
+    property.address_line2,
+    property.suburb,
+    property.city,
+    property.province,
+    property.postal_code
+  ]
+    .filter(Boolean)
+    .map(String)
+    .join(", ");
 }
 
 export type InvoicePdfGenerateResult = {
@@ -57,6 +67,40 @@ export type InvoicePdfGenerateResult = {
   reused: boolean;
   invoice: Record<string, unknown>;
 };
+
+async function loadPdfBuildContext(
+  sb: SupabaseClient,
+  uid: string,
+  tenantPropertyAddress: string
+): Promise<InvoicePdfBuildContext> {
+  const [{ data: profile }, { data: settings }, { data: authData }] = await Promise.all([
+    sb.from("profiles").select("full_name, invoice_payment_details").eq("id", uid).maybeSingle(),
+    sb.from("user_settings").select("accent_color, pdf_branding_enabled").eq("user_id", uid).maybeSingle(),
+    sb.auth.getUser()
+  ]);
+
+  const paymentRaw = profile?.invoice_payment_details;
+  const paymentNorm = normalizeInvoicePaymentDetails(paymentRaw);
+  const businessPhone = paymentNorm.businessPhone;
+  const businessAddress = paymentNorm.businessAddress;
+
+  const landlordName = str(profile?.full_name) || "Proplytic";
+  const email = str(authData.user?.email);
+
+  return {
+    theme: buildGlobalPdfTheme({ accentColor: settings?.accent_color }),
+    logoDataUrl: loadProplyticLogoDataUrl(),
+    pdfBrandingEnabled: settings?.pdf_branding_enabled !== false,
+    landlord: {
+      name: landlordName,
+      email: email || paymentNorm.ccEmail || undefined,
+      phone: businessPhone || undefined,
+      address: businessAddress || undefined
+    },
+    tenantPropertyAddress: tenantPropertyAddress || undefined,
+    paymentDetailsRaw: paymentRaw
+  };
+}
 
 /** Build invoice PDF bytes — shared by the Vercel generate route. */
 export async function buildInvoicePdfForUser(
@@ -82,6 +126,7 @@ export async function buildInvoicePdfForUser(
         due_date,
         status,
         subtotal,
+        tax_amount,
         total,
         total_amount,
         balance_due,
@@ -130,12 +175,6 @@ export async function buildInvoicePdfForUser(
     };
   }
 
-  const { data: profile } = await sb
-    .from("profiles")
-    .select("invoice_payment_details")
-    .eq("id", uid)
-    .maybeSingle();
-
   const invoiceDateIso = isoDate(invoice.issue_date ?? invoice.invoice_date);
 
   const tenant = firstEmbed<Record<string, unknown>>(invoice.tenants);
@@ -149,24 +188,11 @@ export async function buildInvoicePdfForUser(
     : ["—"];
 
   const property = firstEmbed<Record<string, unknown>>(invoice.properties);
-  const addr = property
-    ? [
-        property.address_line1,
-        property.address_line2,
-        property.suburb,
-        property.city,
-        property.province,
-        property.postal_code
-      ]
-        .filter(Boolean)
-        .map(String)
-        .join(", ")
-    : "";
+  const streetAddr = propertyStreetAddress(property);
   const propertyLines = property
-    ? [property.name ? String(property.name).trim() : "", addr].filter(Boolean)
+    ? [property.name ? String(property.name).trim() : "", streetAddr].filter(Boolean)
     : ["—"];
 
-  const unit = firstEmbed<Record<string, unknown>>(invoice.property_units);
   const lease = firstEmbed<Record<string, unknown>>(invoice.leases);
 
   const rawLines = invoice.invoice_line_items as Array<Record<string, unknown>> | null;
@@ -197,30 +223,37 @@ export async function buildInvoicePdfForUser(
     }));
 
   const total = Number(invoice.total_amount ?? invoice.total) || 0;
+  const taxTotal = Number(invoice.tax_amount) || 0;
   const balanceDue = Number(invoice.balance_due ?? Math.max(0, total)) || 0;
   const leaseRef = leaseReferenceFromEmbed(lease);
   const paymentReference = invoicePaymentReferenceForInvoice(leaseRef, invoiceNumber);
 
-  const definition = buildInvoicePdfDefinition({
-    invoiceId,
-    invoiceNumber,
-    invoiceDate: invoiceDateIso,
-    dueDate: isoDate(invoice.due_date),
-    status,
-    subtotal: Number(invoice.subtotal) || total,
-    total,
-    balanceDue,
-    notes: invoice.notes != null ? String(invoice.notes) : null,
-    tenantLines,
-    propertyLines,
-    unitLabel: unitLabelFromRow(unit),
-    leaseLabel: leaseLabelFromRow(lease),
-    paymentReference,
-    lineItems,
-    payments,
-    paymentDetailLines: paymentDetailsLines(profile?.invoice_payment_details, leaseRef),
-    isDraftPreview: !persistPdf
-  });
+  const pdfContext = await loadPdfBuildContext(sb, uid, streetAddr);
+
+  const definition = buildInvoicePdfDefinition(
+    {
+      invoiceId,
+      invoiceNumber,
+      invoiceDate: invoiceDateIso,
+      dueDate: isoDate(invoice.due_date),
+      status,
+      subtotal: Number(invoice.subtotal) || total,
+      taxTotal: taxTotal > 0 ? taxTotal : undefined,
+      total,
+      balanceDue,
+      notes: invoice.notes != null ? String(invoice.notes) : null,
+      tenantLines,
+      propertyLines,
+      unitLabel: null,
+      leaseLabel: null,
+      paymentReference,
+      lineItems,
+      payments,
+      paymentDetailLines: paymentDetailsLines(pdfContext.paymentDetailsRaw, leaseRef),
+      isDraftPreview: !persistPdf
+    },
+    pdfContext
+  );
 
   const pdfBuffer = await renderPdfDefinitionToBuffer(definition);
 

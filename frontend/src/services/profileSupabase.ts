@@ -20,6 +20,9 @@ export type InvoicePaymentDetailsPayload = {
   accountNumber?: string;
   branchCode?: string;
   referenceNote?: string;
+  /** Shown on invoice PDF header (landlord contact). */
+  businessPhone?: string;
+  businessAddress?: string;
   extraLines?: string[];
   /** CC address when invoice emails are sent (defaults to account login email). */
   ccEmail?: string;

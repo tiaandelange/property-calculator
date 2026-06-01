@@ -6,6 +6,8 @@ export type InvoicePaymentDetailsFormState = {
   accountHolder: string;
   accountNumber: string;
   branchCode: string;
+  businessPhone: string;
+  businessAddress: string;
   extraLinesText: string;
   ccEmail: string;
 };
@@ -16,6 +18,8 @@ export function emptyInvoicePaymentDetailsForm(): InvoicePaymentDetailsFormState
     accountHolder: "",
     accountNumber: "",
     branchCode: "",
+    businessPhone: "",
+    businessAddress: "",
     extraLinesText: "",
     ccEmail: ""
   };
@@ -28,6 +32,8 @@ export function invoicePaymentDetailsFormFromApi(raw: unknown): InvoicePaymentDe
     accountHolder: d.accountHolder,
     accountNumber: d.accountNumber,
     branchCode: d.branchCode,
+    businessPhone: d.businessPhone,
+    businessAddress: d.businessAddress,
     extraLinesText: d.extraLines.join("\n"),
     ccEmail: d.ccEmail
   };
@@ -45,6 +51,8 @@ export function invoicePaymentDetailsFormToPayload(
     accountHolder: form.accountHolder.trim(),
     accountNumber: form.accountNumber.trim(),
     branchCode: form.branchCode.trim(),
+    businessPhone: form.businessPhone.trim(),
+    businessAddress: form.businessAddress.trim(),
     extraLines,
     ccEmail: form.ccEmail.trim()
   };

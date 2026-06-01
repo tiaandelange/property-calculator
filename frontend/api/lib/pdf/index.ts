@@ -1,0 +1,25 @@
+/**
+ * Global PDF template system — reusable across invoices, statements, reports, and leases.
+ * Server-side only (Vercel functions + pdfmake).
+ */
+
+export { buildGlobalPdfTheme, validateHexColor, accentPrimaryHex, type GlobalPdfTheme, type PdfThemeInput } from "./globalPdfTheme.js";
+export {
+  PDF_PAGE_MARGINS,
+  PDF_SPACING,
+  buildDefaultPdfStyles,
+  brandedHeader,
+  recipientBlock,
+  documentSummaryStrip,
+  detailsTable,
+  totalsBlock,
+  bankingDetailsBlock,
+  notesBlock,
+  buildPdfFooter,
+  type PdfDocumentKind
+} from "./globalPdfLayout.js";
+export { buildInvoicePdfDocumentDefinition } from "./invoicePdfTemplate.js";
+export { mapToInvoicePdfDocument, type InvoicePdfBuildContext } from "./invoicePdfDataMapper.js";
+export type { InvoicePdfDocumentData } from "./invoicePdfTypes.js";
+export { loadProplyticLogoDataUrl } from "./pdfLogoAsset.js";
+export { formatPdfZar, formatPdfDate } from "./pdfFormat.js";

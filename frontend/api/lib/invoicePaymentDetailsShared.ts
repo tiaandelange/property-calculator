@@ -9,6 +9,8 @@ export type NormalizedInvoicePaymentDetails = {
   branchCode: string;
   extraLines: string[];
   ccEmail: string;
+  businessPhone: string;
+  businessAddress: string;
 };
 
 function str(v: unknown): string {
@@ -23,7 +25,9 @@ export function normalizeInvoicePaymentDetails(raw: unknown): NormalizedInvoiceP
       accountNumber: "",
       branchCode: "",
       extraLines: [],
-      ccEmail: ""
+      ccEmail: "",
+      businessPhone: "",
+      businessAddress: ""
     };
   }
   const d = raw as Record<string, unknown>;
@@ -37,7 +41,9 @@ export function normalizeInvoicePaymentDetails(raw: unknown): NormalizedInvoiceP
     accountNumber: str(d.accountNumber ?? d.account_number),
     branchCode: str(d.branchCode ?? d.branch_code),
     extraLines,
-    ccEmail: str(d.ccEmail ?? d.cc_email)
+    ccEmail: str(d.ccEmail ?? d.cc_email),
+    businessPhone: str(d.businessPhone ?? d.business_phone),
+    businessAddress: str(d.businessAddress ?? d.business_address)
   };
 }
 
@@ -72,7 +78,7 @@ export function paymentDetailsLinesForInvoice(
   if (!lines.length) {
     return hasBanking
       ? lines
-      : ["Add your banking details under Settings → Invoice & banking details."];
+      : ["Banking details have not been configured."];
   }
   return lines;
 }
