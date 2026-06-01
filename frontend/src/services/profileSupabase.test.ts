@@ -9,6 +9,7 @@ import {
 const rpc = vi.fn();
 const from = vi.fn();
 const storageFrom = vi.fn();
+const createSignedUrl = vi.fn().mockResolvedValue({ data: { signedUrl: null }, error: null });
 const getUser = vi.fn();
 
 vi.mock("../lib/supabaseClient", () => ({
@@ -16,7 +17,12 @@ vi.mock("../lib/supabaseClient", () => ({
     rpc,
     auth: { getUser },
     from,
-    storage: { from: storageFrom }
+    storage: {
+      from: () => ({
+        createSignedUrl,
+        upload: vi.fn()
+      })
+    }
   })
 }));
 
@@ -42,6 +48,8 @@ describe("profileSupabase", () => {
                   full_name: "Alex",
                   role: "USER",
                   invoice_payment_details: { bankName: "FNB" },
+                  profile_details: { phone: "0820000000" },
+                  business_details: {},
                   ui_color_scheme: "light",
                   free_uses_remaining: 3
                 },
@@ -81,7 +89,11 @@ describe("profileSupabase", () => {
     expect(out.invoicePaymentDetails).toEqual(details);
   });
 
-  it("updateProfile patches only full_name and ui_color_scheme on profiles", async () => {
+  it("updateProfile uses RPC for full name and patches ui_color_scheme on profiles", async () => {
+    rpc.mockResolvedValue({
+      data: { fullName: "Sam", profileDetails: {}, businessDetails: {} },
+      error: null
+    });
     const update = vi.fn(() => ({
       eq: vi.fn().mockResolvedValue({ error: null })
     }));
@@ -89,6 +101,10 @@ describe("profileSupabase", () => {
 
     await updateProfile({ fullName: "Sam", uiColorScheme: "dark" });
 
+    expect(rpc).toHaveBeenCalledWith(
+      "update_profile_details",
+      expect.objectContaining({ p_full_name: "Sam" })
+    );
     expect(update).toHaveBeenCalledWith(
       expect.not.objectContaining({
         role: expect.anything(),

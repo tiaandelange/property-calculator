@@ -1,18 +1,30 @@
 import type { PostgrestError } from "@supabase/supabase-js";
 import type { UiColorScheme } from "../theme/uiColorScheme";
+import {
+  normalizeBusinessDetails,
+  normalizeProfileDetails,
+  type NormalizedBusinessDetails,
+  type NormalizedProfileDetails
+} from "../../api/lib/profileContactShared";
 import { getSupabase } from "../lib/supabaseClient";
+
+export const PROFILE_AVATARS_BUCKET = "avatars";
 
 /** Columns read from `public.profiles` for the SPA shell. */
 export const PROFILE_SELECT_FOR_APP =
-  "full_name, role, invoice_payment_details, ui_color_scheme, free_uses_remaining" as const;
+  "full_name, role, invoice_payment_details, profile_details, business_details, ui_color_scheme, free_uses_remaining" as const;
 
 export type ProfileForApp = {
   full_name: string | null;
   role: string | null;
   invoice_payment_details: unknown;
+  profile_details: unknown;
+  business_details: unknown;
   ui_color_scheme: string | null;
   free_uses_remaining: number | null;
 };
+
+export type { NormalizedProfileDetails, NormalizedBusinessDetails };
 
 export type InvoicePaymentDetailsPayload = {
   bankName?: string;
@@ -20,9 +32,6 @@ export type InvoicePaymentDetailsPayload = {
   accountNumber?: string;
   branchCode?: string;
   referenceNote?: string;
-  /** Shown on invoice PDF header (landlord contact). */
-  businessPhone?: string;
-  businessAddress?: string;
   extraLines?: string[];
   /** CC address when invoice emails are sent (defaults to account login email). */
   ccEmail?: string;
@@ -38,6 +47,10 @@ export type MeResponse = {
   name?: string | null;
   role?: string;
   invoicePaymentDetails?: unknown;
+  profileDetails?: NormalizedProfileDetails;
+  businessDetails?: NormalizedBusinessDetails;
+  /** Signed URL for avatar preview when avatarStorageKey is set. */
+  avatarUrl?: string | null;
   uiColorScheme?: UiColorScheme;
   freeUsesRemaining?: number | null;
   emailConfirmed?: boolean;
@@ -47,6 +60,8 @@ export type ProfileUpdateInput = {
   fullName?: string | null;
   uiColorScheme?: UiColorScheme;
   invoicePaymentDetails?: InvoicePaymentDetailsPayload | Record<string, unknown> | null;
+  profileDetails?: Record<string, unknown> | null;
+  businessDetails?: Record<string, unknown> | null;
 };
 
 export type SavedUserReportRow = {
@@ -80,6 +95,15 @@ export async function requireUserId(): Promise<string> {
   return data.user.id;
 }
 
+export async function signedProfileAvatarUrl(storageKey: string | null | undefined): Promise<string | null> {
+  const key = storageKey?.trim();
+  if (!key) return null;
+  const sb = getSupabase();
+  const { data, error } = await sb.storage.from(PROFILE_AVATARS_BUCKET).createSignedUrl(key, 3600);
+  if (error || !data?.signedUrl) return null;
+  return data.signedUrl;
+}
+
 /** Loads `public.profiles` for a user id (RLS: own row only). */
 export async function fetchProfileForUserId(userId: string): Promise<ProfileForApp | null> {
   const sb = getSupabase();
@@ -101,6 +125,12 @@ export async function getCurrentProfile(): Promise<MeResponse> {
   if (!user) throw new Error("Not signed in.");
 
   const profile = await fetchProfileForUserId(user.id);
+  const profileDetails = normalizeProfileDetails(profile?.profile_details);
+  const businessDetails = normalizeBusinessDetails(
+    profile?.business_details,
+    profile?.invoice_payment_details
+  );
+  const avatarUrl = await signedProfileAvatarUrl(profileDetails.avatarStorageKey);
 
   return {
     id: user.id,
@@ -108,6 +138,9 @@ export async function getCurrentProfile(): Promise<MeResponse> {
     name: profile?.full_name ?? null,
     role: profile?.role ?? undefined,
     invoicePaymentDetails: profile?.invoice_payment_details ?? null,
+    profileDetails,
+    businessDetails,
+    avatarUrl,
     uiColorScheme: profile?.ui_color_scheme === "light" ? "light" : "dark",
     freeUsesRemaining: profile?.free_uses_remaining ?? null,
     emailConfirmed: Boolean(user.email_confirmed_at)
@@ -118,10 +151,53 @@ export async function getCurrentProfile(): Promise<MeResponse> {
  * Updates allowed profile fields only. Never sends role, subscription_status, or free_uses_remaining.
  * Invoice payment details use RPC `update_invoice_payment_details`.
  */
+export async function uploadProfileAvatar(file: File): Promise<string> {
+  const uid = await requireUserId();
+  const sb = getSupabase();
+  const ext = file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg";
+  const path = `${uid}/avatar.${ext}`;
+  const { error } = await sb.storage.from(PROFILE_AVATARS_BUCKET).upload(path, file, {
+    upsert: true,
+    contentType: file.type || `image/${ext}`
+  });
+  if (error) throw toError(error);
+  return path;
+}
+
+export async function updateProfileDetails(input: {
+  fullName?: string | null;
+  profileDetails?: Record<string, unknown> | null;
+  businessDetails?: Record<string, unknown> | null;
+}): Promise<{
+  fullName?: string | null;
+  profileDetails?: unknown;
+  businessDetails?: unknown;
+}> {
+  const sb = getSupabase();
+  const { data, error } = await sb.rpc("update_profile_details", {
+    p_full_name: input.fullName ?? null,
+    p_profile_details: input.profileDetails ?? null,
+    p_business_details: input.businessDetails ?? null
+  });
+  if (error) throw toError(error);
+  const payload = (data ?? {}) as {
+    fullName?: string | null;
+    profileDetails?: unknown;
+    businessDetails?: unknown;
+  };
+  return {
+    fullName: payload.fullName,
+    profileDetails: payload.profileDetails,
+    businessDetails: payload.businessDetails
+  };
+}
+
 export async function updateProfile(input: ProfileUpdateInput): Promise<{
   fullName?: string | null;
   uiColorScheme?: UiColorScheme;
   invoicePaymentDetails?: unknown;
+  profileDetails?: unknown;
+  businessDetails?: unknown;
 }> {
   const uid = await requireUserId();
   const sb = getSupabase();
@@ -129,7 +205,24 @@ export async function updateProfile(input: ProfileUpdateInput): Promise<{
     fullName?: string | null;
     uiColorScheme?: UiColorScheme;
     invoicePaymentDetails?: unknown;
+    profileDetails?: unknown;
+    businessDetails?: unknown;
   } = {};
+
+  if (
+    input.fullName !== undefined ||
+    input.profileDetails !== undefined ||
+    input.businessDetails !== undefined
+  ) {
+    const contact = await updateProfileDetails({
+      fullName: input.fullName,
+      profileDetails: input.profileDetails ?? undefined,
+      businessDetails: input.businessDetails ?? undefined
+    });
+    if (contact.fullName !== undefined) out.fullName = contact.fullName;
+    if (contact.profileDetails !== undefined) out.profileDetails = contact.profileDetails;
+    if (contact.businessDetails !== undefined) out.businessDetails = contact.businessDetails;
+  }
 
   if (input.invoicePaymentDetails !== undefined) {
     const { data, error } = await sb.rpc("update_invoice_payment_details", {
@@ -141,14 +234,12 @@ export async function updateProfile(input: ProfileUpdateInput): Promise<{
   }
 
   const patch: Record<string, unknown> = {};
-  if (input.fullName !== undefined) patch.full_name = input.fullName;
   if (input.uiColorScheme !== undefined) patch.ui_color_scheme = input.uiColorScheme;
 
   if (Object.keys(patch).length > 0) {
     patch.updated_at = new Date().toISOString();
     const { error } = await sb.from("profiles").update(patch).eq("id", uid);
     if (error) throw toError(error);
-    if (input.fullName !== undefined) out.fullName = input.fullName;
     if (input.uiColorScheme !== undefined) out.uiColorScheme = input.uiColorScheme;
   }
 

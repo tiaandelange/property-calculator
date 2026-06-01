@@ -27,6 +27,8 @@ export type UserSettings = {
   invoiceGenerateDaysBeforeDue: number;
   invoiceNumberFormat: string;
   pdfBrandingEnabled: boolean;
+  /** When true, invoices/PDFs use business details from Edit profile instead of personal. */
+  useBusinessForFinancials: boolean;
   paymentReminderDaysBeforeDue: number;
   overdueAlertsEnabled: boolean;
   monthlySummariesEnabled: boolean;

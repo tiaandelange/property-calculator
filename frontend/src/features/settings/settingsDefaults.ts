@@ -14,6 +14,7 @@ export const DEFAULT_USER_SETTINGS: UserSettings = {
   invoiceGenerateDaysBeforeDue: 10,
   invoiceNumberFormat: "INV-YY-{####}",
   pdfBrandingEnabled: true,
+  useBusinessForFinancials: false,
   paymentReminderDaysBeforeDue: 3,
   overdueAlertsEnabled: true,
   monthlySummariesEnabled: true,

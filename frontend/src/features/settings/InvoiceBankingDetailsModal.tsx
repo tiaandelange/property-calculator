@@ -88,7 +88,7 @@ export function InvoiceBankingDetailsModal({ open, onClose }: Props) {
         if (!next) onClose();
       }}
       title="Invoice & banking details"
-      description="Business contact and banking lines appear on invoice PDFs. Each invoice uses its lease reference as the payment reference."
+      description="Banking lines appear on invoice PDFs. Landlord details are configured under Edit profile. Each invoice uses its lease reference as the payment reference."
       size="md"
       loading={saving}
       closeOnOverlayClick={!saving}
@@ -129,24 +129,6 @@ export function InvoiceBankingDetailsModal({ open, onClose }: Props) {
               onChange={(e) => setForm({ ...form, ccEmail: e.target.value })}
               autoComplete="email"
               placeholder={email || "you@example.com"}
-              disabled={saving}
-            />
-          </Field>
-          <Field label="Business phone" help="Shown on invoice PDFs in the header (top right).">
-            <Input
-              type="tel"
-              value={form.businessPhone}
-              onChange={(e) => setForm({ ...form, businessPhone: e.target.value })}
-              autoComplete="tel"
-              disabled={saving}
-            />
-          </Field>
-          <Field label="Business address" help="Optional — shown on invoice PDFs in the header.">
-            <textarea
-              className="pg-input pg-inv-banking-modal-textarea"
-              rows={2}
-              value={form.businessAddress}
-              onChange={(e) => setForm({ ...form, businessAddress: e.target.value })}
               disabled={saving}
             />
           </Field>

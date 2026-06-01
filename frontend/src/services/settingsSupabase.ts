@@ -22,6 +22,7 @@ type DbRow = {
   invoice_generate_days_before_due: number;
   invoice_number_format: string;
   pdf_branding_enabled: boolean;
+  use_business_for_financials: boolean;
   payment_reminder_days_before_due: number;
   overdue_alerts_enabled: boolean;
   monthly_summaries_enabled: boolean;
@@ -89,6 +90,7 @@ function patchToPayload(patch: UserSettingsPatch): Record<string, unknown> {
   }
   if (patch.invoiceNumberFormat !== undefined) out.invoiceNumberFormat = patch.invoiceNumberFormat;
   if (patch.pdfBrandingEnabled !== undefined) out.pdfBrandingEnabled = patch.pdfBrandingEnabled;
+  if (patch.useBusinessForFinancials !== undefined) out.useBusinessForFinancials = patch.useBusinessForFinancials;
   if (patch.paymentReminderDaysBeforeDue !== undefined) {
     out.paymentReminderDaysBeforeDue = patch.paymentReminderDaysBeforeDue;
   }

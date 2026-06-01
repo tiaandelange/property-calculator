@@ -11,13 +11,13 @@ import { useRegisterSettingsUnsavedChanges } from "./settingsUnsavedChanges";
 import { useAuth } from "../../contexts/AuthContext";
 import { useMediaQuery } from "../../hooks/useMediaQuery";
 import { supabase } from "../../lib/supabaseClient";
-import { updateProfile } from "../../services/profileSupabase";
 import { upsertUserSettings, validateUserSettings } from "../../services/settingsSupabase";
 import {
   EXPENSE_CATEGORY_OPTIONS,
   STATEMENT_FILTER_OPTIONS
 } from "./settingsDefaults";
 import { ApplicantFormTemplateSettingsCard } from "../applicants/ApplicantFormTemplateSettingsCard";
+import { EditProfileModal } from "./EditProfileModal";
 import { InvoiceBankingDetailsModal } from "./InvoiceBankingDetailsModal";
 import { SubscriptionSettingsSection } from "./SubscriptionSettingsSection";
 import type { AccentColor, ThemePreference, UserSettings } from "./settingsTypes";
@@ -193,77 +193,6 @@ function ChangePasswordModal({ open, onClose }: { open: boolean; onClose: () => 
   );
 }
 
-function EditProfileModal({
-  open,
-  onClose,
-  initialName,
-  onSaved
-}: {
-  open: boolean;
-  onClose: () => void;
-  initialName: string;
-  onSaved: (name: string) => void;
-}) {
-  const { refreshProfile } = useAuth();
-  const queryClient = useQueryClient();
-  const workspaceId = useWorkspaceId();
-  const [name, setName] = useState(initialName);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    if (open) setName(initialName);
-  }, [open, initialName]);
-
-  const submit = async (e: FormEvent) => {
-    e.preventDefault();
-    setSaving(true);
-    setError("");
-    try {
-      await updateProfile({ fullName: name.trim() || null });
-      await refreshProfile();
-      if (workspaceId) {
-        queryClient.invalidateQueries({ queryKey: queryKeys.profile(workspaceId) });
-      }
-      onSaved(name.trim());
-      onClose();
-    } catch (ex: unknown) {
-      setError(ex instanceof Error ? ex.message : "Could not save profile.");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <AppFormModal
-      open={open}
-      onOpenChange={(next) => {
-        if (!next && !saving) onClose();
-      }}
-      title="Edit profile"
-      size="sm"
-      loading={saving}
-      closeOnOverlayClick={!saving}
-      onSubmit={(e) => void submit(e)}
-      footer={
-        <div className="pg-app-modal-actions">
-          <Button type="button" variant="soft" onClick={onClose} disabled={saving}>
-            Cancel
-          </Button>
-          <Button type="submit" loading={saving}>
-            Save
-          </Button>
-        </div>
-      }
-    >
-      <Field label="Full name">
-        <Input value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" />
-      </Field>
-      {error ? <div className="pg-alert pg-alert-error">{error}</div> : null}
-    </AppFormModal>
-  );
-}
-
 export function SettingsDashboard() {
   const isMobile = useMediaQuery("(max-width: 768px)");
   const [searchParams] = useSearchParams();
@@ -279,6 +208,7 @@ export function SettingsDashboard() {
   const [success, setSuccess] = useState(false);
   const [email, setEmail] = useState("");
   const [fullName, setFullName] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [role, setRole] = useState("");
   const [editProfileOpen, setEditProfileOpen] = useState(false);
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
@@ -303,6 +233,7 @@ export function SettingsDashboard() {
     if (profileQuery.data) {
       setEmail(profileQuery.data.email);
       setFullName(profileQuery.data.name ?? "");
+      setAvatarUrl(profileQuery.data.avatarUrl ?? null);
       setRole(profileQuery.data.role ?? "USER");
     }
   }, [profileQuery.data]);
@@ -482,7 +413,11 @@ export function SettingsDashboard() {
         <SettingsCard icon="profile" title="Account & Profile" description="Your identity and workspace role.">
           <div className="pg-settings-profile">
             <div className="pg-settings-avatar" aria-hidden>
-              {initials(fullName, email)}
+              {avatarUrl ? (
+                <img src={avatarUrl} alt="" className="pg-edit-profile-avatar-img" />
+              ) : (
+                initials(fullName, email)
+              )}
             </div>
             <div className="pg-settings-profile-meta">
               <strong>{fullName || "No name set"}</strong>
@@ -861,8 +796,10 @@ export function SettingsDashboard() {
       <EditProfileModal
         open={editProfileOpen}
         onClose={() => setEditProfileOpen(false)}
-        initialName={fullName}
-        onSaved={setFullName}
+        onSaved={(name, avatar) => {
+          setFullName(name);
+          setAvatarUrl(avatar);
+        }}
       />
       <ChangePasswordModal open={changePasswordOpen} onClose={() => setChangePasswordOpen(false)} />
       <InvoiceBankingDetailsModal

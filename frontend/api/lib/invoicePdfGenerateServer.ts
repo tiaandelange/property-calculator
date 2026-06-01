@@ -9,9 +9,13 @@ import {
 } from "./invoicePdfBuilder.js";
 import {
   invoicePaymentReferenceForInvoice,
-  leaseReferenceFromEmbed,
-  normalizeInvoicePaymentDetails
+  leaseReferenceFromEmbed
 } from "./invoicePaymentDetailsShared.js";
+import {
+  normalizeBusinessDetails,
+  normalizeProfileDetails,
+  resolveFinancialLandlordParty
+} from "./profileContactShared.js";
 import {
   invoiceHasStoredPdf,
   invoicePdfStorageKey,
@@ -74,28 +78,42 @@ async function loadPdfBuildContext(
   tenantPropertyAddress: string
 ): Promise<InvoicePdfBuildContext> {
   const [{ data: profile }, { data: settings }, { data: authData }] = await Promise.all([
-    sb.from("profiles").select("full_name, invoice_payment_details").eq("id", uid).maybeSingle(),
-    sb.from("user_settings").select("accent_color, pdf_branding_enabled").eq("user_id", uid).maybeSingle(),
+    sb
+      .from("profiles")
+      .select("full_name, invoice_payment_details, profile_details, business_details")
+      .eq("id", uid)
+      .maybeSingle(),
+    sb
+      .from("user_settings")
+      .select("accent_color, pdf_branding_enabled, use_business_for_financials")
+      .eq("user_id", uid)
+      .maybeSingle(),
     sb.auth.getUser()
   ]);
 
   const paymentRaw = profile?.invoice_payment_details;
-  const paymentNorm = normalizeInvoicePaymentDetails(paymentRaw);
-  const businessPhone = paymentNorm.businessPhone;
-  const businessAddress = paymentNorm.businessAddress;
+  const profileDetails = normalizeProfileDetails(profile?.profile_details);
+  const businessDetails = normalizeBusinessDetails(profile?.business_details, paymentRaw);
+  const ccEmail = str((paymentRaw as Record<string, unknown> | null)?.ccEmail ?? (paymentRaw as Record<string, unknown> | null)?.cc_email);
 
-  const landlordName = str(profile?.full_name) || "Proplytic";
-  const email = str(authData.user?.email);
+  const landlord = resolveFinancialLandlordParty({
+    useBusinessForFinancials: settings?.use_business_for_financials === true,
+    fullName: profile?.full_name,
+    authEmail: authData.user?.email,
+    profileDetails,
+    businessDetails,
+    invoiceCcEmail: ccEmail
+  });
 
   return {
     theme: buildGlobalPdfTheme({ accentColor: settings?.accent_color }),
     logoDataUrl: loadProplyticLogoDataUrl(),
     pdfBrandingEnabled: settings?.pdf_branding_enabled !== false,
     landlord: {
-      name: landlordName,
-      email: email || paymentNorm.ccEmail || undefined,
-      phone: businessPhone || undefined,
-      address: businessAddress || undefined
+      name: landlord.name,
+      email: landlord.email,
+      phone: landlord.phone,
+      address: landlord.address
     },
     tenantPropertyAddress: tenantPropertyAddress || undefined,
     paymentDetailsRaw: paymentRaw
