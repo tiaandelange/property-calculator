@@ -1,5 +1,6 @@
 import { FormEvent, useEffect, useState } from "react";
 import { AppFormModal } from "../../components/ui/AppModal";
+import { Button } from "../../components/ui/Button";
 import { Field, Input } from "../../components/ui/Input";
 import { fmtZar } from "./invoiceDirectoryUtils";
 
@@ -41,7 +42,7 @@ export function InvoiceRecordPaymentModal({
     setAmount(Number.isFinite(defaultAmount) && defaultAmount > 0 ? String(defaultAmount) : "");
   }, [open, defaultReference, defaultAmount]);
 
-  const submit = (e: FormEvent) => {
+  const submit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     void onSubmit({ paymentDate, paymentReference, amount });
   };
@@ -49,17 +50,31 @@ export function InvoiceRecordPaymentModal({
   return (
     <AppFormModal
       open={open}
+      onOpenChange={(next) => {
+        if (!next) onClose();
+      }}
       title={title}
-      confirmLabel={confirmLabel}
+      size="sm"
       loading={loading}
+      closeOnOverlayClick={!loading}
       onClose={onClose}
       onSubmit={submit}
+      footer={
+        <div className="pg-app-modal-actions">
+          <Button type="button" variant="soft" onClick={onClose} disabled={loading}>
+            Cancel
+          </Button>
+          <Button type="submit" loading={loading}>
+            {confirmLabel}
+          </Button>
+        </div>
+      }
     >
       <p className="pg-muted" style={{ marginTop: 0 }}>
         If the invoice has not been sent yet, it will be marked as sent when you save this payment.
       </p>
       <div style={{ display: "grid", gap: 16 }}>
-        <Field label="Payment date" required>
+        <Field label="Payment date">
           <Input type="date" value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} required />
         </Field>
         <Field label="Payment reference" help="Defaults to the lease reference when available.">

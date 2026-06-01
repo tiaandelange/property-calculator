@@ -65,7 +65,7 @@ export function InvoicePaymentsTable({ payments, invoiceTotal, busyId, onSave, o
               <ProplyticTableRow>
                 <ProplyticTableHeadCell columnType="date">Date</ProplyticTableHeadCell>
                 <ProplyticTableHeadCell columnType="text">Reference</ProplyticTableHeadCell>
-                <ProplyticTableHeadCell columnType="amount">Amount</ProplyticTableHeadCell>
+                <ProplyticTableHeadCell columnType="currency">Amount</ProplyticTableHeadCell>
                 <ProplyticTableHeadCell columnType="text">Type</ProplyticTableHeadCell>
                 <ProplyticTableHeadCell columnType="actions" />
               </ProplyticTableRow>
@@ -91,7 +91,7 @@ export function InvoicePaymentsTable({ payments, invoiceTotal, busyId, onSave, o
                         p.paymentReference?.trim() || "—"
                       )}
                     </ProplyticTableCell>
-                    <ProplyticTableCell columnType="amount">
+                    <ProplyticTableCell columnType="currency">
                       {isEditing ? (
                         <Input
                           type="number"
