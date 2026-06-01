@@ -36,21 +36,6 @@ function isCurrentLeaseStatus(status: unknown): boolean {
   return s === "ACTIVE" || s === "MONTH_TO_MONTH";
 }
 
-function leaseRowToSummary(row: Record<string, unknown>): Record<string, unknown> {
-  const l = snakeRowToCamel(row) as Record<string, unknown>;
-  const st = String(l.status ?? "");
-  return {
-    ...l,
-    displayStatus: st
-  };
-}
-
-const TENANT_SELECT_WITH_PROPERTY = `
-  *,
-  properties!tenants_property_id_fkey (*),
-  applied_property:properties!tenants_applied_property_id_fkey ( id, name, address_line1, address_line2, suburb, city )
-`;
-
 const TENANT_LEASE_SELECT = `
   id,
   user_id,
@@ -65,6 +50,75 @@ const TENANT_LEASE_SELECT = `
   lease_type,
   lease_reference,
   created_at
+`;
+
+const TENANT_LEASE_SELECT_WITH_PROPERTY = `
+  ${TENANT_LEASE_SELECT},
+  properties ( id, name, address_line1, address_line2, suburb, city )
+`;
+
+function leaseRowToSummary(row: Record<string, unknown>): Record<string, unknown> {
+  const l = snakeRowToCamel(row) as Record<string, unknown>;
+  const st = String(l.status ?? "");
+  const propsRaw = row.properties ?? row.property;
+  let property: Record<string, unknown> | null = null;
+  if (propsRaw && typeof propsRaw === "object") {
+    const p = Array.isArray(propsRaw) ? propsRaw[0] : propsRaw;
+    if (p && typeof p === "object") property = snakeRowToCamel(p as Record<string, unknown>);
+  }
+  const propertyId = l.propertyId ?? property?.id ?? null;
+  return {
+    ...l,
+    displayStatus: st,
+    property,
+    propertyId: propertyId != null ? String(propertyId) : null
+  };
+}
+
+async function loadLeasesForTenant(
+  sb: ReturnType<typeof getSupabase>,
+  uid: string,
+  tenantId: string
+): Promise<Record<string, unknown>[]> {
+  const [byTenantIdRes, byLinkRes] = await Promise.all([
+    sb
+      .from("leases")
+      .select(TENANT_LEASE_SELECT_WITH_PROPERTY)
+      .eq("user_id", uid)
+      .eq("tenant_id", tenantId)
+      .order("created_at", { ascending: false }),
+    sb
+      .from("lease_tenants")
+      .select(`leases!inner ( ${TENANT_LEASE_SELECT_WITH_PROPERTY} )`)
+      .eq("user_id", uid)
+      .eq("tenant_id", tenantId)
+  ]);
+
+  if (byTenantIdRes.error) throw toError(byTenantIdRes.error);
+  if (byLinkRes.error) throw toError(byLinkRes.error);
+
+  const byId = new Map<string, Record<string, unknown>>();
+  for (const row of byTenantIdRes.data ?? []) {
+    byId.set(String((row as { id: string }).id), row as Record<string, unknown>);
+  }
+  for (const link of byLinkRes.data ?? []) {
+    const lease = (link as Record<string, unknown>).leases;
+    if (lease && typeof lease === "object" && !Array.isArray(lease)) {
+      const lr = lease as Record<string, unknown>;
+      byId.set(String(lr.id), lr);
+    }
+  }
+
+  return [...byId.values()].sort(
+    (a, b) =>
+      new Date(String(b.created_at ?? 0)).getTime() - new Date(String(a.created_at ?? 0)).getTime()
+  );
+}
+
+const TENANT_SELECT_WITH_PROPERTY = `
+  *,
+  properties!tenants_property_id_fkey (*),
+  applied_property:properties!tenants_applied_property_id_fkey ( id, name, address_line1, address_line2, suburb, city )
 `;
 
 function mapTenantDirectoryItem(raw: Record<string, unknown>): TenantListItem {
@@ -292,29 +346,19 @@ export async function getTenant(
   const sb = getSupabase();
   const tenantId = String(id);
 
-  const [tenantRes, leaseRes] = await Promise.all([
+  const [tenantRes, leaseRows] = await Promise.all([
     sb.from("tenants").select(TENANT_SELECT_WITH_PROPERTY).eq("id", tenantId).maybeSingle(),
-    sb
-      .from("leases")
-      .select(TENANT_LEASE_SELECT)
-      .eq("user_id", uid)
-      .eq("tenant_id", tenantId)
-      .order("created_at", { ascending: false })
+    loadLeasesForTenant(sb, uid, tenantId)
   ]);
 
   const { data: row, error } = tenantRes;
   if (error) throw toError(error);
   if (!row) throw new Error("Tenant not found.");
 
-  if (leaseRes.error) throw toError(leaseRes.error);
-  const leaseRows = leaseRes.data ?? [];
+  const leasesCamel = leaseRows.map((lr) => leaseRowToSummary(lr));
 
-  const leasesCamel = leaseRows.map((lr) => {
-    const flat = snakeRowToCamel(lr as Record<string, unknown>) as Record<string, unknown>;
-    return { ...flat, displayStatus: String(flat.status ?? "") };
-  });
-
-  const current = leaseRows.find((lr) => isCurrentLeaseStatus((lr as { status: string }).status)) ?? null;
+  const current =
+    leaseRows.find((lr) => isCurrentLeaseStatus((lr as { status: string }).status)) ?? null;
 
   const tenant = sanitizeTenantContactFields({
     ...dbToTenant(row as Record<string, unknown>),

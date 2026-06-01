@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { Link, Navigate, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { getTenant } from "../api/ownedProperties";
+import { resolveTenantPropertyId } from "../features/tenants/tenantPropertyContext";
 import { AppEditorPage } from "../components/ui/AppPage";
 import { fetchMe, meFinancialDisplayName } from "../api/user";
 import { InvoiceDetailPanel } from "../features/invoices/InvoiceDetailPanel";
@@ -58,10 +59,7 @@ export function InvoiceDetailPage() {
       try {
         const [{ tenant, currentLease }, me] = await Promise.all([getTenant(tenantId), fetchMe()]);
         if (cancelled) return;
-        const property = (tenant.property ?? null) as Record<string, unknown> | null;
-        const propertyId =
-          propertyIdFromUrl ||
-          (property?.id != null ? String(property.id) : tenant.propertyId != null ? String(tenant.propertyId) : "");
+        const propertyId = propertyIdFromUrl || resolveTenantPropertyId(tenant, currentLease);
         if (!propertyId) {
           setError("This tenant is not linked to a property.");
           setBootstrap(null);

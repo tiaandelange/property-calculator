@@ -218,6 +218,15 @@ describe("tenantsSupabase", () => {
           }))
         };
       }
+      if (table === "lease_tenants") {
+        return {
+          select: vi.fn(() => ({
+            eq: vi.fn(() => ({
+              eq: vi.fn(() => Promise.resolve({ data: [], error: null }))
+            }))
+          }))
+        };
+      }
       return {
         select: vi.fn(() => ({
           eq: vi.fn(() => ({
@@ -233,6 +242,71 @@ describe("tenantsSupabase", () => {
     expect(tenant.id).toBe(tenantId);
     expect(tenant.leases).toEqual([]);
     expect(currentLease).toBeNull();
+  });
+
+  it("getTenant resolves current lease and property via lease_tenants when tenant has no property_id", async () => {
+    const leaseId = "cccccccc-cccc-cccc-cccc-cccccccccccc";
+    getUser.mockResolvedValue({ data: { user: { id: userId } }, error: null });
+    from.mockImplementation((table: string) => {
+      if (table === "tenants") {
+        return {
+          select: vi.fn(() => ({
+            eq: vi.fn(() => ({
+              maybeSingle: vi.fn(() => Promise.resolve({ data: tenantRowSnake, error: null }))
+            }))
+          }))
+        };
+      }
+      if (table === "lease_tenants") {
+        return {
+          select: vi.fn(() => ({
+            eq: vi.fn(() => ({
+              eq: vi.fn(() =>
+                Promise.resolve({
+                  data: [
+                    {
+                      leases: {
+                        id: leaseId,
+                        user_id: userId,
+                        tenant_id: null,
+                        property_id: propertyId,
+                        unit_id: null,
+                        status: "ACTIVE",
+                        start_date: "2026-01-01",
+                        fixed_term_end_date: "2027-01-01",
+                        monthly_rent: 10000,
+                        rent_due_day: 1,
+                        lease_type: "FIXED",
+                        lease_reference: "L-1",
+                        created_at: "2026-01-01T00:00:00Z",
+                        properties: { id: propertyId, name: "Oak House", address_line1: null, suburb: null, city: null }
+                      }
+                    }
+                  ],
+                  error: null
+                })
+              )
+            }))
+          }))
+        };
+      }
+      return {
+        select: vi.fn(() => ({
+          eq: vi.fn(() => ({
+            eq: vi.fn(() => ({
+              order: vi.fn(() => Promise.resolve({ data: [], error: null }))
+            }))
+          }))
+        }))
+      };
+    });
+
+    const { tenant, currentLease } = await getTenant(tenantId);
+    expect(tenant.propertyId).toBeFalsy();
+    expect(currentLease).not.toBeNull();
+    expect(currentLease?.id).toBe(leaseId);
+    expect(currentLease?.propertyId).toBe(propertyId);
+    expect((currentLease?.property as { name?: string })?.name).toBe("Oak House");
   });
 
   it("createTenant sets user_id on insert and defaults status to ACTIVE", async () => {

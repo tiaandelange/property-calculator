@@ -16,6 +16,7 @@ import { GC_TIME_MS, STALE_TIME_STATEMENT_MS } from "../../../lib/queryClient";
 import { queryKeys } from "../../../lib/queryKeys";
 import { useProfileQuery, useTenantQuery } from "../../queries/useWorkspaceQueries";
 import { useWorkspaceId } from "../../queries/useWorkspaceId";
+import { resolveTenantPropertyId, resolveTenantPropertyName } from "../tenantPropertyContext";
 
 export type TenantWorkspaceContext = {
   tenantId: string;
@@ -37,11 +38,10 @@ function tenantContextFromQueries(
   profile: { name?: string | null; email?: string; invoicePaymentDetails?: unknown } | undefined
 ): TenantWorkspaceContext | null {
   const { tenant, currentLease } = tenantPayload;
-  const property = (tenant.property ?? null) as Record<string, unknown> | null;
-  const propertyId =
-    property?.id != null ? String(property.id) : tenant.propertyId != null ? String(tenant.propertyId) : "";
+  const propertyId = resolveTenantPropertyId(tenant, currentLease);
   if (!propertyId) return null;
 
+  const property = (tenant.property ?? null) as Record<string, unknown> | null;
   const leases = (tenant.leases ?? []) as Record<string, unknown>[];
   const tenantLeaseIds = leases.map((l) => String(l.id)).filter(Boolean);
   if (currentLease?.id) {
@@ -49,7 +49,7 @@ function tenantContextFromQueries(
     if (!tenantLeaseIds.includes(lid)) tenantLeaseIds.push(lid);
   }
 
-  const propertyName = property?.name != null ? String(property.name) : "Property";
+  const propertyName = resolveTenantPropertyName(tenant, currentLease);
   const unitRaw = property?.unitLabel ?? property?.unitNumber ?? property?.unit;
   const unitLabel = unitRaw ? `${String(unitRaw)}, ${propertyName}` : propertyName;
 
