@@ -690,6 +690,16 @@ export function InvoiceDetailPanel({
   };
 
   const sendMenuItems: SplitButtonMenuItem[] = [
+    ...(showMarkAsSent
+      ? [
+          {
+            label: invoiceMarkAsSentMenuLabel(),
+            icon: "send",
+            disabled: sendBusy,
+            onClick: () => setConfirmSend(true)
+          } satisfies SplitButtonMenuItem
+        ]
+      : []),
     ...(canRecordInvoicePayment(status)
       ? [
           {
@@ -724,11 +734,6 @@ export function InvoiceDetailPanel({
           {saveButtonLabel}
         </Button>
       ) : null}
-      {showMarkAsSent ? (
-        <Button type="button" variant="outline" loading={sendBusy} iconLeft="send" onClick={() => setConfirmSend(true)}>
-          {invoiceMarkAsSentMenuLabel()}
-        </Button>
-      ) : null}
       {showSendSplit ? (
         <SplitButton
           mainLabel={invoiceSendButtonLabel()}
@@ -757,21 +762,6 @@ export function InvoiceDetailPanel({
       />
       {moreOpen ? (
         <div className="pg-inv-editor__more-menu" role="menu">
-          {showMarkAsSent ? (
-            <button
-              type="button"
-              className="pg-inv-editor__more-item"
-              role="menuitem"
-              disabled={sendBusy}
-              onClick={() => {
-                setMoreOpen(false);
-                setConfirmSend(true);
-              }}
-            >
-              <AppIcon name="send" size="sm" />
-              {invoiceMarkAsSentMenuLabel()}
-            </button>
-          ) : null}
           {canRecordInvoicePayment(status) ? (
             <button
               type="button"
