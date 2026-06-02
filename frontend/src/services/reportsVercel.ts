@@ -1,7 +1,7 @@
 import { getSupabase } from "../lib/supabaseClient";
 import { readVercelError } from "./vercelResponse";
 
-export type VercelReportType = "CALCULATION" | "PROPERTY_SUMMARY";
+export type VercelReportType = "CALCULATION" | "PROPERTY_SUMMARY" | "INVESTMENT_REPORT";
 
 export type GenerateReportResponse = {
   reportId: string;
@@ -21,6 +21,7 @@ export async function generateReportViaVercel(opts: {
   calculationId?: string;
   propertyId?: string;
   scenarioName?: string | null;
+  payload?: Record<string, unknown>;
 }): Promise<GenerateReportResponse> {
   const sb = getSupabase();
   const { data: sessionData, error: sessionErr } = await sb.auth.getSession();
@@ -32,6 +33,7 @@ export async function generateReportViaVercel(opts: {
   if (opts.calculationId) body.calculationId = opts.calculationId;
   if (opts.propertyId) body.propertyId = opts.propertyId;
   if (opts.scenarioName != null) body.scenarioName = opts.scenarioName;
+  if (opts.payload != null) body.payload = opts.payload;
 
   const res = await fetch("/api/reports/generate", {
     method: "POST",

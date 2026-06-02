@@ -206,6 +206,57 @@ export function buildCalculationReportPdfDefinition(opts: {
   return { definition, scenarioName };
 }
 
+export function buildInvestmentReportPdfDefinition(opts: {
+  propertyType: string;
+  answers: Record<string, unknown>;
+  metrics: Record<string, unknown>;
+}): { definition: TDocumentDefinitions } {
+  const propertyType = String(opts.propertyType || "").trim() || "Property";
+  const metrics = opts.metrics ?? {};
+  const answers = opts.answers ?? {};
+
+  const definition: TDocumentDefinitions = {
+    info: { title: `Proplytic Investment Report — ${propertyType}` },
+    content: [
+      { text: "Proplytic", style: "brand" },
+      { text: "Investment report (calculator draft)", style: "tagline", margin: m(0, 0, 0, 10) },
+      { text: `Property type: ${propertyType}`, margin: m(0, 0, 0, 6) },
+      { text: `Generated: ${new Date().toISOString()}`, margin: m(0, 0, 0, 12) },
+
+      { text: "Key metrics", style: "subheader" },
+      kvTable([
+        ["Monthly income", metrics.monthlyIncome != null ? formatZar(Number(metrics.monthlyIncome)) : "—"],
+        ["Monthly expenses", metrics.monthlyExpenses != null ? formatZar(Number(metrics.monthlyExpenses)) : "—"],
+        ["Projected cash flow", metrics.projectedCashFlow != null ? formatZar(Number(metrics.projectedCashFlow)) : "—"],
+        ["Gross yield", metrics.grossYield != null ? `${Number(metrics.grossYield).toFixed(1)}%` : "—"],
+        ["Net yield", metrics.netYield != null ? `${Number(metrics.netYield).toFixed(1)}%` : "—"],
+        ["Cash on cash ROI", metrics.cashOnCashRoi != null ? `${Number(metrics.cashOnCashRoi).toFixed(1)}%` : "—"],
+        ["IRR", metrics.internalRateofReturn != null ? `${Number(metrics.internalRateofReturn).toFixed(1)}%` : "—"],
+        ["LTV", metrics.ltv != null ? `${Number(metrics.ltv).toFixed(1)}%` : "—"]
+      ]),
+
+      { text: "Inputs", style: "subheader", margin: m(0, 10, 0, 0) },
+      { text: JSON.stringify(answers, null, 2), style: "code" },
+
+      { text: "Disclaimer", style: "subheader", margin: m(0, 10, 0, 4) },
+      {
+        text:
+          "This report is an estimate for educational purposes and is not financial, tax or legal advice. " +
+          "Assumptions materially affect results."
+      }
+    ],
+    styles: {
+      brand: { fontSize: 22, bold: true, color: "#6c4cff" },
+      tagline: { fontSize: 12, color: "#333333" },
+      subheader: { fontSize: 14, bold: true, margin: [0, 12, 0, 6] },
+      code: { fontSize: 9 }
+    },
+    defaultStyle: { font: "Roboto" }
+  };
+
+  return { definition };
+}
+
 export type PropertyHeader = {
   name: string;
   addressLine1: string;

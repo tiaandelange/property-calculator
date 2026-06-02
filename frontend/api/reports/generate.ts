@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 import { assertInvestmentReportQuota } from "../lib/investmentReportQuota.js";
 import { renderPdfDefinitionToBuffer } from "../lib/pdfMakeServer.js";
-import { buildCalculationReportPdfDefinition, buildPropertySummaryPdfDefinition } from "../lib/reportPdfBuilders.js";
+import { buildCalculationReportPdfDefinition, buildInvestmentReportPdfDefinition, buildPropertySummaryPdfDefinition } from "../lib/reportPdfBuilders.js";
 import { assemblePropertyInvestmentReportData } from "../lib/propertyInvestmentReportData.js";
 
 const PROPERTY_REPORT_SELECT = `
@@ -294,6 +294,79 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       });
       if (insErr) {
         console.error("[reports/generate] stored_reports insert failed", insErr);
+        await sb.storage.from(REPORTS_BUCKET).remove([storageKey]);
+        res.status(500).json({ error: "Failed to save report metadata." });
+        return;
+      }
+
+      const { data: signed, error: signErr } = await sb.storage.from(REPORTS_BUCKET).createSignedUrl(storageKey, 600);
+      if (signErr || !signed?.signedUrl) {
+        res.status(201).json({
+          reportId,
+          storageKey,
+          storageBucket: REPORTS_BUCKET,
+          error: signErr?.message ?? "Signed URL could not be created."
+        });
+        return;
+      }
+
+      res.status(201).json({
+        reportId,
+        downloadUrl: signed.signedUrl,
+        expiresIn: 600,
+        storageKey,
+        storageBucket: REPORTS_BUCKET
+      });
+      return;
+    }
+
+    if (reportType === "INVESTMENT_REPORT") {
+      const payload = (body.payload && typeof body.payload === "object") ? (body.payload as Record<string, unknown>) : null;
+      if (!payload) {
+        res.status(400).json({ error: "payload is required for INVESTMENT_REPORT." });
+        return;
+      }
+      const propertyType = String(payload.propertyType ?? "").trim();
+      const answers = (payload.answers && typeof payload.answers === "object") ? (payload.answers as Record<string, unknown>) : {};
+      const metrics = (payload.metrics && typeof payload.metrics === "object") ? (payload.metrics as Record<string, unknown>) : {};
+      if (!propertyType) {
+        res.status(400).json({ error: "payload.propertyType is required." });
+        return;
+      }
+
+      const quotaError = await assertInvestmentReportQuota(sb);
+      if (quotaError) {
+        res.status(402).json({ error: quotaError });
+        return;
+      }
+
+      const { definition } = buildInvestmentReportPdfDefinition({ propertyType, answers, metrics });
+      const pdfBuffer = await renderPdfDefinitionToBuffer(definition);
+      const safeName = propertyType.replace(/[^\w\s-]/g, "").trim().replace(/\s+/g, "-").slice(0, 50) || "investment";
+      const fileName = `investment-report-${safeName}.pdf`;
+
+      const { error: upErr } = await sb.storage.from(REPORTS_BUCKET).upload(storageKey, pdfBuffer, {
+        contentType: "application/pdf",
+        upsert: false
+      });
+      if (upErr) {
+        console.error("[reports/generate] storage upload failed", upErr);
+        res.status(500).json({ error: "Failed to upload PDF to storage." });
+        return;
+      }
+
+      const { error: insErr } = await sb.from("investment_reports").insert({
+        id: reportId,
+        user_id: uid,
+        property_type: propertyType,
+        label: scenarioName,
+        file_name: fileName,
+        storage_bucket: REPORTS_BUCKET,
+        storage_key: storageKey,
+        payload
+      });
+      if (insErr) {
+        console.error("[reports/generate] investment_reports insert failed", insErr);
         await sb.storage.from(REPORTS_BUCKET).remove([storageKey]);
         res.status(500).json({ error: "Failed to save report metadata." });
         return;

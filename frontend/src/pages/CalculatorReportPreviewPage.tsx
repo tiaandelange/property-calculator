@@ -100,22 +100,9 @@ export function CalculatorReportPreviewPage() {
 
             <AppPageSection>
               <Card title="Inputs used">
-                <div className="pg-muted" style={{ marginBottom: 10 }}>
-                  Stored as a draft payload for later PDF generation.
+                <div className="pg-muted">
+                  This view is a summary. The underlying inputs are stored with the report and used to generate the PDF.
                 </div>
-                <pre
-                  style={{
-                    margin: 0,
-                    padding: 12,
-                    borderRadius: 12,
-                    background: "color-mix(in srgb, var(--surface-muted) 70%, transparent)",
-                    border: "1px solid color-mix(in srgb, var(--border) 82%, transparent)",
-                    overflowX: "auto",
-                    fontSize: 12
-                  }}
-                >
-                  {JSON.stringify(payload, null, 2)}
-                </pre>
               </Card>
             </AppPageSection>
           </>

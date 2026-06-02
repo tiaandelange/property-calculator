@@ -14,7 +14,7 @@ import { calculatePropertyTypeMetrics } from "../features/calculators/propertyTy
 import { formatRand } from "../utils/mortgageRepayment";
 import { CashFlowTrendChart, IncomeVsExpensesChart } from "../features/calculators/CalculatorsReportPreviewCharts";
 import { buildCalculatorReportPayload } from "../features/calculators/calculatorReportPayload";
-import { saveCalculatorReportPayload } from "../features/calculators/calculatorReportStorage";
+import { generateReportViaVercel } from "../services/reportsVercel";
 import { AppModal } from "../components/ui/AppModal";
 import { deleteSavedCalculatorInput, listSavedCalculatorInputs, saveCalculatorInputs, type SavedCalculatorInput } from "../services/calculatorSavedInputsSupabase";
 
@@ -133,10 +133,15 @@ export function CalculatorsPage() {
     setGenerateBusy(true);
     try {
       const payload = buildCalculatorReportPayload({ propertyType, answers, metrics });
-      const id = saveCalculatorReportPayload(payload);
-      setGeneratedReportId(id);
+      const gen = await generateReportViaVercel({ reportType: "INVESTMENT_REPORT", payload });
+      const url = gen.downloadUrl;
+      if (!url) throw new Error(gen.error ?? "Report could not be generated.");
+      const opened = window.open(url, "_blank", "noopener,noreferrer");
+      if (!opened) {
+        window.alert("Pop-up blocked. Allow pop-ups for this site, or open the report from the link in the address bar.");
+      }
+      setGeneratedReportId(gen.reportId);
       setStep(3);
-      navigate(`/calculators/report/${encodeURIComponent(id)}`);
     } finally {
       setGenerateBusy(false);
     }
