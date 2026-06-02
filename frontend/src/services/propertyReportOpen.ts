@@ -9,7 +9,9 @@ export async function openPropertyInvestmentReport(propertyId: string): Promise<
   if (!url) throw new Error(gen.error ?? "Report could not be generated.");
   const opened = window.open(url, "_blank", "noopener,noreferrer");
   if (!opened) {
-    window.location.assign(url);
+    window.alert(
+      "Pop-up blocked. Allow pop-ups for this site, or open the report from the link in the address bar."
+    );
   }
   return url;
 }
