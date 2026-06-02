@@ -9,6 +9,8 @@ import { PropertyTypeTile } from "../components/calculators/PropertyTypeTile";
 import { CalculatorQuestionsForm } from "../components/calculators/CalculatorQuestionsForm";
 import { PROPERTY_TYPES, type PropertyTypeDef, type PropertyTypeId } from "../data/calculatorPropertyTypes";
 import { getDefaultAnswersForConfig, getQuestionConfig } from "../data/calculatorQuestionsConfig";
+import { calculatePropertyTypeMetrics } from "../features/calculators/propertyTypeCalculations";
+import { formatRand } from "../utils/mortgageRepayment";
 
 type StepId = 1 | 2 | 3;
 
@@ -33,6 +35,11 @@ export function CalculatorsPage() {
     if (!propertyType) return null;
     return getQuestionConfig(propertyType);
   }, [propertyType]);
+
+  const metrics = useMemo(() => {
+    if (!propertyType) return null;
+    return calculatePropertyTypeMetrics(propertyType, answers);
+  }, [propertyType, answers]);
 
   // When a property type is selected, seed defaults (but don't clobber existing answers).
   useEffect(() => {
@@ -228,10 +235,34 @@ export function CalculatorsPage() {
                   Updates as you fill in the form.
                 </div>
                 <div className="pg-calculators-summary-grid">
-                  <AppMetricCard label="Monthly Income" value="—" icon="income" />
-                  <AppMetricCard label="Monthly Expenses" value="—" icon="expense" iconAccent="danger" />
-                  <AppMetricCard label="Gross Yield" value="—" icon="percent" />
-                  <AppMetricCard label="Cash Flow" value="—" icon="wallet" />
+                  <AppMetricCard
+                    label="Monthly Income"
+                    value={metrics?.monthlyIncome == null ? "—" : formatRand(metrics.monthlyIncome)}
+                    icon="income"
+                  />
+                  <AppMetricCard
+                    label="Monthly Expenses"
+                    value={metrics?.monthlyExpenses == null ? "—" : formatRand(metrics.monthlyExpenses)}
+                    icon="expense"
+                    iconAccent="danger"
+                  />
+                  <AppMetricCard
+                    label="Gross Yield"
+                    value={metrics?.grossYield == null ? "—" : `${metrics.grossYield.toFixed(1)}%`}
+                    icon="percent"
+                  />
+                  <AppMetricCard
+                    label="Cash Flow"
+                    value={metrics?.projectedCashFlow == null ? "—" : formatRand(metrics.projectedCashFlow)}
+                    icon="wallet"
+                  />
+                </div>
+
+                <div className="pg-muted" style={{ marginTop: 10, fontSize: 12 }}>
+                  {metrics?.ltv == null ? "LTV: —" : `LTV: ${metrics.ltv.toFixed(1)}%`}
+                  {metrics?.unitsOccupied
+                    ? ` · Occupancy: ${metrics.unitsOccupied.occupied}/${metrics.unitsOccupied.total}`
+                    : ""}
                 </div>
               </Card>
             </aside>
@@ -242,12 +273,37 @@ export function CalculatorsPage() {
             <div className="pg-calculators-main">
               <Card title="Report Preview">
                 <div className="pg-calculators-metrics-6" aria-label="Report preview metrics">
-                  <AppMetricCard label="Projected Cash Flow" value="—" icon="wallet" />
-                  <AppMetricCard label="Gross Yield" value="—" icon="percent" />
-                  <AppMetricCard label="Cash on Cash ROI" value="—" icon="income" />
-                  <AppMetricCard label="Monthly Income" value="—" icon="income" />
-                  <AppMetricCard label="Monthly Expenses" value="—" icon="expense" iconAccent="danger" />
-                  <AppMetricCard label="Units Occupied" value="—" icon="units" />
+                  <AppMetricCard
+                    label="Projected Cash Flow"
+                    value={metrics?.projectedCashFlow == null ? "—" : formatRand(metrics.projectedCashFlow)}
+                    icon="wallet"
+                  />
+                  <AppMetricCard
+                    label="Gross Yield"
+                    value={metrics?.grossYield == null ? "—" : `${metrics.grossYield.toFixed(1)}%`}
+                    icon="percent"
+                  />
+                  <AppMetricCard
+                    label="Cash on Cash ROI"
+                    value={metrics?.cashOnCashRoi == null ? "—" : `${metrics.cashOnCashRoi.toFixed(1)}%`}
+                    icon="income"
+                  />
+                  <AppMetricCard
+                    label="Monthly Income"
+                    value={metrics?.monthlyIncome == null ? "—" : formatRand(metrics.monthlyIncome)}
+                    icon="income"
+                  />
+                  <AppMetricCard
+                    label="Monthly Expenses"
+                    value={metrics?.monthlyExpenses == null ? "—" : formatRand(metrics.monthlyExpenses)}
+                    icon="expense"
+                    iconAccent="danger"
+                  />
+                  <AppMetricCard
+                    label="Units Occupied"
+                    value={metrics?.unitsOccupied == null ? "—" : `${metrics.unitsOccupied.occupied}/${metrics.unitsOccupied.total}`}
+                    icon="units"
+                  />
                 </div>
 
                 <div className="pg-calculators-charts-2" aria-label="Report preview charts">
