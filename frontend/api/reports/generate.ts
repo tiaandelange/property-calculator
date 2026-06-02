@@ -65,6 +65,12 @@ function isMissingRelation(err: any, relation: string): boolean {
   return code === "42P01" || msg.includes(`relation "${relation}"`) || msg.includes(relation);
 }
 
+function isPermissionDenied(err: any): boolean {
+  const code = String(err?.code ?? "");
+  const msg = String(err?.message ?? err?.details ?? "");
+  return code === "42501" || msg.toLowerCase().includes("permission denied");
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
   if (req.method === "OPTIONS") {
     res.status(204).end();
@@ -401,9 +407,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       });
       if (insErr) {
         console.error("[reports/generate] investment_reports insert failed", insErr);
-        // If the new table migration hasn't been applied yet, fall back to stored_reports
-        // and still return the PDF URL (match property report robustness).
-        if (!isMissingRelation(insErr, "investment_reports")) {
+        // Legacy fallback only when the table is missing or grants are not applied yet.
+        const allowStoredReportsFallback =
+          isMissingRelation(insErr, "investment_reports") || isPermissionDenied(insErr);
+        if (!allowStoredReportsFallback) {
           await sb.storage.from(REPORTS_BUCKET).remove([storageKey]);
           res.status(500).json({ error: "Failed to save report metadata." });
           return;
@@ -419,11 +426,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
           scenario_name: scenarioName,
           storage_bucket: REPORTS_BUCKET,
           storage_key: storageKey,
-          metadata: { source: "vercel", path: "api/reports/generate", fallback: "stored_reports" }
+          metadata: {
+            source: "vercel",
+            path: "api/reports/generate",
+            fallback: "stored_reports",
+            propertyType
+          }
         });
         if (fbErr) {
           console.error("[reports/generate] stored_reports fallback insert failed", fbErr);
-          // Don't block the PDF; metadata can be fixed after migrations.
+          await sb.storage.from(REPORTS_BUCKET).remove([storageKey]);
+          res.status(500).json({ error: "Failed to save report metadata." });
+          return;
         }
       }
 

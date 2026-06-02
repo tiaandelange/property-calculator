@@ -13,6 +13,21 @@ function isMissingTableError(err: unknown, table: string): boolean {
   return String(e?.code ?? "") === "PGRST205" || (msg.includes("schema cache") && msg.includes(table));
 }
 
+function isPermissionDeniedError(err: unknown): boolean {
+  const e = err as { code?: unknown; message?: unknown };
+  return String(e?.code ?? "") === "42501" || String(e?.message ?? "").toLowerCase().includes("permission denied");
+}
+
+/** Derive calculator property type slug from `investment-report-<type>.pdf`. */
+export function propertyTypeFromInvestmentReportFileName(fileName: string): string {
+  const base = fileName
+    .trim()
+    .replace(/^investment-report-/i, "")
+    .replace(/\.pdf$/i, "")
+    .trim();
+  return base || "investment";
+}
+
 export type InvestmentReportRow = {
   id: string;
   createdAt: string;
@@ -23,9 +38,65 @@ export type InvestmentReportRow = {
   storageKey: string;
 };
 
+function mapInvestmentReportRow(r: {
+  id: unknown;
+  created_at?: unknown;
+  file_name?: unknown;
+  label?: unknown;
+  property_type?: unknown;
+  storage_bucket?: unknown;
+  storage_key?: unknown;
+}): InvestmentReportRow {
+  const fileName = String(r.file_name ?? "investment-report.pdf");
+  return {
+    id: String(r.id),
+    createdAt: String(r.created_at ?? ""),
+    fileName,
+    label: r.label != null ? String(r.label) : null,
+    propertyType: String(r.property_type ?? propertyTypeFromInvestmentReportFileName(fileName)),
+    storageBucket: String(r.storage_bucket ?? "reports"),
+    storageKey: String(r.storage_key ?? "")
+  };
+}
+
+function mapLegacyStoredInvestmentReportRow(r: {
+  id: unknown;
+  created_at?: unknown;
+  file_name?: unknown;
+  scenario_name?: unknown;
+  storage_bucket?: unknown;
+  storage_key?: unknown;
+}): InvestmentReportRow {
+  const fileName = String(r.file_name ?? "investment-report.pdf");
+  return {
+    id: String(r.id),
+    createdAt: String(r.created_at ?? ""),
+    fileName,
+    label: r.scenario_name != null ? String(r.scenario_name) : null,
+    propertyType: propertyTypeFromInvestmentReportFileName(fileName),
+    storageBucket: String(r.storage_bucket ?? "reports"),
+    storageKey: String(r.storage_key ?? "")
+  };
+}
+
+async function listLegacyInvestmentReportsFromStoredReports(uid: string): Promise<InvestmentReportRow[]> {
+  const sb = getSupabase();
+  const { data, error } = await sb
+    .from("stored_reports")
+    .select("id, created_at, file_name, scenario_name, storage_bucket, storage_key")
+    .eq("user_id", uid)
+    .eq("report_type", "INVESTMENT_REPORT")
+    .order("created_at", { ascending: false });
+  if (error) throw toError(error);
+  return (data ?? []).map(mapLegacyStoredInvestmentReportRow);
+}
+
 export async function listInvestmentReports(): Promise<InvestmentReportRow[]> {
   const uid = await requireUserId();
   const sb = getSupabase();
+
+  let primary: InvestmentReportRow[] = [];
+  let useLegacyOnly = false;
 
   const { data, error } = await sb
     .from("investment_reports")
@@ -34,37 +105,26 @@ export async function listInvestmentReports(): Promise<InvestmentReportRow[]> {
     .order("created_at", { ascending: false });
 
   if (error) {
-    // Migration not applied yet → fall back to stored_reports with report_type=INVESTMENT_REPORT
-    if (isMissingTableError(error, "investment_reports")) {
-      const { data: fallback, error: fbErr } = await sb
-        .from("stored_reports")
-        .select("id, created_at, file_name, scenario_name, storage_bucket, storage_key")
-        .eq("user_id", uid)
-        .eq("report_type", "INVESTMENT_REPORT")
-        .order("created_at", { ascending: false });
-      if (fbErr) throw toError(fbErr);
-      return (fallback ?? []).map((r: any) => ({
-        id: String(r.id),
-        createdAt: String(r.created_at ?? ""),
-        fileName: String(r.file_name ?? "investment-report.pdf"),
-        label: r.scenario_name != null ? String(r.scenario_name) : null,
-        propertyType: "investment",
-        storageBucket: String(r.storage_bucket ?? "reports"),
-        storageKey: String(r.storage_key ?? "")
-      }));
+    if (isMissingTableError(error, "investment_reports") || isPermissionDeniedError(error)) {
+      useLegacyOnly = true;
+    } else {
+      throw toError(error);
     }
-    throw toError(error);
+  } else {
+    primary = (data ?? []).map(mapInvestmentReportRow);
   }
 
-  return (data ?? []).map((r: any) => ({
-    id: String(r.id),
-    createdAt: String(r.created_at ?? ""),
-    fileName: String(r.file_name ?? "investment-report.pdf"),
-    label: r.label != null ? String(r.label) : null,
-    propertyType: String(r.property_type ?? ""),
-    storageBucket: String(r.storage_bucket ?? "reports"),
-    storageKey: String(r.storage_key ?? "")
-  }));
+  if (useLegacyOnly) {
+    return listLegacyInvestmentReportsFromStoredReports(uid);
+  }
+
+  const legacy = await listLegacyInvestmentReportsFromStoredReports(uid);
+  const byId = new Map<string, InvestmentReportRow>();
+  for (const row of [...primary, ...legacy]) {
+    byId.set(row.id, row);
+  }
+
+  return [...byId.values()].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
 export async function getInvestmentReportSignedUrl(report: { storageBucket: string; storageKey: string }): Promise<string | null> {
@@ -86,41 +146,41 @@ export async function deleteInvestmentReport(reportId: string): Promise<void> {
     .eq("user_id", uid)
     .maybeSingle();
 
-  if (selErr) {
-    if (isMissingTableError(selErr, "investment_reports")) {
-      // Fallback delete via stored_reports
-      const { data: fbRow, error: fbSelErr } = await sb
-        .from("stored_reports")
-        .select("id, storage_bucket, storage_key")
-        .eq("id", reportId)
-        .eq("user_id", uid)
-        .eq("report_type", "INVESTMENT_REPORT")
-        .maybeSingle();
-      if (fbSelErr) throw toError(fbSelErr);
-      if (!fbRow) throw new Error("Report not found.");
-      const bucket = (fbRow as any).storage_bucket as string | null;
-      const key = (fbRow as any).storage_key as string | null;
-      if (bucket && key) await sb.storage.from(bucket).remove([key]);
-      const { error: fbDelErr } = await sb
-        .from("stored_reports")
-        .delete()
-        .eq("id", reportId)
-        .eq("user_id", uid)
-        .eq("report_type", "INVESTMENT_REPORT");
-      if (fbDelErr) throw toError(fbDelErr);
-      return;
-    }
+  if (selErr && !isMissingTableError(selErr, "investment_reports") && !isPermissionDeniedError(selErr)) {
     throw toError(selErr);
   }
-  if (!row) throw new Error("Report not found.");
 
-  const bucket = (row as any).storage_bucket as string | null;
-  const key = (row as any).storage_key as string | null;
+  if (row) {
+    const bucket = (row as { storage_bucket: string | null }).storage_bucket;
+    const key = (row as { storage_key: string | null }).storage_key;
+    if (bucket && key) {
+      await sb.storage.from(bucket).remove([key]);
+    }
+    const { error: delErr } = await sb.from("investment_reports").delete().eq("id", reportId).eq("user_id", uid);
+    if (delErr) throw toError(delErr);
+    return;
+  }
+
+  const { data: fbRow, error: fbSelErr } = await sb
+    .from("stored_reports")
+    .select("id, storage_bucket, storage_key")
+    .eq("id", reportId)
+    .eq("user_id", uid)
+    .eq("report_type", "INVESTMENT_REPORT")
+    .maybeSingle();
+  if (fbSelErr) throw toError(fbSelErr);
+  if (!fbRow) throw new Error("Report not found.");
+
+  const bucket = (fbRow as { storage_bucket: string | null }).storage_bucket;
+  const key = (fbRow as { storage_key: string | null }).storage_key;
   if (bucket && key) {
     await sb.storage.from(bucket).remove([key]);
   }
-
-  const { error: delErr } = await sb.from("investment_reports").delete().eq("id", reportId).eq("user_id", uid);
-  if (delErr) throw toError(delErr);
+  const { error: fbDelErr } = await sb
+    .from("stored_reports")
+    .delete()
+    .eq("id", reportId)
+    .eq("user_id", uid)
+    .eq("report_type", "INVESTMENT_REPORT");
+  if (fbDelErr) throw toError(fbDelErr);
 }
-

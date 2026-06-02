@@ -35,3 +35,5 @@ on public.investment_reports
 for delete
 using (auth.uid() = user_id);
 
+grant select, insert, delete on table public.investment_reports to authenticated;
+
