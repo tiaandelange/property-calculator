@@ -83,7 +83,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (!isSupabaseConfigured || !supabase) {
+    const client = supabase;
+    if (!isSupabaseConfigured || !client) {
       applySession(null, "bootstrap:supabase_unconfigured");
       setInitializing(false);
       return;
@@ -95,16 +96,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const finishInitializing = (reason: string) => {
       if (initialSessionHandled || cancelled) return;
       initialSessionHandled = true;
-      logAuthEvent("auth ready", { reason });
+      logAuthEvent("auth ready", { reason, hasSession: Boolean(sessionRef.current) });
       setInitializing(false);
     };
 
-    // Safety net if INITIAL_SESSION never arrives (misconfigured client).
-    const initTimeout = window.setTimeout(() => finishInitializing("timeout"), 8000);
+    // Hydrate from persisted storage before INITIAL_SESSION (avoids false "logged out" on slow init).
+    void client.auth.getSession().then(({ data, error }) => {
+      if (cancelled || initialSessionHandled) return;
+      if (error) {
+        console.warn("[auth] bootstrap getSession", error.message);
+        return;
+      }
+      if (data.session) {
+        applySession(data.session, "bootstrap:getSession");
+      }
+    });
+
+    // Safety net: re-read storage; never finish as logged-out if a session is already cached.
+    const initTimeout = window.setTimeout(() => {
+      void client.auth.getSession().then(({ data, error }) => {
+        if (cancelled || initialSessionHandled) return;
+        if (!error && data.session) {
+          applySession(data.session, "bootstrap:timeout:getSession");
+        } else if (!sessionRef.current) {
+          applySession(null, "bootstrap:timeout:no_session");
+        }
+        finishInitializing("timeout");
+      });
+    }, 8000);
 
     const {
       data: { subscription }
-    } = supabase.auth.onAuthStateChange((event, nextSession) => {
+    } = client.auth.onAuthStateChange((event, nextSession) => {
       logAuthEvent("onAuthStateChange", { event, hasSession: Boolean(nextSession) });
 
       // Defer state updates — avoids deadlocks if Supabase is called from this callback.

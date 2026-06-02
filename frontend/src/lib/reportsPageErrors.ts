@@ -31,7 +31,13 @@ export function classifyReportsError(error: unknown): ReportsPageErrorKind {
     return "network";
   }
 
-  if (msg.includes("500") || msg.includes("internal") || code.startsWith("5")) {
+  if (
+    msg.includes("500") ||
+    msg.includes("internal") ||
+    msg.includes("function_invocation_failed") ||
+    msg.includes("server error has occurred") ||
+    code.startsWith("5")
+  ) {
     return "server";
   }
 

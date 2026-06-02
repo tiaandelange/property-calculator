@@ -1,6 +1,6 @@
 /**
  * Keeps frontend/shared/propertyCalculator in sync with the repo-root canonical copy.
- * Runs on `npm run build` so Vercel (Root Directory = frontend) bundles report PDF code.
+ * Runs on `npm run build` so Vercel (Root Directory = frontend) can bundle report PDF API code.
  */
 import { cpSync, existsSync, mkdirSync, rmSync } from "node:fs";
 import path from "node:path";
