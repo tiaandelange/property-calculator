@@ -9,12 +9,14 @@
 | React components | `frontend/src/components/brand/` |
 | SVG mark (canonical) | `frontend/public/assets/brand/proplytic-mark.svg` (`viewBox="0 0 1500 1500"`) |
 | SVG paths (React) | `proplyticLogoShared.tsx` |
-| Favicon | `frontend/public/favicon.svg` |
-| Apple touch icon | `frontend/public/apple-touch-icon.svg` |
+| Favicon (PNG) | `frontend/public/favicon-32.png`, `favicon-16.png` (from `proplytic-mark-source.png`) |
+| Favicon (SVG) | `frontend/public/favicon.svg` (embeds the 32×32 PNG) |
+| Apple touch icon | `frontend/public/apple-touch-icon.png` (180×180) |
+| Apple touch (legacy SVG) | `frontend/public/apple-touch-icon.svg` (gradient vector fallback) |
 
-Mark fill: **purple gradient** (`#6C4CFF` → `#A78BFA`) on UI logos; **solid `#7B5BE4`** on the 32×32 favicon for clarity.
+Mark fill: **purple gradient** (`#6C4CFF` → `#A78BFA`) on UI logos. Tab favicons use the **official Canva raster** scaled from `proplytic-mark-source.png`.
 
-Vector source: `proplyticLogoShared.tsx` (`PROPLYTIC_HOUSE_SHELL_PATH` + detail rects).
+Vector fallback paths: `proplyticLogoShared.tsx` (`PROPLYTIC_HOUSE_SHELL_PATH` + detail rects).
 
 ## Pixel-perfect sync from Figma
 
