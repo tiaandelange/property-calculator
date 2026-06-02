@@ -26,7 +26,8 @@ export function resolveLocalPdfFonts(): PdfMakeFontDescriptor {
   const candidates = [
     join(moduleDir, "../../assets/fonts/pdfmake"),
     join(process.cwd(), "assets", "fonts", "pdfmake"),
-    join(process.cwd(), "frontend", "assets", "fonts", "pdfmake")
+    join(process.cwd(), "frontend", "assets", "fonts", "pdfmake"),
+    "/var/task/assets/fonts/pdfmake"
   ];
 
   const tried: string[] = [];
