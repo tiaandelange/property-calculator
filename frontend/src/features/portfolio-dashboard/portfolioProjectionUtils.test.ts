@@ -33,6 +33,9 @@ describe("buildPortfolioProjectionYears", () => {
     expect(rows[29]?.year).toBe(30);
     expect(rows[0]?.income).toBeGreaterThan(0);
     expect(rows[0]?.equity).toBeGreaterThan(0);
+    expect(rows[0]?.irr).not.toBeNull();
+    expect(Number.isFinite(rows[0]?.irr)).toBe(true);
+    expect(rows[9]?.irr).not.toBeNull();
   });
 
   it("returns empty when no qualifying properties", () => {

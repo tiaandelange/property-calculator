@@ -71,6 +71,7 @@ describe("reportPdfBuilders", () => {
     expect(text).toContain("Property Investment Report");
     expect(text).toContain("Unit 4");
     expect(text).toContain("Analysis Over Time");
+    expect(text).toContain('"text":"IRR"');
     expect(text).toContain("50% Rule Projection");
     expect(text).toContain("Projected vs Actual");
     expect(text).toContain("Not enough data to display this chart");
@@ -97,6 +98,7 @@ describe("reportPdfBuilders", () => {
         projectedCashFlow: 2_500,
         grossYield: 9.5,
         cashOnCashRoi: 7.5,
+        internalRateOfReturn: 12.5,
         ltv: 75,
         monthlyBondPayment: 11_000
       }
@@ -104,6 +106,7 @@ describe("reportPdfBuilders", () => {
 
     const text = JSON.stringify(definition.content);
     expect(text).toContain("Property Investment Report");
+    expect(text).toContain('"text":"IRR"');
     expect(text).toContain("Purchase Price");
     expect(text).not.toContain("Inputs (Selected)");
     expect(text).not.toContain("loanTermYears");

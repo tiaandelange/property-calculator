@@ -337,6 +337,7 @@ export function buildPropertyInvestmentReportPdfDefinition(
   const yLoan = projectionRow("Loan balance");
   const yEquity = projectionRow("Equity");
   const yCoC = projectionRow("Cash on cash ROI");
+  const yIrr = projectionRow("IRR");
 
   const chartIncomeExpenseBars = [
     { label: "Annual income (Y1)", amount: parseZar(yIncome?.[0]) ?? 0 },
@@ -565,6 +566,16 @@ export function buildPropertyInvestmentReportPdfDefinition(
             { text: "Cash on Cash ROI", style: "tableCell", fontSize: 8 },
             ...yearCols.map((_, i) => ({
               text: compactProjectionValue(yCoC?.[i]),
+              style: "tableCell",
+              fontSize: 8,
+              alignment: "right" as const,
+              noWrap: true
+            }))
+          ],
+          [
+            { text: "IRR", style: "tableCell", fontSize: 8 },
+            ...yearCols.map((_, i) => ({
+              text: compactProjectionValue(yIrr?.[i]),
               style: "tableCell",
               fontSize: 8,
               alignment: "right" as const,

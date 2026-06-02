@@ -1,4 +1,4 @@
-import { solveIrrPeriodicCashFlows } from "@calculatorShared/irrSolver";
+import { calculateIRR } from "@propertyCalculator/irrCalculator";
 import {
   amortizingMonthlyPayment,
   inferMonthlyBondPaymentForExpenseBaseline,
@@ -186,8 +186,7 @@ function irrThroughHorizon(
   }
   const lastOp = annualCashFlows[horizonYear - 1] ?? 0;
   flows.push(lastOp + exitProceeds);
-  const rate = solveIrrPeriodicCashFlows(flows);
-  return rate == null ? null : round2(rate * 100);
+  return calculateIRR(flows);
 }
 
 /**
