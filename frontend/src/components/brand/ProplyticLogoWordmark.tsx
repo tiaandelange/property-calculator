@@ -24,7 +24,6 @@ export function ProplyticLogoWordmark({
         gradientId={compact ? "proplytic-wordmark-fill-compact" : "proplytic-wordmark-fill"}
         aria-hidden
         role="presentation"
-        focusable="false"
       />
       <span className="proplytic-logo-wordmark__text" aria-hidden>
         Proplyt
