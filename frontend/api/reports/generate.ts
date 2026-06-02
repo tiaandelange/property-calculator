@@ -57,6 +57,12 @@ function parseJsonBody(req: VercelRequest): Record<string, unknown> {
   return {};
 }
 
+function isMissingRelation(err: any, relation: string): boolean {
+  const msg = String(err?.message ?? err?.details ?? "");
+  const code = String(err?.code ?? "");
+  return code === "42P01" || msg.includes(`relation "${relation}"`) || msg.includes(relation);
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
   if (req.method === "OPTIONS") {
     res.status(204).end();
@@ -367,9 +373,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       });
       if (insErr) {
         console.error("[reports/generate] investment_reports insert failed", insErr);
-        await sb.storage.from(REPORTS_BUCKET).remove([storageKey]);
-        res.status(500).json({ error: "Failed to save report metadata." });
-        return;
+        // If the new table migration hasn't been applied yet, fall back to stored_reports
+        // and still return the PDF URL (match property report robustness).
+        if (!isMissingRelation(insErr, "investment_reports")) {
+          await sb.storage.from(REPORTS_BUCKET).remove([storageKey]);
+          res.status(500).json({ error: "Failed to save report metadata." });
+          return;
+        }
+        const { error: fbErr } = await sb.from("stored_reports").insert({
+          id: reportId,
+          user_id: uid,
+          report_type: "INVESTMENT_REPORT",
+          file_name: fileName,
+          calculation_id: null,
+          property_id: null,
+          invoice_id: null,
+          scenario_name: scenarioName,
+          storage_bucket: REPORTS_BUCKET,
+          storage_key: storageKey,
+          metadata: { source: "vercel", path: "api/reports/generate", fallback: "stored_reports" }
+        });
+        if (fbErr) {
+          console.error("[reports/generate] stored_reports fallback insert failed", fbErr);
+          // Don't block the PDF; metadata can be fixed after migrations.
+        }
       }
 
       const { data: signed, error: signErr } = await sb.storage.from(REPORTS_BUCKET).createSignedUrl(storageKey, 600);
