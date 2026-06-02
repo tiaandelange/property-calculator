@@ -581,7 +581,7 @@ export function buildPropertyInvestmentReportPdfDefinition(
         paddingRight: () => 6,
         paddingTop: () => 4,
         paddingBottom: () => 4,
-        fillColor: (rowIndex: number) => (rowIndex > 1 && rowIndex % 2 === 0 ? theme.zebraFill : undefined)
+        fillColor: (rowIndex: number) => (rowIndex > 1 && rowIndex % 2 === 0 ? theme.zebraFill : null)
       },
       margin: pdfMargin(0, 0, 0, PDF_SPACING.section)
     },
