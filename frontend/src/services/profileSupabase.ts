@@ -267,6 +267,7 @@ export async function updateProfile(input: ProfileUpdateInput): Promise<{
   }
 
   const patch: Record<string, unknown> = {};
+  if (input.fullName !== undefined) patch.full_name = input.fullName;
   if (input.uiColorScheme !== undefined) patch.ui_color_scheme = input.uiColorScheme;
 
   if (Object.keys(patch).length > 0) {

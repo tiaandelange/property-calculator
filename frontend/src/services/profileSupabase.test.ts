@@ -8,7 +8,6 @@ import {
 
 const rpc = vi.fn();
 const from = vi.fn();
-const storageFrom = vi.fn();
 const createSignedUrl = vi.fn().mockResolvedValue({ data: { signedUrl: null }, error: null });
 const getSession = vi.fn();
 
@@ -30,7 +29,8 @@ describe("profileSupabase", () => {
   beforeEach(() => {
     rpc.mockReset();
     from.mockReset();
-    storageFrom.mockReset();
+    createSignedUrl.mockReset();
+    createSignedUrl.mockResolvedValue({ data: { signedUrl: null }, error: null });
     getSession.mockResolvedValue({
       data: {
         session: {
@@ -188,11 +188,9 @@ describe("profileSupabase", () => {
       return {};
     });
 
-    storageFrom.mockReturnValue({
-      createSignedUrl: vi.fn().mockResolvedValue({
-        data: { signedUrl: "https://signed.example/pdf" },
-        error: null
-      })
+    createSignedUrl.mockResolvedValue({
+      data: { signedUrl: "https://signed.example/pdf" },
+      error: null
     });
 
     const rows = await listUserReports();

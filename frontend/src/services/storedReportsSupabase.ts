@@ -71,12 +71,17 @@ export async function deleteStoredReport(reportId: string): Promise<void> {
     .maybeSingle();
 
   if (selErr) throw toError(selErr);
-  if (!row) throw new Error("Report not found.");
+  // If the row was already deleted (e.g. from another device), treat as success.
+  if (!row) return;
 
   const bucket = (row as any).storage_bucket as string | null;
   const key = (row as any).storage_key as string | null;
   if (bucket && key) {
-    await sb.storage.from(bucket).remove([key]);
+    const { error: rmErr } = await sb.storage.from(bucket).remove([key]);
+    if (rmErr) {
+      // Storage cleanup should never log the user out; ignore missing/denied objects and proceed.
+      console.warn("[storedReportsSupabase] storage remove failed", rmErr.message);
+    }
   }
 
   const { error: delErr } = await sb.from("stored_reports").delete().eq("id", reportId).eq("user_id", uid);

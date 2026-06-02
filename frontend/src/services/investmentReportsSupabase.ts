@@ -152,7 +152,10 @@ export async function deleteInvestmentReport(reportId: string): Promise<void> {
     const bucket = (row as { storage_bucket: string | null }).storage_bucket;
     const key = (row as { storage_key: string | null }).storage_key;
     if (bucket && key) {
-      await sb.storage.from(bucket).remove([key]);
+      const { error: rmErr } = await sb.storage.from(bucket).remove([key]);
+      if (rmErr) {
+        console.warn("[investmentReportsSupabase] storage remove failed", rmErr.message);
+      }
     }
     const { error: delErr } = await sb.from("investment_reports").delete().eq("id", reportId).eq("user_id", uid);
     if (delErr) throw toError(delErr);
@@ -167,12 +170,16 @@ export async function deleteInvestmentReport(reportId: string): Promise<void> {
     .eq("report_type", "INVESTMENT_REPORT")
     .maybeSingle();
   if (fbSelErr) throw toError(fbSelErr);
-  if (!fbRow) throw new Error("Report not found.");
+  // Already deleted elsewhere → treat as success.
+  if (!fbRow) return;
 
   const bucket = (fbRow as { storage_bucket: string | null }).storage_bucket;
   const key = (fbRow as { storage_key: string | null }).storage_key;
   if (bucket && key) {
-    await sb.storage.from(bucket).remove([key]);
+    const { error: rmErr } = await sb.storage.from(bucket).remove([key]);
+    if (rmErr) {
+      console.warn("[investmentReportsSupabase] storage remove failed (fallback row)", rmErr.message);
+    }
   }
   const { error: fbDelErr } = await sb
     .from("stored_reports")
