@@ -1722,6 +1722,43 @@ textarea {
 }
 
 @media (max-width: 767px) {
+  /* Avoid overflow + keep taps comfortable on mobile. */
+  .pg-prop-type-tile {
+    padding: 12px 12px;
+    min-height: 86px;
+  }
+  .pg-prop-type-tile__title,
+  .pg-prop-type-tile__desc {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  /* Stack actions and make buttons wrap without clipping. */
+  .pg-calculators-actions-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .pg-calculators-actions-row__left,
+  .pg-calculators-actions-row__right {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .pg-calculators-actions-row__right {
+    justify-content: flex-end;
+  }
+
+  /* Quick summary: one column on mobile. */
+  .pg-calculators-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* Charts: slightly shorter to fit 360–430px screens. */
+  .pg-calculators-chart-wrap {
+    height: 200px;
+    overflow: hidden;
+  }
+
   .pg-calculators-stepper {
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 8px;
@@ -1733,6 +1770,13 @@ textarea {
     display: none;
   }
   .pg-calculators-metrics-6 {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Ultra-narrow (e.g. 360px): keep property-type tiles single-column. */
+@media (max-width: 389px) {
+  .pg-prop-type-grid {
     grid-template-columns: 1fr;
   }
 }
