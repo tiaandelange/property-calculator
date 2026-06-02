@@ -168,7 +168,7 @@ export function OwnedPropertiesReportsPage() {
                                     {
                                       key: "download",
                                       label: "View or download report",
-                                      icon: "edit",
+                                      icon: "open",
                                       onClick: async () => {
                                         const url = await getInvestmentReportSignedUrl(r);
                                         if (!url) throw new Error("This report has no stored PDF.");
@@ -285,7 +285,7 @@ export function OwnedPropertiesReportsPage() {
                                 {
                                   key: "download",
                                   label: "View or download report",
-                                  icon: "edit",
+                                  icon: "open",
                                   disabled: !r.storageBucket || !r.storageKey,
                                   onClick: async () => {
                                     const url = await getStoredReportSignedUrl(r);
