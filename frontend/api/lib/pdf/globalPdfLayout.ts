@@ -4,7 +4,27 @@ import { formatPdfDate } from "./pdfFormat.js";
 
 export type PdfDocumentKind = "invoice" | "statement" | "report" | "lease" | "generic";
 
+/**
+ * Default margins used by legacy document builders (invoices, etc).
+ * Keep stable unless explicitly redesigning those templates.
+ */
 export const PDF_PAGE_MARGINS: [number, number, number, number] = [48, 48, 48, 56];
+
+/**
+ * Report-safe A4 portrait page frame.
+ * pdfmake layouts must fit within available page width after margins.
+ */
+export const REPORT_PAGE_SIZE = "A4" as const;
+export const REPORT_PAGE_ORIENTATION = "portrait" as const;
+export const REPORT_PAGE_MARGINS: [number, number, number, number] = [36, 42, 36, 54];
+
+/** A4 width in points for pdfmake. */
+export const A4_PAGE_WIDTH_PT = 595.28;
+export const REPORT_PAGE_WIDTH_SAFE = A4_PAGE_WIDTH_PT - REPORT_PAGE_MARGINS[0] - REPORT_PAGE_MARGINS[2];
+
+/** Report layout tokens (avoid CSS assumptions). */
+export const REPORT_GAP = 10;
+export const REPORT_CARD_PADDING = 10;
 
 export const PDF_SPACING = {
   section: 14,

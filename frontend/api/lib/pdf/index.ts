@@ -6,6 +6,13 @@
 export { buildGlobalPdfTheme, validateHexColor, accentPrimaryHex, type GlobalPdfTheme, type PdfThemeInput } from "./globalPdfTheme.js";
 export {
   PDF_PAGE_MARGINS,
+  REPORT_PAGE_SIZE,
+  REPORT_PAGE_ORIENTATION,
+  REPORT_PAGE_MARGINS,
+  A4_PAGE_WIDTH_PT,
+  REPORT_PAGE_WIDTH_SAFE,
+  REPORT_GAP,
+  REPORT_CARD_PADDING,
   PDF_SPACING,
   pdfMargin,
   pdfDivider,
