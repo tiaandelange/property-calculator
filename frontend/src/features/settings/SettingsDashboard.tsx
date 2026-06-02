@@ -583,7 +583,7 @@ export function SettingsDashboard() {
               onChange={(e) => patchDraft({ annualIncomeGrowthPercentAnnual: Number(e.target.value) })}
             />
             <p className="pg-settings-field-hint">
-              Applied to rental income when projecting future years (e.g. Year \(n\) income = Year 1 × \((1+g)^{n-1}\)).
+              Applied to rental income when projecting future years (e.g. Year n income = Year 1 × (1 + g)^(n − 1)).
             </p>
           </div>
           <div className="pg-settings-field">
