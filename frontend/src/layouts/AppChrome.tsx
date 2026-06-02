@@ -38,7 +38,8 @@ export function AppChrome() {
   const useWorkspaceChrome = !initializing && Boolean(session) && isWorkspacePath(location.pathname);
   const isMarketingHome = location.pathname === "/";
   const isMarketingCalculatorsShell =
-    location.pathname === "/calculators" || /^\/calculators\/.+/.test(location.pathname);
+    location.pathname === "/calculators" ||
+    (/^\/calculators\/.+/.test(location.pathname) && !location.pathname.startsWith("/calculators/report"));
 
   const workspaceAppearance = useMemo((): WorkspaceAppearance => {
     if (settingsQuery.data) {

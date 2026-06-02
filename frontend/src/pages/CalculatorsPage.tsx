@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Helmet } from "react-helmet-async";
+import { useNavigate } from "react-router-dom";
 import { AppListPage, AppPageActions, AppPageContent, AppPageHeader, AppPageSection, AppPageSubtitle, AppPageTitle } from "../components/ui/AppPage";
 import { AppInfoCard, AppMetricCard, Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
@@ -12,6 +13,8 @@ import { getDefaultAnswersForConfig, getQuestionConfig } from "../data/calculato
 import { calculatePropertyTypeMetrics } from "../features/calculators/propertyTypeCalculations";
 import { formatRand } from "../utils/mortgageRepayment";
 import { CashFlowTrendChart, IncomeVsExpensesChart } from "../features/calculators/CalculatorsReportPreviewCharts";
+import { buildCalculatorReportPayload } from "../features/calculators/calculatorReportPayload";
+import { saveCalculatorReportPayload } from "../features/calculators/calculatorReportStorage";
 
 type StepId = 1 | 2 | 3;
 
@@ -22,10 +25,14 @@ function storageKeyForType(propertyType: PropertyTypeId): string {
 }
 
 export function CalculatorsPage() {
+  const navigate = useNavigate();
   const isMobile = useMediaQuery("(max-width: 767px)");
   const [step, setStep] = useState<StepId>(1);
   const [propertyType, setPropertyType] = useState<PropertyTypeId | "">("");
   const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [generateBusy, setGenerateBusy] = useState(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
+  const [generatedReportId, setGeneratedReportId] = useState<string | null>(null);
 
   const selectedType = useMemo((): PropertyTypeDef | null => {
     if (!propertyType) return null;
@@ -52,7 +59,7 @@ export function CalculatorsPage() {
   const steps = [
     { id: 1 as const, title: "Select Type", subtitle: selectedType?.label ?? "Choose a property type" },
     { id: 2 as const, title: "Answer Questions", subtitle: "Provide a few key inputs" },
-    { id: 3 as const, title: "Generate Report", subtitle: "Preview your outputs" }
+    { id: 3 as const, title: "Generate Report", subtitle: generatedReportId ? "Report ready" : "Preview your outputs" }
   ];
 
   const setAnswer = (key: string, value: string) => setAnswers((a) => ({ ...a, [key]: value }));
@@ -78,6 +85,48 @@ export function CalculatorsPage() {
       window.alert("Saved inputs.");
     } catch {
       window.alert("Could not save inputs (storage unavailable).");
+    }
+  };
+
+  const validateRequired = (): string[] => {
+    if (!questionConfig) return ["Select a property type."];
+    const missing: string[] = [];
+    for (const section of questionConfig.sections) {
+      for (const f of section.fields) {
+        if (!f.required) continue;
+        const raw = String(answers[f.key] ?? "").trim();
+        if (!raw) {
+          missing.push(f.label);
+          continue;
+        }
+        // For numeric-like fields, treat 0 / non-numeric as missing.
+        if (["currency", "percentage", "integer", "decimal"].includes(f.type)) {
+          const cleaned = raw.replace(/[^\d.-]/g, "");
+          const v = Number(cleaned);
+          if (!(Number.isFinite(v) && v > 0)) missing.push(f.label);
+        }
+      }
+    }
+    return missing;
+  };
+
+  const generateReport = async () => {
+    if (!propertyType || !metrics) return;
+    setValidationError(null);
+    const missing = validateRequired();
+    if (missing.length) {
+      setValidationError(`Missing required fields: ${missing.join(", ")}`);
+      return;
+    }
+    setGenerateBusy(true);
+    try {
+      const payload = buildCalculatorReportPayload({ propertyType, answers, metrics });
+      const id = saveCalculatorReportPayload(payload);
+      setGeneratedReportId(id);
+      setStep(3);
+      navigate(`/calculators/report/${encodeURIComponent(id)}`);
+    } finally {
+      setGenerateBusy(false);
     }
   };
 
@@ -116,7 +165,7 @@ export function CalculatorsPage() {
                 role="listitem"
                 className="pg-calculators-step"
                 data-active={s.id === step ? "true" : "false"}
-                data-complete={s.id < step ? "true" : "false"}
+                data-complete={s.id < step || (s.id === 3 && generatedReportId) ? "true" : "false"}
               >
                 <div className="pg-calculators-step__num" aria-hidden>
                   {s.id}
@@ -206,6 +255,11 @@ export function CalculatorsPage() {
                   <div className="pg-muted">Select a property type above to see the questions.</div>
                 ) : (
                   <>
+                    {validationError ? (
+                      <div className="pg-alert pg-alert-error" role="alert" style={{ marginBottom: 12 }}>
+                        {validationError}
+                      </div>
+                    ) : null}
                     {questionConfig ? (
                       <CalculatorQuestionsForm sections={questionConfig.sections} values={answers} onChange={setAnswer} />
                     ) : null}
@@ -220,7 +274,7 @@ export function CalculatorsPage() {
                         </Button>
                       </div>
                       <div className="pg-calculators-actions-row__right">
-                        <Button type="button" variant="primary" disabled>
+                        <Button type="button" variant="primary" loading={generateBusy} disabled={!propertyType || !metrics} onClick={() => void generateReport()}>
                           Generate Report
                         </Button>
                       </div>
@@ -321,13 +375,16 @@ export function CalculatorsPage() {
                     <Button
                       type="button"
                       variant="secondary"
-                      onClick={() => window.alert("Full report view is coming soon.")}
+                      disabled={!generatedReportId}
+                      onClick={() => {
+                        if (generatedReportId) navigate(`/calculators/report/${encodeURIComponent(generatedReportId)}`);
+                      }}
                     >
                       View Full Report
                     </Button>
                   </div>
                   <div className="pg-calculators-actions-row__right">
-                    <Button type="button" variant="primary" disabled>
+                    <Button type="button" variant="primary" loading={generateBusy} disabled={!propertyType || !metrics} onClick={() => void generateReport()}>
                       Generate Report
                     </Button>
                   </div>
