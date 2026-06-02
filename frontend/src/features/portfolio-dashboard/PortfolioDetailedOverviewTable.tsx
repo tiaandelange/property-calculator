@@ -103,7 +103,8 @@ export function PortfolioDetailedOverviewTable({
       )}
       {yearColumns.length > 0 ? (
         <p className="pg-pdash-chart-note">
-          Projections use admin growth defaults and property assumptions — illustrative, not stored.
+          Projections use lease rent, recurring expense templates, and bond from each property (same as Financials),
+          not one month of posted ledger totals. Growth rates come from Settings.
         </p>
       ) : null}
     </div>

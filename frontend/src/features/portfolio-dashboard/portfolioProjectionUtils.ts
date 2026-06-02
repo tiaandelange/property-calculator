@@ -35,13 +35,69 @@ type PropertyState = {
   value: number;
   bond: number;
   monthlyIncome: number;
-  monthlyExpenses: number;
+  /** Operating only (recurring templates / expected — excludes bond). */
+  monthlyOperating: number;
+  /** Bond + additional debt service from property profile. */
+  monthlyDebt: number;
   cashInvested: number;
   appreciationPct: number;
   sellCostPct: number;
   ratePct: number;
   monthlyBondPayment: number;
 };
+
+type CashFlowByPropertyRow = {
+  propertyId?: string;
+  monthlyIncome?: number;
+  monthlyExpenses?: number;
+  netCashFlow?: number;
+};
+
+/**
+ * Projection baselines match the property list / Financials tab (lease rent, recurring templates, bond profile).
+ * Dashboard `cashFlowByProperty` sums ledger rows for one calendar month and can double-count materialized
+ * recurring/bond lines — do not use its lump-sum `monthlyExpenses` when enriched property fields exist.
+ */
+function resolvePropertyProjectionBaseline(
+  p: Record<string, unknown>,
+  cash: CashFlowByPropertyRow | undefined,
+  asOf: Date
+): { monthlyIncome: number; monthlyOperating: number; monthlyDebt: number } {
+  let monthlyIncome = num(p.monthlyIncome);
+  if (monthlyIncome <= 0) {
+    monthlyIncome = num(cash?.monthlyIncome);
+  }
+  if (monthlyIncome <= 0) {
+    monthlyIncome =
+      num(p.expectedMonthlyIncome) ||
+      num(p.monthlyRent) ||
+      num(p.combinedMonthlyLeaseRent);
+  }
+
+  let monthlyOperating = num(p.monthlyOperatingExpenses);
+  let monthlyDebt = num(p.monthlyDebtService);
+
+  if (monthlyDebt <= 0) {
+    monthlyDebt =
+      bondPaymentForProperty(p, asOf) ||
+      num(p.monthlyBondPayment) + num(p.monthlyAdditionalBondPayment);
+  }
+
+  if (monthlyOperating <= 0) {
+    monthlyOperating = num(p.expectedMonthlyExpenses);
+  }
+
+  // Only fall back to ledger month when the property row has no enriched operating/debt split.
+  if (monthlyOperating <= 0 && monthlyDebt <= 0) {
+    const ledgerLump = num(cash?.monthlyExpenses);
+    if (ledgerLump > 0) {
+      monthlyDebt = bondPaymentForProperty(p, asOf) || num(p.monthlyBondPayment);
+      monthlyOperating = Math.max(0, ledgerLump - monthlyDebt);
+    }
+  }
+
+  return { monthlyIncome, monthlyOperating, monthlyDebt };
+}
 
 function num(v: unknown, fallback = 0): number {
   if (v === "" || v == null) return fallback;
@@ -132,11 +188,7 @@ function buildPropertyStates(
   appreciationDefault: number
 ): PropertyState[] {
   const charts = (data?.charts ?? {}) as Record<string, unknown>;
-  const cashRows = (charts.cashFlowByProperty ?? []) as Array<{
-    propertyId?: string;
-    monthlyIncome?: number;
-    monthlyExpenses?: number;
-  }>;
+  const cashRows = (charts.cashFlowByProperty ?? []) as CashFlowByPropertyRow[];
   const cashById = new Map(cashRows.map((r) => [String(r.propertyId), r]));
   const asOf = new Date();
 
@@ -147,19 +199,7 @@ function buildPropertyStates(
       const cash = cashById.get(id);
       const value = num(p.currentEstimatedValue) || num(p.purchasePrice);
       const bond = num(p.outstandingBondBalance);
-
-      let monthlyIncome = num(cash?.monthlyIncome);
-      if (monthlyIncome <= 0) {
-        monthlyIncome =
-          num(p.expectedMonthlyIncome) || num(p.monthlyIncome) || num(p.monthlyRent) || num(p.combinedMonthlyLeaseRent);
-      }
-
-      let monthlyExpenses = num(cash?.monthlyExpenses);
-      if (monthlyExpenses <= 0) {
-        const operating = num(p.expectedMonthlyExpenses) || num(p.monthlyOperatingExpenses) || num(p.monthlyExpenses);
-        const debt = bondPaymentForProperty(p, asOf) || num(p.monthlyDebtService);
-        monthlyExpenses = operating + debt;
-      }
+      const { monthlyIncome, monthlyOperating, monthlyDebt } = resolvePropertyProjectionBaseline(p, cash, asOf);
 
       const ratePct = bondRateForProperty(p);
       let monthlyBondPayment = bondPaymentForProperty(p, asOf);
@@ -175,7 +215,8 @@ function buildPropertyStates(
         value,
         bond,
         monthlyIncome,
-        monthlyExpenses,
+        monthlyOperating,
+        monthlyDebt,
         cashInvested: num(p.totalCashInvested),
         appreciationPct: num(p.expectedAnnualAppreciationPercent) || appreciationDefault,
         sellCostPct: num(p.estimatedSellingCostPercent, 5),
@@ -183,7 +224,15 @@ function buildPropertyStates(
         monthlyBondPayment
       } satisfies PropertyState;
     })
-    .filter((s) => s.value > 0 || s.cashInvested > 0 || s.monthlyIncome > 0 || s.bond > 0);
+    .filter(
+      (s) =>
+        s.value > 0 ||
+        s.cashInvested > 0 ||
+        s.monthlyIncome > 0 ||
+        s.bond > 0 ||
+        s.monthlyOperating > 0 ||
+        s.monthlyDebt > 0
+    );
 }
 
 function irrThroughHorizon(
@@ -241,7 +290,9 @@ export function buildPortfolioProjectionYears(
 
     working.forEach((p) => {
       const incomeAnnual = p.monthlyIncome * 12 * Math.pow(1 + rentGrowth, year - 1);
-      const expenseAnnual = p.monthlyExpenses * 12 * Math.pow(1 + expenseGrowth, year - 1);
+      const monthlyOut =
+        (p.monthlyOperating + p.monthlyDebt) * Math.pow(1 + expenseGrowth, year - 1);
+      const expenseAnnual = monthlyOut * 12;
       const cf = incomeAnnual - expenseAnnual;
 
       p.value = round2(p.value * (1 + p.appreciationPct / 100));

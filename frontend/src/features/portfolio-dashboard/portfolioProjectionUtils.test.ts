@@ -46,6 +46,47 @@ describe("buildPortfolioProjectionYears", () => {
     expect(buildPortfolioProjectionYears(null, [])).toEqual([]);
   });
 
+  it("uses property list baselines when dashboard ledger expenses are inflated", () => {
+    const data = {
+      kpis: {
+        portfolioAnalysisOverTime: {
+          projectionGrowth: {
+            rentalIncomeGrowthPercentAnnual: 0,
+            totalExpensesGrowthPercentAnnual: 0
+          },
+          appreciationDefaultPercent: 0
+        }
+      },
+      charts: {
+        cashFlowByProperty: [
+          {
+            propertyId: "p1",
+            monthlyIncome: 25_280,
+            monthlyExpenses: 40_224,
+            netCashFlow: -14_944
+          }
+        ]
+      }
+    };
+    const properties = [
+      {
+        id: "p1",
+        currentEstimatedValue: 3_000_000,
+        outstandingBondBalance: 1_900_000,
+        monthlyBondPayment: 17_600,
+        monthlyIncome: 25_280,
+        monthlyOperatingExpenses: 3_500,
+        monthlyDebtService: 17_600,
+        totalCashInvested: 500_000
+      }
+    ];
+    const y1 = buildPortfolioProjectionYears(data, properties)[0];
+    expect(y1?.income).toBe(25_280 * 12);
+    expect(y1?.expenses).toBe((3_500 + 17_600) * 12);
+    expect(y1?.cashFlow).toBe((25_280 - 3_500 - 17_600) * 12);
+    expect(y1?.cashFlow).toBeGreaterThan(0);
+  });
+
   it("pickPortfolioProjectionDisplayYears matches report horizons", () => {
     const data = {
       kpis: {
