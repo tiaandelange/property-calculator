@@ -28,6 +28,7 @@ export function OwnedPropertiesReportsPage() {
   const [investmentRows, setInvestmentRows] = useState<InvestmentReportRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [investmentEnabled, setInvestmentEnabled] = useState(true);
   const [pendingDelete, setPendingDelete] = useState<PropertyStoredReportRow | null>(null);
   const [pendingInvDelete, setPendingInvDelete] = useState<InvestmentReportRow | null>(null);
   const isMobile = useMediaQuery("(max-width: 767px)");
@@ -37,7 +38,22 @@ export function OwnedPropertiesReportsPage() {
     setError("");
     try {
       setRows(await listPropertyStoredReports());
-      setInvestmentRows(await listInvestmentReports());
+      try {
+        setInvestmentRows(await listInvestmentReports());
+        setInvestmentEnabled(true);
+      } catch (e: any) {
+        const msg = String(e?.message ?? "");
+        // When the migration hasn't been applied yet, Supabase returns a schema-cache error.
+        // Hide this section rather than showing a scary error on the whole page.
+        if (msg.includes("Could not find the table") && msg.includes("investment_reports")) {
+          setInvestmentEnabled(false);
+          setInvestmentRows([]);
+        } else {
+          // Keep the section hidden but allow the rest of the page to function.
+          setInvestmentEnabled(false);
+          setInvestmentRows([]);
+        }
+      }
     } catch (e: any) {
       setError(e?.message ?? "Failed to load reports.");
     } finally {
@@ -74,122 +90,127 @@ export function OwnedPropertiesReportsPage() {
             </div>
           ) : null}
 
-          <section className="pg-tenants-list-panel pg-workspace-card" aria-busy={loading} style={{ marginBottom: 14 }}>
-            <div className="pg-card-title" style={{ marginBottom: 10 }}>
-              Investment Reports
-            </div>
-            {loading ? (
-              <ProplyticTableSkeleton rows={3} />
-            ) : investmentRows.length ? (
-              isMobile ? (
-                <ProplyticMobileRowList>
-                  {investmentRows.map((r) => {
-                    const dt = r.createdAt ? new Date(r.createdAt) : null;
-                    const when = dt && !Number.isNaN(dt.getTime()) ? dt.toLocaleString() : r.createdAt || "—";
-                    return (
-                      <li key={r.id}>
-                        <ProplyticMobileRowCard
-                          title={r.fileName}
-                          subtitle={r.label || r.propertyType.replace(/-/g, " ")}
-                          badge={<span className="pg-muted" style={{ fontSize: 12 }}>{when}</span>}
-                          fields={[
-                            { label: "Type", value: r.propertyType },
-                            { label: "Report ID", value: r.id }
-                          ]}
-                          actions={
-                            <>
-                              <IconButton
-                                icon="open"
-                                aria-label="View or download investment report"
-                                variant="outline"
-                                onClick={async () => {
-                                  const url = await getInvestmentReportSignedUrl(r);
-                                  if (!url) throw new Error("This report has no stored PDF.");
-                                  window.open(url, "_blank", "noopener,noreferrer");
-                                }}
-                              />
-                              <IconButton
-                                icon="delete"
-                                aria-label="Delete investment report"
-                                variant="danger"
-                                onClick={() => setPendingInvDelete(r)}
-                              />
-                            </>
-                          }
-                        />
-                      </li>
-                    );
-                  })}
-                </ProplyticMobileRowList>
-              ) : (
-                <ProplyticTableWrap responsive>
-                  <ProplyticTable>
-                    <ProplyticTableHeader>
-                      <ProplyticTableRow>
-                        <ProplyticTableHeadCell columnType="date">Generated</ProplyticTableHeadCell>
-                        <ProplyticTableHeadCell columnType="text">Type</ProplyticTableHeadCell>
-                        <ProplyticTableHeadCell columnType="text">File</ProplyticTableHeadCell>
-                        <ProplyticTableHeadCell columnType="actions" />
-                      </ProplyticTableRow>
-                    </ProplyticTableHeader>
-                    <ProplyticTableBody>
-                      {investmentRows.map((r) => {
-                        const dt = r.createdAt ? new Date(r.createdAt) : null;
-                        const when = dt && !Number.isNaN(dt.getTime()) ? dt.toLocaleString() : r.createdAt || "—";
-                        return (
-                          <ProplyticTableRow key={r.id}>
-                            <ProplyticTableCell columnType="date">
-                              <div style={{ fontWeight: 700 }}>{when}</div>
-                              <div className="pg-tenants-sub">{r.id}</div>
-                            </ProplyticTableCell>
-                            <ProplyticTableCell columnType="text">
-                              <strong>{r.label || r.propertyType.replace(/-/g, " ")}</strong>
-                              <div className="pg-tenants-sub">{r.propertyType}</div>
-                            </ProplyticTableCell>
-                            <ProplyticTableCell columnType="text">
-                              <div style={{ fontWeight: 700 }}>{r.fileName}</div>
-                              <div className="pg-tenants-sub">{r.storageBucket}</div>
-                            </ProplyticTableCell>
-                            <ProplyticTableCell columnType="actions">
-                              <ProplyticTableRowActionsMenu
-                                actions={[
-                                  {
-                                    key: "download",
-                                    label: "View or download report",
-                                    icon: "edit",
-                                    onClick: async () => {
-                                      const url = await getInvestmentReportSignedUrl(r);
-                                      if (!url) throw new Error("This report has no stored PDF.");
-                                      window.open(url, "_blank", "noopener,noreferrer");
+          {investmentEnabled ? (
+            <section className="pg-tenants-list-panel pg-workspace-card" aria-busy={loading} style={{ marginBottom: 14 }}>
+              <div className="pg-card-title" style={{ marginBottom: 10 }}>
+                Investment Reports
+              </div>
+              {loading ? (
+                <ProplyticTableSkeleton rows={3} />
+              ) : investmentRows.length ? (
+                isMobile ? (
+                  <ProplyticMobileRowList>
+                    {investmentRows.map((r) => {
+                      const dt = r.createdAt ? new Date(r.createdAt) : null;
+                      const when = dt && !Number.isNaN(dt.getTime()) ? dt.toLocaleString() : r.createdAt || "—";
+                      return (
+                        <li key={r.id}>
+                          <ProplyticMobileRowCard
+                            title={r.fileName}
+                            subtitle={r.label || r.propertyType.replace(/-/g, " ")}
+                            badge={<span className="pg-muted" style={{ fontSize: 12 }}>{when}</span>}
+                            fields={[
+                              { label: "Type", value: r.propertyType },
+                              { label: "Report ID", value: r.id }
+                            ]}
+                            actions={
+                              <>
+                                <IconButton
+                                  icon="open"
+                                  aria-label="View or download investment report"
+                                  variant="outline"
+                                  onClick={async () => {
+                                    const url = await getInvestmentReportSignedUrl(r);
+                                    if (!url) throw new Error("This report has no stored PDF.");
+                                    window.open(url, "_blank", "noopener,noreferrer");
+                                  }}
+                                />
+                                <IconButton
+                                  icon="delete"
+                                  aria-label="Delete investment report"
+                                  variant="danger"
+                                  onClick={() => setPendingInvDelete(r)}
+                                />
+                              </>
+                            }
+                          />
+                        </li>
+                      );
+                    })}
+                  </ProplyticMobileRowList>
+                ) : (
+                  <ProplyticTableWrap responsive>
+                    <ProplyticTable>
+                      <ProplyticTableHeader>
+                        <ProplyticTableRow>
+                          <ProplyticTableHeadCell columnType="date">Generated</ProplyticTableHeadCell>
+                          <ProplyticTableHeadCell columnType="text">Type</ProplyticTableHeadCell>
+                          <ProplyticTableHeadCell columnType="text">File</ProplyticTableHeadCell>
+                          <ProplyticTableHeadCell columnType="actions" />
+                        </ProplyticTableRow>
+                      </ProplyticTableHeader>
+                      <ProplyticTableBody>
+                        {investmentRows.map((r) => {
+                          const dt = r.createdAt ? new Date(r.createdAt) : null;
+                          const when = dt && !Number.isNaN(dt.getTime()) ? dt.toLocaleString() : r.createdAt || "—";
+                          return (
+                            <ProplyticTableRow key={r.id}>
+                              <ProplyticTableCell columnType="date">
+                                <div style={{ fontWeight: 700 }}>{when}</div>
+                                <div className="pg-tenants-sub">{r.id}</div>
+                              </ProplyticTableCell>
+                              <ProplyticTableCell columnType="text">
+                                <strong>{r.label || r.propertyType.replace(/-/g, " ")}</strong>
+                                <div className="pg-tenants-sub">{r.propertyType}</div>
+                              </ProplyticTableCell>
+                              <ProplyticTableCell columnType="text">
+                                <div style={{ fontWeight: 700 }}>{r.fileName}</div>
+                                <div className="pg-tenants-sub">{r.storageBucket}</div>
+                              </ProplyticTableCell>
+                              <ProplyticTableCell columnType="actions">
+                                <ProplyticTableRowActionsMenu
+                                  actions={[
+                                    {
+                                      key: "download",
+                                      label: "View or download report",
+                                      icon: "edit",
+                                      onClick: async () => {
+                                        const url = await getInvestmentReportSignedUrl(r);
+                                        if (!url) throw new Error("This report has no stored PDF.");
+                                        window.open(url, "_blank", "noopener,noreferrer");
+                                      },
+                                      primary: true
                                     },
-                                    primary: true
-                                  },
-                                  {
-                                    key: "delete",
-                                    label: "Delete report",
-                                    icon: "delete",
-                                    onClick: () => setPendingInvDelete(r),
-                                    destructive: true
-                                  }
-                                ]}
-                              />
-                            </ProplyticTableCell>
-                          </ProplyticTableRow>
-                        );
-                      })}
-                    </ProplyticTableBody>
-                  </ProplyticTable>
-                </ProplyticTableWrap>
-              )
-            ) : (
-              <ProplyticTableEmptyState
-                title="No investment reports generated yet"
-                description="Generate an investment report from the Calculators page to see it here."
-              />
-            )}
-          </section>
+                                    {
+                                      key: "delete",
+                                      label: "Delete report",
+                                      icon: "delete",
+                                      onClick: () => setPendingInvDelete(r),
+                                      destructive: true
+                                    }
+                                  ]}
+                                />
+                              </ProplyticTableCell>
+                            </ProplyticTableRow>
+                          );
+                        })}
+                      </ProplyticTableBody>
+                    </ProplyticTable>
+                  </ProplyticTableWrap>
+                )
+              ) : (
+                <ProplyticTableEmptyState
+                  title="No investment reports generated yet"
+                  description="Generate an investment report from the Calculators page to see them here."
+                />
+              )}
+            </section>
+          ) : null}
 
           <section className="pg-tenants-list-panel pg-workspace-card" aria-busy={loading}>
+            <div className="pg-card-title" style={{ marginBottom: 10 }}>
+              Property Reports
+            </div>
             {loading ? (
               <ProplyticTableSkeleton rows={5} />
             ) : rows.length ? (
