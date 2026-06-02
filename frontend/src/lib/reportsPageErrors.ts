@@ -1,4 +1,4 @@
-export type ReportsPageErrorKind = "auth" | "server" | "network" | "unknown";
+export type ReportsPageErrorKind = "session" | "permission" | "server" | "network" | "unknown";
 
 export function classifyReportsError(error: unknown): ReportsPageErrorKind {
   const msg = String(error instanceof Error ? error.message : error).toLowerCase();
@@ -7,19 +7,23 @@ export function classifyReportsError(error: unknown): ReportsPageErrorKind {
   if (
     msg.includes("not signed in") ||
     msg.includes("not authenticated") ||
-    msg.includes("jwt") ||
-    msg.includes("invalid or expired session") ||
+    msg.includes("jwt expired") ||
+    msg.includes("jwt malformed") ||
     (msg.includes("session") && (msg.includes("missing") || msg.includes("expired"))) ||
+    msg.includes("http 401") ||
+    code === "pgrst301"
+  ) {
+    return "session";
+  }
+
+  if (
     msg.includes("permission denied") ||
     msg.includes("row-level security") ||
-    msg.includes("http 401") ||
     msg.includes("http 403") ||
     code === "42501" ||
-    code === "pgrst301" ||
-    code === "401" ||
     code === "403"
   ) {
-    return "auth";
+    return "permission";
   }
 
   if (
@@ -46,8 +50,10 @@ export function classifyReportsError(error: unknown): ReportsPageErrorKind {
 
 export function reportsErrorMessage(kind: ReportsPageErrorKind, fallback?: string): string {
   switch (kind) {
-    case "auth":
-      return "You are not authorised to view these reports.";
+    case "session":
+      return "Your session could not be verified for this request. Try again or sign in from the menu.";
+    case "permission":
+      return "You do not have permission to view these reports. Contact support if this persists.";
     case "server":
       return "Reports could not be loaded due to a server error. Please try again.";
     case "network":

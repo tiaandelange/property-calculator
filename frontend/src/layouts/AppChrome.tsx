@@ -31,11 +31,11 @@ function readInitialWorkspaceAppearance(): WorkspaceAppearance {
 
 export function AppChrome() {
   const location = useLocation();
-  const { session, initializing, profile, profileLoading } = useAuth();
+  const { session, initializing, initialized, profile, profileLoading } = useAuth();
   const settingsQuery = useSettingsQuery();
   const [me, setMe] = useState<Me>(null);
 
-  const useWorkspaceChrome = !initializing && Boolean(session) && isWorkspacePath(location.pathname);
+  const useWorkspaceChrome = initialized && !initializing && Boolean(session) && isWorkspacePath(location.pathname);
   const isMarketingHome = location.pathname === "/";
   const isMarketingCalculatorsShell =
     location.pathname === "/calculators" ||
@@ -84,7 +84,7 @@ export function AppChrome() {
     });
   }, [useWorkspaceChrome, workspaceAppearance.themePreference]);
 
-  if (initializing) {
+  if (!initialized || initializing) {
     if (isWorkspacePath(location.pathname)) {
       return (
         <div className="pg-app">

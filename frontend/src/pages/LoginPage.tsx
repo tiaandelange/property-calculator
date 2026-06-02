@@ -20,6 +20,7 @@ import {
 import { getSupabase, isSupabaseConfigured } from "../lib/supabaseClient";
 import { getConfirmEmailRedirectUrl } from "../lib/authRedirect";
 import { formatAuthError } from "../utils/authErrors";
+import { logSignInFlow } from "../lib/authDebug";
 import { useAuth } from "../contexts/AuthContext";
 import { PageBrandMark } from "../components/brand/PageBrandMark";
 import { ensureUserSubscriptionForPlanCode } from "../services/userSubscriptionsSupabase";
@@ -28,7 +29,7 @@ export function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
-  const { session, initializing, refreshSession } = useAuth();
+  const { session, initializing, initialized, refreshSession, recognizeSession } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState<null | "login" | "register">(null);
@@ -54,7 +55,9 @@ export function LoginPage() {
   }, []);
 
   useEffect(() => {
-    if (initializing || !session) return;
+    if (!initialized || initializing || !session) return;
+
+    logSignInFlow("redirect-after-session", { hasSession: true });
 
     const redirectTo = searchParams.get("redirectTo")?.trim();
     if (
@@ -75,7 +78,7 @@ export function LoginPage() {
     }
 
     navigate("/owned-properties/dashboard", { replace: true });
-  }, [session, initializing, location.state, navigate, searchParams]);
+  }, [session, initializing, initialized, location.state, navigate, searchParams]);
 
   useEffect(() => {
     if (!session?.user?.id) return;
@@ -119,17 +122,22 @@ export function LoginPage() {
 
     try {
       if (mode === "login") {
+        logSignInFlow("start");
         const { data: signInData, error } = await sb.auth.signInWithPassword({
           email: email.trim(),
           password
         });
         if (error) {
+          logSignInFlow("error", { message: error.message });
           setMessage({ kind: "error", text: formatAuthError(error) });
           return;
         }
-        // Prefer the session returned by sign-in; refreshSession can race token persistence.
-        if (!signInData.session) {
+        if (signInData.session) {
+          recognizeSession(signInData.session);
+          logSignInFlow("success", { via: "signInResponse" });
+        } else {
           await refreshSession();
+          logSignInFlow("success", { via: "refreshSession" });
         }
         setMessage({ kind: "ok", text: "Signed in successfully." });
         return;
@@ -159,6 +167,7 @@ export function LoginPage() {
       }
 
       if (data.session) {
+        recognizeSession(data.session);
         if (selectedPlanCode) {
           try {
             await ensureUserSubscriptionForPlanCode(selectedPlanCode);

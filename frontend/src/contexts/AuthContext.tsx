@@ -2,41 +2,65 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useR
 import type { Session, User } from "@supabase/supabase-js";
 import { fetchProfileForUserId, type ProfileForApp } from "../api/profileFromSupabase";
 import { logAuthEvent, logAuthSignOut } from "../lib/authDebug";
+import { isInvalidRefreshTokenError, sessionFromInitialAuthEvent } from "../lib/authSessionPolicy";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 
 export type AuthContextValue = {
   session: Session | null;
   user: User | null;
-  /** Row from `public.profiles` for `session.user.id`, when signed in. */
   profile: ProfileForApp | null;
   /** True while the initial session read is in progress. */
   initializing: boolean;
+  /** True after the first session resolution (bootstrap or INITIAL_SESSION). */
+  initialized: boolean;
   /** Alias for `initializing` — auth state is still unknown. */
   isLoadingAuth: boolean;
-  /** True only after loading finished and a session exists. */
+  /** Last auth bootstrap error (does not clear session on its own). */
+  authError: Error | null;
   isAuthenticated: boolean;
-  /** True while loading `profile` for the current session (does not block `RequireAuth`). */
   profileLoading: boolean;
   refreshSession: () => Promise<void>;
-  /** Re-load `public.profiles` for the current user (e.g. after profile PATCH). */
+  /** Apply session immediately after sign-in (avoids race before onAuthStateChange). */
+  recognizeSession: (session: Session) => void;
   refreshProfile: () => Promise<void>;
   signOut: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+const INIT_TIMEOUT_MS = 12_000;
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [initializing, setInitializing] = useState(true);
+  const [initialized, setInitialized] = useState(false);
+  const [authError, setAuthError] = useState<Error | null>(null);
   const [profile, setProfile] = useState<ProfileForApp | null>(null);
   const [profileLoading, setProfileLoading] = useState(false);
   const sessionRef = useRef<Session | null>(null);
+  const initializedRef = useRef(false);
+
+  const markInitialized = useCallback((reason: string) => {
+    if (initializedRef.current) return;
+    initializedRef.current = true;
+    setInitialized(true);
+    setInitializing(false);
+    logAuthEvent("auth ready", { reason, hasSession: Boolean(sessionRef.current) });
+  }, []);
 
   const applySession = useCallback((next: Session | null, reason: string) => {
     sessionRef.current = next;
     setSession(next);
     logAuthEvent("session updated", { reason, hasSession: Boolean(next) });
   }, []);
+
+  const recognizeSession = useCallback(
+    (next: Session) => {
+      applySession(next, "recognizeSession");
+      markInitialized("recognizeSession");
+    },
+    [applySession, markInitialized]
+  );
 
   const refreshSession = useCallback(async () => {
     if (!isSupabaseConfigured || !supabase) {
@@ -47,10 +71,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (error) {
       console.warn("[auth] getSession", error.message);
       logAuthEvent("getSession error (keeping existing session)", { message: error.message });
+      if (isInvalidRefreshTokenError(error.message)) {
+        applySession(null, "refreshSession:invalid_refresh_token");
+        setAuthError(error);
+      }
       return;
     }
     const next = data.session ?? null;
-    // During token refresh, getSession() can briefly return null while storage catches up.
     if (!next && sessionRef.current) {
       logAuthEvent("getSession returned null while session cached (ignored)");
       return;
@@ -86,25 +113,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const client = supabase;
     if (!isSupabaseConfigured || !client) {
       applySession(null, "bootstrap:supabase_unconfigured");
-      setInitializing(false);
+      markInitialized("bootstrap:supabase_unconfigured");
       return;
     }
 
     let cancelled = false;
-    let initialSessionHandled = false;
 
-    const finishInitializing = (reason: string) => {
-      if (initialSessionHandled || cancelled) return;
-      initialSessionHandled = true;
-      logAuthEvent("auth ready", { reason, hasSession: Boolean(sessionRef.current) });
-      setInitializing(false);
-    };
-
-    // Hydrate from persisted storage before INITIAL_SESSION (avoids false "logged out" on slow init).
     void client.auth.getSession().then(({ data, error }) => {
-      if (cancelled || initialSessionHandled) return;
+      if (cancelled || initializedRef.current) return;
       if (error) {
         console.warn("[auth] bootstrap getSession", error.message);
+        setAuthError(error);
         return;
       }
       if (data.session) {
@@ -112,47 +131,55 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     });
 
-    // Safety net: re-read storage; never finish as logged-out if a session is already cached.
     const initTimeout = window.setTimeout(() => {
       void client.auth.getSession().then(({ data, error }) => {
-        if (cancelled || initialSessionHandled) return;
+        if (cancelled || initializedRef.current) return;
         if (!error && data.session) {
           applySession(data.session, "bootstrap:timeout:getSession");
         } else if (!sessionRef.current) {
           applySession(null, "bootstrap:timeout:no_session");
         }
-        finishInitializing("timeout");
+        markInitialized("timeout");
       });
-    }, 8000);
+    }, INIT_TIMEOUT_MS);
 
     const {
       data: { subscription }
     } = client.auth.onAuthStateChange((event, nextSession) => {
       logAuthEvent("onAuthStateChange", { event, hasSession: Boolean(nextSession) });
 
-      // Defer state updates — avoids deadlocks if Supabase is called from this callback.
       setTimeout(() => {
         if (cancelled) return;
 
         if (event === "SIGNED_OUT") {
-          applySession(null, `event:${event}`);
-          finishInitializing("SIGNED_OUT");
+          void client.auth.getSession().then(({ data, error }) => {
+            if (cancelled) return;
+            if (!error && data.session) {
+              logAuthEvent("SIGNED_OUT ignored — session still in storage");
+              applySession(data.session, "SIGNED_OUT:recovered");
+              markInitialized("SIGNED_OUT:recovered");
+              return;
+            }
+            applySession(null, `event:${event}`);
+            markInitialized("SIGNED_OUT");
+          });
           return;
         }
 
         if (event === "INITIAL_SESSION") {
-          applySession(nextSession ?? null, `event:${event}`);
-          finishInitializing("INITIAL_SESSION");
+          const resolved = sessionFromInitialAuthEvent(nextSession, sessionRef.current);
+          applySession(resolved, `event:${event}`);
+          markInitialized("INITIAL_SESSION");
           return;
         }
 
         if (nextSession) {
           applySession(nextSession, `event:${event}`);
-          if (!initialSessionHandled) finishInitializing(event);
+          if (!initializedRef.current) markInitialized(event);
           return;
         }
 
-        // Ignore transient null payloads (e.g. TOKEN_REFRESHED mid-refresh). Never clear session here.
+        // TOKEN_REFRESHED / USER_UPDATED with null payload — keep cached session.
       }, 0);
     });
 
@@ -161,7 +188,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       window.clearTimeout(initTimeout);
       subscription.unsubscribe();
     };
-  }, [applySession]);
+  }, [applySession, markInitialized]);
 
   useEffect(() => {
     const uid = session?.user?.id;
@@ -202,7 +229,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setProfile(null);
   }, [applySession]);
 
-  const isAuthenticated = !initializing && Boolean(session);
+  const isAuthenticated = initialized && Boolean(session);
 
   const value = useMemo<AuthContextValue>(
     () => ({
@@ -210,14 +237,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user: session?.user ?? null,
       profile,
       initializing,
+      initialized,
       isLoadingAuth: initializing,
+      authError,
       isAuthenticated,
       profileLoading,
       refreshSession,
+      recognizeSession,
       refreshProfile,
       signOut
     }),
-    [session, profile, initializing, isAuthenticated, profileLoading, refreshSession, refreshProfile, signOut]
+    [
+      session,
+      profile,
+      initializing,
+      initialized,
+      authError,
+      isAuthenticated,
+      profileLoading,
+      refreshSession,
+      recognizeSession,
+      refreshProfile,
+      signOut
+    ]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

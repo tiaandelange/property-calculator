@@ -1,6 +1,5 @@
 /**
  * Requires a **Supabase Auth** session (`getSession` / `onAuthStateChange` in `AuthProvider`).
- * Supabase session is required for protected routes; legacy Express JWTs are not used.
  */
 import type React from "react";
 import { Navigate, useLocation } from "react-router-dom";
@@ -19,7 +18,7 @@ function loginRedirectPath(pathname: string, search: string): string {
 
 export function RequireAuth({ children }: { children: React.ReactElement }) {
   const location = useLocation();
-  const { session, initializing, isLoadingAuth, isAuthenticated } = useAuth();
+  const { session, user, initializing, initialized, isLoadingAuth, isAuthenticated } = useAuth();
 
   if (!isSupabaseConfigured) {
     logProtectedRoute("redirect", { reason: "supabase_unconfigured" });
@@ -32,17 +31,35 @@ export function RequireAuth({ children }: { children: React.ReactElement }) {
     );
   }
 
-  if (initializing || isLoadingAuth) {
-    logProtectedRoute("loading", { path: location.pathname });
+  if (!initialized || initializing || isLoadingAuth) {
+    logProtectedRoute("loading", {
+      path: location.pathname,
+      authLoading: true,
+      initialized: false,
+      hasSession: Boolean(session),
+      hasUser: Boolean(user)
+    });
     return <RouteFallback />;
   }
 
   if (!isAuthenticated || !session) {
     const to = loginRedirectPath(location.pathname, location.search);
-    logProtectedRoute("redirect", { path: location.pathname, to, hasSession: Boolean(session) });
+    logProtectedRoute("redirect", {
+      path: location.pathname,
+      to,
+      hasSession: Boolean(session),
+      hasUser: Boolean(user),
+      initialized: true,
+      authLoading: false
+    });
     return <Navigate to={to} replace state={{ from: `${location.pathname}${location.search}` }} />;
   }
 
-  logProtectedRoute("allow", { path: location.pathname });
+  logProtectedRoute("allow", {
+    path: location.pathname,
+    hasSession: true,
+    hasUser: Boolean(user),
+    initialized: true
+  });
   return children;
 }
