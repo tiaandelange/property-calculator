@@ -10,14 +10,14 @@ import {
 import {
   calculateIRRByProjectionYear,
   resolveDefaultIrr,
+  projectLoanBalanceAfterYears,
+  projectValue,
   type IrrByYearEntry
-} from "@propertyCalculator/irrCalculator";
+} from "./propertyCalculatorShared.js";
 import {
   formatPct,
   formatZar,
   PROJECTION_YEAR_COLUMNS,
-  projectLoanBalanceAfterYears,
-  projectValue,
   type PropertyInvestmentReportModel
 } from "./propertyInvestmentReportData.js";
 

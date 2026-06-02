@@ -3,14 +3,14 @@
  * Uses statement RPC, property row, leases, and invoice payments; formulas documented inline.
  */
 
-import { computeMetricsFromMonthlySnapshot } from "@propertyCalculator/financialMetrics";
 import {
+  computeMetricsFromMonthlySnapshot,
   calculateIRRByProjectionYear,
   irrPercent as calculateIrrPercent,
-  resolveDefaultIrr
-} from "@propertyCalculator/irrCalculator";
-import { projectLoanBalanceAfterYears } from "@propertyCalculator/loanProjection";
-import { projectValue } from "@propertyCalculator/projectionCalculator";
+  resolveDefaultIrr,
+  projectLoanBalanceAfterYears,
+  projectValue
+} from "./propertyCalculatorShared.js";
 import { computePropertyBondFinance, resolveBondRemainingMonths } from "./bondHelpers.js";
 
 export { projectLoanBalanceAfterYears, projectValue };
