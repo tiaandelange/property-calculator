@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import {
   buildPortfolioProjectionYears,
   fmtPct,
+  pickPortfolioProjectionDisplayYears,
   type PortfolioProjectionYearRow
 } from "./portfolioProjectionUtils";
 import { fmtZar } from "./portfolioDashboardUtils";
@@ -54,15 +55,14 @@ export function PortfolioDetailedOverviewTable({
       }
     : null;
 
-  const yearColumns = useMemo(
-    () =>
-      buildPortfolioProjectionYears(data, properties, {
-        propertyTypes: propertyTypes ?? [],
-        propertyId: propertyId ?? null,
-        growth
-      }),
-    [data, properties, propertyTypes, propertyId, growth, workspaceId, settingsQuery.data]
-  );
+  const yearColumns = useMemo(() => {
+    const allYears = buildPortfolioProjectionYears(data, properties, {
+      propertyTypes: propertyTypes ?? [],
+      propertyId: propertyId ?? null,
+      growth
+    });
+    return pickPortfolioProjectionDisplayYears(allYears);
+  }, [data, properties, propertyTypes, propertyId, growth, workspaceId, settingsQuery.data]);
 
   return (
     <div className="pg-workspace-card pg-pdash-panel pg-pdash-analysis-panel">
@@ -71,7 +71,7 @@ export function PortfolioDetailedOverviewTable({
       </div>
       {yearColumns.length === 0 ? (
         <p className="pg-pdash-empty-inline">
-          Add property values, income, and cash invested to generate a 30-year projection.
+          Add property values, income, and cash invested to generate a projection.
         </p>
       ) : (
         <div className="pg-pdash-projection-table-wrap">
@@ -83,7 +83,7 @@ export function PortfolioDetailedOverviewTable({
                 </th>
                 {yearColumns.map((col) => (
                   <th key={col.year} scope="col">
-                    Year {col.year}
+                    Y{col.year}
                   </th>
                 ))}
               </tr>

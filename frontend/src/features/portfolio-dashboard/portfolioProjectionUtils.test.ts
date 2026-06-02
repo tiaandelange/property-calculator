@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { buildPortfolioProjectionYears } from "./portfolioProjectionUtils";
+import {
+  buildPortfolioProjectionYears,
+  pickPortfolioProjectionDisplayYears,
+  PORTFOLIO_PROJECTION_DISPLAY_YEARS
+} from "./portfolioProjectionUtils";
 
 describe("buildPortfolioProjectionYears", () => {
   it("returns 30 years when properties have baseline financials", () => {
@@ -40,5 +44,32 @@ describe("buildPortfolioProjectionYears", () => {
 
   it("returns empty when no qualifying properties", () => {
     expect(buildPortfolioProjectionYears(null, [])).toEqual([]);
+  });
+
+  it("pickPortfolioProjectionDisplayYears matches report horizons", () => {
+    const data = {
+      kpis: {
+        portfolioAnalysisOverTime: {
+          projectionGrowth: {
+            rentalIncomeGrowthPercentAnnual: 5,
+            totalExpensesGrowthPercentAnnual: 4
+          },
+          appreciationDefaultPercent: 5
+        }
+      },
+      charts: { cashFlowByProperty: [] }
+    };
+    const properties = [
+      {
+        id: "p1",
+        currentEstimatedValue: 1_000_000,
+        expectedMonthlyIncome: 10_000,
+        expectedMonthlyExpenses: 2_000,
+        totalCashInvested: 200_000
+      }
+    ];
+    const all = buildPortfolioProjectionYears(data, properties);
+    const display = pickPortfolioProjectionDisplayYears(all);
+    expect(display.map((r) => r.year)).toEqual([...PORTFOLIO_PROJECTION_DISPLAY_YEARS]);
   });
 });

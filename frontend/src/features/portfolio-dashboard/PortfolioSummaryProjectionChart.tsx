@@ -11,7 +11,10 @@ import {
   type ChartOptions
 } from "chart.js";
 import { getChartSemanticColors } from "../../theme/cssTokens";
-import { buildPortfolioProjectionYears } from "./portfolioProjectionUtils";
+import {
+  buildPortfolioProjectionYears,
+  pickPortfolioProjectionDisplayYears
+} from "./portfolioProjectionUtils";
 import { fmtZarCompact } from "./portfolioDashboardUtils";
 import { useSettingsQuery, useWorkspaceId } from "../queries";
 
@@ -38,15 +41,14 @@ export function PortfolioSummaryProjectionChart({
       }
     : null;
 
-  const rows = useMemo(
-    () =>
-      buildPortfolioProjectionYears(data, properties, {
-        propertyTypes: propertyTypes ?? [],
-        propertyId: propertyId ?? null,
-        growth
-      }),
-    [data, properties, propertyTypes, propertyId, growth, workspaceId, settingsQuery.data]
-  );
+  const rows = useMemo(() => {
+    const allYears = buildPortfolioProjectionYears(data, properties, {
+      propertyTypes: propertyTypes ?? [],
+      propertyId: propertyId ?? null,
+      growth
+    });
+    return pickPortfolioProjectionDisplayYears(allYears);
+  }, [data, properties, propertyTypes, propertyId, growth, workspaceId, settingsQuery.data]);
 
   const colors = getChartSemanticColors();
   const gridColor =
@@ -69,33 +71,41 @@ export function PortfolioSummaryProjectionChart({
           data: rows.map((r) => r.equity),
           borderColor: colors.primary,
           backgroundColor: colors.fill,
-          tension: 0.25,
-          pointRadius: 0,
-          borderWidth: 2
+          tension: 0.3,
+          pointRadius: 3,
+          pointHoverRadius: 5,
+          borderWidth: 2.5,
+          yAxisID: "y"
         },
         {
           label: "Cash flow",
           data: rows.map((r) => r.cashFlow),
           borderColor: colors.success,
-          tension: 0.25,
-          pointRadius: 0,
-          borderWidth: 2
+          tension: 0.3,
+          pointRadius: 3,
+          pointHoverRadius: 5,
+          borderWidth: 2,
+          yAxisID: "y1"
         },
         {
           label: "Income",
           data: rows.map((r) => r.income),
           borderColor: colors.info,
-          tension: 0.25,
-          pointRadius: 0,
-          borderWidth: 2
+          tension: 0.3,
+          pointRadius: 3,
+          pointHoverRadius: 5,
+          borderWidth: 2,
+          yAxisID: "y1"
         },
         {
           label: "Expenses",
           data: rows.map((r) => r.expenses),
           borderColor: colors.warning,
-          tension: 0.25,
-          pointRadius: 0,
-          borderWidth: 2
+          tension: 0.3,
+          pointRadius: 3,
+          pointHoverRadius: 5,
+          borderWidth: 2,
+          yAxisID: "y1"
         }
       ]
     }),
@@ -130,10 +140,33 @@ export function PortfolioSummaryProjectionChart({
       scales: {
         x: {
           grid: { display: false },
-          ticks: { color: muted, maxRotation: 0, autoSkip: true, maxTicksLimit: 10 }
+          ticks: { color: muted, maxRotation: 0, autoSkip: false }
         },
         y: {
+          type: "linear",
+          position: "left",
+          title: {
+            display: true,
+            text: "Equity",
+            color: muted,
+            font: { size: 11, weight: 600 }
+          },
           grid: { color: gridColor },
+          ticks: {
+            color: muted,
+            callback: (v) => fmtZarCompact(Number(v))
+          }
+        },
+        y1: {
+          type: "linear",
+          position: "right",
+          title: {
+            display: true,
+            text: "Income / expenses / cash flow",
+            color: muted,
+            font: { size: 11, weight: 600 }
+          },
+          grid: { drawOnChartArea: false },
           ticks: {
             color: muted,
             callback: (v) => fmtZarCompact(Number(v))
@@ -150,8 +183,17 @@ export function PortfolioSummaryProjectionChart({
         <h2 className="pg-pdash-panel-title">Summary</h2>
       </div>
       <div className="pg-pdash-chart-wrap pg-pdash-chart-wrap--projection">
-        {rows.length ? <Line data={chartData} options={options} /> : <p className="pg-pdash-empty-inline">No projection data yet.</p>}
+        {rows.length ? (
+          <Line data={chartData} options={options} />
+        ) : (
+          <p className="pg-pdash-empty-inline">No projection data yet.</p>
+        )}
       </div>
+      {rows.length > 0 ? (
+        <p className="pg-pdash-chart-note">
+          Equity uses the left axis; income, expenses, and cash flow use the right axis.
+        </p>
+      ) : null}
     </div>
   );
 }

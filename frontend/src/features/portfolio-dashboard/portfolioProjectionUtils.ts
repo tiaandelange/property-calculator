@@ -7,6 +7,19 @@ import {
 
 export const PORTFOLIO_PROJECTION_HORIZON_YEARS = 30;
 
+/** Display columns aligned with property investment report PDF (Y1, Y2, Y5, …). */
+export const PORTFOLIO_PROJECTION_DISPLAY_YEARS = [1, 2, 5, 10, 15, 20, 30] as const;
+
+export function pickPortfolioProjectionDisplayYears(
+  rows: PortfolioProjectionYearRow[]
+): PortfolioProjectionYearRow[] {
+  const byYear = new Map(rows.map((r) => [r.year, r]));
+  return PORTFOLIO_PROJECTION_DISPLAY_YEARS.flatMap((y) => {
+    const row = byYear.get(y);
+    return row ? [row] : [];
+  });
+}
+
 export type PortfolioProjectionYearRow = {
   year: number;
   equity: number;

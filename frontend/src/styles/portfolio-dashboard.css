@@ -164,13 +164,16 @@
   align-items: stretch;
 }
 
-/* 30-year projection: table + chart (50 / 50) */
+/* Projection analysis: full-width stacked table then chart */
 .pg-pdash-analysis-split {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  display: flex;
+  flex-direction: column;
   gap: var(--pdash-gap);
-  align-items: stretch;
   margin-bottom: var(--pdash-gap);
+}
+
+.pg-pdash-analysis-split .pg-pdash-analysis-panel {
+  width: 100%;
 }
 
 .pg-pdash-analysis-panel {
@@ -180,8 +183,8 @@
 }
 
 .pg-pdash-projection-table-wrap {
-  overflow: auto;
-  max-height: min(420px, 55vh);
+  overflow-x: auto;
+  overflow-y: visible;
   margin: 0 -4px;
   padding: 0 4px;
   border-radius: 10px;
@@ -246,15 +249,18 @@
 
 .pg-pdash-chart-wrap--projection {
   flex: 1;
-  min-height: 280px;
+  min-height: 320px;
+  height: min(380px, 42vh);
 }
 
 .pg-pdash--wide .pg-pdash-chart-wrap--projection {
-  min-height: 300px;
+  min-height: 340px;
+  height: min(400px, 44vh);
 }
 
 .pg-pdash--ultra .pg-pdash-chart-wrap--projection {
-  min-height: 320px;
+  min-height: 360px;
+  height: min(420px, 46vh);
 }
 
 .pg-pdash--wide .pg-pdash-middle {
@@ -588,14 +594,6 @@
     display: none;
   }
 
-  .pg-pdash-analysis-split {
-    grid-template-columns: 1fr;
-  }
-
-  .pg-pdash-projection-table-wrap {
-    max-height: 320px;
-  }
-
   .pg-pdash-properties-section.pg-pdash-desktop-only {
     display: none;
   }
@@ -640,10 +638,6 @@
   }
 
   .pg-pdash-middle {
-    grid-template-columns: 1fr;
-  }
-
-  .pg-pdash-analysis-split {
     grid-template-columns: 1fr;
   }
 }
