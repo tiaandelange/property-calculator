@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { assemblePropertyInvestmentReportData } from "./propertyInvestmentReportData";
-import { buildCalculationReportPdfDefinition, buildPropertySummaryPdfDefinition } from "./reportPdfBuilders";
+import {
+  buildCalculationReportPdfDefinition,
+  buildInvestmentReportPdfDefinition,
+  buildPropertySummaryPdfDefinition
+} from "./reportPdfBuilders";
 
 describe("reportPdfBuilders", () => {
   it("buildCalculationReportPdfDefinition includes chart omission note (no chartjs-node-canvas)", () => {
@@ -69,6 +73,42 @@ describe("reportPdfBuilders", () => {
     expect(text).toContain("Analysis Over Time");
     expect(text).toContain("50% Rule Projection");
     expect(text).toContain("Projected vs Actual");
-    expect(text).toContain("Insufficient data for chart");
+    expect(text).toContain("Not enough data to display this chart");
+    expect(text).not.toContain("Fallback");
+    expect(text).not.toMatch(/loanTermYears|vacancyAllowancePct/);
+  });
+
+  it("buildInvestmentReportPdfDefinition uses polished template without raw field names", () => {
+    const { definition } = buildInvestmentReportPdfDefinition({
+      propertyType: "single-family",
+      answers: {
+        purchasePrice: 1_500_000,
+        marketValue: 1_600_000,
+        monthlyRent: 12_500,
+        loanAmount: 1_200_000,
+        interestRateApr: 11,
+        loanTermYears: 20,
+        vacancyAllowancePct: 5,
+        cashInvested: 400_000
+      },
+      metrics: {
+        monthlyIncome: 12_500,
+        monthlyExpenses: 9_000,
+        projectedCashFlow: 2_500,
+        grossYield: 9.5,
+        cashOnCashRoi: 7.5,
+        ltv: 75,
+        monthlyBondPayment: 11_000
+      }
+    });
+
+    const text = JSON.stringify(definition.content);
+    expect(text).toContain("Property Investment Report");
+    expect(text).toContain("Purchase Price");
+    expect(text).not.toContain("Inputs (Selected)");
+    expect(text).not.toContain("loanTermYears");
+    expect(text).not.toContain("Fallback");
+    expect(text).toContain("Loan & Assumptions");
+    expect(text).toContain("50% Rule Projection");
   });
 });

@@ -35,7 +35,7 @@ export function buildDefaultPdfStyles(theme: GlobalPdfTheme): StyleDictionary {
     totalValue: { fontSize: 10, color: theme.textColor },
     totalEmphasis: { fontSize: 11, bold: true, color: theme.primaryColor },
     footerText: { fontSize: 8, color: theme.mutedTextColor },
-    brandWordmark: { fontSize: 18, bold: true, color: theme.primaryColor },
+    brandWordmark: { fontSize: 18, bold: true, color: theme.primaryColor, noWrap: true },
     statusBadge: { fontSize: 9, color: theme.textColor, bold: true },
     cardLabel: { fontSize: 8, color: theme.primaryColor, bold: true },
     cardValue: { fontSize: 14, color: theme.textColor, bold: true },
@@ -70,7 +70,7 @@ export function brandedHeader(input: BrandedHeaderInput): Content {
       margin: pdfMargin(0, 0, 0, 4)
     });
   } else {
-    leftStack.push({ text: brandTitle, style: "brandWordmark" });
+    leftStack.push({ text: brandTitle, style: "brandWordmark", noWrap: true });
   }
 
   return {
@@ -103,13 +103,68 @@ export type ReportHeaderInput = {
  * - Title + property + address + date in the center/right
  * - Optional property image on the far right
  */
+export const EMPTY_CHART_MESSAGE = "Not enough data to display this chart.";
+
+export function emptyChartState(theme: GlobalPdfTheme): Content {
+  return {
+    table: {
+      widths: ["*"],
+      body: [
+        [
+          {
+            text: EMPTY_CHART_MESSAGE,
+            style: "mutedText",
+            alignment: "center" as const,
+            margin: pdfMargin(0, 18, 0, 18)
+          }
+        ]
+      ]
+    },
+    layout: {
+      hLineWidth: () => 0,
+      vLineWidth: () => 0,
+      fillColor: () => theme.tableHeaderFill
+    },
+    margin: pdfMargin(0, 6, 0, 0)
+  };
+}
+
 export function reportHeader(input: ReportHeaderInput): Content {
   const imageW = input.propertyImageWidth ?? 120;
-  const hasImg = Boolean(input.propertyImageDataUrl);
 
   const brandCol: Content = input.logoDataUrl
     ? { image: input.logoDataUrl, width: 44, margin: pdfMargin(0, 0, 0, 0) }
-    : { text: input.brandTitle ?? "Proplytic", style: "brandWordmark" };
+    : { text: input.brandTitle ?? "Proplytic", style: "brandWordmark", noWrap: true };
+
+  const imageNote = "No property image available";
+  const imgCol: Content = input.propertyImageDataUrl
+    ? {
+        image: String(input.propertyImageDataUrl),
+        width: imageW,
+        alignment: "right" as const
+      }
+    : {
+        table: {
+          widths: [imageW],
+          body: [
+            [
+              {
+                text: imageNote,
+                style: "mutedText",
+                alignment: "center" as const,
+                margin: pdfMargin(8, 24, 8, 24)
+              }
+            ]
+          ]
+        },
+        layout: {
+          hLineWidth: () => 0.5,
+          vLineWidth: () => 0.5,
+          hLineColor: () => input.theme.borderColor,
+          vLineColor: () => input.theme.borderColor,
+          fillColor: () => input.theme.tableHeaderFill
+        }
+      };
 
   const metaStack: Content[] = [
     { text: input.reportTitle, style: "reportTitle" },
@@ -128,25 +183,19 @@ export function reportHeader(input: ReportHeaderInput): Content {
     ...(input.reportDateLine ? [{ text: input.reportDateLine, style: "mutedText", margin: pdfMargin(0, 2, 0, 0) }] : [])
   ];
 
-  const imgCol: Content | null = hasImg
-    ? {
-        image: String(input.propertyImageDataUrl),
-        width: imageW,
-        alignment: "right",
-        margin: pdfMargin(0, 0, 0, 0)
-      }
-    : null;
-
   return {
     columns: [
       { width: 70, stack: [brandCol] },
       { width: "*", stack: metaStack },
-      ...(imgCol ? [{ width: imageW, stack: [imgCol] as Content[] }] : [])
+      { width: imageW, stack: [imgCol] }
     ],
     columnGap: 14,
     margin: pdfMargin(0, 0, 0, PDF_SPACING.block)
   };
 }
+
+/** Alias for report header block used in investment reports. */
+export const reportHeaderBlock = reportHeader;
 
 export type PartyBlockInput = {
   label: string;
@@ -445,7 +494,7 @@ function sparklineChart(opts: {
 }): Content {
   const allVals = opts.series.flatMap((s) => s.values.filter((v): v is number => v != null && Number.isFinite(v)));
   if (!allVals.length) {
-    return { text: "Insufficient data for chart", style: "mutedText", italics: true, margin: pdfMargin(0, 8, 0, 0) };
+    return emptyChartState(opts.theme);
   }
 
   const min = Math.min(...allVals);
@@ -453,7 +502,7 @@ function sparklineChart(opts: {
   const range = Math.max(1, max - min);
   const nPoints = Math.max(...opts.series.map((s) => s.values.length), 0);
   if (nPoints < 2) {
-    return { text: "Insufficient data for chart", style: "mutedText", italics: true, margin: pdfMargin(0, 8, 0, 0) };
+    return emptyChartState(opts.theme);
   }
 
   const padL = 4;
@@ -545,7 +594,7 @@ export function chartCard(input: ChartCardInput): Content {
   } else if (input.fallbackBars?.length) {
     body.push(miniBarList({ theme: input.theme, items: input.fallbackBars, maxWidth: 260 }));
   } else {
-    body.push({ text: "Insufficient data for chart", style: "mutedText", italics: true, margin: pdfMargin(0, 6, 0, 0) });
+    body.push(emptyChartState(input.theme));
   }
 
   return {
@@ -558,8 +607,7 @@ export function chartCard(input: ChartCardInput): Content {
               {
                 columns: [
                   { width: "auto", text: "▮", style: "cardTitleIcon", margin: pdfMargin(0, 0, 6, 0) } as any,
-                  { width: "*", text: input.title, style: "cardTitle" },
-                  ...(input.subtitle ? [{ width: "auto", text: input.subtitle, style: "mutedText" } as any] : [])
+                  { width: "*", text: input.title, style: "cardTitle" }
                 ],
                 columnGap: 6
               },
@@ -663,7 +711,7 @@ export function buildReportFooter(opts: {
   const brand = opts.brandName ?? "Proplytic";
   const disclaimer =
     opts.disclaimer ??
-    "This report is an estimate for educational purposes and is not financial, tax or legal advice. Assumptions materially affect results.";
+    "This report is for informational purposes only and does not constitute financial, legal, or tax advice.";
   const dateLabel = opts.generatedDateIso ? `Generated ${formatPdfDate(opts.generatedDateIso)}` : null;
   return (currentPage: number, pageCount: number) => ({
     margin: pdfMargin(48, 0, 48, 24),

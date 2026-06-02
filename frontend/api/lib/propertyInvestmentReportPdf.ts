@@ -1,5 +1,6 @@
 import type { Content, StyleDictionary, TDocumentDefinitions } from "pdfmake/interfaces";
 import {
+  buildReportFooter,
   chartCard,
   dataTable,
   metricCard,
@@ -72,13 +73,7 @@ export function buildPropertyInvestmentReportPdfDefinition(
   const yValue = projectionRow("Property value");
   const yLoan = projectionRow("Loan balance");
   const yEquity = projectionRow("Equity");
-  const yIrr = projectionRow("Internal rate of return");
-
-  const chartValueEquityLoanBars = [
-    { label: "Property value", amount: parseZar(yValue?.[0]) ?? 0 },
-    { label: "Equity", amount: parseZar(yEquity?.[0]) ?? 0 },
-    { label: "Loan balance", amount: parseZar(yLoan?.[0]) ?? 0 }
-  ].filter((i) => i.amount > 0);
+  const yCoC = projectionRow("Cash on cash ROI");
 
   const chartIncomeExpenseBars = [
     { label: "Annual income (Y1)", amount: parseZar(yIncome?.[0]) ?? 0 },
@@ -89,10 +84,6 @@ export function buildPropertyInvestmentReportPdfDefinition(
   const xLabels = yearCols.map((y) => `Y${y}`);
   const seriesIncome = (yIncome ?? []).map((v) => parseZar(v));
   const seriesExpenses = (yExpenses ?? []).map((v) => parseZar(v));
-  const seriesValue = (yValue ?? []).map((v) => parseZar(v));
-  const seriesEquity = (yEquity ?? []).map((v) => parseZar(v));
-  const seriesLoan = (yLoan ?? []).map((v) => parseZar(v));
-
   const expenseItems = model.expenseBreakdown
     .filter((i) => i.amount > 0)
     .filter((i) => !/rental income/i.test(i.label))
@@ -121,7 +112,7 @@ export function buildPropertyInvestmentReportPdfDefinition(
       brandTitle: "Proplytic",
       reportTitle: "Property Investment Report",
       propertyName: model.property.name,
-      addressLine: model.property.address || "—",
+      addressLine: model.property.address?.trim() || undefined,
       reportDateLine: `Report Date: ${generatedLabel}`,
       propertyImageDataUrl: null
     }),
@@ -133,27 +124,31 @@ export function buildPropertyInvestmentReportPdfDefinition(
           stack: [
             metricCard({
               theme,
-              label: "Market Value",
-              value: metricCurrency(model.metrics.marketValue),
-              helperText: "Est. current value"
-            }),
-            metricCard({
-              theme,
-              label: "Purchase Price",
-              value: metricCurrency(model.metrics.purchasePrice),
-              helperText: "At acquisition"
-            }),
-            metricCard({
-              theme,
-              label: "Equity",
-              value: metricCurrency(model.metrics.equity),
-              helperText: "Est. equity"
-            }),
-            metricCard({
-              theme,
               label: "Monthly Income",
               value: metricCurrency(model.metrics.monthlyIncome),
-              helperText: model.metrics.occupancyLabel ?? "Gross rent"
+              helperText: "Gross rent",
+              iconText: "↑"
+            }),
+            metricCard({
+              theme,
+              label: "Monthly Expenses",
+              value: metricCurrency(model.metrics.monthlyExpenses),
+              helperText: "Total monthly",
+              iconText: "↓"
+            }),
+            metricCard({
+              theme,
+              label: "Monthly Cash Flow",
+              value: metricCurrency(model.metrics.monthlyCashFlow),
+              helperText: "After debt & expenses",
+              iconText: "◎"
+            }),
+            metricCard({
+              theme,
+              label: "Gross Yield",
+              value: formatPct(model.metrics.grossRentalYield),
+              helperText: "Annualized",
+              iconText: "%"
             })
           ]
         },
@@ -162,27 +157,31 @@ export function buildPropertyInvestmentReportPdfDefinition(
           stack: [
             metricCard({
               theme,
-              label: "Monthly Expenses",
-              value: metricCurrency(model.metrics.monthlyExpenses),
-              helperText: "Total expenses"
-            }),
-            metricCard({
-              theme,
-              label: "Monthly Cash Flow",
-              value: metricCurrency(model.metrics.monthlyCashFlow),
-              helperText: "After expenses"
-            }),
-            metricCard({
-              theme,
               label: "Cash on Cash ROI",
               value: formatPct(model.metrics.cashOnCashRoi),
-              helperText: "Annualized"
+              helperText: "Annualized",
+              iconText: "%"
+            }),
+            metricCard({
+              theme,
+              label: "LTV",
+              value: formatPct(model.metrics.ltv),
+              helperText: "Loan-to-value",
+              iconText: "L"
             }),
             metricCard({
               theme,
               label: "IRR",
               value: formatPct(model.metrics.internalRateOfReturn),
-              helperText: "Year 1"
+              helperText: "Projected",
+              iconText: "↗"
+            }),
+            metricCard({
+              theme,
+              label: "Occupancy",
+              value: model.metrics.occupancyLabel ?? "—",
+              helperText: "Current",
+              iconText: "◉"
             })
           ]
         }
@@ -220,7 +219,7 @@ export function buildPropertyInvestmentReportPdfDefinition(
           stack: [
             sectionCard({
               theme,
-              title: "Assumptions",
+              title: "Loan & Assumptions",
               iconText: "⚙",
               rows: model.assumptions
             })
@@ -271,20 +270,67 @@ export function buildPropertyInvestmentReportPdfDefinition(
           ...Object.fromEntries(yearCols.map((y, i) => [`y${y}`, dash(String(yEquity?.[i] ?? "—"))]))
         },
         {
-          metric: "IRR",
-          ...Object.fromEntries(yearCols.map((y, i) => [`y${y}`, dash(String(yIrr?.[i] ?? "—"))]))
+          metric: "Cash on Cash ROI",
+          ...Object.fromEntries(yearCols.map((y, i) => [`y${y}`, dash(String(yCoC?.[i] ?? "—"))]))
         }
       ]
     }),
 
+    { text: "", pageBreak: "before" as const },
+
+    {
+      columns: [
+        {
+          width: "33.3%",
+          stack: [
+            chartCard({
+              theme,
+              title: "Income vs Expenses Over Time",
+              fallbackSeries: [
+                { label: "Income", color: theme.primaryColor, values: seriesIncome, xLabels },
+                { label: "Expenses", color: theme.dangerColor, values: seriesExpenses, xLabels }
+              ],
+              fallbackBars: chartIncomeExpenseBars.length ? chartIncomeExpenseBars : undefined
+            })
+          ]
+        },
+        {
+          width: "33.3%",
+          stack: [
+            chartCard({
+              theme,
+              title: "Return Snapshot",
+              fallbackBars: [
+                { label: "Gross yield", amount: model.metrics.grossRentalYield ?? 0 },
+                { label: "Cash on cash", amount: model.metrics.cashOnCashRoi ?? 0 },
+                { label: "IRR", amount: model.metrics.internalRateOfReturn ?? 0 }
+              ].filter((x) => x.amount > 0)
+            })
+          ]
+        },
+        {
+          width: "33.3%",
+          stack: [
+            chartCard({
+              theme,
+              title: "Expense Breakdown (Monthly)",
+              fallbackBars: expenseItems.slice(0, 8)
+            })
+          ]
+        }
+      ],
+      columnGap: 10
+    },
+
     dataTable({
       theme,
-      title: "Projected vs Actual Comparison (Year 1)",
+      title: "Projected vs Actual Comparison",
       columns: [
         { header: "Metric", key: "metric", width: 120 },
         { header: "Projected", key: "projected", alignment: "right" },
         { header: "Actual", key: "actual", alignment: "right" },
         { header: "Variance", key: "difference", alignment: "right" },
+        { header: "Variance %", key: "variancePercent", alignment: "right", width: 70 },
         { header: "Status", key: "status", width: 90 }
       ],
       rows: model.comparison
@@ -306,55 +352,14 @@ export function buildPropertyInvestmentReportPdfDefinition(
             rows: model.leases as any
           })
         ]
-      : []),
-
-    {
-      columns: [
-        {
-          width: "33.3%",
-          stack: [
-            chartCard({
-              theme,
-              title: "Income vs Expenses Over Time",
-              subtitle: "Projection",
-              fallbackSeries: [
-                { label: "Income", color: theme.primaryColor, values: seriesIncome, xLabels },
-                { label: "Expenses", color: theme.dangerColor, values: seriesExpenses, xLabels }
-              ],
-              fallbackBars: chartIncomeExpenseBars
-            })
-          ]
-        },
-        {
-          width: "33.3%",
-          stack: [
-            chartCard({
-              theme,
-              title: "Property Value vs Equity vs Loan Balance",
-              subtitle: "Projection",
-              fallbackSeries: [
-                { label: "Property value", color: theme.primaryColor, values: seriesValue, xLabels },
-                { label: "Equity", color: theme.successColor, values: seriesEquity, xLabels },
-                { label: "Loan balance", color: theme.mutedTextColor, values: seriesLoan, xLabels }
-              ],
-              fallbackBars: chartValueEquityLoanBars
-            })
-          ]
-        },
-        {
-          width: "33.3%",
-          stack: [
-            chartCard({
-              theme,
-              title: "Expense Breakdown (Monthly)",
-              subtitle: "Top categories",
-              fallbackBars: expenseItems.slice(0, 8)
-            })
-          ]
-        }
-      ],
-      columnGap: 10
-    },
+      : [
+          sectionCard({
+            theme,
+            title: "Lease / Tenant Summary",
+            iconText: "⌂",
+            rows: [{ label: "Status", value: "No lease data available" }]
+          })
+        ]),
 
     {
       columns: [
@@ -379,16 +384,30 @@ export function buildPropertyInvestmentReportPdfDefinition(
               theme,
               title: "50% Rule Projection",
               iconText: "½",
-              rows: [
-                { label: "Monthly Gross Rent", value: metricCurrency(model.metrics.monthlyIncome) },
-                { label: "50% of Gross Rent", value: metricCurrency(model.metrics.monthlyIncome * 0.5) },
-                { label: "Total Monthly Expenses", value: metricCurrency(model.metrics.monthlyExpenses) },
-                { label: "Result", value: meets50 ? "Meets 50% Rule" : "Does Not Meet 50% Rule" },
-                {
-                  label: "Explanation",
-                  value: expPctOfGross != null ? `Expenses are ${metricPct(expPctOfGross)} of gross rent` : "—"
-                }
-              ]
+              rows:
+                model.fiftyPercentRule.length > 0
+                  ? model.fiftyPercentRule
+                  : [
+                      { label: "Monthly Gross Rent", value: metricCurrency(model.metrics.monthlyIncome) },
+                      { label: "50% of Gross Rent", value: metricCurrency(model.metrics.monthlyIncome * 0.5) },
+                      { label: "Total Monthly Expenses", value: metricCurrency(model.metrics.monthlyExpenses) },
+                      {
+                        label: "Result",
+                        value:
+                          monthlyGross <= 0
+                            ? "Insufficient Data"
+                            : meets50
+                              ? "Meets 50% Rule"
+                              : "Does Not Meet 50% Rule"
+                      },
+                      {
+                        label: "Expenses vs gross rent",
+                        value:
+                          expPctOfGross != null
+                            ? `Expenses are ${metricPct(expPctOfGross)} of gross rent`
+                            : "—"
+                      }
+                    ]
             })
           ]
         },
@@ -429,22 +448,10 @@ export function buildPropertyInvestmentReportPdfDefinition(
     content,
     styles,
     defaultStyle: { font: theme.fontFamily, fontSize: 10, color: theme.textColor },
-    footer: (currentPage: number, pageCount: number) => ({
-      margin: pdfMargin(48, 0, 48, 24),
-      columns: [
-        {
-          width: "*",
-          stack: [
-            { text: "Proplytic", style: "footerText" },
-            {
-              text: "This report is for informational purposes only and does not constitute financial, legal, or tax advice.",
-              style: "footerText",
-              margin: pdfMargin(0, 2, 0, 0)
-            }
-          ]
-        },
-        { width: 140, text: `Page ${currentPage} of ${pageCount}`, style: "footerText", alignment: "right" }
-      ]
+    footer: buildReportFooter({
+      theme,
+      brandName: "Proplytic",
+      generatedDateIso: model.generatedAt.slice(0, 10)
     })
   };
 }

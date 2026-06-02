@@ -24,8 +24,18 @@ export {
   notesBlock,
   buildPdfFooter,
   buildReportFooter,
+  emptyChartState,
+  EMPTY_CHART_MESSAGE,
   type PdfDocumentKind
 } from "./globalPdfLayout.js";
+export {
+  CALCULATOR_FIELD_LABELS,
+  buildCalculatorPropertyInformationRows,
+  buildCalculatorIncomeExpenseRows,
+  buildCalculatorLoanAssumptionRows,
+  formatReportFieldValue,
+  getReportFieldLabel
+} from "./reportDisplayMapper.js";
 export { buildInvoicePdfDocumentDefinition } from "./invoicePdfTemplate.js";
 export { mapToInvoicePdfDocument, type InvoicePdfBuildContext } from "./invoicePdfDataMapper.js";
 export type { InvoicePdfDocumentData } from "./invoicePdfTypes.js";

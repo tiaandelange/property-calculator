@@ -36,6 +36,7 @@ export type PropertyInvestmentReportModel = {
     cashOnCashRoi: number | null;
     capRate: number | null;
     twoPercentRule: number | null;
+    ltv: number | null;
   };
   assumptions: { label: string; value: string }[];
   expenseBreakdown: { label: string; amount: number }[];
@@ -44,7 +45,14 @@ export type PropertyInvestmentReportModel = {
     rows: { label: string; values: (string | number | null)[] }[];
   };
   actuals: { label: string; value: string }[];
-  comparison: { metric: string; projected: string; actual: string; difference: string; status: string }[];
+  comparison: {
+    metric: string;
+    projected: string;
+    actual: string;
+    difference: string;
+    variancePercent: string;
+    status: string;
+  }[];
   leases: { unit: string; tenants: string; status: string; monthlyRent: string; rentDueDay: string; start: string; end: string; balance: string }[];
   fiftyPercentRule: { label: string; value: string }[];
 };
@@ -120,7 +128,7 @@ function leaseRentRoll(leases: Record<string, unknown>[]): number {
   return activeLeases(leases).reduce((a, l) => a + n(l.monthlyRent ?? l.monthly_rent), 0);
 }
 
-function projectValue(base: number, annualPct: number | null, years: number): number | null {
+export function projectValue(base: number, annualPct: number | null, years: number): number | null {
   if (base <= 0) return null;
   if (annualPct == null || !Number.isFinite(annualPct)) return base;
   return base * Math.pow(1 + annualPct / 100, years);
@@ -214,7 +222,7 @@ export function irrPercent(c0: number | null, cashFlows: number[]): number | nul
 }
 
 /** Amortising balance after `years` full years of monthly payments. */
-function projectLoanBalanceAfterYears(
+export function projectLoanBalanceAfterYears(
   startBalance: number,
   monthlyPayment: number,
   annualRatePct: number | null,
@@ -242,6 +250,12 @@ function comparisonStatus(diff: number, metric: "cash" | "default"): string {
   if (!Number.isFinite(diff) || Math.abs(diff) < 1) return "On Track";
   if (metric === "cash") return diff > 0 ? "Above Projection" : "Below Projection";
   return diff > 0 ? "Above Projection" : diff < 0 ? "Below Projection" : "On Track";
+}
+
+function variancePercent(projected: number, actual: number): string {
+  if (!Number.isFinite(projected) || projected === 0) return "—";
+  if (!Number.isFinite(actual)) return "—";
+  return `${(((actual - projected) / projected) * 100).toFixed(2)}%`;
 }
 
 export type AssemblePropertyReportInput = {
@@ -341,6 +355,11 @@ export function assemblePropertyInvestmentReportData(input: AssemblePropertyRepo
 
   const equity =
     marketValue != null && loanBalance != null ? marketValue - loanBalance : marketValue != null && loanBalance == null ? marketValue : null;
+
+  const ltvPct =
+    marketValue != null && marketValue > 0 && loanBalance != null && loanBalance >= 0
+      ? Number(((loanBalance / marketValue) * 100).toFixed(2))
+      : null;
 
   const propertyGrowth = pickNum(p, "expectedAnnualAppreciationPercent", "expected_annual_appreciation_percent");
   const incomeGrowth = propertyGrowth;
@@ -602,7 +621,8 @@ export function assemblePropertyInvestmentReportData(input: AssemblePropertyRepo
       internalRateOfReturn: irrByHorizon[0] ?? null,
       cashOnCashRoi,
       capRate,
-      twoPercentRule
+      twoPercentRule,
+      ltv: ltvPct
     },
     assumptions: [
       { label: "Purchase date", value: purchaseDateLabel },
@@ -674,33 +694,72 @@ export function assemblePropertyInvestmentReportData(input: AssemblePropertyRepo
     ],
     comparison: [
       {
-        metric: "Income",
+        metric: "Gross Rent",
         projected: formatZar(monthlyIncome),
         actual: formatZar(receivedMonth),
         difference: formatZar(receivedMonth - monthlyIncome),
+        variancePercent: variancePercent(monthlyIncome, receivedMonth),
         status: comparisonStatus(receivedMonth - monthlyIncome, "default")
       },
       {
-        metric: "Expenses",
+        metric: "Total Expenses",
         projected: formatZar(monthlyExpenses),
         actual: formatZar(expensesMonth),
         difference: formatZar(expensesMonth - monthlyExpenses),
+        variancePercent: variancePercent(monthlyExpenses, expensesMonth),
         status: comparisonStatus(expensesMonth - monthlyExpenses, "default")
       },
       {
-        metric: "Cash flow",
+        metric: "Net Operating Income",
+        projected: formatZar(monthlyIncome - monthlyOperating),
+        actual: formatZar(receivedMonth - expensesMonth),
+        difference: formatZar(receivedMonth - expensesMonth - (monthlyIncome - monthlyOperating)),
+        variancePercent: variancePercent(monthlyIncome - monthlyOperating, receivedMonth - expensesMonth),
+        status: comparisonStatus(
+          receivedMonth - expensesMonth - (monthlyIncome - monthlyOperating),
+          "default"
+        )
+      },
+      {
+        metric: "Cash Flow After Debt Service",
         projected: formatZar(monthlyCashFlow),
         actual: formatZar(receivedMonth - expensesMonth),
         difference: formatZar(receivedMonth - expensesMonth - monthlyCashFlow),
+        variancePercent: variancePercent(monthlyCashFlow, receivedMonth - expensesMonth),
         status: comparisonStatus(receivedMonth - expensesMonth - monthlyCashFlow, "cash")
+      },
+      {
+        metric: "Occupancy",
+        projected: occupancyLabel ?? "—",
+        actual: occupancyLabel ?? "—",
+        difference: "—",
+        variancePercent: "—",
+        status: "—"
       }
     ],
     leases,
     fiftyPercentRule: [
-      { label: "Total monthly income", value: formatZar(monthlyIncome) },
-      { label: "50% for expenses", value: formatZar(fiftyPctExpenses) },
-      { label: "Monthly loan payment", value: dash(monthlyLoanPayment > 0 ? monthlyLoanPayment : null) },
-      { label: "50% rule cash flow", value: dash(ruleCashFlow) }
+      { label: "Monthly Gross Rent", value: formatZar(monthlyIncome) },
+      { label: "50% of Gross Rent", value: formatZar(fiftyPctExpenses) },
+      { label: "Total Monthly Expenses", value: formatZar(monthlyOperating) },
+      { label: "Monthly Loan Payment", value: dash(monthlyLoanPayment > 0 ? monthlyLoanPayment : null) },
+      { label: "Rule Cash Flow", value: dash(ruleCashFlow) },
+      {
+        label: "Result",
+        value:
+          monthlyIncome <= 0
+            ? "Insufficient Data"
+            : monthlyOperating <= fiftyPctExpenses
+              ? "Meets 50% Rule"
+              : "Does Not Meet 50% Rule"
+      },
+      {
+        label: "Expenses vs gross rent",
+        value:
+          monthlyIncome > 0
+            ? `Expenses are ${formatPct((monthlyOperating / monthlyIncome) * 100)} of gross rent`
+            : "—"
+      }
     ]
   };
 }
