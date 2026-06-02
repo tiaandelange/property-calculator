@@ -14,6 +14,7 @@ export function CalculatorReportPreviewPage() {
 
   const payload = useMemo(() => (reportId ? loadCalculatorReportPayload(reportId) : null), [reportId]);
   const metrics = payload?.metrics ?? null;
+  const projectionAssumptions = payload?.projectionAssumptions ?? null;
 
   return (
     <AppListPage className="pg-calculators-report-page">
@@ -92,8 +93,8 @@ export function CalculatorReportPreviewPage() {
                 <Card title="Income vs Expenses (Monthly)">
                   <IncomeVsExpensesChart metrics={metrics} />
                 </Card>
-                <Card title="Projected Cash Flow Trend">
-                  <CashFlowTrendChart metrics={metrics} />
+                <Card title="5-Year Projected Cash Flow">
+                  <CashFlowTrendChart metrics={metrics} projectionAssumptions={projectionAssumptions} />
                 </Card>
               </div>
             </AppPageSection>

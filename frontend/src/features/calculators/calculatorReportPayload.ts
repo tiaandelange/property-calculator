@@ -1,9 +1,15 @@
 import type { PropertyTypeId } from "../../data/calculatorPropertyTypes";
+import { buildFiveYearCashFlowProjection, type CalculatorProjectionAssumptions } from "./calculatorCashFlowProjection";
 import type { NormalizedCalcResult } from "./propertyTypeCalculations";
 
 export type CalculatorReportChartData =
   | { kind: "incomeVsExpensesMonthly"; income: number | null; expenses: number | null }
-  | { kind: "cashFlowTrendMonthly"; points: Array<{ month: number; cashFlow: number }> };
+  | {
+      kind: "cashFlowTrendYearly";
+      points: Array<{ year: number; cashFlow: number }>;
+      incomeGrowthPct: number;
+      expenseGrowthPct: number;
+    };
 
 export type CalculatorReportPayload = {
   version: 1;
@@ -11,6 +17,7 @@ export type CalculatorReportPayload = {
   propertyType: PropertyTypeId;
   answers: Record<string, string>;
   metrics: NormalizedCalcResult;
+  projectionAssumptions?: CalculatorProjectionAssumptions;
   charts: CalculatorReportChartData[];
 };
 
@@ -18,19 +25,31 @@ export function buildCalculatorReportPayload(opts: {
   propertyType: PropertyTypeId;
   answers: Record<string, string>;
   metrics: NormalizedCalcResult;
+  projectionAssumptions?: CalculatorProjectionAssumptions;
 }): CalculatorReportPayload {
-  const { propertyType, answers, metrics } = opts;
+  const { propertyType, answers, metrics, projectionAssumptions } = opts;
   const charts: CalculatorReportChartData[] = [
     { kind: "incomeVsExpensesMonthly", income: metrics.monthlyIncome, expenses: metrics.monthlyExpenses }
   ];
 
-  if (metrics.projectedCashFlow != null) {
+  const cashFlowProjection = buildFiveYearCashFlowProjection({ metrics, projectionAssumptions });
+  if (cashFlowProjection.hasData) {
     charts.push({
-      kind: "cashFlowTrendMonthly",
-      points: Array.from({ length: 12 }).map((_, i) => ({ month: i + 1, cashFlow: metrics.projectedCashFlow ?? 0 }))
+      kind: "cashFlowTrendYearly",
+      points: cashFlowProjection.years.map((year, i) => ({
+        year,
+        cashFlow: cashFlowProjection.cashFlows[i] ?? 0
+      })),
+      incomeGrowthPct: cashFlowProjection.incomeGrowthPct,
+      expenseGrowthPct: cashFlowProjection.expenseGrowthPct
     });
   } else {
-    charts.push({ kind: "cashFlowTrendMonthly", points: [] });
+    charts.push({
+      kind: "cashFlowTrendYearly",
+      points: [],
+      incomeGrowthPct: cashFlowProjection.incomeGrowthPct,
+      expenseGrowthPct: cashFlowProjection.expenseGrowthPct
+    });
   }
 
   return {
@@ -39,6 +58,7 @@ export function buildCalculatorReportPayload(opts: {
     propertyType,
     answers,
     metrics,
+    projectionAssumptions,
     charts
   };
 }

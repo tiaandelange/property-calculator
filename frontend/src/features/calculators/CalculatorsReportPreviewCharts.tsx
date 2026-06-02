@@ -12,6 +12,10 @@ import {
   type ChartOptions
 } from "chart.js";
 import { getChartSemanticColors } from "../../theme/cssTokens";
+import {
+  buildFiveYearCashFlowProjection,
+  type CalculatorProjectionAssumptions
+} from "./calculatorCashFlowProjection";
 import type { NormalizedCalcResult } from "./propertyTypeCalculations";
 
 ChartJS.register(BarElement, CategoryScale, LinearScale, Legend, Tooltip, PointElement, LineElement);
@@ -88,33 +92,43 @@ export function IncomeVsExpensesChart({ metrics }: { metrics: NormalizedCalcResu
   );
 }
 
-export function CashFlowTrendChart({ metrics }: { metrics: NormalizedCalcResult | null }) {
+export function CashFlowTrendChart({
+  metrics,
+  projectionAssumptions
+}: {
+  metrics: NormalizedCalcResult | null;
+  projectionAssumptions?: CalculatorProjectionAssumptions | null;
+}) {
   const colors = getChartSemanticColors();
   const gridColor = cssToken("--dash-border", "rgba(148,163,184,0.22)");
   const muted = cssToken("--text-muted", colors.muted);
 
-  const cashFlow = metrics?.projectedCashFlow ?? null;
-  const hasData = cashFlow != null;
+  const projection = useMemo(
+    () => buildFiveYearCashFlowProjection({ metrics, projectionAssumptions }),
+    [metrics, projectionAssumptions]
+  );
 
-  const labels = useMemo(() => ["M1", "M2", "M3", "M4", "M5", "M6", "M7", "M8", "M9", "M10", "M11", "M12"], []);
-  const series = useMemo(() => labels.map((_, i) => (cashFlow == null ? 0 : cashFlow * (1 + i * 0.0))), [labels, cashFlow]);
+  const labels = useMemo(() => projection.years.map((y) => `Year ${y}`), [projection.years]);
+  const series = projection.cashFlows;
+  const hasData = projection.hasData;
+  const firstCashFlow = series[0] ?? 0;
 
   const data = useMemo(
     () => ({
       labels,
       datasets: [
         {
-          label: "Projected cash flow",
+          label: "Annual projected cash flow",
           data: series,
-          borderColor: cashFlow != null && cashFlow < 0 ? colors.danger : colors.primary,
+          borderColor: firstCashFlow < 0 ? colors.danger : colors.primary,
           backgroundColor: colors.fill,
           tension: 0.28,
-          pointRadius: 0,
+          pointRadius: 3,
           borderWidth: 2
         }
       ]
     }),
-    [labels, series, colors, cashFlow]
+    [labels, series, colors, firstCashFlow]
   );
 
   const options: ChartOptions<"line"> = useMemo(
@@ -128,7 +142,15 @@ export function CashFlowTrendChart({ metrics }: { metrics: NormalizedCalcResult 
           position: "bottom",
           labels: { boxWidth: 12, padding: 14, color: muted, font: { size: 11, weight: 600 } }
         },
-        tooltip: { enabled: hasData }
+        tooltip: {
+          enabled: hasData,
+          callbacks: {
+            label: (ctx) => {
+              const v = Number(ctx.parsed.y);
+              return `Annual cash flow: R ${v.toLocaleString("en-ZA")}`;
+            }
+          }
+        }
       },
       scales: {
         x: { grid: { display: false }, ticks: { color: muted } },
@@ -146,7 +168,13 @@ export function CashFlowTrendChart({ metrics }: { metrics: NormalizedCalcResult 
       <div className="pg-calculator-chart-host">
         <Line data={data} options={options} />
       </div>
-      {!hasData ? <div className="pg-calculators-chart-empty">Add inputs to see the trend.</div> : null}
+      {hasData ? (
+        <p className="pg-calculators-chart-caption pg-muted">
+          5-year projection · Income +{projection.incomeGrowthPct}% p.a. · Expenses +{projection.expenseGrowthPct}% p.a.
+        </p>
+      ) : (
+        <div className="pg-calculators-chart-empty">Add inputs to see the 5-year projection.</div>
+      )}
     </div>
   );
 }

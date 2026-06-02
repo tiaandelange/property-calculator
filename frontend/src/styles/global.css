@@ -1671,6 +1671,13 @@ textarea {
   pointer-events: none;
 }
 
+.pg-calculators-chart-caption {
+  margin: 10px 0 0;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+}
+
 .pg-calculators-inline-actions {
   margin-top: 14px;
   display: flex;

@@ -18,6 +18,8 @@ import { closeReportTab, navigateReportTab, openBlankReportTab } from "../servic
 import { generateReportViaVercel } from "../services/reportsVercel";
 import { AppModal } from "../components/ui/AppModal";
 import { deleteSavedCalculatorInput, listSavedCalculatorInputs, saveCalculatorInputs, type SavedCalculatorInput } from "../services/calculatorSavedInputsSupabase";
+import { useSettingsQuery } from "../features/queries";
+import { DEFAULT_USER_SETTINGS } from "../features/settings/settingsDefaults";
 
 type StepId = 1 | 2 | 3;
 
@@ -52,6 +54,18 @@ export function CalculatorsPage() {
     if (!propertyType) return null;
     return calculatePropertyTypeMetrics(propertyType, answers);
   }, [propertyType, answers]);
+
+  const settingsQuery = useSettingsQuery();
+  const projectionAssumptions = useMemo(
+    () => ({
+      annualIncomeGrowthPercentAnnual:
+        settingsQuery.data?.annualIncomeGrowthPercentAnnual ??
+        DEFAULT_USER_SETTINGS.annualIncomeGrowthPercentAnnual,
+      expenseGrowthPercentAnnual:
+        settingsQuery.data?.expenseGrowthPercentAnnual ?? DEFAULT_USER_SETTINGS.expenseGrowthPercentAnnual
+    }),
+    [settingsQuery.data]
+  );
 
   // When a property type is selected, seed defaults (but don't clobber existing answers).
   useEffect(() => {
@@ -134,7 +148,7 @@ export function CalculatorsPage() {
     setGenerateBusy(true);
     const tab = openBlankReportTab();
     try {
-      const payload = buildCalculatorReportPayload({ propertyType, answers, metrics });
+      const payload = buildCalculatorReportPayload({ propertyType, answers, metrics, projectionAssumptions });
       const gen = await generateReportViaVercel({ reportType: "INVESTMENT_REPORT", payload });
       const url = gen.downloadUrl;
       if (!url) {
@@ -387,8 +401,8 @@ export function CalculatorsPage() {
                   <Card title="Income vs Expenses">
                     <IncomeVsExpensesChart metrics={metrics} />
                   </Card>
-                  <Card title="Projected Cash Flow Trend">
-                    <CashFlowTrendChart metrics={metrics} />
+                  <Card title="5-Year Projected Cash Flow">
+                    <CashFlowTrendChart metrics={metrics} projectionAssumptions={projectionAssumptions} />
                   </Card>
                 </div>
 
