@@ -464,7 +464,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
 
     res.status(400).json({ error: `Unsupported reportType: ${reportType}` });
   } catch (e: unknown) {
-    console.error("[reports/generate]", e);
-    res.status(500).json({ error: e instanceof Error ? e.message : "Failed to generate report." });
+    const err = e instanceof Error ? e : new Error(String(e));
+    console.error("[reports/generate]", err.message, err.stack);
+    res.status(500).json({
+      error: err.message || "Failed to generate report.",
+      code: "REPORT_GENERATE_FAILED"
+    });
   }
 }

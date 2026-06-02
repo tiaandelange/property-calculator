@@ -13,7 +13,7 @@ import {
   projectLoanBalanceAfterYears,
   projectValue,
   type IrrByYearEntry
-} from "./propertyCalculatorShared.js";
+} from "./propertyCalculatorServer.js";
 import {
   formatPct,
   formatZar,

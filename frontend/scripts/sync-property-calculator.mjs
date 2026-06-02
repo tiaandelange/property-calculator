@@ -9,7 +9,7 @@ import { fileURLToPath } from "node:url";
 const here = path.dirname(fileURLToPath(import.meta.url));
 const frontendRoot = path.resolve(here, "..");
 const src = path.resolve(frontendRoot, "../shared/propertyCalculator");
-const dest = path.resolve(frontendRoot, "shared/propertyCalculator");
+const dest = path.resolve(frontendRoot, "api/lib/propertyCalculator");
 
 if (!existsSync(src)) {
   console.error("[sync-property-calculator] Missing source:", src);

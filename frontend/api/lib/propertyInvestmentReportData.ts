@@ -10,7 +10,7 @@ import {
   resolveDefaultIrr,
   projectLoanBalanceAfterYears,
   projectValue
-} from "./propertyCalculatorShared.js";
+} from "./propertyCalculatorServer.js";
 import { computePropertyBondFinance, resolveBondRemainingMonths } from "./bondHelpers.js";
 
 export { projectLoanBalanceAfterYears, projectValue };
