@@ -28,7 +28,6 @@ export function OwnedPropertiesReportsPage() {
   const [investmentRows, setInvestmentRows] = useState<InvestmentReportRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [investmentEnabled, setInvestmentEnabled] = useState(true);
   const [pendingDelete, setPendingDelete] = useState<PropertyStoredReportRow | null>(null);
   const [pendingInvDelete, setPendingInvDelete] = useState<InvestmentReportRow | null>(null);
   const isMobile = useMediaQuery("(max-width: 767px)");
@@ -40,17 +39,14 @@ export function OwnedPropertiesReportsPage() {
       setRows(await listPropertyStoredReports());
       try {
         setInvestmentRows(await listInvestmentReports());
-        setInvestmentEnabled(true);
       } catch (e: any) {
         const msg = String(e?.message ?? "");
         // When the migration hasn't been applied yet, Supabase returns a schema-cache error.
-        // Hide this section rather than showing a scary error on the whole page.
+        // Treat as "no rows yet" rather than showing an error to users.
         if (msg.includes("Could not find the table") && msg.includes("investment_reports")) {
-          setInvestmentEnabled(false);
           setInvestmentRows([]);
         } else {
-          // Keep the section hidden but allow the rest of the page to function.
-          setInvestmentEnabled(false);
+          // Don't block property reports; just keep investment rows empty.
           setInvestmentRows([]);
         }
       }
@@ -90,14 +86,13 @@ export function OwnedPropertiesReportsPage() {
             </div>
           ) : null}
 
-          {investmentEnabled ? (
-            <section className="pg-tenants-list-panel pg-workspace-card" aria-busy={loading} style={{ marginBottom: 14 }}>
-              <div className="pg-card-title" style={{ marginBottom: 10 }}>
-                Investment Reports
-              </div>
-              {loading ? (
-                <ProplyticTableSkeleton rows={3} />
-              ) : investmentRows.length ? (
+          <section className="pg-tenants-list-panel pg-workspace-card" aria-busy={loading} style={{ marginBottom: 14 }}>
+            <div className="pg-card-title" style={{ marginBottom: 10 }}>
+              Investment Reports
+            </div>
+            {loading ? (
+              <ProplyticTableSkeleton rows={3} />
+            ) : investmentRows.length ? (
                 isMobile ? (
                   <ProplyticMobileRowList>
                     {investmentRows.map((r) => {
@@ -204,8 +199,7 @@ export function OwnedPropertiesReportsPage() {
                   description="Generate an investment report from the Calculators page to see them here."
                 />
               )}
-            </section>
-          ) : null}
+          </section>
 
           <section className="pg-tenants-list-panel pg-workspace-card" aria-busy={loading}>
             <div className="pg-card-title" style={{ marginBottom: 10 }}>
