@@ -9,14 +9,12 @@ import {
 const rpc = vi.fn();
 const from = vi.fn();
 const storageFrom = vi.fn();
+const getSession = vi.fn();
 
 vi.mock("../lib/supabaseClient", () => ({
   getSupabase: () => ({
     rpc,
-    auth: {
-      getSession: vi.fn().mockResolvedValue({ data: { session: null } }),
-      getUser: vi.fn().mockResolvedValue({ data: { user: { id: "u1" } }, error: null })
-    },
+    auth: { getSession },
     from,
     storage: { from: storageFrom }
   })
@@ -27,6 +25,10 @@ describe("calculationsSupabase", () => {
     rpc.mockReset();
     from.mockReset();
     storageFrom.mockReset();
+    getSession.mockResolvedValue({
+      data: { session: { user: { id: "u1" } } },
+      error: null
+    });
   });
 
   it("runCalculatorLocally runs transfer-bond-costs for valid payload", () => {

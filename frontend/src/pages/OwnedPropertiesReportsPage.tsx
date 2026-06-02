@@ -20,6 +20,8 @@ import { Card } from "../components/ui/Card";
 import { Button, ButtonLink } from "../components/ui/Button";
 import { AppConfirmDialog } from "../components/ui/AppModal";
 import { useMediaQuery } from "../hooks/useMediaQuery";
+import { logReportsQuery } from "../lib/authDebug";
+import { classifyReportsError, reportsErrorMessage } from "../lib/reportsPageErrors";
 import { deleteStoredReport, getStoredReportSignedUrl, listPropertyStoredReports, type PropertyStoredReportRow } from "../services/storedReportsSupabase";
 import { deleteInvestmentReport, getInvestmentReportSignedUrl, listInvestmentReports, type InvestmentReportRow } from "../services/investmentReportsSupabase";
 
@@ -28,6 +30,7 @@ export function OwnedPropertiesReportsPage() {
   const [investmentRows, setInvestmentRows] = useState<InvestmentReportRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [actionError, setActionError] = useState("");
   const [pendingDelete, setPendingDelete] = useState<PropertyStoredReportRow | null>(null);
   const [pendingInvDelete, setPendingInvDelete] = useState<InvestmentReportRow | null>(null);
   const isMobile = useMediaQuery("(max-width: 767px)");
@@ -37,23 +40,47 @@ export function OwnedPropertiesReportsPage() {
     const seq = ++loadSeq.current;
     setLoading(true);
     setError("");
+    logReportsQuery("load start");
+
     try {
-      const [propertyRows, investmentList] = await Promise.all([
-        listPropertyStoredReports(),
-        listInvestmentReports().catch((e: unknown) => {
-          const msg = String(e instanceof Error ? e.message : e);
-          if (msg.includes("Could not find the table") && msg.includes("investment_reports")) {
-            return [] as InvestmentReportRow[];
-          }
-          throw e;
-        })
-      ]);
+      let propertyError: unknown = null;
+      let investmentError: unknown = null;
+
+      const propertyPromise = listPropertyStoredReports().catch((e) => {
+        propertyError = e;
+        return [] as PropertyStoredReportRow[];
+      });
+
+      const investmentPromise = listInvestmentReports().catch((e) => {
+        investmentError = e;
+        return [] as InvestmentReportRow[];
+      });
+
+      const [propertyRows, investmentList] = await Promise.all([propertyPromise, investmentPromise]);
+
       if (seq !== loadSeq.current) return;
+
+      const primaryError = propertyError ?? investmentError;
+      if (primaryError) {
+        const kind = classifyReportsError(primaryError);
+        logReportsQuery("load error", { kind, message: String(primaryError) });
+        setError(reportsErrorMessage(kind, primaryError instanceof Error ? primaryError.message : undefined));
+        setRows(propertyRows);
+        setInvestmentRows(investmentList);
+        return;
+      }
+
       setRows(propertyRows);
       setInvestmentRows(investmentList);
+      logReportsQuery("load ok", {
+        propertyCount: propertyRows.length,
+        investmentCount: investmentList.length
+      });
     } catch (e: unknown) {
       if (seq !== loadSeq.current) return;
-      setError(e instanceof Error ? e.message : "Failed to load reports.");
+      const kind = classifyReportsError(e);
+      logReportsQuery("load error", { kind, message: String(e) });
+      setError(reportsErrorMessage(kind, e instanceof Error ? e.message : undefined));
     } finally {
       if (seq === loadSeq.current) setLoading(false);
     }
@@ -69,6 +96,30 @@ export function OwnedPropertiesReportsPage() {
 
   const removeInvestmentRow = (id: string) => {
     setInvestmentRows((prev) => prev.filter((r) => r.id !== id));
+  };
+
+  const openPropertyReport = async (row: PropertyStoredReportRow) => {
+    setActionError("");
+    try {
+      const url = await getStoredReportSignedUrl(row);
+      if (!url) throw new Error("This report has no stored PDF.");
+      window.open(url, "_blank", "noopener,noreferrer");
+    } catch (e: unknown) {
+      const kind = classifyReportsError(e);
+      setActionError(reportsErrorMessage(kind, e instanceof Error ? e.message : undefined));
+    }
+  };
+
+  const openInvestmentReport = async (row: InvestmentReportRow) => {
+    setActionError("");
+    try {
+      const url = await getInvestmentReportSignedUrl(row);
+      if (!url) throw new Error("This report has no stored PDF.");
+      window.open(url, "_blank", "noopener,noreferrer");
+    } catch (e: unknown) {
+      const kind = classifyReportsError(e);
+      setActionError(reportsErrorMessage(kind, e instanceof Error ? e.message : undefined));
+    }
   };
 
   return (
@@ -93,6 +144,17 @@ export function OwnedPropertiesReportsPage() {
           {error ? (
             <div className="pg-alert pg-alert-error" role="alert">
               {error}
+              <div style={{ marginTop: 10 }}>
+                <Button type="button" variant="soft" size="sm" onClick={() => void load()} disabled={loading}>
+                  Retry
+                </Button>
+              </div>
+            </div>
+          ) : null}
+
+          {actionError ? (
+            <div className="pg-alert pg-alert-error" role="alert">
+              {actionError}
             </div>
           ) : null}
 
@@ -124,11 +186,7 @@ export function OwnedPropertiesReportsPage() {
                                   icon="open"
                                   aria-label="View or download investment report"
                                   variant="outline"
-                                  onClick={async () => {
-                                    const url = await getInvestmentReportSignedUrl(r);
-                                    if (!url) throw new Error("This report has no stored PDF.");
-                                    window.open(url, "_blank", "noopener,noreferrer");
-                                  }}
+                                  onClick={() => void openInvestmentReport(r)}
                                 />
                                 <IconButton
                                   icon="delete"
@@ -179,11 +237,7 @@ export function OwnedPropertiesReportsPage() {
                                       key: "download",
                                       label: "View or download report",
                                       icon: "open",
-                                      onClick: async () => {
-                                        const url = await getInvestmentReportSignedUrl(r);
-                                        if (!url) throw new Error("This report has no stored PDF.");
-                                        window.open(url, "_blank", "noopener,noreferrer");
-                                      },
+                                      onClick: () => void openInvestmentReport(r),
                                       primary: true
                                     },
                                     {
@@ -241,11 +295,7 @@ export function OwnedPropertiesReportsPage() {
                                 aria-label="View or download report"
                                 variant="outline"
                                 disabled={!r.storageBucket || !r.storageKey}
-                                onClick={async () => {
-                                  const url = await getStoredReportSignedUrl(r);
-                                  if (!url) throw new Error("This report has no stored PDF.");
-                                  window.open(url, "_blank", "noopener,noreferrer");
-                                }}
+                                onClick={() => void openPropertyReport(r)}
                               />
                               <IconButton
                                 icon="delete"
@@ -297,11 +347,7 @@ export function OwnedPropertiesReportsPage() {
                                   label: "View or download report",
                                   icon: "open",
                                   disabled: !r.storageBucket || !r.storageKey,
-                                  onClick: async () => {
-                                    const url = await getStoredReportSignedUrl(r);
-                                    if (!url) throw new Error("This report has no stored PDF.");
-                                    window.open(url, "_blank", "noopener,noreferrer");
-                                  },
+                                  onClick: () => void openPropertyReport(r),
                                   primary: true
                                 },
                                 {
@@ -342,11 +388,13 @@ export function OwnedPropertiesReportsPage() {
             const row = pendingDelete;
             setPendingDelete(null);
             removePropertyRow(row.id);
+            setActionError("");
             void (async () => {
               try {
                 await deleteStoredReport(row.id);
               } catch (e: unknown) {
-                setError(e instanceof Error ? e.message : "Failed to delete report.");
+                const kind = classifyReportsError(e);
+                setActionError(reportsErrorMessage(kind, e instanceof Error ? e.message : undefined));
                 await load();
               }
             })();
@@ -370,11 +418,13 @@ export function OwnedPropertiesReportsPage() {
           const row = pendingInvDelete;
           setPendingInvDelete(null);
           removeInvestmentRow(row.id);
+          setActionError("");
           void (async () => {
             try {
               await deleteInvestmentReport(row.id);
             } catch (e: unknown) {
-              setError(e instanceof Error ? e.message : "Failed to delete report.");
+              const kind = classifyReportsError(e);
+              setActionError(reportsErrorMessage(kind, e instanceof Error ? e.message : undefined));
               await load();
             }
           })();

@@ -9,7 +9,7 @@ import {
   markInvoiceSent
 } from "./invoicesSupabase";
 
-const getUser = vi.fn();
+const getSession = vi.fn();
 const from = vi.fn();
 const rpc = vi.fn();
 const storageRemove = vi.fn(() => Promise.resolve({ data: [], error: null }));
@@ -17,7 +17,7 @@ const storageFrom = vi.fn(() => ({ remove: storageRemove }));
 
 vi.mock("../lib/supabaseClient", () => ({
   getSupabase: () => ({
-    auth: { getUser },
+    auth: { getSession },
     from,
     rpc,
     storage: { from: storageFrom }
@@ -26,7 +26,7 @@ vi.mock("../lib/supabaseClient", () => ({
 
 describe("invoicesSupabase", () => {
   beforeEach(() => {
-    getUser.mockReset();
+    getSession.mockReset();
     from.mockReset();
     rpc.mockReset();
     storageRemove.mockClear();
@@ -34,12 +34,12 @@ describe("invoicesSupabase", () => {
   });
 
   it("listInvoices throws when logged out", async () => {
-    getUser.mockResolvedValue({ data: { user: null }, error: null });
+    getSession.mockResolvedValue({ data: { session: null }, error: null });
     await expect(listInvoices("p1")).rejects.toThrow(/Not signed in/i);
   });
 
   it("listInvoices maps rows with line items", async () => {
-    getUser.mockResolvedValue({ data: { user: { id: "u1" } }, error: null });
+    getSession.mockResolvedValue({ data: { session: { user: { id: "u1" } } }, error: null });
     from.mockReturnValue({
       select: vi.fn(() => ({
         eq: vi.fn(() => ({
@@ -86,7 +86,7 @@ describe("invoicesSupabase", () => {
   });
 
   it("createInvoice calls RPC with line items", async () => {
-    getUser.mockResolvedValue({ data: { user: { id: "u1" } }, error: null });
+    getSession.mockResolvedValue({ data: { session: { user: { id: "u1" } } }, error: null });
     rpc.mockResolvedValue({
       data: {
         invoice: {
@@ -136,14 +136,14 @@ describe("invoicesSupabase", () => {
   });
 
   it("createInvoice requires tenantId", async () => {
-    getUser.mockResolvedValue({ data: { user: { id: "u1" } }, error: null });
+    getSession.mockResolvedValue({ data: { session: { user: { id: "u1" } } }, error: null });
     await expect(createInvoice("p1", { lineItems: [{ description: "x", quantity: 1, unitPrice: 1, total: 1 }] })).rejects.toThrow(
       /tenantId/i
     );
   });
 
   it("updateInvoice without lineItems uses table update", async () => {
-    getUser.mockResolvedValue({ data: { user: { id: "u1" } }, error: null });
+    getSession.mockResolvedValue({ data: { session: { user: { id: "u1" } } }, error: null });
     let fromCalls = 0;
     from.mockImplementation(() => {
       fromCalls++;
@@ -193,7 +193,7 @@ describe("invoicesSupabase", () => {
   });
 
   it("updateInvoice with lineItems uses RPC", async () => {
-    getUser.mockResolvedValue({ data: { user: { id: "u1" } }, error: null });
+    getSession.mockResolvedValue({ data: { session: { user: { id: "u1" } } }, error: null });
     rpc.mockResolvedValue({
       data: {
         invoice: { id: "inv-1", total: 99, subtotal: 99 },
@@ -208,7 +208,7 @@ describe("invoicesSupabase", () => {
   });
 
   it("deleteInvoice removes storage object then calls hard_delete_invoice RPC", async () => {
-    getUser.mockResolvedValue({ data: { user: { id: "u1" } }, error: null });
+    getSession.mockResolvedValue({ data: { session: { user: { id: "u1" } } }, error: null });
     from.mockReturnValue({
       select: vi.fn(() => ({
         eq: vi.fn(() => ({
@@ -231,7 +231,7 @@ describe("invoicesSupabase", () => {
   });
 
   it("markInvoiceSent sets status SENT and sent_at", async () => {
-    getUser.mockResolvedValue({ data: { user: { id: "u1" } }, error: null });
+    getSession.mockResolvedValue({ data: { session: { user: { id: "u1" } } }, error: null });
     let fromCalls = 0;
     from.mockImplementation(() => {
       fromCalls++;
@@ -286,7 +286,7 @@ describe("invoicesSupabase", () => {
   });
 
   it("markInvoiceSent rejects non-editable status", async () => {
-    getUser.mockResolvedValue({ data: { user: { id: "u1" } }, error: null });
+    getSession.mockResolvedValue({ data: { session: { user: { id: "u1" } } }, error: null });
     from.mockReturnValue({
       select: vi.fn(() => ({
         eq: vi.fn(() => ({
@@ -302,41 +302,56 @@ describe("invoicesSupabase", () => {
   });
 
   it("markInvoicePaid updates row", async () => {
-    getUser.mockResolvedValue({ data: { user: { id: "u1" } }, error: null });
-    const single = vi.fn(() =>
-      Promise.resolve({
-        data: {
-          id: "inv-1",
-          user_id: "u1",
-          status: "PAID",
-          invoice_number: "INV-1",
-          invoice_date: "2026-01-01T12:00:00.000Z",
-          due_date: "2026-01-01T12:00:00.000Z",
-          subtotal: 1,
-          total: 1,
-          paid_at: "2026-03-01T12:00:00.000Z",
-          pdf_path: null
-        },
-        error: null
-      })
-    );
+    getSession.mockResolvedValue({ data: { session: { user: { id: "u1" } } }, error: null });
     from.mockReturnValue({
-      update: vi.fn(() => ({
+      select: vi.fn(() => ({
         eq: vi.fn(() => ({
-          eq: vi.fn(() => ({
-            select: vi.fn(() => ({
-              single
-            }))
-          }))
+          maybeSingle: vi.fn(() =>
+            Promise.resolve({
+              data: {
+                id: "inv-1",
+                user_id: "u1",
+                property_id: "p1",
+                tenant_id: "t1",
+                status: "SENT",
+                invoice_number: "INV-1",
+                invoice_date: "2026-01-01T12:00:00.000Z",
+                due_date: "2026-01-01T12:00:00.000Z",
+                subtotal: 100,
+                total: 100,
+                total_amount: 100,
+                balance_due: 100,
+                invoice_line_items: [],
+                tenants: { id: "t1", first_name: "A", last_name: "B", email: null, phone: null }
+              },
+              error: null
+            })
+          )
         }))
       }))
     });
+    rpc.mockResolvedValue({
+      data: {
+        id: "inv-1",
+        user_id: "u1",
+        status: "PAID",
+        invoice_number: "INV-1",
+        invoice_date: "2026-01-01T12:00:00.000Z",
+        due_date: "2026-01-01T12:00:00.000Z",
+        subtotal: 100,
+        total: 100,
+        paid_at: "2026-03-01T12:00:00.000Z",
+        pdf_path: null
+      },
+      error: null
+    });
     const row = await markInvoicePaid("inv-1");
     expect(row.status).toBe("PAID");
+    expect(rpc).toHaveBeenCalledWith("record_invoice_payment", expect.objectContaining({ p_invoice_id: "inv-1" }));
   });
 
   it("getInvoice uses detail select", async () => {
-    getUser.mockResolvedValue({ data: { user: { id: "u1" } }, error: null });
+    getSession.mockResolvedValue({ data: { session: { user: { id: "u1" } } }, error: null });
     const maybeSingle = vi.fn(() =>
       Promise.resolve({
         data: {

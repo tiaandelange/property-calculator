@@ -1,13 +1,13 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { generateDueLeaseInvoices, getInvoiceAutomationSettings } from "./invoiceAutomationSupabase";
 
-const getUser = vi.fn();
+const getSession = vi.fn();
 const from = vi.fn();
 const rpc = vi.fn();
 
 vi.mock("../lib/supabaseClient", () => ({
   getSupabase: () => ({
-    auth: { getUser },
+    auth: { getSession },
     from,
     rpc
   })
@@ -24,13 +24,16 @@ vi.mock("./settingsSupabase", () => ({
 
 describe("invoiceAutomationSupabase", () => {
   beforeEach(() => {
-    getUser.mockReset();
+    getSession.mockReset();
     from.mockReset();
     rpc.mockReset();
+    getSession.mockResolvedValue({
+      data: { session: { user: { id: "u1" } } },
+      error: null
+    });
   });
 
   it("generateDueLeaseInvoices calls RPC and maps result", async () => {
-    getUser.mockResolvedValue({ data: { user: { id: "u1" } }, error: null });
     rpc.mockResolvedValue({
       data: {
         leases_checked: 3,
@@ -52,7 +55,6 @@ describe("invoiceAutomationSupabase", () => {
   });
 
   it("getInvoiceAutomationSettings merges profile and platform defaults", async () => {
-    getUser.mockResolvedValue({ data: { user: { id: "u1" } }, error: null });
     from.mockImplementation((table: string) => {
       if (table === "profiles") {
         return {

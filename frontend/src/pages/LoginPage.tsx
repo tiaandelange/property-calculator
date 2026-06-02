@@ -28,7 +28,7 @@ export function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
-  const { session, initializing } = useAuth();
+  const { session, initializing, refreshSession } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState<null | "login" | "register">(null);
@@ -55,17 +55,27 @@ export function LoginPage() {
 
   useEffect(() => {
     if (initializing || !session) return;
-    const from = (location.state as { from?: string } | null)?.from;
-    if (from && from.startsWith("/calculators/")) {
-      navigate(from, { replace: true });
+
+    const redirectTo = searchParams.get("redirectTo")?.trim();
+    if (
+      redirectTo &&
+      redirectTo.startsWith("/") &&
+      !redirectTo.startsWith("//") &&
+      redirectTo !== "/login" &&
+      !redirectTo.startsWith("/login?")
+    ) {
+      navigate(redirectTo, { replace: true });
       return;
     }
+
+    const from = (location.state as { from?: string } | null)?.from;
     if (from && from !== "/login" && from !== "/signup" && from !== "/") {
       navigate(from, { replace: true });
       return;
     }
+
     navigate("/owned-properties/dashboard", { replace: true });
-  }, [session, initializing, location.state, navigate]);
+  }, [session, initializing, location.state, navigate, searchParams]);
 
   useEffect(() => {
     if (!session?.user?.id) return;
@@ -109,10 +119,17 @@ export function LoginPage() {
 
     try {
       if (mode === "login") {
-        const { error } = await sb.auth.signInWithPassword({ email: email.trim(), password });
+        const { data: signInData, error } = await sb.auth.signInWithPassword({
+          email: email.trim(),
+          password
+        });
         if (error) {
           setMessage({ kind: "error", text: formatAuthError(error) });
           return;
+        }
+        // Prefer the session returned by sign-in; refreshSession can race token persistence.
+        if (!signInData.session) {
+          await refreshSession();
         }
         setMessage({ kind: "ok", text: "Signed in successfully." });
         return;

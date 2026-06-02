@@ -1615,8 +1615,10 @@ textarea {
   border-radius: 999px;
   display: grid;
   place-items: center;
-  background: color-mix(in srgb, var(--accent, #6c4cff) 14%, transparent);
-  border: 1px solid color-mix(in srgb, var(--accent, #6c4cff) 35%, transparent);
+  background: var(--success, #16a34a);
+  border: none;
+  color: #fff;
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--success, #16a34a) 35%, transparent);
 }
 
 .pg-calculators-q-grid {

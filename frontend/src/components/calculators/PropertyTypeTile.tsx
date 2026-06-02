@@ -1,5 +1,4 @@
 import { AppIcon, type IconName } from "../icons";
-import { ProplyticLogoIcon } from "../brand/ProplyticLogoIcon";
 
 export function PropertyTypeTile({
   title,
@@ -31,7 +30,7 @@ export function PropertyTypeTile({
       </div>
       {selected ? (
         <span className="pg-prop-type-tile__selected" aria-hidden="true">
-          <ProplyticLogoIcon width={14} height={14} alt="" />
+          <AppIcon name="save" size="sm" />
         </span>
       ) : null}
     </button>
