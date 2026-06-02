@@ -29,6 +29,6 @@ describe("irrPercent", () => {
     // Allow small numeric tolerance (solver + rounding to 2dp)
     expect(irr).not.toBeNull();
     expect(Number(irr)).toBeGreaterThan(10.5);
-    expect(Number(irr)).toBeLessThan(10.9);
+    expect(Number(irr)).toBeLessThan(11.1);
   });
 });

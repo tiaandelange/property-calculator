@@ -8,9 +8,13 @@ import {
   buildCalculatorPropertyInformationRows
 } from "./pdf/reportDisplayMapper.js";
 import {
+  calculateIRRByProjectionYear,
+  resolveDefaultIrr,
+  type IrrByYearEntry
+} from "@propertyCalculator/irrCalculator";
+import {
   formatPct,
   formatZar,
-  irrPercent,
   PROJECTION_YEAR_COLUMNS,
   projectLoanBalanceAfterYears,
   projectValue,
@@ -79,6 +83,9 @@ export function assembleCalculatorInvestmentReportData(opts: {
   const grossYield = parseNum(metrics.grossYield);
   const cashOnCash = parseNum(metrics.cashOnCashRoi);
   const irrVal = parseNum(metrics.internalRateofReturn ?? metrics.internalRateOfReturn);
+  const metricsIrrByYear = Array.isArray(metrics.irrByYear)
+    ? (metrics.irrByYear as IrrByYearEntry[])
+    : null;
 
   const units = metrics.unitsOccupied as { occupied?: number; total?: number } | null | undefined;
   const occupancyLabel =
@@ -145,21 +152,29 @@ export function assembleCalculatorInvestmentReportData(opts: {
     return Number(((cf / cashInvested) * 100).toFixed(2));
   });
 
-  const irrByHorizon = yearCols.map((hYears) => {
-    if (cashInvested == null || cashInvested <= 0) return null;
-    const flows: number[] = [];
-    for (let t = 1; t <= hYears; t++) {
-      const inc = projectValue(baseAnnualIncome, incomeGrowthPct, t);
-      const exp = projectValue(baseAnnualExpenses, expenseGrowthPct, t);
-      if (inc == null || exp == null) return null;
-      flows.push(inc - exp - monthlyLoanPayment * 12);
-    }
-    const pv = projectValue(baseValue, appreciationPct, hYears);
-    const lb = startLoan > 0 ? projectLoanBalanceAfterYears(startLoan, monthlyLoanPayment, ratePct, hYears) : 0;
-    if (pv == null || lb == null) return null;
-    flows[flows.length - 1] = (flows[flows.length - 1] ?? 0) + (pv - lb);
-    return irrPercent(cashInvested, flows);
-  });
+  const sellingCostPct = parseNum(answers.sellingCostsPercent) ?? parseNum(answers.sellingCostPct);
+  const holdYears = parseNum(answers.holdYears);
+  const irrByYear =
+    metricsIrrByYear ??
+    calculateIRRByProjectionYear({
+      initialCashInvested: cashInvested,
+      baseAnnualIncome,
+      baseAnnualOperatingExpenses: baseAnnualExpenses,
+      annualDebtService: monthlyLoanPayment * 12,
+      basePropertyValue: baseValue,
+      startLoanBalance: startLoan,
+      incomeGrowthPct,
+      expenseGrowthPct,
+      propertyGrowthPct: appreciationPct,
+      monthlyLoanPayment,
+      interestRateApr: ratePct,
+      sellingCostPct,
+      projectionYears: yearCols,
+      holdingPeriodYears: holdYears,
+      hasLoan: startLoan > 0
+    });
+  const irrByHorizon = irrByYear.map((row) => row.irr);
+  const defaultIrr = irrVal ?? resolveDefaultIrr(irrByYear, holdYears);
 
   const twoPercentRule =
     purchasePrice != null && purchasePrice > 0 && monthlyIncome > 0
@@ -198,7 +213,7 @@ export function assembleCalculatorInvestmentReportData(opts: {
       equity,
       occupancyLabel,
       grossRentalYield: grossYield,
-      internalRateOfReturn: irrVal ?? irrByHorizon[0] ?? null,
+      internalRateOfReturn: defaultIrr,
       cashOnCashRoi: cashOnCash,
       capRate: parseNum(metrics.netYield),
       twoPercentRule,
@@ -234,6 +249,10 @@ export function assembleCalculatorInvestmentReportData(opts: {
         {
           label: "Cash on cash ROI",
           values: projCoC.map((v) => (v == null ? "—" : formatPct(v)))
+        },
+        {
+          label: "IRR",
+          values: irrByHorizon.map((v) => (v == null ? "—" : formatPct(v)))
         }
       ]
     },

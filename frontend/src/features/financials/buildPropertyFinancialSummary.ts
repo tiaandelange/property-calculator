@@ -4,14 +4,9 @@ import {
   structureTypeIdFromProperty
 } from "../../utils/propertyOccupancy";
 import { buildPropertyFinancialOverview } from "../properties/financials/propertyFinancialsAdapter";
-import {
-  computeCashOnCashRoiPercent,
-  computeEquity,
-  computeGrossYieldPercent,
-  computeNetYieldPercent,
-  parseFinancialNumber,
-  resolveCashInvested
-} from "./financialCalculations";
+import { computePropertyMonthlyFinancialSnapshot } from "../properties/financials/propertyFinancialsAdapter";
+import { normalizeFromProperty, runPropertyCalculator } from "../../lib/calculators";
+import { parseFinancialNumber, resolveCashInvested } from "./financialCalculations";
 import type { PropertyFinancialSummary } from "./financialTypes";
 
 function n(v: unknown): number {
@@ -62,16 +57,35 @@ export function buildPropertyFinancialSummary(
     additionalBondMonthlyTotal: params.additionalBondMonthlyTotal ?? 0
   });
 
+  const snapshot = computePropertyMonthlyFinancialSnapshot({
+    property: pf,
+    currentLeases: params.currentLeases,
+    recurringCharges: params.recurringChargesLandlord,
+    additionalBondMonthlyTotal: params.additionalBondMonthlyTotal ?? 0,
+    statement: params.statement
+  });
+
+  const calc = runPropertyCalculator(
+    normalizeFromProperty({
+      property: pf,
+      currentLeases: params.currentLeases,
+      recurringCharges: params.recurringChargesLandlord,
+      additionalBondMonthlyTotal: params.additionalBondMonthlyTotal ?? 0,
+      statement: params.statement,
+      snapshot
+    })
+  );
+
   const marketValue = parseFinancialNumber(pf.currentEstimatedValue);
   const loanBalance = parseFinancialNumber(pf.outstandingBondBalance);
   const purchasePrice = parseFinancialNumber(pf.purchasePrice);
   const cashInvested = resolveCashInvested(pf);
-  const equity = computeEquity(marketValue, loanBalance);
-  const monthlyCashFlow = overview.netCashFlow;
-  const annualCashFlow = monthlyCashFlow * 12;
-  const cashOnCashRoi = computeCashOnCashRoiPercent(monthlyCashFlow, cashInvested);
-  const grossYield = computeGrossYieldPercent(overview.monthlyIncome, purchasePrice) ?? overview.annualYieldPercent;
-  const netYield = computeNetYieldPercent(monthlyCashFlow, purchasePrice);
+  const monthlyCashFlow = calc.monthlyCashFlow ?? overview.netCashFlow;
+  const annualCashFlow = calc.annualCashFlow ?? monthlyCashFlow * 12;
+  const cashOnCashRoi = calc.cashOnCashRoi;
+  const grossYield = calc.grossYield ?? overview.annualYieldPercent;
+  const netYield = calc.netYield;
+  const equity = calc.equity;
 
   const structureTypeId = structureTypeIdFromProperty(pf);
   const totalUnits = effectiveActiveUnitCount(structureTypeId, Number(pf.activeUnitCount) || undefined);

@@ -16,6 +16,8 @@
     "baseUrl": ".",
     "paths": {
       "@calculatorShared/*": ["../shared/calculatorShared/*"],
+      "@propertyCalculator": ["../shared/propertyCalculator/index.ts"],
+      "@propertyCalculator/*": ["../shared/propertyCalculator/*"],
       "zod": ["./node_modules/zod"],
       "zod/*": ["./node_modules/zod/*"]
     }

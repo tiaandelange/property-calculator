@@ -347,6 +347,18 @@ export function CalculatorsPage() {
                     value={metrics?.projectedCashFlow == null ? "—" : formatRand(metrics.projectedCashFlow)}
                     icon="wallet"
                   />
+                  <AppMetricCard
+                    label="IRR"
+                    value={
+                      metrics?.internalRateofReturn == null ? "—" : `${metrics.internalRateofReturn.toFixed(1)}%`
+                    }
+                    icon="percent"
+                    hint={
+                      metrics?.internalRateofReturn == null
+                        ? "Requires cash invested and projected exit value."
+                        : undefined
+                    }
+                  />
                 </div>
 
                 <div className="pg-muted" style={{ marginTop: 10, fontSize: 12 }}>
@@ -378,6 +390,18 @@ export function CalculatorsPage() {
                     label="Cash on Cash ROI"
                     value={metrics?.cashOnCashRoi == null ? "—" : `${metrics.cashOnCashRoi.toFixed(1)}%`}
                     icon="income"
+                  />
+                  <AppMetricCard
+                    label="IRR"
+                    value={
+                      metrics?.internalRateofReturn == null ? "—" : `${metrics.internalRateofReturn.toFixed(1)}%`
+                    }
+                    icon="percent"
+                    hint={
+                      metrics?.internalRateofReturn == null
+                        ? "Requires cash invested and projected exit value."
+                        : undefined
+                    }
                   />
                   <AppMetricCard
                     label="Monthly Income"

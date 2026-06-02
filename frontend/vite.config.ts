@@ -16,6 +16,7 @@ export default defineConfig({
   resolve: {
     alias: {
       "@calculatorShared": path.resolve(__dirname, "../shared/calculatorShared"),
+      "@propertyCalculator": path.resolve(__dirname, "../shared/propertyCalculator"),
       // Shared engine lives under ../backend; Node resolution would look for zod there.
       // Vercel only installs frontend deps, so pin zod to this package's node_modules.
       zod: path.resolve(__dirname, "node_modules/zod")
