@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { IconButton } from "../components/icons";
 import {
@@ -31,35 +31,45 @@ export function OwnedPropertiesReportsPage() {
   const [pendingDelete, setPendingDelete] = useState<PropertyStoredReportRow | null>(null);
   const [pendingInvDelete, setPendingInvDelete] = useState<InvestmentReportRow | null>(null);
   const isMobile = useMediaQuery("(max-width: 767px)");
+  const loadSeq = useRef(0);
 
-  const load = async () => {
+  const load = useCallback(async () => {
+    const seq = ++loadSeq.current;
     setLoading(true);
     setError("");
     try {
-      setRows(await listPropertyStoredReports());
-      try {
-        setInvestmentRows(await listInvestmentReports());
-      } catch (e: any) {
-        const msg = String(e?.message ?? "");
-        // When the migration hasn't been applied yet, Supabase returns a schema-cache error.
-        // Treat as "no rows yet" rather than showing an error to users.
-        if (msg.includes("Could not find the table") && msg.includes("investment_reports")) {
-          setInvestmentRows([]);
-        } else {
-          // Don't block property reports; just keep investment rows empty.
-          setInvestmentRows([]);
-        }
-      }
-    } catch (e: any) {
-      setError(e?.message ?? "Failed to load reports.");
+      const [propertyRows, investmentList] = await Promise.all([
+        listPropertyStoredReports(),
+        listInvestmentReports().catch((e: unknown) => {
+          const msg = String(e instanceof Error ? e.message : e);
+          if (msg.includes("Could not find the table") && msg.includes("investment_reports")) {
+            return [] as InvestmentReportRow[];
+          }
+          throw e;
+        })
+      ]);
+      if (seq !== loadSeq.current) return;
+      setRows(propertyRows);
+      setInvestmentRows(investmentList);
+    } catch (e: unknown) {
+      if (seq !== loadSeq.current) return;
+      setError(e instanceof Error ? e.message : "Failed to load reports.");
     } finally {
-      setLoading(false);
+      if (seq === loadSeq.current) setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     void load();
-  }, []);
+  }, [load]);
+
+  const removePropertyRow = (id: string) => {
+    setRows((prev) => prev.filter((r) => r.id !== id));
+  };
+
+  const removeInvestmentRow = (id: string) => {
+    setInvestmentRows((prev) => prev.filter((r) => r.id !== id));
+  };
 
   return (
     <>
@@ -331,12 +341,13 @@ export function OwnedPropertiesReportsPage() {
             if (!pendingDelete) return;
             const row = pendingDelete;
             setPendingDelete(null);
+            removePropertyRow(row.id);
             void (async () => {
               try {
                 await deleteStoredReport(row.id);
+              } catch (e: unknown) {
+                setError(e instanceof Error ? e.message : "Failed to delete report.");
                 await load();
-              } catch (e: any) {
-                setError(e?.message ?? "Failed to delete report.");
               }
             })();
           }}
@@ -358,12 +369,13 @@ export function OwnedPropertiesReportsPage() {
           if (!pendingInvDelete) return;
           const row = pendingInvDelete;
           setPendingInvDelete(null);
+          removeInvestmentRow(row.id);
           void (async () => {
             try {
               await deleteInvestmentReport(row.id);
+            } catch (e: unknown) {
+              setError(e instanceof Error ? e.message : "Failed to delete report.");
               await load();
-            } catch (e: any) {
-              setError(e?.message ?? "Failed to delete report.");
             }
           })();
         }}

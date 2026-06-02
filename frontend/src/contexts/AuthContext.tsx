@@ -34,7 +34,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { data, error } = await supabase.auth.getSession();
     if (error) {
       console.warn("[auth] getSession", error.message);
-      setSession(null);
+      // Keep the existing session on transient read errors (e.g. refresh in flight).
       return;
     }
     setSession(data.session ?? null);
@@ -80,8 +80,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const {
       data: { subscription }
-    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
-      setSession(nextSession);
+    } = supabase.auth.onAuthStateChange((event, nextSession) => {
+      if (event === "SIGNED_OUT") {
+        setSession(null);
+        return;
+      }
+      if (nextSession) {
+        setSession(nextSession);
+      }
     });
 
     return () => {

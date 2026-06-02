@@ -118,13 +118,11 @@ export async function listInvestmentReports(): Promise<InvestmentReportRow[]> {
     return listLegacyInvestmentReportsFromStoredReports(uid);
   }
 
-  const legacy = await listLegacyInvestmentReportsFromStoredReports(uid);
-  const byId = new Map<string, InvestmentReportRow>();
-  for (const row of [...primary, ...legacy]) {
-    byId.set(row.id, row);
+  if (primary.length > 0) {
+    return primary;
   }
 
-  return [...byId.values()].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  return listLegacyInvestmentReportsFromStoredReports(uid);
 }
 
 export async function getInvestmentReportSignedUrl(report: { storageBucket: string; storageKey: string }): Promise<string | null> {

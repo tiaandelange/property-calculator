@@ -9,6 +9,7 @@ import {
   type NormalizedBusinessDetails,
   type NormalizedProfileDetails
 } from "../../api/lib/profileContactShared";
+import { getLocalAuthSession, requireLocalUserId } from "../lib/authSession";
 import { getSupabase } from "../lib/supabaseClient";
 
 export const PROFILE_AVATARS_BUCKET = "avatars";
@@ -93,11 +94,7 @@ function asObject(v: unknown): Record<string, unknown> {
 }
 
 export async function requireUserId(): Promise<string> {
-  const sb = getSupabase();
-  const { data, error } = await sb.auth.getUser();
-  if (error) throw toError(error);
-  if (!data.user?.id) throw new Error("Not signed in.");
-  return data.user.id;
+  return requireLocalUserId();
 }
 
 export async function signedProfileAvatarUrl(storageKey: string | null | undefined): Promise<string | null> {
@@ -124,9 +121,8 @@ export async function fetchProfileForUserId(userId: string): Promise<ProfileForA
 /** Current user + profile row (Supabase Auth session). */
 export async function getCurrentProfile(): Promise<MeResponse> {
   const sb = getSupabase();
-  const { data: userData, error: userErr } = await sb.auth.getUser();
-  if (userErr) throw toError(userErr);
-  const user = userData.user;
+  const session = await getLocalAuthSession();
+  const user = session?.user;
   if (!user) throw new Error("Not signed in.");
 
   const profile = await fetchProfileForUserId(user.id);

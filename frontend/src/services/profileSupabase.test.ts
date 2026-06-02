@@ -10,12 +10,12 @@ const rpc = vi.fn();
 const from = vi.fn();
 const storageFrom = vi.fn();
 const createSignedUrl = vi.fn().mockResolvedValue({ data: { signedUrl: null }, error: null });
-const getUser = vi.fn();
+const getSession = vi.fn();
 
 vi.mock("../lib/supabaseClient", () => ({
   getSupabase: () => ({
     rpc,
-    auth: { getUser },
+    auth: { getSession },
     from,
     storage: {
       from: () => ({
@@ -31,8 +31,12 @@ describe("profileSupabase", () => {
     rpc.mockReset();
     from.mockReset();
     storageFrom.mockReset();
-    getUser.mockResolvedValue({
-      data: { user: { id: "u1", email: "a@b.com", email_confirmed_at: "2026-01-01" } },
+    getSession.mockResolvedValue({
+      data: {
+        session: {
+          user: { id: "u1", email: "a@b.com", email_confirmed_at: "2026-01-01" }
+        }
+      },
       error: null
     });
   });
