@@ -18,5 +18,8 @@ const WORKSPACE_PREFIXES = [
 ];
 
 export function isWorkspacePath(pathname: string): boolean {
+  // `/calculators` is a workspace page (sidebar entry), but individual calculator tools remain
+  // in the public marketing shell under `/calculators/:slug`.
+  if (pathname === "/calculators") return true;
   return WORKSPACE_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 }
