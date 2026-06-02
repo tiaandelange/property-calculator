@@ -1,22 +1,22 @@
-import { homepageCalculators } from "./homepageCalculators";
+/** Public marketing footer copy and links. */
 
 /** Public marketing name for copyright and brand lockup. */
-export const HOMEPAGE_BRAND_LEGAL_NAME = "The Property Guy";
+export const HOMEPAGE_BRAND_LEGAL_NAME = "Proplytic";
 
 export const marketingFooterBrandTagline =
-  "Make better property decisions with calculators built for the real cost of buying, owning and investing.";
+  "Portfolio analytics, core rental admin and investment reports for owner-managers and small portfolio investors.";
 
-/**
- * Footer “Calculators” column — labels and routes come only from `homepageCalculators`
- * (central homepage calculator registry). Do not duplicate `/calculators/:slug` paths here.
- */
-export const marketingFooterCalculatorNavItems: readonly { readonly label: string; readonly to: string }[] =
-  homepageCalculators.map((c) => ({ label: c.title, to: c.route }));
+export const marketingFooterProductLinks = [
+  { label: "Features", to: "/#features" },
+  { label: "Reports", to: "/#reports" },
+  { label: "Calculators", to: "/#calculators" },
+  { label: "Pricing", to: "/pricing" },
+  { label: "FAQ", to: "/#faq" }
+] as const;
 
 export const marketingFooterCompanyLinks = [
-  { label: "How it works", to: "/#how-it-works" },
-  { label: "Why us", to: "/#why-us" },
-  { label: "Reviews", to: "/#reviews" },
+  { label: "Pricing", to: "/pricing" },
+  { label: "Sign in", to: "/login" },
   { label: "Contact", to: "/contact" }
 ] as const;
 
@@ -31,4 +31,4 @@ export const marketingFooterLegalLinks = [
 ] as const;
 
 export const marketingFooterLegalDisclaimer =
-  "Calculator outputs are estimates and should be checked before you act.";
+  "Calculator and report outputs are estimates — verify figures before making investment decisions.";

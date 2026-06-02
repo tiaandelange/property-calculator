@@ -1,7 +1,6 @@
 import type { ReactElement } from "react";
 import { Navigate, Route, Routes, useParams } from "react-router-dom";
 import { AppChrome } from "../layouts/AppChrome";
-import { HomePage } from "../pages/HomePage";
 import { LoginPage } from "../pages/LoginPage";
 import { PricingPage } from "../pages/PricingPage";
 import { ConfirmEmailPage } from "../pages/ConfirmEmailPage";
@@ -12,6 +11,10 @@ import { RequireAuth } from "../components/auth/RequireAuth";
 import { RouteBoundary } from "../components/ui/RouteBoundary";
 import { lazyWithRetry } from "../lib/lazyWithRetry";
 
+const HomePage = lazyWithRetry(
+  () => import("../pages/HomePage").then((m) => ({ default: m.HomePage })),
+  { label: "Home" }
+);
 const CalculatorHubPage = lazyWithRetry(
   () => import("../pages/CalculatorHubPage").then((m) => ({ default: m.CalculatorHubPage })),
   { label: "Calculators" }
@@ -180,7 +183,14 @@ export function App() {
   return (
     <Routes>
       <Route element={<AppChrome />}>
-        <Route path="/" element={<HomePage />} />
+        <Route
+          path="/"
+          element={
+            <RouteBoundary label="Home">
+              <HomePage />
+            </RouteBoundary>
+          }
+        />
         <Route
           path="/calculators"
           element={

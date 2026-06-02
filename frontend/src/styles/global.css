@@ -26,6 +26,7 @@
 @import "./tenant-form.css";
 @import "./settings-dashboard.css";
 @import "./pricing.css";
+@import "./home-marketing.css";
 @import "./subscription-limits.css";
 @import "./mobile-layout.css";
 
@@ -744,6 +745,7 @@ textarea {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+  overflow-x: clip;
 }
 
 .pg-main-marketing-site {
@@ -3140,6 +3142,7 @@ html[data-theme="light"] .pg-color-scheme-switch[data-on="false"] .pg-color-sche
 
 .pg-main.pg-main-marketing-home {
   padding-top: 0;
+  overflow-x: clip;
 }
 
 .pg-home-hero {

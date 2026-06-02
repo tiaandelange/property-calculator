@@ -4,10 +4,10 @@ import { ProplyticLogo } from "../brand/ProplyticLogo";
 import {
   HOMEPAGE_BRAND_LEGAL_NAME,
   marketingFooterBrandTagline,
-  marketingFooterCalculatorNavItems,
   marketingFooterCompanyLinks,
   marketingFooterLegalDisclaimer,
-  marketingFooterLegalLinks
+  marketingFooterLegalLinks,
+  marketingFooterProductLinks
 } from "../../data/homeMarketingFooter";
 
 function FooterNavList({
@@ -47,7 +47,7 @@ export function HomePublicFooter() {
             <p className="pg-home-footer-tagline">{marketingFooterBrandTagline}</p>
           </div>
 
-          <FooterNavList ariaLabel="Calculators" title="Calculators" items={marketingFooterCalculatorNavItems} />
+          <FooterNavList ariaLabel="Product" title="Product" items={[...marketingFooterProductLinks]} />
 
           <FooterNavList ariaLabel="Company" title="Company" items={[...marketingFooterCompanyLinks]} />
 
