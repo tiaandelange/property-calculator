@@ -1,14 +1,22 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { AppListPage, AppPageActions, AppPageContent, AppPageHeader, AppPageSection, AppPageSubtitle, AppPageTitle } from "../components/ui/AppPage";
 import { AppInfoCard, AppMetricCard, Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
-import { Field, Input, Select } from "../components/ui/Input";
+import { Field, Select } from "../components/ui/Input";
 import { useMediaQuery } from "../hooks/useMediaQuery";
 import { PropertyTypeTile } from "../components/calculators/PropertyTypeTile";
-import { PROPERTY_TYPES, QUESTIONS_BY_KEY, type PropertyTypeDef, type PropertyTypeId, type QuestionDef } from "../data/calculatorPropertyTypes";
+import { CalculatorQuestionsForm } from "../components/calculators/CalculatorQuestionsForm";
+import { PROPERTY_TYPES, type PropertyTypeDef, type PropertyTypeId } from "../data/calculatorPropertyTypes";
+import { getDefaultAnswersForConfig, getQuestionConfig } from "../data/calculatorQuestionsConfig";
 
 type StepId = 1 | 2 | 3;
+
+const SAVED_INPUTS_KEY = "pg.calculators.savedInputs.v1";
+
+function storageKeyForType(propertyType: PropertyTypeId): string {
+  return `${SAVED_INPUTS_KEY}.${propertyType}`;
+}
 
 export function CalculatorsPage() {
   const isMobile = useMediaQuery("(max-width: 767px)");
@@ -21,10 +29,17 @@ export function CalculatorsPage() {
     return PROPERTY_TYPES.find((t) => t.propertyType === propertyType) ?? null;
   }, [propertyType]);
 
-  const questions = useMemo((): QuestionDef[] => {
-    if (!selectedType) return [];
-    return QUESTIONS_BY_KEY[selectedType.questionsConfigKey] ?? [];
-  }, [selectedType]);
+  const questionConfig = useMemo(() => {
+    if (!propertyType) return null;
+    return getQuestionConfig(propertyType);
+  }, [propertyType]);
+
+  // When a property type is selected, seed defaults (but don't clobber existing answers).
+  useEffect(() => {
+    if (!questionConfig) return;
+    const defaults = getDefaultAnswersForConfig(questionConfig);
+    setAnswers((prev) => ({ ...defaults, ...prev }));
+  }, [questionConfig]);
 
   const steps = [
     { id: 1 as const, title: "Select Type", subtitle: selectedType?.label ?? "Choose a property type" },
@@ -33,6 +48,30 @@ export function CalculatorsPage() {
   ];
 
   const setAnswer = (key: string, value: string) => setAnswers((a) => ({ ...a, [key]: value }));
+
+  const loadSaved = () => {
+    if (!propertyType) return;
+    try {
+      const raw = localStorage.getItem(storageKeyForType(propertyType));
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as Record<string, unknown>;
+      const next: Record<string, string> = {};
+      for (const [k, v] of Object.entries(parsed)) next[k] = v == null ? "" : String(v);
+      setAnswers(next);
+    } catch {
+      window.alert("Saved inputs could not be loaded (corrupt data).");
+    }
+  };
+
+  const saveInputs = () => {
+    if (!propertyType) return;
+    try {
+      localStorage.setItem(storageKeyForType(propertyType), JSON.stringify(answers));
+      window.alert("Saved inputs.");
+    } catch {
+      window.alert("Could not save inputs (storage unavailable).");
+    }
+  };
 
   return (
     <AppListPage className="pg-calculators-page">
@@ -47,7 +86,15 @@ export function CalculatorsPage() {
             <AppPageSubtitle>Choose a property type and generate investment insights</AppPageSubtitle>
           </div>
           <AppPageActions>
-            <Button type="button" variant="secondary" onClick={() => { setPropertyType(""); setAnswers({}); setStep(1); }}>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => {
+                setPropertyType("");
+                setAnswers({});
+                setStep(1);
+              }}
+            >
               Reset
             </Button>
           </AppPageActions>
@@ -89,6 +136,7 @@ export function CalculatorsPage() {
                           const next = e.target.value as PropertyTypeId | "";
                           setPropertyType(next);
                           setStep(next ? 2 : 1);
+                          if (!next) setAnswers({});
                         }}
                       >
                         <option value="">Select…</option>
@@ -150,33 +198,16 @@ export function CalculatorsPage() {
                   <div className="pg-muted">Select a property type above to see the questions.</div>
                 ) : (
                   <>
-                    <div className="pg-calculators-q-grid" aria-label="Property questions">
-                      {questions.map((q) => (
-                        <Field key={q.key} label={q.label}>
-                          {q.type === "select" ? (
-                            <Select value={answers[q.key] ?? ""} onChange={(e) => setAnswer(q.key, e.target.value)}>
-                              <option value="">Select…</option>
-                              {(q.options ?? []).map((o) => (
-                                <option key={o.value} value={o.value}>
-                                  {o.label}
-                                </option>
-                              ))}
-                            </Select>
-                          ) : (
-                            <Input
-                              inputMode={q.type === "text" ? "text" : q.type === "percent" ? "decimal" : "numeric"}
-                              placeholder={q.placeholder}
-                              value={answers[q.key] ?? ""}
-                              onChange={(e) => setAnswer(q.key, e.target.value)}
-                            />
-                          )}
-                        </Field>
-                      ))}
-                    </div>
+                    {questionConfig ? (
+                      <CalculatorQuestionsForm sections={questionConfig.sections} values={answers} onChange={setAnswer} />
+                    ) : null}
 
                     <div className="pg-calculators-actions-row">
                       <div className="pg-calculators-actions-row__left">
-                        <Button type="button" variant="secondary" disabled>
+                        <Button type="button" variant="secondary" onClick={loadSaved} disabled={!propertyType}>
+                          Load Saved Input
+                        </Button>
+                        <Button type="button" variant="secondary" onClick={saveInputs} disabled={!propertyType}>
                           Save Inputs
                         </Button>
                       </div>
