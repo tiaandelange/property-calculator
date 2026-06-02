@@ -566,6 +566,57 @@ export function SettingsDashboard() {
         </SettingsCard>
 
         <SettingsCard
+          icon="reports"
+          title="Future Projections"
+          description="Used for forward-looking projections in the dashboard, property analyses, and investor reports. These do not change your historical statements."
+        >
+          <div className="pg-settings-field">
+            <label htmlFor="settings-income-growth">Annual income growth (% p.a.)</label>
+            <input
+              id="settings-income-growth"
+              type="number"
+              inputMode="decimal"
+              min={0}
+              max={30}
+              className="pg-settings-input"
+              value={draft.annualIncomeGrowthPercentAnnual}
+              onChange={(e) => patchDraft({ annualIncomeGrowthPercentAnnual: Number(e.target.value) })}
+            />
+            <p className="pg-settings-field-hint">
+              Applied to rental income when projecting future years (e.g. Year \(n\) income = Year 1 × \((1+g)^{n-1}\)).
+            </p>
+          </div>
+          <div className="pg-settings-field">
+            <label htmlFor="settings-expense-growth">Expense growth / inflation (% p.a.)</label>
+            <input
+              id="settings-expense-growth"
+              type="number"
+              inputMode="decimal"
+              min={0}
+              max={30}
+              className="pg-settings-input"
+              value={draft.expenseGrowthPercentAnnual}
+              onChange={(e) => patchDraft({ expenseGrowthPercentAnnual: Number(e.target.value) })}
+            />
+            <p className="pg-settings-field-hint">Applied to operating expenses and costs when projecting future years.</p>
+          </div>
+          <div className="pg-settings-field">
+            <label htmlFor="settings-appreciation">Property appreciation (% p.a.)</label>
+            <input
+              id="settings-appreciation"
+              type="number"
+              inputMode="decimal"
+              min={0}
+              max={30}
+              className="pg-settings-input"
+              value={draft.propertyAppreciationPercentAnnual}
+              onChange={(e) => patchDraft({ propertyAppreciationPercentAnnual: Number(e.target.value) })}
+            />
+            <p className="pg-settings-field-hint">Used for projected property value growth and equity over time.</p>
+          </div>
+        </SettingsCard>
+
+        <SettingsCard
           icon="applicants"
           title="Applicant form template"
           description="Default fields sent on every applicant share link."

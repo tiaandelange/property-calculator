@@ -579,8 +579,8 @@ const noiSchema = scenarioSchema.extend({
   otherIncomeAnnual: money.nonnegative().optional(),
   maintenancePercentOfEffectiveGross: percent.min(0).max(50).default(0),
   expenseItems: z.array(noiExpenseItemSchema).optional(),
-  rentGrowthPercentAnnual: percent.min(0).max(30).default(3),
-  expenseGrowthPercentAnnual: percent.min(0).max(30).default(3)
+  rentGrowthPercentAnnual: percent.min(0).max(30).default(6),
+  expenseGrowthPercentAnnual: percent.min(0).max(30).default(6)
 }).superRefine((data, ctx) => {
   const annual = data.rentalIncomeAnnual != null && data.rentalIncomeAnnual > 0;
   const legacy = data.grossMonthlyRent != null && data.grossMonthlyRent > 0;
@@ -608,8 +608,8 @@ function noiAnnualFromInputs(input: z.infer<typeof noiSchema>): {
   monthlyOperatingExpenses: number;
 } {
   const vacancyPct = clamp(input.vacancyRatePercent ?? 0, 0, 100);
-  const rentG = input.rentGrowthPercentAnnual ?? 3;
-  const expG = input.expenseGrowthPercentAnnual ?? 3;
+  const rentG = input.rentGrowthPercentAnnual ?? 6;
+  const expG = input.expenseGrowthPercentAnnual ?? 6;
   const maintPct = clamp(input.maintenancePercentOfEffectiveGross ?? 0, 0, 50);
 
   if (input.rentalIncomeAnnual != null && Number.isFinite(input.rentalIncomeAnnual)) {

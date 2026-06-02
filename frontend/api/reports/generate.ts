@@ -216,9 +216,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
         return;
       }
 
-      const [propRes, profileRes, stmtRes, leaseRes, invRes] = await Promise.all([
+      const [propRes, profileRes, settingsRes, stmtRes, leaseRes, invRes] = await Promise.all([
         sb.from("properties").select(PROPERTY_REPORT_SELECT).eq("id", pid).maybeSingle(),
         sb.from("profiles").select("accent_color").eq("id", uid).maybeSingle(),
+        sb.rpc("get_or_create_user_settings"),
         (() => {
           const now = new Date();
           return sb.rpc("get_property_monthly_statement", {
@@ -244,18 +245,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
         return;
       }
 
+      if (settingsRes.error) {
+        console.warn("[reports/generate] get_or_create_user_settings failed; using projection defaults", settingsRes.error);
+      }
+
       const stmt = (typeof stmtRes.data === "string" ? JSON.parse(stmtRes.data) : stmtRes.data) as Record<
         string,
         unknown
       >;
       const leases = (leaseRes.data ?? []) as Record<string, unknown>[];
       const invoices = (invRes.data ?? []) as Record<string, unknown>[];
+      const userSettings = (settingsRes.data ?? null) as Record<string, unknown> | null;
 
       const reportModel = assemblePropertyInvestmentReportData({
         propertyRow: prop as Record<string, unknown>,
         statement: stmt,
         leases,
-        invoices
+        invoices,
+        projectionAssumptions: {
+          annualIncomeGrowthPercentAnnual: (userSettings?.annual_income_growth_percent_annual as number | undefined) ?? null,
+          expenseGrowthPercentAnnual: (userSettings?.expense_growth_percent_annual as number | undefined) ?? null,
+          propertyAppreciationPercentAnnual: (userSettings?.property_appreciation_percent_annual as number | undefined) ?? null
+        }
       });
 
       const accentColor =
@@ -348,7 +359,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
         return;
       }
 
-      const { definition } = buildInvestmentReportPdfDefinition({ propertyType, answers, metrics });
+      const settingsRes = await sb.rpc("get_or_create_user_settings");
+      if (settingsRes.error) {
+        console.warn("[reports/generate] get_or_create_user_settings failed; using projection defaults", settingsRes.error);
+      }
+      const us = (settingsRes.data ?? null) as Record<string, unknown> | null;
+
+      const { definition } = buildInvestmentReportPdfDefinition({
+        propertyType,
+        answers,
+        metrics,
+        projectionAssumptions: {
+          annualIncomeGrowthPercentAnnual: (us?.annual_income_growth_percent_annual as number | undefined) ?? null,
+          expenseGrowthPercentAnnual: (us?.expense_growth_percent_annual as number | undefined) ?? null,
+          propertyAppreciationPercentAnnual: (us?.property_appreciation_percent_annual as number | undefined) ?? null
+        }
+      });
       const pdfBuffer = await renderPdfDefinitionToBuffer(definition);
       const safeName = propertyType.replace(/[^\w\s-]/g, "").trim().replace(/\s+/g, "-").slice(0, 50) || "investment";
       const fileName = `investment-report-${safeName}.pdf`;

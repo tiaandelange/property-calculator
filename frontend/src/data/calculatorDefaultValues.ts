@@ -77,8 +77,8 @@ export const CALCULATOR_DEFAULT_VALUES: Record<string, Record<string, unknown>> 
     otherIncomeAnnual: 0,
     vacancyRatePercent: 5,
     maintenancePercentOfEffectiveGross: 5,
-    rentGrowthPercentAnnual: 3,
-    expenseGrowthPercentAnnual: 3,
+    rentGrowthPercentAnnual: 6,
+    expenseGrowthPercentAnnual: 6,
     expenseItems: [
       { label: "Rates & taxes", annualAmount: 26_400 },
       { label: "Levies", annualAmount: 21_600 },

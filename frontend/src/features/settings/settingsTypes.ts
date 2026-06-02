@@ -20,6 +20,12 @@ export type UserSettings = {
   density: DensityPreference;
   defaultCurrency: string;
   statementDefaultFilter: StatementDefaultFilter;
+  /** Annual income growth (%) p.a. used for forward-looking projections. */
+  annualIncomeGrowthPercentAnnual: number;
+  /** Annual expense growth / inflation (%) p.a. used for forward-looking projections. */
+  expenseGrowthPercentAnnual: number;
+  /** Annual property appreciation (%) p.a. used for forward-looking projections. */
+  propertyAppreciationPercentAnnual: number;
   leaseDefaultTermMonths: number;
   defaultRentDueDay: number;
   recurringExpenseDefaultCategory: string;

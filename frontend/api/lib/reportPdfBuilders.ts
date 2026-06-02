@@ -212,11 +212,17 @@ export function buildInvestmentReportPdfDefinition(opts: {
   propertyType: string;
   answers: Record<string, unknown>;
   metrics: Record<string, unknown>;
+  projectionAssumptions?: {
+    annualIncomeGrowthPercentAnnual?: number | null;
+    expenseGrowthPercentAnnual?: number | null;
+    propertyAppreciationPercentAnnual?: number | null;
+  } | null;
 }): { definition: TDocumentDefinitions } {
   const model = assembleCalculatorInvestmentReportData({
     propertyType: opts.propertyType,
     answers: opts.answers ?? {},
-    metrics: opts.metrics ?? {}
+    metrics: opts.metrics ?? {},
+    projectionAssumptions: opts.projectionAssumptions ?? null
   });
   const definition = buildPropertyInvestmentReportPdfDefinition(model, null);
   return { definition };

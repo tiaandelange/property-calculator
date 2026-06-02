@@ -13,6 +13,7 @@ import {
 import { getChartSemanticColors } from "../../theme/cssTokens";
 import { buildPortfolioProjectionYears } from "./portfolioProjectionUtils";
 import { fmtZarCompact } from "./portfolioDashboardUtils";
+import { useSettingsQuery, useWorkspaceId } from "../queries";
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend);
 
@@ -27,13 +28,24 @@ export function PortfolioSummaryProjectionChart({
   propertyTypes?: string[];
   propertyId?: string | number | null;
 }) {
+  const workspaceId = useWorkspaceId();
+  const settingsQuery = useSettingsQuery();
+  const growth = settingsQuery.data
+    ? {
+        incomeGrowthPct: settingsQuery.data.annualIncomeGrowthPercentAnnual,
+        expenseGrowthPct: settingsQuery.data.expenseGrowthPercentAnnual,
+        appreciationPct: settingsQuery.data.propertyAppreciationPercentAnnual
+      }
+    : null;
+
   const rows = useMemo(
     () =>
       buildPortfolioProjectionYears(data, properties, {
         propertyTypes: propertyTypes ?? [],
-        propertyId: propertyId ?? null
+        propertyId: propertyId ?? null,
+        growth
       }),
-    [data, properties, propertyTypes, propertyId]
+    [data, properties, propertyTypes, propertyId, growth, workspaceId, settingsQuery.data]
   );
 
   const colors = getChartSemanticColors();

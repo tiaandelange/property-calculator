@@ -51,7 +51,10 @@ function matchesPropertyFilter(
   return propertyTypes.some((x) => x.toUpperCase() === t);
 }
 
-function projectionGrowthRates(data: Record<string, unknown> | null | undefined) {
+function projectionGrowthRates(
+  data: Record<string, unknown> | null | undefined,
+  overrides?: { incomeGrowthPct?: number; expenseGrowthPct?: number; appreciationPct?: number } | null
+) {
   const k = (data?.kpis ?? {}) as Record<string, unknown>;
   const analysis = k.portfolioAnalysisOverTime as
     | {
@@ -63,14 +66,18 @@ function projectionGrowthRates(data: Record<string, unknown> | null | undefined)
     ?.projectionGrowth;
 
   const rentPct = num(
-    analysis?.projectionGrowth?.rentalIncomeGrowthPercentAnnual ?? irrProj?.rentalIncomeGrowthPercentAnnual,
-    5
+    overrides?.incomeGrowthPct ??
+      analysis?.projectionGrowth?.rentalIncomeGrowthPercentAnnual ??
+      irrProj?.rentalIncomeGrowthPercentAnnual,
+    6
   );
   const expPct = num(
-    analysis?.projectionGrowth?.totalExpensesGrowthPercentAnnual ?? irrProj?.totalExpensesGrowthPercentAnnual,
-    5
+    overrides?.expenseGrowthPct ??
+      analysis?.projectionGrowth?.totalExpensesGrowthPercentAnnual ??
+      irrProj?.totalExpensesGrowthPercentAnnual,
+    6
   );
-  const appreciationDefault = num(analysis?.appreciationDefaultPercent, 5);
+  const appreciationDefault = num(overrides?.appreciationPct ?? analysis?.appreciationDefaultPercent, 6);
 
   return {
     rentGrowth: rentPct / 100,
@@ -194,12 +201,13 @@ export function buildPortfolioProjectionYears(
     horizonYears?: number;
     propertyTypes?: string[];
     propertyId?: string | number | null;
+    growth?: { incomeGrowthPct?: number; expenseGrowthPct?: number; appreciationPct?: number } | null;
   }
 ): PortfolioProjectionYearRow[] {
   const horizon = opts?.horizonYears ?? PORTFOLIO_PROJECTION_HORIZON_YEARS;
   const propertyTypes = opts?.propertyTypes ?? [];
   const propertyId = opts?.propertyId ?? null;
-  const { rentGrowth, expenseGrowth, appreciationDefault } = projectionGrowthRates(data);
+  const { rentGrowth, expenseGrowth, appreciationDefault } = projectionGrowthRates(data, opts?.growth ?? null);
 
   const states = buildPropertyStates(properties, data, propertyTypes, propertyId, appreciationDefault);
   if (!states.length) return [];

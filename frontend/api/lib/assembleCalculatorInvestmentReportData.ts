@@ -40,6 +40,11 @@ export function assembleCalculatorInvestmentReportData(opts: {
   answers: Record<string, unknown>;
   metrics: Record<string, unknown>;
   generatedAt?: Date;
+  projectionAssumptions?: {
+    annualIncomeGrowthPercentAnnual?: number | null;
+    expenseGrowthPercentAnnual?: number | null;
+    propertyAppreciationPercentAnnual?: number | null;
+  } | null;
 }): PropertyInvestmentReportModel {
   const now = opts.generatedAt ?? new Date();
   const answers = opts.answers ?? {};
@@ -58,7 +63,14 @@ export function assembleCalculatorInvestmentReportData(opts: {
   const cashInvested = parseNum(answers.cashInvested);
   const loanAmount = parseNum(answers.loanAmount);
   const ratePct = parseNum(answers.interestRateApr);
-  const growthPct = parseNum(answers.expectedAppreciationPct);
+  const defaults = opts.projectionAssumptions ?? null;
+  const incomeGrowthPct =
+    defaults?.annualIncomeGrowthPercentAnnual != null ? defaults.annualIncomeGrowthPercentAnnual : 6;
+  const expenseGrowthPct =
+    defaults?.expenseGrowthPercentAnnual != null ? defaults.expenseGrowthPercentAnnual : 6;
+  const appreciationPct =
+    parseNum(answers.expectedAppreciationPct) ??
+    (defaults?.propertyAppreciationPercentAnnual != null ? defaults.propertyAppreciationPercentAnnual : 6);
   const termYears = parseNum(answers.loanTermYears) ?? parseNum(answers.amortizationYears);
 
   const equity =
@@ -103,8 +115,8 @@ export function assembleCalculatorInvestmentReportData(opts: {
   const baseValue = marketValue ?? purchasePrice ?? 0;
   const startLoan = loanAmount ?? 0;
 
-  const projIncome = yearCols.map((y) => projectValue(baseAnnualIncome, growthPct, y));
-  const projExpenses = yearCols.map((y) => projectValue(baseAnnualExpenses, growthPct, y));
+  const projIncome = yearCols.map((y) => projectValue(baseAnnualIncome, incomeGrowthPct, y));
+  const projExpenses = yearCols.map((y) => projectValue(baseAnnualExpenses, expenseGrowthPct, y));
   const projNoi = yearCols.map((_, i) => {
     const inc = projIncome[i];
     const exp = projExpenses[i];
@@ -117,7 +129,7 @@ export function assembleCalculatorInvestmentReportData(opts: {
     if (inc == null || exp == null) return null;
     return inc - exp - monthlyLoanPayment * 12;
   });
-  const projValue = yearCols.map((y) => projectValue(baseValue, growthPct, y));
+  const projValue = yearCols.map((y) => projectValue(baseValue, appreciationPct, y));
   const projLoan = yearCols.map((y) =>
     startLoan > 0 ? projectLoanBalanceAfterYears(startLoan, monthlyLoanPayment, ratePct, y) : 0
   );
@@ -137,12 +149,12 @@ export function assembleCalculatorInvestmentReportData(opts: {
     if (cashInvested == null || cashInvested <= 0) return null;
     const flows: number[] = [];
     for (let t = 1; t <= hYears; t++) {
-      const inc = projectValue(baseAnnualIncome, growthPct, t);
-      const exp = projectValue(baseAnnualExpenses, growthPct, t);
+      const inc = projectValue(baseAnnualIncome, incomeGrowthPct, t);
+      const exp = projectValue(baseAnnualExpenses, expenseGrowthPct, t);
       if (inc == null || exp == null) return null;
       flows.push(inc - exp - monthlyLoanPayment * 12);
     }
-    const pv = projectValue(baseValue, growthPct, hYears);
+    const pv = projectValue(baseValue, appreciationPct, hYears);
     const lb = startLoan > 0 ? projectLoanBalanceAfterYears(startLoan, monthlyLoanPayment, ratePct, hYears) : 0;
     if (pv == null || lb == null) return null;
     flows[flows.length - 1] = (flows[flows.length - 1] ?? 0) + (pv - lb);

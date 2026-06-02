@@ -15,6 +15,9 @@ type DbRow = {
   density: string;
   default_currency: string;
   statement_default_filter: string;
+  annual_income_growth_percent_annual: number;
+  expense_growth_percent_annual: number;
+  property_appreciation_percent_annual: number;
   lease_default_term_months: number;
   default_rent_due_day: number;
   recurring_expense_default_category: string;
@@ -52,6 +55,15 @@ function mapRow(row: DbRow | null): UserSettings {
     statementDefaultFilter:
       (row.statement_default_filter as UserSettings["statementDefaultFilter"]) ??
       DEFAULT_USER_SETTINGS.statementDefaultFilter,
+    annualIncomeGrowthPercentAnnual: Number(
+      row.annual_income_growth_percent_annual ?? DEFAULT_USER_SETTINGS.annualIncomeGrowthPercentAnnual
+    ),
+    expenseGrowthPercentAnnual: Number(
+      row.expense_growth_percent_annual ?? DEFAULT_USER_SETTINGS.expenseGrowthPercentAnnual
+    ),
+    propertyAppreciationPercentAnnual: Number(
+      row.property_appreciation_percent_annual ?? DEFAULT_USER_SETTINGS.propertyAppreciationPercentAnnual
+    ),
     leaseDefaultTermMonths: Number(row.lease_default_term_months ?? DEFAULT_USER_SETTINGS.leaseDefaultTermMonths),
     defaultRentDueDay: Number(row.default_rent_due_day ?? DEFAULT_USER_SETTINGS.defaultRentDueDay),
     recurringExpenseDefaultCategory:
@@ -81,6 +93,15 @@ function patchToPayload(patch: UserSettingsPatch): Record<string, unknown> {
   if (patch.density !== undefined) out.density = patch.density;
   if (patch.defaultCurrency !== undefined) out.defaultCurrency = patch.defaultCurrency;
   if (patch.statementDefaultFilter !== undefined) out.statementDefaultFilter = patch.statementDefaultFilter;
+  if (patch.annualIncomeGrowthPercentAnnual !== undefined) {
+    out.annualIncomeGrowthPercentAnnual = patch.annualIncomeGrowthPercentAnnual;
+  }
+  if (patch.expenseGrowthPercentAnnual !== undefined) {
+    out.expenseGrowthPercentAnnual = patch.expenseGrowthPercentAnnual;
+  }
+  if (patch.propertyAppreciationPercentAnnual !== undefined) {
+    out.propertyAppreciationPercentAnnual = patch.propertyAppreciationPercentAnnual;
+  }
   if (patch.leaseDefaultTermMonths !== undefined) out.leaseDefaultTermMonths = patch.leaseDefaultTermMonths;
   if (patch.defaultRentDueDay !== undefined) out.defaultRentDueDay = patch.defaultRentDueDay;
   if (patch.recurringExpenseDefaultCategory !== undefined) {
@@ -108,6 +129,15 @@ function patchToPayload(patch: UserSettingsPatch): Record<string, unknown> {
 export function validateUserSettings(settings: UserSettings): string | null {
   if (!["light", "dark", "system"].includes(settings.themePreference)) {
     return "Invalid theme preference.";
+  }
+  if (settings.annualIncomeGrowthPercentAnnual < 0 || settings.annualIncomeGrowthPercentAnnual > 30) {
+    return "Annual income growth must be between 0% and 30%.";
+  }
+  if (settings.expenseGrowthPercentAnnual < 0 || settings.expenseGrowthPercentAnnual > 30) {
+    return "Expense growth / inflation must be between 0% and 30%.";
+  }
+  if (settings.propertyAppreciationPercentAnnual < 0 || settings.propertyAppreciationPercentAnnual > 30) {
+    return "Property appreciation must be between 0% and 30%.";
   }
   if (settings.invoiceGenerateDaysBeforeDue < 0 || settings.invoiceGenerateDaysBeforeDue > 31) {
     return "Invoice generation days must be between 0 and 31.";

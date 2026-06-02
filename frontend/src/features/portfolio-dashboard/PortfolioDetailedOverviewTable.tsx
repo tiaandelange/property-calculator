@@ -5,6 +5,7 @@ import {
   type PortfolioProjectionYearRow
 } from "./portfolioProjectionUtils";
 import { fmtZar } from "./portfolioDashboardUtils";
+import { useSettingsQuery, useWorkspaceId } from "../queries";
 
 const METRIC_ROWS: {
   key: Exclude<keyof PortfolioProjectionYearRow, "year">;
@@ -43,13 +44,24 @@ export function PortfolioDetailedOverviewTable({
   propertyTypes?: string[];
   propertyId?: string | number | null;
 }) {
+  const workspaceId = useWorkspaceId();
+  const settingsQuery = useSettingsQuery();
+  const growth = settingsQuery.data
+    ? {
+        incomeGrowthPct: settingsQuery.data.annualIncomeGrowthPercentAnnual,
+        expenseGrowthPct: settingsQuery.data.expenseGrowthPercentAnnual,
+        appreciationPct: settingsQuery.data.propertyAppreciationPercentAnnual
+      }
+    : null;
+
   const yearColumns = useMemo(
     () =>
       buildPortfolioProjectionYears(data, properties, {
         propertyTypes: propertyTypes ?? [],
-        propertyId: propertyId ?? null
+        propertyId: propertyId ?? null,
+        growth
       }),
-    [data, properties, propertyTypes, propertyId]
+    [data, properties, propertyTypes, propertyId, growth, workspaceId, settingsQuery.data]
   );
 
   return (

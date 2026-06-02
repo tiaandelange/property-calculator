@@ -264,6 +264,11 @@ export type AssemblePropertyReportInput = {
   leases: Record<string, unknown>[];
   invoices: Record<string, unknown>[];
   generatedAt?: Date;
+  projectionAssumptions?: {
+    annualIncomeGrowthPercentAnnual?: number | null;
+    expenseGrowthPercentAnnual?: number | null;
+    propertyAppreciationPercentAnnual?: number | null;
+  } | null;
 };
 
 export function assemblePropertyInvestmentReportData(input: AssemblePropertyReportInput): PropertyInvestmentReportModel {
@@ -361,9 +366,15 @@ export function assemblePropertyInvestmentReportData(input: AssemblePropertyRepo
       ? Number(((loanBalance / marketValue) * 100).toFixed(2))
       : null;
 
-  const propertyGrowth = pickNum(p, "expectedAnnualAppreciationPercent", "expected_annual_appreciation_percent");
-  const incomeGrowth = propertyGrowth;
-  const expenseGrowth = propertyGrowth;
+  const defaults = input.projectionAssumptions ?? null;
+  const incomeGrowth =
+    defaults?.annualIncomeGrowthPercentAnnual != null ? defaults.annualIncomeGrowthPercentAnnual : 6;
+  const expenseGrowth =
+    defaults?.expenseGrowthPercentAnnual != null ? defaults.expenseGrowthPercentAnnual : 6;
+  const propertyGrowth =
+    defaults?.propertyAppreciationPercentAnnual != null
+      ? defaults.propertyAppreciationPercentAnnual
+      : pickNum(p, "expectedAnnualAppreciationPercent", "expected_annual_appreciation_percent") ?? 6;
   const mgmtPct = pickNum(p, "managementFeePercent", "management_fee_percent");
 
   const resolvedTerm = resolveBondRemainingMonths(
