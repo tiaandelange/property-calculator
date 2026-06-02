@@ -9,14 +9,16 @@ import { assemblePropertyInvestmentReportData } from "../lib/propertyInvestmentR
 const PROPERTY_REPORT_SELECT = `
   id, name, property_type, investment_type,
   address_line1, address_line2, suburb, city, province, postal_code,
-  purchase_price, current_estimated_value, after_repair_value,
+  purchase_price, purchase_date, current_estimated_value, after_repair_value,
   transfer_costs, bond_costs, rehab_budget, total_cash_invested,
   outstanding_bond_balance, monthly_bond_payment,
   bond_annual_interest_rate_percent, bond_term_years, bond_start_date,
   bond_remaining_term_months, bond_interest_portion_override, bond_principal_portion_override,
   expected_monthly_income, expected_monthly_expenses,
   expected_annual_appreciation_percent, management_fee_percent,
-  maintenance_monthly, rates_and_taxes_monthly, levies_monthly
+  maintenance_monthly, rates_and_taxes_monthly, levies_monthly,
+  bedrooms, bathrooms, size_sqm, parking_bays, notes, zoning, land_use,
+  security_monthly, monthly_utilities, holding_period_years
 `;
 
 const INVOICE_REPORT_SELECT = `

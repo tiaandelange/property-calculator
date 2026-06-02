@@ -43,12 +43,6 @@ export function buildPropertyInvestmentReportPdfDefinition(
     return s.length ? s : "—";
   };
 
-  const byLabel = (labelNeedle: string): string => {
-    const needle = labelNeedle.toLowerCase();
-    const row = model.propertyInfo.find((r) => r.label.toLowerCase().includes(needle));
-    return row ? dash(row.value) : "—";
-  };
-
   const metricCurrency = (n: number | null | undefined): string => {
     if (n == null || !Number.isFinite(n)) return "—";
     return formatZar(n);
@@ -104,27 +98,6 @@ export function buildPropertyInvestmentReportPdfDefinition(
     .filter((i) => !/rental income/i.test(i.label))
     .filter((i) => !/income/i.test(i.label));
 
-  const pickExpense = (re: RegExp): number => expenseItems.find((x) => re.test(x.label))?.amount ?? 0;
-  const debtService = pickExpense(/bond|loan|debt/i);
-  const expRates = pickExpense(/rates|property\s*tax/i);
-  const expInsurance = pickExpense(/insurance/i);
-  const expHoa = pickExpense(/hoa|levy/i);
-  const expMgmt = pickExpense(/management/i);
-  const expMaint = pickExpense(/maintenance|repair/i);
-  const expUtilities = pickExpense(/utilities/i);
-  const matched =
-    (debtService ? debtService : 0) +
-    expRates +
-    expInsurance +
-    expHoa +
-    expMgmt +
-    expMaint +
-    expUtilities;
-  const otherExpenses = Math.max(
-    0,
-    expenseItems.reduce((a, x) => a + x.amount, 0) - matched
-  );
-
   const monthlyGross = model.metrics.monthlyIncome;
   const monthlyExpTotal = model.metrics.monthlyExpenses;
   const expPctOfGross =
@@ -161,26 +134,26 @@ export function buildPropertyInvestmentReportPdfDefinition(
             metricCard({
               theme,
               label: "Market Value",
-              value: byLabel("market value"),
+              value: metricCurrency(model.metrics.marketValue),
               helperText: "Est. current value"
             }),
             metricCard({
               theme,
               label: "Purchase Price",
-              value: byLabel("purchase price"),
+              value: metricCurrency(model.metrics.purchasePrice),
               helperText: "At acquisition"
             }),
             metricCard({
               theme,
               label: "Equity",
-              value: byLabel("equity"),
+              value: metricCurrency(model.metrics.equity),
               helperText: "Est. equity"
             }),
             metricCard({
               theme,
               label: "Monthly Income",
               value: metricCurrency(model.metrics.monthlyIncome),
-              helperText: "Gross"
+              helperText: model.metrics.occupancyLabel ?? "Gross rent"
             })
           ]
         },
@@ -227,19 +200,7 @@ export function buildPropertyInvestmentReportPdfDefinition(
               theme,
               title: "Property Information",
               iconText: "⌂",
-              rows: [
-                { label: "Property Type", value: dash(model.property.propertyType) },
-                { label: "Bedrooms / Bathrooms", value: byLabel("bed") !== "—" ? byLabel("bed") : "—" },
-                { label: "Living Area / Size", value: byLabel("living") !== "—" ? byLabel("living") : byLabel("size") },
-                { label: "Lot Size", value: byLabel("lot") },
-                { label: "Year Built", value: byLabel("year") },
-                { label: "Parking", value: byLabel("parking") },
-                { label: "Property Tax / Rates", value: byLabel("rates") !== "—" ? byLabel("rates") : byLabel("tax") },
-                { label: "HOA / Levies", value: byLabel("hoa") !== "—" ? byLabel("hoa") : byLabel("lev") },
-                { label: "Insurance", value: byLabel("insurance") },
-                { label: "Zoning", value: byLabel("zoning") },
-                { label: "Notes", value: "—" }
-              ]
+              rows: model.propertyDetails
             })
           ]
         },
@@ -250,20 +211,7 @@ export function buildPropertyInvestmentReportPdfDefinition(
               theme,
               title: "Income & Expenses (Monthly)",
               iconText: "$",
-              rows: [
-                { label: "Gross Rent", value: metricCurrency(model.metrics.monthlyIncome) },
-                { label: "Other Income", value: "—" },
-                { label: "Total Income", value: metricCurrency(model.metrics.monthlyIncome) },
-                { label: "Property Tax / Rates", value: expRates > 0 ? metricCurrency(expRates) : "—" },
-                { label: "Insurance", value: expInsurance > 0 ? metricCurrency(expInsurance) : "—" },
-                { label: "HOA / Levies", value: expHoa > 0 ? metricCurrency(expHoa) : "—" },
-                { label: "Property Management", value: expMgmt > 0 ? metricCurrency(expMgmt) : "—" },
-                { label: "Maintenance & Repairs", value: expMaint > 0 ? metricCurrency(expMaint) : "—" },
-                { label: "Utilities", value: expUtilities > 0 ? metricCurrency(expUtilities) : "—" },
-                ...(debtService > 0 ? [{ label: "Debt Service", value: metricCurrency(debtService) }] : []),
-                { label: "Other Expenses", value: otherExpenses > 0 ? metricCurrency(otherExpenses) : "—" },
-                { label: "Total Expenses", value: metricCurrency(model.metrics.monthlyExpenses) }
-              ]
+              rows: model.monthlyIncomeExpense
             })
           ]
         },
@@ -274,19 +222,7 @@ export function buildPropertyInvestmentReportPdfDefinition(
               theme,
               title: "Assumptions",
               iconText: "⚙",
-              rows: [
-                { label: "Purchase Date", value: "—" },
-                { label: "Holding Period", value: model.assumptions.find((a) => /horizon/i.test(a.label))?.value ?? "—" },
-                { label: "Annual Rent Growth", value: model.assumptions.find((a) => /income growth/i.test(a.label))?.value ?? "—" },
-                { label: "Expense Inflation", value: model.assumptions.find((a) => /expense growth/i.test(a.label))?.value ?? "—" },
-                { label: "Property Appreciation", value: model.assumptions.find((a) => /property value growth/i.test(a.label))?.value ?? "—" },
-                { label: "Loan Amount", value: byLabel("loan amount") },
-                { label: "Loan Interest Rate", value: model.assumptions.find((a) => /interest rate/i.test(a.label))?.value ?? byLabel("interest rate") },
-                { label: "Loan Term", value: byLabel("amortised") },
-                { label: "Down Payment / Cash Invested", value: byLabel("cash invested") },
-                { label: "Closing Costs", value: byLabel("transfer") !== "—" ? byLabel("transfer") : "—" },
-                { label: "Income Tax Rate", value: "—" }
-              ]
+              rows: model.assumptions
             })
           ]
         }

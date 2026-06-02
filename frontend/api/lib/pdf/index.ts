@@ -7,6 +7,8 @@ export { buildGlobalPdfTheme, validateHexColor, accentPrimaryHex, type GlobalPdf
 export {
   PDF_PAGE_MARGINS,
   PDF_SPACING,
+  pdfMargin,
+  pdfDivider,
   buildDefaultPdfStyles,
   brandedHeader,
   reportHeader,

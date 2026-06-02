@@ -18,11 +18,19 @@ export type PropertyInvestmentReportModel = {
     imageNote: string;
   };
   propertyInfo: { label: string; value: string }[];
+  /** Property profile rows for the Property Information card (from the property record). */
+  propertyDetails: { label: string; value: string }[];
+  /** Monthly income & expense rows for the Income & Expenses card (property + statement data). */
+  monthlyIncomeExpense: { label: string; value: string }[];
   metrics: {
     monthlyIncome: number;
     monthlyExpenses: number;
     monthlyCashFlow: number;
     totalCashNeeded: number | null;
+    marketValue: number | null;
+    purchasePrice: number | null;
+    equity: number | null;
+    occupancyLabel: string | null;
     grossRentalYield: number | null;
     internalRateOfReturn: number | null;
     cashOnCashRoi: number | null;
@@ -69,6 +77,18 @@ export function formatZar(amount: number): string {
 export function formatPct(value: number | null): string {
   if (value == null || !Number.isFinite(value)) return "—";
   return `${value.toFixed(2)}%`;
+}
+
+function dashText(v: unknown): string {
+  const s = String(v ?? "").trim();
+  return s.length ? s : "—";
+}
+
+function formatBedBath(bedrooms: number | null, bathrooms: number | null): string {
+  if (bedrooms == null && bathrooms == null) return "—";
+  const b = bedrooms != null ? String(bedrooms) : "—";
+  const ba = bathrooms != null ? String(bathrooms) : "—";
+  return `${b} bd / ${ba} ba`;
 }
 
 function snakeToCamelKey(k: string): string {
@@ -281,8 +301,21 @@ export function assemblePropertyInvestmentReportData(input: AssemblePropertyRepo
     (rc) => String(rc.category ?? "") !== "BOND_PAYMENT"
   );
   const recurringMonthly = recurringLandlord.reduce((a, rc) => a + monthlyFromRecurring(rc), 0);
+  const ratesMonthly = pickNum(p, "ratesAndTaxesMonthly", "rates_and_taxes_monthly") ?? 0;
+  const leviesMonthly = pickNum(p, "leviesMonthly", "levies_monthly") ?? 0;
+  const maintenanceMonthly = pickNum(p, "maintenanceMonthly", "maintenance_monthly") ?? 0;
+  const utilitiesMonthly = pickNum(p, "monthlyUtilities", "monthly_utilities") ?? 0;
+  const securityMonthly = pickNum(p, "securityMonthly", "security_monthly") ?? 0;
+  const propertyFixedMonthly = ratesMonthly + leviesMonthly + maintenanceMonthly + utilitiesMonthly + securityMonthly;
   const expectedExpenses = pickNum(p, "expectedMonthlyExpenses", "expected_monthly_expenses") ?? 0;
-  const monthlyOperating = recurringMonthly > 0 ? recurringMonthly : expectedExpenses;
+  const monthlyOperating =
+    recurringMonthly > 0
+      ? recurringMonthly
+      : expectedExpenses > 0
+        ? expectedExpenses
+        : propertyFixedMonthly > 0
+          ? propertyFixedMonthly
+          : 0;
   const monthlyExpenses = monthlyOperating + (monthlyLoanPayment > 0 ? monthlyLoanPayment : 0);
   const monthlyCashFlow = monthlyIncome - monthlyExpenses;
 
@@ -402,16 +435,92 @@ export function assemblePropertyInvestmentReportData(input: AssemblePropertyRepo
   const expensesMonth = n(summary.expensesThisMonth);
 
   const expenseBreakdown: { label: string; amount: number }[] = [];
-  if (monthlyIncome > 0) expenseBreakdown.push({ label: "Rental income", amount: monthlyIncome });
   const byCat = new Map<string, number>();
   for (const rc of recurringLandlord) {
     const cat = String(rc.category ?? "OTHER").replace(/_/g, " ");
     byCat.set(cat, (byCat.get(cat) ?? 0) + monthlyFromRecurring(rc));
   }
+  if (ratesMonthly > 0 && ![...byCat.keys()].some((k) => /rates|tax/i.test(k))) {
+    byCat.set("Property tax / rates", ratesMonthly);
+  }
+  if (leviesMonthly > 0 && ![...byCat.keys()].some((k) => /levy|hoa/i.test(k))) {
+    byCat.set("HOA / levies", leviesMonthly);
+  }
+  if (maintenanceMonthly > 0 && ![...byCat.keys()].some((k) => /maint/i.test(k))) {
+    byCat.set("Maintenance", maintenanceMonthly);
+  }
+  if (utilitiesMonthly > 0 && ![...byCat.keys()].some((k) => /util/i.test(k))) {
+    byCat.set("Utilities", utilitiesMonthly);
+  }
   for (const [label, amount] of byCat) {
     if (amount > 0) expenseBreakdown.push({ label, amount });
   }
   if (monthlyLoanPayment > 0) expenseBreakdown.push({ label: "Bond / loan payment", amount: monthlyLoanPayment });
+
+  const mgmtFromPct =
+    mgmtPct != null && mgmtPct > 0 && monthlyIncome > 0 ? (monthlyIncome * mgmtPct) / 100 : 0;
+  const mgmtFromRecurring = [...byCat.entries()]
+    .filter(([k]) => /management/i.test(k))
+    .reduce((a, [, v]) => a + v, 0);
+  const mgmtMonthly = Math.max(mgmtFromRecurring, mgmtFromPct);
+  const insuranceMonthly = [...byCat.entries()]
+    .filter(([k]) => /insurance/i.test(k))
+    .reduce((a, [, v]) => a + v, 0);
+
+  const activeLeaseCount = activeLeases(input.leases).length;
+  const expectedIncomeForOcc = pickNum(p, "expectedMonthlyIncome", "expected_monthly_income");
+  const occupancyLabel =
+    expectedIncomeForOcc != null && expectedIncomeForOcc > 0 && monthlyIncome > 0
+      ? `${Math.min(100, Math.round((monthlyIncome / expectedIncomeForOcc) * 100))}%`
+      : activeLeaseCount > 0
+        ? "100%"
+        : null;
+
+  const purchaseDateRaw = (p.purchaseDate ?? p.purchase_date) as string | null;
+  const purchaseDateLabel = purchaseDateRaw ? String(purchaseDateRaw).slice(0, 10) : "—";
+  const holdingYears = pickNum(p, "holdingPeriodYears", "holding_period_years");
+
+  const propertyDetails: { label: string; value: string }[] = [
+    { label: "Property Type", value: dashText(p.propertyType ?? p.property_type) },
+    {
+      label: "Bedrooms / Bathrooms",
+      value: formatBedBath(pickNum(p, "bedrooms"), pickNum(p, "bathrooms"))
+    },
+    {
+      label: "Living Area / Size",
+      value: pickNum(p, "sizeSqm", "size_sqm") != null ? `${pickNum(p, "sizeSqm", "size_sqm")} sqm` : "—"
+    },
+    { label: "Lot Size", value: "—" },
+    { label: "Year Built", value: "—" },
+    {
+      label: "Parking",
+      value: pickNum(p, "parkingBays", "parking_bays") != null ? String(pickNum(p, "parkingBays", "parking_bays")) : "—"
+    },
+    { label: "Property Tax / Rates", value: ratesMonthly > 0 ? formatZar(ratesMonthly) : "—" },
+    { label: "HOA / Levies", value: leviesMonthly > 0 ? formatZar(leviesMonthly) : "—" },
+    { label: "Insurance", value: insuranceMonthly > 0 ? formatZar(insuranceMonthly) : "—" },
+    { label: "Zoning", value: dashText(p.zoning ?? p.landUse ?? p.land_use) },
+    { label: "Notes", value: dashText(p.notes) }
+  ];
+
+  const monthlyIncomeExpense: { label: string; value: string }[] = [
+    { label: "Gross Rent", value: formatZar(monthlyIncome) },
+    { label: "Other Income", value: "—" },
+    { label: "Total Income", value: formatZar(monthlyIncome) },
+    { label: "Property Tax / Rates", value: ratesMonthly > 0 ? formatZar(ratesMonthly) : "—" },
+    { label: "Insurance", value: insuranceMonthly > 0 ? formatZar(insuranceMonthly) : "—" },
+    { label: "HOA / Levies", value: leviesMonthly > 0 ? formatZar(leviesMonthly) : "—" },
+    { label: "Property Management", value: mgmtMonthly > 0 ? formatZar(mgmtMonthly) : "—" },
+    {
+      label: "Maintenance & Repairs",
+      value: maintenanceMonthly > 0 ? formatZar(maintenanceMonthly) : "—"
+    },
+    { label: "Utilities", value: utilitiesMonthly > 0 ? formatZar(utilitiesMonthly) : "—" },
+    ...(monthlyLoanPayment > 0
+      ? [{ label: "Debt Service", value: formatZar(monthlyLoanPayment) }]
+      : []),
+    { label: "Total Expenses", value: formatZar(monthlyExpenses) }
+  ];
 
   const monthLabel = now.toLocaleDateString("en-ZA", { month: "long", year: "numeric", timeZone: "UTC" });
 
@@ -464,6 +573,8 @@ export function assemblePropertyInvestmentReportData(input: AssemblePropertyRepo
       investmentType: String(p.investmentType ?? p.investment_type ?? "—"),
       imageNote: "No property image available"
     },
+    propertyDetails,
+    monthlyIncomeExpense,
     propertyInfo: [
       { label: "Purchase price", value: dash(purchasePrice) },
       { label: "Closing / transfer costs", value: dash(transferCosts) },
@@ -483,6 +594,10 @@ export function assemblePropertyInvestmentReportData(input: AssemblePropertyRepo
       monthlyExpenses,
       monthlyCashFlow,
       totalCashNeeded: cashInvested,
+      marketValue: marketValue ?? arv,
+      purchasePrice,
+      equity,
+      occupancyLabel,
       grossRentalYield,
       internalRateOfReturn: irrByHorizon[0] ?? null,
       cashOnCashRoi,
@@ -490,12 +605,20 @@ export function assemblePropertyInvestmentReportData(input: AssemblePropertyRepo
       twoPercentRule
     },
     assumptions: [
-      { label: "Annual property value growth", value: formatPct(propertyGrowth) },
-      { label: "Annual income growth", value: formatPct(incomeGrowth) },
-      { label: "Annual expense growth", value: formatPct(expenseGrowth) },
-      { label: "Management fee", value: formatPct(mgmtPct) },
+      { label: "Purchase date", value: purchaseDateLabel },
+      {
+        label: "Holding period",
+        value: holdingYears != null ? `${holdingYears} years` : "30 years"
+      },
+      { label: "Annual rent growth", value: formatPct(incomeGrowth) },
+      { label: "Expense inflation", value: formatPct(expenseGrowth) },
+      { label: "Property appreciation", value: formatPct(propertyGrowth) },
+      { label: "Loan amount", value: dash(loanAmount) },
       { label: "Loan interest rate", value: formatPct(ratePct) },
-      { label: "Projection horizon", value: "30 years" }
+      { label: "Loan term", value: amortYears != null ? `${amortYears} years` : "—" },
+      { label: "Down payment / cash invested", value: dash(cashInvested) },
+      { label: "Closing costs", value: dash(transferCosts) },
+      { label: "Income tax rate", value: "—" }
     ],
     expenseBreakdown,
     projection: {

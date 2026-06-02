@@ -221,6 +221,7 @@ export function buildCalculationReportPdfDefinition(opts: {
   return { definition, scenarioName };
 }
 
+/** Calculator-only PDF (INVESTMENT_REPORT). Property workspace uses PROPERTY_SUMMARY + assemblePropertyInvestmentReportData. */
 export function buildInvestmentReportPdfDefinition(opts: {
   propertyType: string;
   answers: Record<string, unknown>;
