@@ -16,7 +16,8 @@ export function ProplyticLogoAppIcon({
   "aria-label": ariaLabel = "Proplytic",
   ...props
 }: ProplyticLogoAppIconProps) {
-  const inset = 220;
+  const inset = 147;
+  const tile = 1000;
 
   return (
     <svg
@@ -34,11 +35,11 @@ export function ProplyticLogoAppIcon({
         </filter>
       </defs>
       <rect
-        x="44"
-        y="44"
-        width="1412"
-        height="1412"
-        rx="300"
+        x="29"
+        y="29"
+        width="942"
+        height="942"
+        rx="200"
         fill="var(--surface, #ffffff)"
         filter="url(#proplytic-app-shadow)"
       />
@@ -46,8 +47,8 @@ export function ProplyticLogoAppIcon({
         href={PROPLYTIC_MARK_ASSET}
         x={inset}
         y={inset}
-        width={1500 - inset * 2}
-        height={1500 - inset * 2}
+        width={tile - inset * 2}
+        height={tile - inset * 2}
         preserveAspectRatio="xMidYMid meet"
       />
     </svg>

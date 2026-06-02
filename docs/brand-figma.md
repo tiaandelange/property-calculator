@@ -7,14 +7,15 @@
 | Asset | Location |
 | --- | --- |
 | React components | `frontend/src/components/brand/` |
-| SVG mark (canonical) | `frontend/public/assets/brand/proplytic-mark.svg` (`viewBox="0 0 1500 1500"`) |
-| SVG paths (React) | `proplyticLogoShared.tsx` |
-| Favicon (PNG) | `frontend/public/favicon-32.png`, `favicon-16.png` (from `proplytic-mark-source.png`) |
+| PNG mark (canonical) | `frontend/public/assets/brand/proplytic-mark.png` (`1000×1000`) |
+| PNG source (same file) | `proplytic-mark-source.png` |
+| SVG export (legacy) | `proplytic-mark.svg` |
+| SVG paths (React fallback) | `proplyticLogoShared.tsx` |
+| Favicon (PNG) | `frontend/public/favicon-32.png`, `favicon-16.png` |
 | Favicon (SVG) | `frontend/public/favicon.svg` (embeds the 32×32 PNG) |
 | Apple touch icon | `frontend/public/apple-touch-icon.png` (180×180) |
-| Apple touch (legacy SVG) | `frontend/public/apple-touch-icon.svg` (gradient vector fallback) |
 
-Mark fill: **purple gradient** (`#6C4CFF` → `#A78BFA`) on UI logos. Tab favicons use the **official Canva raster** scaled from `proplytic-mark-source.png`.
+UI and PDFs prefer **PNG**; tab favicons are scaled from the same source.
 
 Vector fallback paths: `proplyticLogoShared.tsx` (`PROPLYTIC_HOUSE_SHELL_PATH` + detail rects).
 

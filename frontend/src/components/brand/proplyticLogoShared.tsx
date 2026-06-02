@@ -1,6 +1,6 @@
 /**
- * Proplytic house mark — official Canva export (`proplytic-mark.svg`, 1500×1500).
- * Lightweight vector paths below are kept for favicon / tiny fallbacks only.
+ * Proplytic house mark — official PNG (`proplytic-mark.png`, 1000×1000).
+ * SVG + vector paths below are legacy fallbacks only.
  */
 
 export const PROPLYTIC_PURPLE = {
@@ -13,11 +13,14 @@ export const PROPLYTIC_PURPLE = {
 
 export const PROPLYTIC_TEXT_LIGHT = "#111827";
 
-/** Official mark artboard (matches `proplytic-mark.svg`). */
-export const PROPLYTIC_MARK_VIEWBOX = "0 0 1500 1500";
+/** Official mark artboard (matches `proplytic-mark.png`). */
+export const PROPLYTIC_MARK_VIEWBOX = "0 0 1000 1000";
 
-/** Public URL for the canonical SVG mark (Vite `public/`). */
-export const PROPLYTIC_MARK_ASSET = "/assets/brand/proplytic-mark.svg";
+/** Public URL for the canonical mark (Vite `public/`). */
+export const PROPLYTIC_MARK_ASSET = "/assets/brand/proplytic-mark.png";
+
+/** Legacy SVG export (PDF fallback only). */
+export const PROPLYTIC_MARK_SVG_ASSET = "/assets/brand/proplytic-mark.svg";
 
 /** Simplified vector artboard for favicon-only assets. */
 export const PROPLYTIC_MARK_VECTOR_VIEWBOX = "0 0 500 500";

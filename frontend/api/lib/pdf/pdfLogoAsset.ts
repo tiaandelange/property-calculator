@@ -3,8 +3,9 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const LOGO_CANDIDATE_FILES = [
-  "proplytic-mark.svg",
+  "proplytic-mark.png",
   "proplytic-mark-source.png",
+  "proplytic-mark.svg",
   "mark.webp"
 ] as const;
 

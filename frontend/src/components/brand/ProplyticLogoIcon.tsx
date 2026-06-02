@@ -6,7 +6,7 @@ export type ProplyticLogoIconProps = ImgHTMLAttributes<HTMLImageElement> & {
   gradientId?: string;
 };
 
-/** House mark from the official brand SVG. */
+/** House mark from the official brand PNG. */
 export function ProplyticLogoIcon({
   gradientId: _gradientId,
   width = 32,
