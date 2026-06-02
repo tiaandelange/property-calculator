@@ -1,13 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Proplytic">
-  <rect width="32" height="32" rx="7" fill="#ffffff"/>
-  <g transform="translate(4 4) scale(0.24)">
-    <path fill="#7B5BE4" fill-rule="evenodd" d="M50 6 10.5 38 10.5 66 18 66 18 85.5 10.5 85.5 10.5 89.25Q10.5 91.75 13 91.75H87Q89.5 91.75 89.5 89.25V38ZM50 20.5 27 41.5 27 74.5 32.5 74.5 32.5 82.5 27 82.5V85.75H78V41.5Z"/>
-    <rect x="28.5" y="43.5" width="5" height="5" rx="0.75" fill="#7B5BE4"/>
-    <rect x="34.75" y="43.5" width="5" height="5" rx="0.75" fill="#7B5BE4"/>
-    <rect x="28.5" y="50" width="5" height="5" rx="0.75" fill="#7B5BE4"/>
-    <rect x="34.75" y="50" width="5" height="5" rx="0.75" fill="#7B5BE4"/>
-    <rect x="56" y="73.5" width="7.25" height="12.25" rx="3.625" fill="#7B5BE4"/>
-    <rect x="64.5" y="67.25" width="7.25" height="18.5" rx="3.625" fill="#7B5BE4"/>
-    <rect x="73" y="59.75" width="7.25" height="26" rx="3.625" fill="#7B5BE4"/>
-  </g>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" role="img" aria-label="Proplytic">
+  <path fill="#7B5BE4" fill-rule="evenodd" d="M250 30 52.5 190 52.5 330 90 330 90 427.5 52.5 427.5 52.5 446.25Q52.5 458.75 65 458.75H435Q447.5 458.75 447.5 446.25V190ZM250 102.5 135 207.5 135 372.5 162.5 372.5 162.5 412.5 135 412.5V428.75H390V207.5Z"/>
+  <rect x="142.5" y="217.5" width="25" height="25" rx="3.75" fill="#7B5BE4"/>
+  <rect x="173.75" y="217.5" width="25" height="25" rx="3.75" fill="#7B5BE4"/>
+  <rect x="142.5" y="250" width="25" height="25" rx="3.75" fill="#7B5BE4"/>
+  <rect x="173.75" y="250" width="25" height="25" rx="3.75" fill="#7B5BE4"/>
+  <rect x="280" y="367.5" width="36.25" height="61.25" rx="18.125" fill="#7B5BE4"/>
+  <rect x="322.5" y="336.25" width="36.25" height="92.5" rx="18.125" fill="#7B5BE4"/>
+  <rect x="365" y="298.75" width="36.25" height="130" rx="18.125" fill="#7B5BE4"/>
 </svg>

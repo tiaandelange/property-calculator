@@ -7,7 +7,8 @@
 | Asset | Location |
 | --- | --- |
 | React components | `frontend/src/components/brand/` |
-| SVG paths | `proplyticLogoShared.tsx` |
+| SVG mark (canonical) | `frontend/public/assets/brand/proplytic-mark.svg` (`viewBox="0 0 1500 1500"`) |
+| SVG paths (React) | `proplyticLogoShared.tsx` |
 | Favicon | `frontend/public/favicon.svg` |
 | Apple touch icon | `frontend/public/apple-touch-icon.svg` |
 

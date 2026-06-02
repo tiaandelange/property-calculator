@@ -3,6 +3,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const LOGO_CANDIDATE_FILES = [
+  "proplytic-mark.svg",
   "proplytic-mark-source.png",
   "mark.webp"
 ] as const;
@@ -17,7 +18,8 @@ const LOGO_RELATIVE_DIRS = [
 let cachedLogoDataUrl: string | null | undefined;
 
 function toDataUrl(buffer: Buffer, ext: string): string {
-  const mime = ext === "webp" ? "image/webp" : "image/png";
+  const mime =
+    ext === "webp" ? "image/webp" : ext === "svg" ? "image/svg+xml" : "image/png";
   return `data:${mime};base64,${buffer.toString("base64")}`;
 }
 
@@ -36,7 +38,7 @@ export function loadProplyticLogoDataUrl(): string | null {
         if (!existsSync(path)) continue;
         try {
           const buf = readFileSync(path);
-          const ext = file.endsWith(".webp") ? "webp" : "png";
+          const ext = file.endsWith(".webp") ? "webp" : file.endsWith(".svg") ? "svg" : "png";
           cachedLogoDataUrl = toDataUrl(buf, ext);
           return cachedLogoDataUrl;
         } catch {

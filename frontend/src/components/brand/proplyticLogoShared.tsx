@@ -1,6 +1,6 @@
 /**
- * Proplytic house mark — refined vector (Figma node 3312:5).
- * @see https://www.figma.com/design/aJPG4JhiiegeXSUxskJwT8/Tiaan-De-Lange-s-team-library?node-id=3312-5
+ * Proplytic house mark — official Canva export (`proplytic-mark.svg`, 1500×1500).
+ * Lightweight vector paths below are kept for favicon / tiny fallbacks only.
  */
 
 export const PROPLYTIC_PURPLE = {
@@ -13,30 +13,36 @@ export const PROPLYTIC_PURPLE = {
 
 export const PROPLYTIC_TEXT_LIGHT = "#111827";
 
-export const PROPLYTIC_MARK_VIEWBOX = "0 0 100 100";
+/** Official mark artboard (matches `proplytic-mark.svg`). */
+export const PROPLYTIC_MARK_VIEWBOX = "0 0 1500 1500";
+
+/** Public URL for the canonical SVG mark (Vite `public/`). */
+export const PROPLYTIC_MARK_ASSET = "/assets/brand/proplytic-mark.svg";
+
+/** Simplified vector artboard for favicon-only assets. */
+export const PROPLYTIC_MARK_VECTOR_VIEWBOX = "0 0 500 500";
 
 /**
  * Even-odd shell: outer house with bottom-left step + inner cavity.
- * Inner notch at bottom-left creates the characteristic “L” in the frame.
  */
 export const PROPLYTIC_HOUSE_SHELL_PATH =
-  "M50 6 10.5 38 10.5 66 18 66 18 85.5 10.5 85.5 10.5 89.25Q10.5 91.75 13 91.75H87Q89.5 91.75 89.5 89.25V38Z" +
-  "M50 20.5 27 41.5 27 74.5 32.5 74.5 32.5 82.5 27 82.5V85.75H78V41.5Z";
+  "M250 30 52.5 190 52.5 330 90 330 90 427.5 52.5 427.5 52.5 446.25Q52.5 458.75 65 458.75H435Q447.5 458.75 447.5 446.25V190Z" +
+  "M250 102.5 135 207.5 135 372.5 162.5 372.5 162.5 412.5 135 412.5V428.75H390V207.5Z";
 
-/** Window panes + growth bars (100×100 space). */
+/** Window panes + growth bars (500×500 space). */
 export const PROPLYTIC_MARK_DETAIL_RECTS = [
-  { x: 28.5, y: 43.5, w: 5, h: 5, rx: 0.75 },
-  { x: 34.75, y: 43.5, w: 5, h: 5, rx: 0.75 },
-  { x: 28.5, y: 50, w: 5, h: 5, rx: 0.75 },
-  { x: 34.75, y: 50, w: 5, h: 5, rx: 0.75 },
-  { x: 56, y: 73.5, w: 7.25, h: 12.25, rx: 3.625 },
-  { x: 64.5, y: 67.25, w: 7.25, h: 18.5, rx: 3.625 },
-  { x: 73, y: 59.75, w: 7.25, h: 26, rx: 3.625 }
+  { x: 142.5, y: 217.5, w: 25, h: 25, rx: 3.75 },
+  { x: 173.75, y: 217.5, w: 25, h: 25, rx: 3.75 },
+  { x: 142.5, y: 250, w: 25, h: 25, rx: 3.75 },
+  { x: 173.75, y: 250, w: 25, h: 25, rx: 3.75 },
+  { x: 280, y: 367.5, w: 36.25, h: 61.25, rx: 18.125 },
+  { x: 322.5, y: 336.25, w: 36.25, h: 92.5, rx: 18.125 },
+  { x: 365, y: 298.75, w: 36.25, h: 130, rx: 18.125 }
 ] as const;
 
 export function proplyticMarkGradientDef(id: string) {
   return (
-    <linearGradient id={id} x1="14" y1="88" x2="86" y2="14" gradientUnits="userSpaceOnUse">
+    <linearGradient id={id} x1="250" y1="32" x2="250" y2="468" gradientUnits="userSpaceOnUse">
       <stop offset="0%" stopColor={PROPLYTIC_PURPLE.start} />
       <stop offset="55%" stopColor={PROPLYTIC_PURPLE.mid} />
       <stop offset="100%" stopColor={PROPLYTIC_PURPLE.end} />

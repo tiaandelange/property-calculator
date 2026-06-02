@@ -1,32 +1,27 @@
-import type { SVGProps } from "react";
-import { PROPLYTIC_MARK_VIEWBOX, ProplyticHouseMark, proplyticMarkGradientDef } from "./proplyticLogoShared";
+import type { ImgHTMLAttributes } from "react";
+import { PROPLYTIC_MARK_ASSET } from "./proplyticLogoShared";
 
-export type ProplyticLogoIconProps = SVGProps<SVGSVGElement> & {
+export type ProplyticLogoIconProps = ImgHTMLAttributes<HTMLImageElement> & {
+  /** @deprecated Official mark is a fixed gradient SVG; ignored when using the asset. */
   gradientId?: string;
 };
 
-/** House mark — gradient fill, window grid, growth bars. */
+/** House mark from the official brand SVG. */
 export function ProplyticLogoIcon({
-  gradientId = "proplytic-logo-icon-fill",
+  gradientId: _gradientId,
   width = 32,
   height = 32,
-  viewBox = PROPLYTIC_MARK_VIEWBOX,
-  role = "img",
-  "aria-label": ariaLabel = "Proplytic",
+  alt = "Proplytic",
   ...props
 }: ProplyticLogoIconProps) {
   return (
-    <svg
+    <img
+      src={PROPLYTIC_MARK_ASSET}
       width={width}
       height={height}
-      viewBox={viewBox}
-      xmlns="http://www.w3.org/2000/svg"
-      role={role}
-      aria-label={ariaLabel}
+      alt={alt}
+      decoding="async"
       {...props}
-    >
-      <defs>{proplyticMarkGradientDef(gradientId)}</defs>
-      <ProplyticHouseMark gradientId={gradientId} />
-    </svg>
+    />
   );
 }
