@@ -142,6 +142,8 @@ export function CalculatorsPage() {
       }
       setGeneratedReportId(gen.reportId);
       setStep(3);
+    } catch (e: unknown) {
+      setValidationError(e instanceof Error ? e.message : "Report could not be generated.");
     } finally {
       setGenerateBusy(false);
     }
@@ -387,25 +389,7 @@ export function CalculatorsPage() {
                   </Card>
                 </div>
 
-                <div className="pg-calculators-actions-row" style={{ marginTop: 14 }}>
-                  <div className="pg-calculators-actions-row__left">
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      disabled={!generatedReportId}
-                      onClick={() => {
-                        if (generatedReportId) navigate(`/calculators/report/${encodeURIComponent(generatedReportId)}`);
-                      }}
-                    >
-                      View Full Report
-                    </Button>
-                  </div>
-                  <div className="pg-calculators-actions-row__right">
-                    <Button type="button" variant="primary" loading={generateBusy} disabled={!propertyType || !metrics} onClick={() => void generateReport()}>
-                      Generate Report
-                    </Button>
-                  </div>
-                </div>
+                {/* Actions live under “Property Questions” only (avoid duplicates). */}
               </Card>
             </div>
 
