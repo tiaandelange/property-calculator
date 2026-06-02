@@ -1,6 +1,21 @@
 import type { Content, TDocumentDefinitions } from "pdfmake/interfaces";
 import { assemblePropertyInvestmentReportData, type PropertyInvestmentReportModel } from "./propertyInvestmentReportData.js";
 import { buildPropertyInvestmentReportPdfDefinition } from "./propertyInvestmentReportPdf.js";
+import {
+  buildDefaultPdfStyles,
+  buildGlobalPdfTheme,
+  chartCard,
+  dataTable,
+  metricCard,
+  pdfDivider,
+  pdfMargin,
+  PDF_PAGE_MARGINS,
+  PDF_SPACING,
+  reportHeader,
+  sectionCard
+} from "./pdf/index.js";
+import { loadProplyticLogoDataUrl } from "./pdf/pdfLogoAsset.js";
+import { formatPdfDate, formatPdfZar } from "./pdf/pdfFormat.js";
 
 const m = (l: number, t: number, r: number, b: number) => [l, t, r, b] as [number, number, number, number];
 
@@ -212,46 +227,199 @@ export function buildInvestmentReportPdfDefinition(opts: {
   metrics: Record<string, unknown>;
 }): { definition: TDocumentDefinitions } {
   const propertyType = String(opts.propertyType || "").trim() || "Property";
-  const metrics = opts.metrics ?? {};
-  const answers = opts.answers ?? {};
+  const metrics = (opts.metrics ?? {}) as Record<string, unknown>;
+  const answers = (opts.answers ?? {}) as Record<string, unknown>;
+
+  const theme = buildGlobalPdfTheme({});
+  const styles = {
+    ...buildDefaultPdfStyles(theme),
+    sectionHeading: {
+      fontSize: 13,
+      bold: true,
+      color: theme.primaryColor,
+      margin: pdfMargin(0, 8, 0, 6)
+    }
+  };
+
+  const dash = (v: unknown): string => {
+    const s = String(v ?? "").trim();
+    return s.length ? s : "—";
+  };
+  const num = (v: unknown): number | null => {
+    const x = typeof v === "string" ? Number(v.replace(/[^\d.-]/g, "")) : Number(v);
+    return Number.isFinite(x) ? x : null;
+  };
+  const zar = (v: unknown): string => {
+    const n = num(v);
+    return n == null ? "—" : formatPdfZar(n);
+  };
+  const pct = (v: unknown): string => {
+    const n = num(v);
+    return n == null ? "—" : `${n.toFixed(2)}%`;
+  };
+
+  // Canonical keys used in calculator metrics payload
+  const monthlyIncome = metrics.monthlyIncome;
+  const monthlyExpenses = metrics.monthlyExpenses;
+  const monthlyCashFlow = metrics.projectedCashFlow ?? metrics.monthlyCashFlow;
+  const grossYield = metrics.grossYield;
+  const cashOnCash = metrics.cashOnCashRoi;
+  const irr = metrics.internalRateofReturn ?? metrics.internalRateOfReturn;
+  const ltv = metrics.ltv;
+
+  const generatedLabel = formatPdfDate(new Date().toISOString().slice(0, 10));
+
+  const content: Content[] = [
+    reportHeader({
+      theme,
+      logoDataUrl: loadProplyticLogoDataUrl(),
+      brandTitle: "Proplytic",
+      reportTitle: "Property Investment Report",
+      propertyName: propertyType,
+      addressLine: "",
+      reportDateLine: `Report Date: ${generatedLabel}`,
+      propertyImageDataUrl: null
+    }),
+    pdfDivider(theme),
+
+    // Top metric cards (two columns x four rows)
+    {
+      columns: [
+        {
+          width: "*",
+          stack: [
+            metricCard({ theme, label: "Monthly Income", value: zar(monthlyIncome), helperText: "Gross" }),
+            metricCard({ theme, label: "Monthly Expenses", value: zar(monthlyExpenses), helperText: "Total" }),
+            metricCard({ theme, label: "Monthly Cash Flow", value: zar(monthlyCashFlow), helperText: "Projected" }),
+            metricCard({ theme, label: "Gross Yield", value: pct(grossYield), helperText: "Annualized" })
+          ]
+        },
+        {
+          width: "*",
+          stack: [
+            metricCard({ theme, label: "Cash on Cash ROI", value: pct(cashOnCash), helperText: "Annualized" }),
+            metricCard({ theme, label: "IRR", value: pct(irr), helperText: "Annualized" }),
+            metricCard({ theme, label: "LTV", value: pct(ltv), helperText: "Loan-to-value" }),
+            metricCard({ theme, label: "Property Type", value: dash(propertyType), helperText: "Calculator" })
+          ]
+        }
+      ],
+      columnGap: 10,
+      margin: pdfMargin(0, 0, 0, PDF_SPACING.section)
+    },
+
+    {
+      columns: [
+        {
+          width: "50%",
+          stack: [
+            sectionCard({
+              theme,
+              title: "Inputs (Selected)",
+              iconText: "⌂",
+              rows: Object.entries(answers)
+                .slice(0, 12)
+                .map(([k, v]) => ({ label: k, value: dash(v) }))
+            })
+          ]
+        },
+        {
+          width: "50%",
+          stack: [
+            sectionCard({
+              theme,
+              title: "Key Metrics",
+              iconText: "↗",
+              rows: [
+                { label: "Monthly income", value: zar(monthlyIncome) },
+                { label: "Monthly expenses", value: zar(monthlyExpenses) },
+                { label: "Monthly cash flow", value: zar(monthlyCashFlow) },
+                { label: "Gross yield", value: pct(grossYield) },
+                { label: "Cash on cash ROI", value: pct(cashOnCash) },
+                { label: "IRR", value: pct(irr) },
+                { label: "LTV", value: pct(ltv) }
+              ]
+            })
+          ]
+        }
+      ],
+      columnGap: 10
+    },
+
+    {
+      columns: [
+        {
+          width: "33.3%",
+          stack: [
+            chartCard({
+              theme,
+              title: "Income vs Expenses Over Time",
+              subtitle: "Fallback",
+              fallbackBars: [
+                { label: "Monthly income", amount: num(monthlyIncome) ?? 0 },
+                { label: "Monthly expenses", amount: num(monthlyExpenses) ?? 0 },
+                { label: "Monthly cash flow", amount: num(monthlyCashFlow) ?? 0 }
+              ].filter((x) => x.amount > 0)
+            })
+          ]
+        },
+        {
+          width: "33.3%",
+          stack: [
+            chartCard({
+              theme,
+              title: "Return Snapshot",
+              subtitle: "Fallback",
+              fallbackBars: [
+                { label: "Gross yield", amount: Math.max(0, num(grossYield) ?? 0) },
+                { label: "Cash on cash", amount: Math.max(0, num(cashOnCash) ?? 0) },
+                { label: "IRR", amount: Math.max(0, num(irr) ?? 0) }
+              ].filter((x) => x.amount > 0)
+            })
+          ]
+        },
+        {
+          width: "33.3%",
+          stack: [
+            chartCard({
+              theme,
+              title: "Expense Breakdown (Monthly)",
+              subtitle: "Fallback",
+              fallbackBars: []
+            })
+          ]
+        }
+      ],
+      columnGap: 10
+    }
+  ];
 
   const definition: TDocumentDefinitions = {
     info: { title: `Proplytic Investment Report — ${propertyType}` },
-    content: [
-      { text: "Proplytic", style: "brand" },
-      { text: "Investment report (calculator draft)", style: "tagline", margin: m(0, 0, 0, 10) },
-      { text: `Property type: ${propertyType}`, margin: m(0, 0, 0, 6) },
-      { text: `Generated: ${new Date().toISOString()}`, margin: m(0, 0, 0, 12) },
-
-      { text: "Key metrics", style: "subheader" },
-      kvTable([
-        ["Monthly income", metrics.monthlyIncome != null ? formatZar(Number(metrics.monthlyIncome)) : "—"],
-        ["Monthly expenses", metrics.monthlyExpenses != null ? formatZar(Number(metrics.monthlyExpenses)) : "—"],
-        ["Projected cash flow", metrics.projectedCashFlow != null ? formatZar(Number(metrics.projectedCashFlow)) : "—"],
-        ["Gross yield", metrics.grossYield != null ? `${Number(metrics.grossYield).toFixed(1)}%` : "—"],
-        ["Net yield", metrics.netYield != null ? `${Number(metrics.netYield).toFixed(1)}%` : "—"],
-        ["Cash on cash ROI", metrics.cashOnCashRoi != null ? `${Number(metrics.cashOnCashRoi).toFixed(1)}%` : "—"],
-        ["IRR", metrics.internalRateofReturn != null ? `${Number(metrics.internalRateofReturn).toFixed(1)}%` : "—"],
-        ["LTV", metrics.ltv != null ? `${Number(metrics.ltv).toFixed(1)}%` : "—"]
-      ]),
-
-      { text: "Inputs", style: "subheader", margin: m(0, 10, 0, 0) },
-      { text: JSON.stringify(answers, null, 2), style: "code" },
-
-      { text: "Disclaimer", style: "subheader", margin: m(0, 10, 0, 4) },
-      {
-        text:
-          "This report is an estimate for educational purposes and is not financial, tax or legal advice. " +
-          "Assumptions materially affect results."
-      }
-    ],
-    styles: {
-      brand: { fontSize: 22, bold: true, color: "#6c4cff" },
-      tagline: { fontSize: 12, color: "#333333" },
-      subheader: { fontSize: 14, bold: true, margin: [0, 12, 0, 6] },
-      code: { fontSize: 9 }
-    },
-    defaultStyle: { font: "Roboto" }
+    pageMargins: PDF_PAGE_MARGINS,
+    background: () => ({
+      canvas: [{ type: "rect", x: 0, y: 0, w: 595.28, h: 841.89, color: theme.backgroundColor }]
+    }),
+    content,
+    styles: styles as any,
+    defaultStyle: { font: theme.fontFamily, fontSize: 10, color: theme.textColor },
+    footer: (currentPage: number, pageCount: number) => ({
+      margin: pdfMargin(48, 0, 48, 24),
+      columns: [
+        {
+          width: "*",
+          stack: [
+            { text: "Proplytic", style: "footerText" },
+            {
+              text: "This report is for informational purposes only and does not constitute financial, legal, or tax advice.",
+              style: "footerText",
+              margin: pdfMargin(0, 2, 0, 0)
+            }
+          ]
+        },
+        { width: 140, text: `Page ${currentPage} of ${pageCount}`, style: "footerText", alignment: "right" }
+      ]
+    })
   };
 
   return { definition };

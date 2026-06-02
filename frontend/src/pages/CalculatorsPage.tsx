@@ -131,14 +131,26 @@ export function CalculatorsPage() {
       return;
     }
     setGenerateBusy(true);
+    const opened = window.open("about:blank", "_blank", "noopener,noreferrer");
     try {
       const payload = buildCalculatorReportPayload({ propertyType, answers, metrics });
       const gen = await generateReportViaVercel({ reportType: "INVESTMENT_REPORT", payload });
       const url = gen.downloadUrl;
-      if (!url) throw new Error(gen.error ?? "Report could not be generated.");
-      const opened = window.open(url, "_blank", "noopener,noreferrer");
-      if (!opened) {
-        window.alert("Pop-up blocked. Allow pop-ups for this site, or open the report from the link in the address bar.");
+      if (!url) {
+        try {
+          opened?.close();
+        } catch {
+          // ignore
+        }
+        throw new Error(gen.error ?? "Report could not be generated.");
+      }
+      if (opened) {
+        opened.location.href = url;
+      } else {
+        const fallback = window.open(url, "_blank", "noopener,noreferrer");
+        if (!fallback) {
+          window.alert("Pop-up blocked. Allow pop-ups for this site, or open the report from the Reports page.");
+        }
       }
       setGeneratedReportId(gen.reportId);
       setStep(3);
