@@ -20,6 +20,7 @@ export function buildDefaultPdfStyles(theme: GlobalPdfTheme): StyleDictionary {
   return {
     headerTitle: { fontSize: 11, bold: true, color: theme.mutedTextColor, characterSpacing: 0.5 },
     documentTitle: { fontSize: 16, bold: true, color: theme.textColor },
+    reportTitle: { fontSize: 14, bold: true, color: theme.textColor },
     sectionLabel: { fontSize: 10, bold: true, color: theme.textColor, margin: [0, 0, 0, 4] },
     bodyText: { fontSize: 10, color: theme.textColor, lineHeight: 1.25 },
     mutedText: { fontSize: 9, color: theme.mutedTextColor, lineHeight: 1.25 },
@@ -35,7 +36,12 @@ export function buildDefaultPdfStyles(theme: GlobalPdfTheme): StyleDictionary {
     totalEmphasis: { fontSize: 11, bold: true, color: theme.primaryColor },
     footerText: { fontSize: 8, color: theme.mutedTextColor },
     brandWordmark: { fontSize: 18, bold: true, color: theme.primaryColor },
-    statusBadge: { fontSize: 9, color: theme.textColor, bold: true }
+    statusBadge: { fontSize: 9, color: theme.textColor, bold: true },
+    cardLabel: { fontSize: 8, color: theme.primaryColor, bold: true },
+    cardValue: { fontSize: 14, color: theme.textColor, bold: true },
+    cardHelper: { fontSize: 8, color: theme.mutedTextColor },
+    cardTitle: { fontSize: 10, bold: true, color: theme.textColor },
+    cardTitleIcon: { fontSize: 9, bold: true, color: theme.primaryColor }
   };
 }
 
@@ -77,6 +83,71 @@ export function brandedHeader(input: BrandedHeaderInput): Content {
   };
 }
 
+export type ReportHeaderInput = {
+  theme: GlobalPdfTheme;
+  logoDataUrl?: string | null;
+  brandTitle?: string;
+  reportTitle: string;
+  propertyName?: string;
+  addressLine?: string;
+  reportDateLine?: string;
+  /** Optional embedded image data url (png/jpg). */
+  propertyImageDataUrl?: string | null;
+  /** Width in points for the image block. */
+  propertyImageWidth?: number;
+};
+
+/**
+ * Report header block:
+ * - Brand left (logo or wordmark)
+ * - Title + property + address + date in the center/right
+ * - Optional property image on the far right
+ */
+export function reportHeader(input: ReportHeaderInput): Content {
+  const imageW = input.propertyImageWidth ?? 120;
+  const hasImg = Boolean(input.propertyImageDataUrl);
+
+  const brandCol: Content = input.logoDataUrl
+    ? { image: input.logoDataUrl, width: 44, margin: pdfMargin(0, 0, 0, 0) }
+    : { text: input.brandTitle ?? "Proplytic", style: "brandWordmark" };
+
+  const metaStack: Content[] = [
+    { text: input.reportTitle, style: "reportTitle" },
+    ...(input.propertyName
+      ? [
+          {
+            text: input.propertyName,
+            style: "bodyText",
+            bold: true,
+            color: input.theme.primaryColor,
+            margin: pdfMargin(0, 2, 0, 0)
+          }
+        ]
+      : []),
+    ...(input.addressLine ? [{ text: input.addressLine, style: "mutedText", margin: pdfMargin(0, 2, 0, 0) }] : []),
+    ...(input.reportDateLine ? [{ text: input.reportDateLine, style: "mutedText", margin: pdfMargin(0, 2, 0, 0) }] : [])
+  ];
+
+  const imgCol: Content | null = hasImg
+    ? {
+        image: String(input.propertyImageDataUrl),
+        width: imageW,
+        alignment: "right",
+        margin: pdfMargin(0, 0, 0, 0)
+      }
+    : null;
+
+  return {
+    columns: [
+      { width: 70, stack: [brandCol] },
+      { width: "*", stack: metaStack },
+      ...(imgCol ? [{ width: imageW, stack: [imgCol] as Content[] }] : [])
+    ],
+    columnGap: 14,
+    margin: pdfMargin(0, 0, 0, PDF_SPACING.block)
+  };
+}
+
 export type PartyBlockInput = {
   label: string;
   lines: string[];
@@ -108,6 +179,115 @@ export function documentSummaryStrip(items: DocumentSummaryItem[]): Content {
   }));
   return {
     columns: cols,
+    margin: pdfMargin(0, 0, 0, PDF_SPACING.section)
+  };
+}
+
+export type MetricCardInput = {
+  theme: GlobalPdfTheme;
+  label: string;
+  value: string;
+  helperText?: string;
+  /** Optional short icon glyph (e.g. "R", "%", "●") */
+  iconText?: string;
+};
+
+export function metricCard(input: MetricCardInput): Content {
+  const icon = input.iconText ? { text: input.iconText, style: "cardLabel", margin: pdfMargin(0, 0, 6, 0) } : null;
+  const headerCols: Content = {
+    columns: [
+      ...(icon ? [{ width: "auto", text: (icon as any).text, style: "cardLabel" }] : []),
+      { width: "*", text: input.label, style: "cardLabel" }
+    ],
+    columnGap: 4,
+    margin: pdfMargin(0, 0, 0, 4)
+  };
+
+  return {
+    table: {
+      widths: ["*"],
+      body: [
+        [
+          {
+            stack: [
+              headerCols,
+              { text: input.value, style: "cardValue", margin: pdfMargin(0, 0, 0, 2) },
+              ...(input.helperText ? [{ text: input.helperText, style: "cardHelper" } as Content] : [])
+            ],
+            margin: pdfMargin(0, 0, 0, 0)
+          }
+        ]
+      ]
+    },
+    layout: {
+      hLineWidth: () => 0.5,
+      vLineWidth: () => 0.5,
+      hLineColor: () => input.theme.borderColor,
+      vLineColor: () => input.theme.borderColor,
+      paddingLeft: () => 10,
+      paddingRight: () => 10,
+      paddingTop: () => 10,
+      paddingBottom: () => 10
+    },
+    margin: pdfMargin(0, 0, 0, PDF_SPACING.tight)
+  };
+}
+
+export type SectionCardInput = {
+  theme: GlobalPdfTheme;
+  title: string;
+  iconText?: string;
+  /** Optional subtitle/description shown in header */
+  subtitle?: string;
+  /** Key/value rows rendered as a light table */
+  rows: { label: string; value: string }[];
+  /** Optional columns width overrides */
+  labelWidth?: number;
+};
+
+export function sectionCard(input: SectionCardInput): Content {
+  const labelW = input.labelWidth ?? 190;
+  const header: TableCell = {
+    stack: [
+      {
+        columns: [
+          ...(input.iconText
+            ? [{ width: "auto", text: input.iconText, style: "cardTitleIcon", margin: pdfMargin(0, 0, 6, 0) } as any]
+            : []),
+          { width: "*", text: input.title, style: "cardTitle" },
+          ...(input.subtitle ? [{ width: "auto", text: input.subtitle, style: "mutedText" } as any] : [])
+        ],
+        columnGap: 6
+      }
+    ],
+    fillColor: input.theme.tableHeaderFill
+  };
+
+  const body: TableCell[][] = [
+    [header],
+    ...input.rows.map((r) => [
+      {
+        columns: [
+          { width: labelW, text: r.label, style: "mutedText" },
+          { width: "*", text: r.value ?? "—", style: "bodyText", alignment: "right" as const }
+        ],
+        columnGap: 10
+      } as any
+    ])
+  ];
+
+  return {
+    table: { widths: ["*"], body },
+    layout: {
+      hLineWidth: (i: number) => (i === 0 ? 0.5 : 0.25),
+      vLineWidth: () => 0.5,
+      hLineColor: () => input.theme.borderColor,
+      vLineColor: () => input.theme.borderColor,
+      paddingLeft: () => 10,
+      paddingRight: () => 10,
+      paddingTop: (i: number) => (i === 0 ? 9 : 7),
+      paddingBottom: () => 7
+    },
     margin: pdfMargin(0, 0, 0, PDF_SPACING.section)
   };
 }
@@ -158,6 +338,248 @@ export function detailsTable(opts: {
       paddingBottom: () => 5
     },
     margin: pdfMargin(0, 0, 0, PDF_SPACING.block)
+  };
+}
+
+export function dataTable(opts: {
+  theme: GlobalPdfTheme;
+  title?: string;
+  columns: DetailsTableColumn[];
+  rows: Record<string, string>[];
+}): Content {
+  const table = detailsTable({ theme: opts.theme, columns: opts.columns, rows: opts.rows });
+  if (!opts.title) return table;
+  return {
+    stack: [
+      {
+        columns: [
+          { width: "auto", text: "▮", style: "cardTitleIcon", margin: pdfMargin(0, 0, 6, 0) } as any,
+          { width: "*", text: opts.title, style: "cardTitle" }
+        ],
+        columnGap: 6,
+        margin: pdfMargin(0, 0, 0, 6)
+      },
+      table
+    ],
+    margin: pdfMargin(0, 0, 0, PDF_SPACING.section)
+  };
+}
+
+export type ChartCardInput = {
+  theme: GlobalPdfTheme;
+  title: string;
+  subtitle?: string;
+  /**
+   * Chart image data URL (png/jpg). If not provided, we render a PDF-safe fallback.
+   */
+  imageDataUrl?: string | null;
+  /**
+   * Fallback series (sparkline-like) when no image is available.
+   * Values are plotted on a simple canvas with a small legend.
+   */
+  fallbackSeries?: { label: string; color?: string; values: (number | null)[]; xLabels?: string[] }[];
+  /**
+   * Fallback bar items (pdfmake canvas) when no image is available.
+   */
+  fallbackBars?: { label: string; amount: number }[];
+};
+
+function isValidImageDataUrl(v: unknown): v is string {
+  if (typeof v !== "string") return false;
+  const s = v.trim();
+  if (!s.startsWith("data:image/")) return false;
+  // keep minimal validation; pdfmake will still throw on malformed base64,
+  // so we avoid passing obviously wrong strings.
+  return s.includes(";base64,") || s.includes(",");
+}
+
+function miniBarList(opts: { theme: GlobalPdfTheme; items: { label: string; amount: number }[]; maxWidth: number }): Content {
+  const max = Math.max(...opts.items.map((i) => i.amount), 1);
+  const rows: Content[] = opts.items.slice(0, 8).map((item) => {
+    const w = Math.max(4, Math.round((item.amount / max) * opts.maxWidth));
+    return {
+      columns: [
+        { width: 120, text: item.label, style: "mutedText", fontSize: 8 },
+        {
+          width: "*",
+          stack: [
+            {
+              canvas: [{ type: "rect", x: 0, y: 0, w, h: 10, color: opts.theme.primaryColor }],
+              margin: pdfMargin(0, 2, 0, 2)
+            }
+          ]
+        }
+      ],
+      columnGap: 8,
+      margin: pdfMargin(0, 0, 0, 4)
+    };
+  });
+  return { stack: rows };
+}
+
+function legendRow(opts: { theme: GlobalPdfTheme; items: { label: string; color: string }[] }): Content {
+  return {
+    columns: opts.items.map((i) => ({
+      width: "auto",
+      columns: [
+        {
+          width: 10,
+          canvas: [{ type: "rect", x: 0, y: 0, w: 8, h: 8, color: i.color }],
+          margin: pdfMargin(0, 2, 4, 0)
+        },
+        { width: "auto", text: i.label, style: "mutedText", fontSize: 8, margin: pdfMargin(0, 0, 10, 0) }
+      ],
+      columnGap: 4
+    })),
+    columnGap: 10,
+    margin: pdfMargin(0, 6, 0, 2)
+  };
+}
+
+function sparklineChart(opts: {
+  theme: GlobalPdfTheme;
+  series: { label: string; color: string; values: (number | null)[] }[];
+  width: number;
+  height: number;
+  xLabels?: string[];
+}): Content {
+  const allVals = opts.series.flatMap((s) => s.values.filter((v): v is number => v != null && Number.isFinite(v)));
+  if (!allVals.length) {
+    return { text: "Insufficient data for chart", style: "mutedText", italics: true, margin: pdfMargin(0, 8, 0, 0) };
+  }
+
+  const min = Math.min(...allVals);
+  const max = Math.max(...allVals);
+  const range = Math.max(1, max - min);
+  const nPoints = Math.max(...opts.series.map((s) => s.values.length), 0);
+  if (nPoints < 2) {
+    return { text: "Insufficient data for chart", style: "mutedText", italics: true, margin: pdfMargin(0, 8, 0, 0) };
+  }
+
+  const padL = 4;
+  const padT = 6;
+  const padB = 12;
+  const innerW = opts.width - padL - 2;
+  const innerH = opts.height - padT - padB;
+
+  const xFor = (i: number) => padL + (innerW * i) / (nPoints - 1);
+  const yFor = (v: number) => padT + innerH - ((v - min) / range) * innerH;
+
+  const canvas: any[] = [];
+  // subtle baseline grid (top + mid + bottom)
+  canvas.push({ type: "line", x1: padL, y1: padT, x2: padL + innerW, y2: padT, lineWidth: 0.25, lineColor: opts.theme.borderColor });
+  canvas.push({
+    type: "line",
+    x1: padL,
+    y1: padT + innerH / 2,
+    x2: padL + innerW,
+    y2: padT + innerH / 2,
+    lineWidth: 0.25,
+    lineColor: opts.theme.borderColor
+  });
+  canvas.push({
+    type: "line",
+    x1: padL,
+    y1: padT + innerH,
+    x2: padL + innerW,
+    y2: padT + innerH,
+    lineWidth: 0.25,
+    lineColor: opts.theme.borderColor
+  });
+
+  for (const s of opts.series) {
+    const pts = s.values
+      .map((v, i) => (v != null && Number.isFinite(v) ? { x: xFor(i), y: yFor(v) } : null))
+      .filter((p): p is { x: number; y: number } => p != null);
+    for (let i = 1; i < pts.length; i++) {
+      canvas.push({ type: "line", x1: pts[i - 1].x, y1: pts[i - 1].y, x2: pts[i].x, y2: pts[i].y, lineWidth: 1, lineColor: s.color });
+    }
+    // small end dot
+    const last = pts[pts.length - 1];
+    if (last) canvas.push({ type: "ellipse", x: last.x, y: last.y, r1: 2, r2: 2, color: s.color });
+  }
+
+  const labelRow: Content | null =
+    opts.xLabels && opts.xLabels.length >= 2
+      ? {
+          columns: [
+            { width: "*", text: String(opts.xLabels[0] ?? ""), style: "mutedText", fontSize: 7 },
+            { width: "auto", text: String(opts.xLabels[opts.xLabels.length - 1] ?? ""), style: "mutedText", fontSize: 7, alignment: "right" }
+          ],
+          margin: pdfMargin(0, 2, 0, 0)
+        }
+      : null;
+
+  return {
+    stack: [{ canvas, margin: pdfMargin(0, 6, 0, 0) }, ...(labelRow ? [labelRow] : [])]
+  };
+}
+
+export function chartCard(input: ChartCardInput): Content {
+  const body: Content[] = [];
+  if (isValidImageDataUrl(input.imageDataUrl)) {
+    body.push({ image: String(input.imageDataUrl), width: 480, margin: pdfMargin(0, 6, 0, 0) });
+  } else if (input.fallbackSeries?.length) {
+    const series = input.fallbackSeries
+      .map((s, idx) => ({
+        label: s.label,
+        color: s.color ?? (idx === 0 ? input.theme.primaryColor : idx === 1 ? input.theme.accentColor : input.theme.mutedTextColor),
+        values: s.values
+      }))
+      .slice(0, 3);
+    body.push(
+      legendRow({
+        theme: input.theme,
+        items: series.map((s) => ({ label: s.label, color: s.color }))
+      })
+    );
+    body.push(
+      sparklineChart({
+        theme: input.theme,
+        series,
+        width: 480,
+        height: 120,
+        xLabels: input.fallbackSeries[0]?.xLabels
+      })
+    );
+  } else if (input.fallbackBars?.length) {
+    body.push(miniBarList({ theme: input.theme, items: input.fallbackBars, maxWidth: 260 }));
+  } else {
+    body.push({ text: "Insufficient data for chart", style: "mutedText", italics: true, margin: pdfMargin(0, 6, 0, 0) });
+  }
+
+  return {
+    table: {
+      widths: ["*"],
+      body: [
+        [
+          {
+            stack: [
+              {
+                columns: [
+                  { width: "auto", text: "▮", style: "cardTitleIcon", margin: pdfMargin(0, 0, 6, 0) } as any,
+                  { width: "*", text: input.title, style: "cardTitle" },
+                  ...(input.subtitle ? [{ width: "auto", text: input.subtitle, style: "mutedText" } as any] : [])
+                ],
+                columnGap: 6
+              },
+              ...body
+            ]
+          }
+        ]
+      ]
+    },
+    layout: {
+      hLineWidth: () => 0.5,
+      vLineWidth: () => 0.5,
+      hLineColor: () => input.theme.borderColor,
+      vLineColor: () => input.theme.borderColor,
+      paddingLeft: () => 10,
+      paddingRight: () => 10,
+      paddingTop: () => 10,
+      paddingBottom: () => 10
+    },
+    margin: pdfMargin(0, 0, 0, PDF_SPACING.section)
   };
 }
 
@@ -227,6 +649,34 @@ export function buildPdfFooter(theme: GlobalPdfTheme, brandName = "Proplytic"): 
         alignment: "right",
         color: theme.mutedTextColor
       }
+    ]
+  });
+}
+
+export function buildReportFooter(opts: {
+  theme: GlobalPdfTheme;
+  brandName?: string;
+  disclaimer?: string;
+  /** Optional ISO date shown in footer (format: YYYY-MM-DD) */
+  generatedDateIso?: string | null;
+}): TDocumentDefinitions["footer"] {
+  const brand = opts.brandName ?? "Proplytic";
+  const disclaimer =
+    opts.disclaimer ??
+    "This report is an estimate for educational purposes and is not financial, tax or legal advice. Assumptions materially affect results.";
+  const dateLabel = opts.generatedDateIso ? `Generated ${formatPdfDate(opts.generatedDateIso)}` : null;
+  return (currentPage: number, pageCount: number) => ({
+    margin: pdfMargin(48, 0, 48, 24),
+    columns: [
+      {
+        width: "*",
+        stack: [
+          { text: `Generated by ${brand}`, style: "footerText" },
+          { text: disclaimer, style: "footerText", margin: pdfMargin(0, 2, 0, 0) },
+          ...(dateLabel ? [{ text: dateLabel, style: "footerText", margin: pdfMargin(0, 2, 0, 0) } as any] : [])
+        ]
+      },
+      { width: 140, text: `Page ${currentPage} of ${pageCount}`, style: "footerText", alignment: "right" }
     ]
   });
 }

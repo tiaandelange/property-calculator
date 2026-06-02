@@ -66,8 +66,9 @@ describe("reportPdfBuilders", () => {
     const text = JSON.stringify(definition.content);
     expect(text).toContain("Property Investment Report");
     expect(text).toContain("Unit 4");
-    expect(text).toContain("Analysis over time");
-    expect(text).toContain("50% rule projection");
-    expect(text).toContain("Proplytic at the time of generation");
+    expect(text).toContain("Analysis Over Time");
+    expect(text).toContain("50% Rule Projection");
+    expect(text).toContain("Projected vs Actual");
+    expect(text).toContain("Insufficient data for chart");
   });
 });

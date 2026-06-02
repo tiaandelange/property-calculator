@@ -9,13 +9,19 @@ export {
   PDF_SPACING,
   buildDefaultPdfStyles,
   brandedHeader,
+  reportHeader,
   recipientBlock,
   documentSummaryStrip,
   detailsTable,
+  dataTable,
+  metricCard,
+  sectionCard,
+  chartCard,
   totalsBlock,
   bankingDetailsBlock,
   notesBlock,
   buildPdfFooter,
+  buildReportFooter,
   type PdfDocumentKind
 } from "./globalPdfLayout.js";
 export { buildInvoicePdfDocumentDefinition } from "./invoicePdfTemplate.js";

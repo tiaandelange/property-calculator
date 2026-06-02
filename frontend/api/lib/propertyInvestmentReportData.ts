@@ -24,6 +24,7 @@ export type PropertyInvestmentReportModel = {
     monthlyCashFlow: number;
     totalCashNeeded: number | null;
     grossRentalYield: number | null;
+    internalRateOfReturn: number | null;
     cashOnCashRoi: number | null;
     capRate: number | null;
     twoPercentRule: number | null;
@@ -103,6 +104,93 @@ function projectValue(base: number, annualPct: number | null, years: number): nu
   if (base <= 0) return null;
   if (annualPct == null || !Number.isFinite(annualPct)) return base;
   return base * Math.pow(1 + annualPct / 100, years);
+}
+
+function npv(rate: number, c0: number, cashFlows: number[]): number {
+  let total = -c0;
+  for (let t = 1; t <= cashFlows.length; t++) {
+    total += cashFlows[t - 1] / Math.pow(1 + rate, t);
+  }
+  return total;
+}
+
+function npvDeriv(rate: number, cashFlows: number[]): number {
+  // d/dr sum CF_t / (1+r)^t  = sum -t*CF_t / (1+r)^(t+1)
+  let total = 0;
+  const denomBase = 1 + rate;
+  for (let t = 1; t <= cashFlows.length; t++) {
+    total += (-t * cashFlows[t - 1]) / Math.pow(denomBase, t + 1);
+  }
+  return total;
+}
+
+/**
+ * Solve IRR where NPV(rate) = 0 for cash flows:
+ * Year 0 outlay: -c0
+ * Years 1..n inflows/outflows: cashFlows[t-1]
+ *
+ * Returns IRR in percent (e.g. 10.66), or null if unsolvable / insufficient data.
+ */
+export function irrPercent(c0: number | null, cashFlows: number[]): number | null {
+  if (c0 == null || !Number.isFinite(c0) || c0 <= 0) return null;
+  if (!cashFlows.length) return null;
+  if (!cashFlows.some((v) => Number.isFinite(v) && v !== 0)) return null;
+
+  // Newton-Raphson with safe bounds.
+  let r = 0.1;
+  const minR = -0.99;
+  const maxR = 10;
+  for (let i = 0; i < 60; i++) {
+    const f = npv(r, c0, cashFlows);
+    const d = npvDeriv(r, cashFlows);
+    if (!Number.isFinite(f) || !Number.isFinite(d) || Math.abs(d) < 1e-12) break;
+    const next = r - f / d;
+    if (!Number.isFinite(next)) break;
+    r = Math.min(maxR, Math.max(minR, next));
+    if (Math.abs(f) < 1e-6) return Number((r * 100).toFixed(2));
+  }
+
+  // Bisection fallback: search for a bracket.
+  const candidates = [-0.9, -0.5, -0.2, 0, 0.05, 0.1, 0.2, 0.4, 0.8, 1.5, 3, 6, 10];
+  let lo = minR;
+  let hi = maxR;
+  let flo = npv(lo, c0, cashFlows);
+  let fhi = npv(hi, c0, cashFlows);
+
+  if (!(Number.isFinite(flo) && Number.isFinite(fhi) && flo * fhi < 0)) {
+    // Try find bracket from candidates.
+    for (let i = 0; i < candidates.length - 1; i++) {
+      const a = candidates[i];
+      const b = candidates[i + 1];
+      const fa = npv(a, c0, cashFlows);
+      const fb = npv(b, c0, cashFlows);
+      if (Number.isFinite(fa) && Number.isFinite(fb) && fa * fb < 0) {
+        lo = a;
+        hi = b;
+        flo = fa;
+        fhi = fb;
+        break;
+      }
+    }
+  }
+
+  if (!(Number.isFinite(flo) && Number.isFinite(fhi) && flo * fhi < 0)) return null;
+
+  for (let i = 0; i < 80; i++) {
+    const mid = (lo + hi) / 2;
+    const fmid = npv(mid, c0, cashFlows);
+    if (!Number.isFinite(fmid)) return null;
+    if (Math.abs(fmid) < 1e-6) return Number((mid * 100).toFixed(2));
+    if (flo * fmid < 0) {
+      hi = mid;
+      fhi = fmid;
+    } else {
+      lo = mid;
+      flo = fmid;
+    }
+  }
+  const approx = (lo + hi) / 2;
+  return Number.isFinite(approx) ? Number((approx * 100).toFixed(2)) : null;
 }
 
 /** Amortising balance after `years` full years of monthly payments. */
@@ -248,6 +336,12 @@ export function assemblePropertyInvestmentReportData(input: AssemblePropertyRepo
 
   const projIncome = yearCols.map((y) => projectValue(baseAnnualIncome, incomeGrowth, y));
   const projExpenses = yearCols.map((y) => projectValue(baseAnnualExpenses, expenseGrowth, y));
+  const projNoi = yearCols.map((_, i) => {
+    const inc = projIncome[i];
+    const exp = projExpenses[i];
+    if (inc == null || exp == null) return null;
+    return inc - exp;
+  });
   const projCashFlow = yearCols.map((y, i) => {
     const inc = projIncome[i];
     const exp = projExpenses[i];
@@ -264,6 +358,25 @@ export function assemblePropertyInvestmentReportData(input: AssemblePropertyRepo
     const lb = projLoan[i];
     if (pv == null || lb == null) return null;
     return pv - lb;
+  });
+
+  // IRR per holding period horizon using annual cash flows + terminal equity.
+  const irrByHorizon = yearCols.map((hYears) => {
+    if (cashInvested == null || cashInvested <= 0) return null;
+    const flows: number[] = [];
+    for (let t = 1; t <= hYears; t++) {
+      const inc = projectValue(baseAnnualIncome, incomeGrowth, t);
+      const exp = projectValue(baseAnnualExpenses, expenseGrowth, t);
+      if (inc == null || exp == null) return null;
+      const cf = inc - exp - monthlyLoanPayment * 12;
+      flows.push(cf);
+    }
+    const pv = projectValue(baseValue, propertyGrowth, hYears);
+    const lb = startLoan > 0 ? projectLoanBalanceAfterYears(startLoan, monthlyLoanPayment, ratePct, hYears) : 0;
+    if (pv == null || lb == null) return null;
+    const terminalEquity = pv - lb;
+    flows[flows.length - 1] = (flows[flows.length - 1] ?? 0) + terminalEquity;
+    return irrPercent(cashInvested, flows);
   });
   const projCoC = yearCols.map((y, i) => {
     const cf = projCashFlow[i];
@@ -371,6 +484,7 @@ export function assemblePropertyInvestmentReportData(input: AssemblePropertyRepo
       monthlyCashFlow,
       totalCashNeeded: cashInvested,
       grossRentalYield,
+      internalRateOfReturn: irrByHorizon[0] ?? null,
       cashOnCashRoi,
       capRate,
       twoPercentRule
@@ -396,6 +510,10 @@ export function assemblePropertyInvestmentReportData(input: AssemblePropertyRepo
           values: projExpenses.map((v) => (v == null ? "—" : formatZar(v)))
         },
         {
+          label: "Net operating income",
+          values: projNoi.map((v) => (v == null ? "—" : formatZar(v)))
+        },
+        {
           label: "Total annual cash flow",
           values: projCashFlow.map((v) => (v == null ? "—" : formatZar(v)))
         },
@@ -414,6 +532,11 @@ export function assemblePropertyInvestmentReportData(input: AssemblePropertyRepo
         {
           label: "Cash on cash ROI",
           values: projCoC.map((v) => (v == null ? "—" : formatPct(v)))
+        }
+        ,
+        {
+          label: "Internal rate of return",
+          values: irrByHorizon.map((v) => (v == null ? "—" : formatPct(v)))
         }
       ]
     },

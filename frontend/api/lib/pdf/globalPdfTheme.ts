@@ -14,6 +14,7 @@ export type GlobalPdfTheme = {
   lightFill: string;
   zebraFill: string;
   successColor: string;
+  warningColor: string;
   dangerColor: string;
   backgroundColor: string;
   fontFamily: string;
@@ -84,6 +85,7 @@ export function buildGlobalPdfTheme(input: PdfThemeInput = {}): GlobalPdfTheme {
     lightFill: "#f9fafb",
     zebraFill: "#f3f4f6",
     successColor: "#166534",
+    warningColor: "#92400e",
     dangerColor: "#b91c1c",
     backgroundColor: "#ffffff",
     fontFamily: "Roboto"
