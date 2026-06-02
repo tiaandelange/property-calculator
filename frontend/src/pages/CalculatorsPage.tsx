@@ -1,66 +1,38 @@
 import { useMemo, useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { AppListPage, AppPageActions, AppPageContent, AppPageHeader, AppPageSection, AppPageSubtitle, AppPageTitle } from "../components/ui/AppPage";
-import { AppEmptyStateCard, AppInfoCard, Card } from "../components/ui/Card";
+import { AppInfoCard, AppMetricCard, Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
-import { Field, Input } from "../components/ui/Input";
-
-type PropertyTypeId = "residential" | "multiUnit" | "commercial";
-
-type PropertyTypeDef = {
-  id: PropertyTypeId;
-  title: string;
-  description: string;
-};
-
-const PROPERTY_TYPES: PropertyTypeDef[] = [
-  {
-    id: "residential",
-    title: "Residential",
-    description: "Houses, townhouses, and apartments — typical long-term lets."
-  },
-  {
-    id: "multiUnit",
-    title: "Multi-unit",
-    description: "Flats, student housing, or mixed unit blocks with multiple leases."
-  },
-  {
-    id: "commercial",
-    title: "Commercial",
-    description: "Retail, office, and industrial scenarios with longer leases and vacancies."
-  }
-];
+import { Field, Input, Select } from "../components/ui/Input";
+import { useMediaQuery } from "../hooks/useMediaQuery";
+import { PropertyTypeTile } from "../components/calculators/PropertyTypeTile";
+import { PROPERTY_TYPES, QUESTIONS_BY_KEY, type PropertyTypeDef, type PropertyTypeId, type QuestionDef } from "../data/calculatorPropertyTypes";
 
 type StepId = 1 | 2 | 3;
 
-function clampStep(step: number): StepId {
-  if (step <= 1) return 1;
-  if (step >= 3) return 3;
-  return step as StepId;
-}
-
 export function CalculatorsPage() {
+  const isMobile = useMediaQuery("(max-width: 767px)");
   const [step, setStep] = useState<StepId>(1);
-  const [propertyType, setPropertyType] = useState<PropertyTypeId | null>(null);
-  const [answers, setAnswers] = useState({
-    purchasePrice: "",
-    monthlyRent: "",
-    depositPct: ""
-  });
+  const [propertyType, setPropertyType] = useState<PropertyTypeId | "">("");
+  const [answers, setAnswers] = useState<Record<string, string>>({});
 
-  const selectedType = useMemo(
-    () => (propertyType ? PROPERTY_TYPES.find((t) => t.id === propertyType) ?? null : null),
-    [propertyType]
-  );
+  const selectedType = useMemo((): PropertyTypeDef | null => {
+    if (!propertyType) return null;
+    return PROPERTY_TYPES.find((t) => t.propertyType === propertyType) ?? null;
+  }, [propertyType]);
 
-  const canGoStep2 = propertyType != null;
-  const canGoStep3 = canGoStep2;
+  const questions = useMemo((): QuestionDef[] => {
+    if (!selectedType) return [];
+    return QUESTIONS_BY_KEY[selectedType.questionsConfigKey] ?? [];
+  }, [selectedType]);
 
   const steps = [
-    { id: 1 as const, title: "Select Type", subtitle: selectedType?.title ?? "Choose a category" },
+    { id: 1 as const, title: "Select Type", subtitle: selectedType?.label ?? "Choose a property type" },
     { id: 2 as const, title: "Answer Questions", subtitle: "Provide a few key inputs" },
     { id: 3 as const, title: "Generate Report", subtitle: "Preview your outputs" }
   ];
+
+  const setAnswer = (key: string, value: string) => setAnswers((a) => ({ ...a, [key]: value }));
 
   return (
     <AppListPage className="pg-calculators-page">
@@ -75,21 +47,8 @@ export function CalculatorsPage() {
             <AppPageSubtitle>Choose a property type and generate investment insights</AppPageSubtitle>
           </div>
           <AppPageActions>
-            <Button
-              type="button"
-              variant="secondary"
-              disabled={step === 1}
-              onClick={() => setStep((s) => clampStep(s - 1))}
-            >
-              Back
-            </Button>
-            <Button
-              type="button"
-              variant="primary"
-              disabled={(step === 1 && !canGoStep2) || (step === 2 && !canGoStep3) || step === 3}
-              onClick={() => setStep((s) => clampStep(s + 1))}
-            >
-              Next
+            <Button type="button" variant="secondary" onClick={() => { setPropertyType(""); setAnswers({}); setStep(1); }}>
+              Reset
             </Button>
           </AppPageActions>
         </AppPageHeader>
@@ -117,129 +76,166 @@ export function CalculatorsPage() {
         </AppPageSection>
 
         <AppPageSection>
-          <div className="pg-calculators-layout">
+          {/* Step 1 */}
+          <div className="pg-calculators-layout pg-calculators-layout--type">
             <div className="pg-calculators-main">
-              {step === 1 ? (
-                <Card title="Step 1 — Select a property type">
-                  <div className="pg-calculators-type-grid" role="list" aria-label="Property types">
-                    {PROPERTY_TYPES.map((t) => (
-                      <button
-                        key={t.id}
-                        type="button"
-                        role="listitem"
-                        className="pg-calculators-type-card"
-                        data-selected={propertyType === t.id ? "true" : "false"}
-                        onClick={() => {
-                          setPropertyType(t.id);
-                          setStep(2);
+              <Card title="Select Property Type">
+                {isMobile ? (
+                  <>
+                    <Field label="Property type">
+                      <Select
+                        value={propertyType}
+                        onChange={(e) => {
+                          const next = e.target.value as PropertyTypeId | "";
+                          setPropertyType(next);
+                          setStep(next ? 2 : 1);
                         }}
                       >
-                        <div className="pg-calculators-type-card__title">{t.title}</div>
-                        <div className="pg-calculators-type-card__desc">{t.description}</div>
-                      </button>
+                        <option value="">Select…</option>
+                        {PROPERTY_TYPES.map((t) => (
+                          <option key={t.propertyType} value={t.propertyType}>
+                            {t.label}
+                          </option>
+                        ))}
+                      </Select>
+                    </Field>
+
+                    {selectedType ? (
+                      <div className="pg-prop-type-selected-summary" style={{ marginTop: 12 }}>
+                        <PropertyTypeTile
+                          title={selectedType.label}
+                          description={selectedType.description}
+                          icon={selectedType.icon}
+                          selected
+                          onClick={() => {}}
+                        />
+                      </div>
+                    ) : null}
+                  </>
+                ) : (
+                  <div className="pg-prop-type-grid" role="list" aria-label="Property types">
+                    {PROPERTY_TYPES.map((t) => (
+                      <div key={t.propertyType} role="listitem">
+                        <PropertyTypeTile
+                          title={t.label}
+                          description={t.description}
+                          icon={t.icon}
+                          selected={propertyType === t.propertyType}
+                          onClick={() => {
+                            setPropertyType(t.propertyType);
+                            setStep(2);
+                          }}
+                        />
+                      </div>
                     ))}
                   </div>
-                </Card>
-              ) : null}
-
-              {step === 2 ? (
-                <Card title="Step 2 — Answer a few questions">
-                  <div className="pg-calculators-q-grid" aria-label="Calculator questions">
-                    <Field label="Purchase price (R)">
-                      <Input
-                        inputMode="numeric"
-                        placeholder="e.g. 1 450 000"
-                        value={answers.purchasePrice}
-                        onChange={(e) => setAnswers((a) => ({ ...a, purchasePrice: e.target.value }))}
-                      />
-                    </Field>
-                    <Field label="Expected monthly rent (R)">
-                      <Input
-                        inputMode="numeric"
-                        placeholder="e.g. 12 500"
-                        value={answers.monthlyRent}
-                        onChange={(e) => setAnswers((a) => ({ ...a, monthlyRent: e.target.value }))}
-                      />
-                    </Field>
-                    <Field label="Deposit (%)">
-                      <Input
-                        inputMode="decimal"
-                        placeholder="e.g. 10"
-                        value={answers.depositPct}
-                        onChange={(e) => setAnswers((a) => ({ ...a, depositPct: e.target.value }))}
-                      />
-                    </Field>
-                  </div>
-                  <div className="pg-calculators-inline-actions">
-                    <Button type="button" variant="secondary" onClick={() => setStep(1)}>
-                      Change property type
-                    </Button>
-                    <Button type="button" variant="primary" disabled={!canGoStep3} onClick={() => setStep(3)}>
-                      Continue to preview
-                    </Button>
-                  </div>
-                </Card>
-              ) : null}
-
-              {step === 3 ? (
-                <Card title="Step 3 — Report preview">
-                  {selectedType ? (
-                    <div className="pg-calculators-preview">
-                      <div className="pg-calculators-preview__row">
-                        <span className="pg-muted">Property type</span>
-                        <strong>{selectedType.title}</strong>
-                      </div>
-                      <div className="pg-calculators-preview__row">
-                        <span className="pg-muted">Purchase price</span>
-                        <strong>{answers.purchasePrice || "—"}</strong>
-                      </div>
-                      <div className="pg-calculators-preview__row">
-                        <span className="pg-muted">Monthly rent</span>
-                        <strong>{answers.monthlyRent || "—"}</strong>
-                      </div>
-                      <div className="pg-calculators-preview__row">
-                        <span className="pg-muted">Deposit</span>
-                        <strong>{answers.depositPct ? `${answers.depositPct}%` : "—"}</strong>
-                      </div>
-                      <div className="pg-calculators-inline-actions">
-                        <Button type="button" variant="secondary" onClick={() => setStep(2)}>
-                          Edit answers
-                        </Button>
-                        <Button type="button" variant="primary" disabled>
-                          Generate report (coming soon)
-                        </Button>
-                      </div>
-                    </div>
-                  ) : (
-                    <AppEmptyStateCard
-                      title="Select a property type first"
-                      description="Start by choosing a category, then provide a few inputs."
-                      actions={
-                        <Button type="button" variant="primary" onClick={() => setStep(1)}>
-                          Choose property type
-                        </Button>
-                      }
-                    />
-                  )}
-                </Card>
-              ) : null}
+                )}
+              </Card>
             </div>
 
             <aside className="pg-calculators-side" aria-label="Helper summary">
               <AppInfoCard
-                title="How this works"
-                description="This guided flow helps you build a report-ready scenario."
-                icon="reports"
-              >
-                <ul className="pg-calculators-help-list">
-                  <li>Pick the property type that matches your deal.</li>
-                  <li>Answer a few high-impact questions (more will be added later).</li>
-                  <li>Preview the report outputs before generating a PDF.</li>
-                </ul>
-                <div className="pg-muted" style={{ marginTop: 12, fontSize: 12 }}>
-                  PDF export is intentionally not implemented on this page yet.
+                title="Smart & Dynamic"
+                description="Questions adjust automatically based on the property type you select."
+                icon="fast"
+              />
+            </aside>
+          </div>
+
+          {/* Step 2 */}
+          <div className="pg-calculators-layout pg-calculators-layout--questions">
+            <div className="pg-calculators-main">
+              <Card title="Property Questions">
+                {!selectedType ? (
+                  <div className="pg-muted">Select a property type above to see the questions.</div>
+                ) : (
+                  <>
+                    <div className="pg-calculators-q-grid" aria-label="Property questions">
+                      {questions.map((q) => (
+                        <Field key={q.key} label={q.label}>
+                          {q.type === "select" ? (
+                            <Select value={answers[q.key] ?? ""} onChange={(e) => setAnswer(q.key, e.target.value)}>
+                              <option value="">Select…</option>
+                              {(q.options ?? []).map((o) => (
+                                <option key={o.value} value={o.value}>
+                                  {o.label}
+                                </option>
+                              ))}
+                            </Select>
+                          ) : (
+                            <Input
+                              inputMode={q.type === "text" ? "text" : q.type === "percent" ? "decimal" : "numeric"}
+                              placeholder={q.placeholder}
+                              value={answers[q.key] ?? ""}
+                              onChange={(e) => setAnswer(q.key, e.target.value)}
+                            />
+                          )}
+                        </Field>
+                      ))}
+                    </div>
+
+                    <div className="pg-calculators-actions-row">
+                      <div className="pg-calculators-actions-row__left">
+                        <Button type="button" variant="secondary" disabled>
+                          Save Inputs
+                        </Button>
+                      </div>
+                      <div className="pg-calculators-actions-row__right">
+                        <Button type="button" variant="primary" disabled>
+                          Generate Report
+                        </Button>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </Card>
+            </div>
+
+            <aside className="pg-calculators-side" aria-label="Quick summary">
+              <Card title="Quick Summary">
+                <div className="pg-muted" style={{ marginBottom: 10 }}>
+                  Updates as you fill in the form.
                 </div>
-              </AppInfoCard>
+                <div className="pg-calculators-summary-grid">
+                  <AppMetricCard label="Monthly Income" value="—" icon="income" />
+                  <AppMetricCard label="Monthly Expenses" value="—" icon="expense" iconAccent="danger" />
+                  <AppMetricCard label="Gross Yield" value="—" icon="percent" />
+                  <AppMetricCard label="Cash Flow" value="—" icon="wallet" />
+                </div>
+              </Card>
+            </aside>
+          </div>
+
+          {/* Step 3 */}
+          <div className="pg-calculators-layout pg-calculators-layout--preview">
+            <div className="pg-calculators-main">
+              <Card title="Report Preview">
+                <div className="pg-calculators-metrics-6" aria-label="Report preview metrics">
+                  <AppMetricCard label="Projected Cash Flow" value="—" icon="wallet" />
+                  <AppMetricCard label="Gross Yield" value="—" icon="percent" />
+                  <AppMetricCard label="Cash on Cash ROI" value="—" icon="income" />
+                  <AppMetricCard label="Monthly Income" value="—" icon="income" />
+                  <AppMetricCard label="Monthly Expenses" value="—" icon="expense" iconAccent="danger" />
+                  <AppMetricCard label="Units Occupied" value="—" icon="units" />
+                </div>
+
+                <div className="pg-calculators-charts-2" aria-label="Report preview charts">
+                  <Card title="Income vs Expenses">
+                    <div className="pg-muted">Chart placeholder (coming soon)</div>
+                  </Card>
+                  <Card title="Projected Cash Flow Trend">
+                    <div className="pg-muted">Chart placeholder (coming soon)</div>
+                  </Card>
+                </div>
+              </Card>
+            </div>
+
+            <aside className="pg-calculators-side" aria-label="Preview helper">
+              <AppInfoCard
+                title="Preview only"
+                description="PDF export will be added once the question sets and calculations are final."
+                icon="info"
+              />
             </aside>
           </div>
         </AppPageSection>
