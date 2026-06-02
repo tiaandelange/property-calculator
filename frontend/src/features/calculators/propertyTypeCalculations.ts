@@ -38,7 +38,7 @@ function clampPct(p: number | null): number | null {
 }
 
 function sum(...vals: Array<number | null | undefined>): number {
-  return vals.reduce((s, v) => s + (v != null && Number.isFinite(v) ? v : 0), 0);
+  return vals.reduce<number>((s, v) => s + (v != null && Number.isFinite(v) ? v : 0), 0);
 }
 
 function round2(x: number): number {
