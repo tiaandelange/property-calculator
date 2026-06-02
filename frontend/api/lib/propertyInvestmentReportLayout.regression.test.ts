@@ -63,7 +63,7 @@ function definitionText(def: TDocumentDefinitions): string {
   const parts: string[] = [];
   collectStrings(def.content, parts);
   if (typeof def.footer === "function") {
-    const footer = def.footer(1, 3, { width: 595.28, height: 841.89 }) as Content;
+    const footer = def.footer(1, 3, { width: 595.28, height: 841.89, orientation: "portrait" }) as Content;
     collectStrings(footer, parts);
   }
   return parts.join("\n");

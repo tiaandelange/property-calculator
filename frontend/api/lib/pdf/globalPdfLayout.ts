@@ -385,7 +385,7 @@ export function detailsTable(opts: {
       text: row[col.key] ?? "—",
       style: "tableCell",
       alignment: col.alignment ?? "left",
-      fillColor: rowIndex % 2 === 1 ? opts.theme.zebraFill : null
+      fillColor: rowIndex % 2 === 1 ? opts.theme.zebraFill : undefined
     }))
   );
 
