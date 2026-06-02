@@ -42,6 +42,7 @@ CREATE POLICY invoice_payments_all_own ON public.invoice_payments
     )
   );
 
+DROP TRIGGER IF EXISTS invoice_payments_set_updated_at ON public.invoice_payments;
 CREATE TRIGGER invoice_payments_set_updated_at
 BEFORE UPDATE ON public.invoice_payments
 FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();

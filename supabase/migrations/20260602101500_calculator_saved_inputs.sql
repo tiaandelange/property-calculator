@@ -41,3 +41,5 @@ on public.calculator_saved_inputs
 for delete
 using (auth.uid() = user_id);
 
+grant select, insert, update, delete on table public.calculator_saved_inputs to authenticated;
+
