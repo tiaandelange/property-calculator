@@ -11,6 +11,7 @@ import { PROPERTY_TYPES, type PropertyTypeDef, type PropertyTypeId } from "../da
 import { getDefaultAnswersForConfig, getQuestionConfig } from "../data/calculatorQuestionsConfig";
 import { calculatePropertyTypeMetrics } from "../features/calculators/propertyTypeCalculations";
 import { formatRand } from "../utils/mortgageRepayment";
+import { CashFlowTrendChart, IncomeVsExpensesChart } from "../features/calculators/CalculatorsReportPreviewCharts";
 
 type StepId = 1 | 2 | 3;
 
@@ -308,11 +309,28 @@ export function CalculatorsPage() {
 
                 <div className="pg-calculators-charts-2" aria-label="Report preview charts">
                   <Card title="Income vs Expenses">
-                    <div className="pg-muted">Chart placeholder (coming soon)</div>
+                    <IncomeVsExpensesChart metrics={metrics} />
                   </Card>
                   <Card title="Projected Cash Flow Trend">
-                    <div className="pg-muted">Chart placeholder (coming soon)</div>
+                    <CashFlowTrendChart metrics={metrics} />
                   </Card>
+                </div>
+
+                <div className="pg-calculators-actions-row" style={{ marginTop: 14 }}>
+                  <div className="pg-calculators-actions-row__left">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={() => window.alert("Full report view is coming soon.")}
+                    >
+                      View Full Report
+                    </Button>
+                  </div>
+                  <div className="pg-calculators-actions-row__right">
+                    <Button type="button" variant="primary" disabled>
+                      Generate Report
+                    </Button>
+                  </div>
                 </div>
               </Card>
             </div>

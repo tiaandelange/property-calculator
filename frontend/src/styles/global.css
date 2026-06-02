@@ -1653,6 +1653,24 @@ textarea {
   gap: 12px;
 }
 
+.pg-calculators-chart-wrap {
+  position: relative;
+  height: 220px;
+  width: 100%;
+  min-width: 0;
+}
+
+.pg-calculators-chart-empty {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
 .pg-calculators-inline-actions {
   margin-top: 14px;
   display: flex;
