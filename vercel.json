@@ -15,22 +15,22 @@
 
   "functions": {
     "frontend/api/invoices/generate.ts": {
-      "includeFiles": "frontend/assets/fonts/pdfmake/**,shared/propertyCalculator/**",
+      "includeFiles": "frontend/assets/fonts/pdfmake/**,frontend/shared/propertyCalculator/**",
       "maxDuration": 60,
       "memory": 1024
     },
     "frontend/api/reports/generate.ts": {
-      "includeFiles": "frontend/assets/fonts/pdfmake/**,shared/propertyCalculator/**",
+      "includeFiles": "frontend/assets/fonts/pdfmake/**,frontend/shared/propertyCalculator/**",
       "maxDuration": 60,
       "memory": 1024
     },
     "frontend/api/invoices/**/*.ts": {
-      "includeFiles": "frontend/assets/fonts/pdfmake/**,shared/propertyCalculator/**",
+      "includeFiles": "frontend/assets/fonts/pdfmake/**,frontend/shared/propertyCalculator/**",
       "maxDuration": 60,
       "memory": 1024
     },
     "frontend/api/reports/**/*.ts": {
-      "includeFiles": "frontend/assets/fonts/pdfmake/**,shared/propertyCalculator/**",
+      "includeFiles": "frontend/assets/fonts/pdfmake/**,frontend/shared/propertyCalculator/**",
       "maxDuration": 60,
       "memory": 1024
     }

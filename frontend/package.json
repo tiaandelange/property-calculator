@@ -4,12 +4,14 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "npm run sync:property-calculator && vite",
+    "sync:property-calculator": "node scripts/sync-property-calculator.mjs",
+    "prebuild": "npm run sync:property-calculator",
     "build": "tsc && vite build",
     "typecheck": "tsc --noEmit",
     "preview": "vite preview",
     "test": "vitest",
-    "test:ci": "vitest run",
+    "test:ci": "npm run sync:property-calculator && vitest run",
     "verify:public-env": "node ../backend/scripts/verify-public-frontend-env.mjs"
   },
   "dependencies": {
