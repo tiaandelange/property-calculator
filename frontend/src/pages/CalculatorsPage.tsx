@@ -14,6 +14,7 @@ import { calculatePropertyTypeMetrics } from "../features/calculators/propertyTy
 import { formatRand } from "../utils/mortgageRepayment";
 import { CashFlowTrendChart, IncomeVsExpensesChart } from "../features/calculators/CalculatorsReportPreviewCharts";
 import { buildCalculatorReportPayload } from "../features/calculators/calculatorReportPayload";
+import { closeReportTab, navigateReportTab, openBlankReportTab } from "../services/openReportInNewTab";
 import { generateReportViaVercel } from "../services/reportsVercel";
 import { AppModal } from "../components/ui/AppModal";
 import { deleteSavedCalculatorInput, listSavedCalculatorInputs, saveCalculatorInputs, type SavedCalculatorInput } from "../services/calculatorSavedInputsSupabase";
@@ -131,30 +132,20 @@ export function CalculatorsPage() {
       return;
     }
     setGenerateBusy(true);
-    const opened = window.open("about:blank", "_blank", "noopener,noreferrer");
+    const tab = openBlankReportTab();
     try {
       const payload = buildCalculatorReportPayload({ propertyType, answers, metrics });
       const gen = await generateReportViaVercel({ reportType: "INVESTMENT_REPORT", payload });
       const url = gen.downloadUrl;
       if (!url) {
-        try {
-          opened?.close();
-        } catch {
-          // ignore
-        }
+        closeReportTab(tab);
         throw new Error(gen.error ?? "Report could not be generated.");
       }
-      if (opened) {
-        opened.location.href = url;
-      } else {
-        const fallback = window.open(url, "_blank", "noopener,noreferrer");
-        if (!fallback) {
-          window.alert("Pop-up blocked. Allow pop-ups for this site, or open the report from the Reports page.");
-        }
-      }
+      navigateReportTab(tab, url);
       setGeneratedReportId(gen.reportId);
       setStep(3);
     } catch (e: unknown) {
+      closeReportTab(tab);
       setValidationError(e instanceof Error ? e.message : "Report could not be generated.");
     } finally {
       setGenerateBusy(false);

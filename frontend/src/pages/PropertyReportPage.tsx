@@ -49,7 +49,7 @@ export function PropertyReportPage() {
             <AppPageSubtitle>
               {error
                 ? "Generation failed. Try again from the property workspace."
-                : "If the PDF did not open, allow pop-ups for this site and try again."}
+                : "The report should open in a new browser tab."}
             </AppPageSubtitle>
           </div>
         </AppPageHeader>
