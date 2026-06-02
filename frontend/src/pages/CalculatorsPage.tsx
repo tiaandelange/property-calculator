@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { AppListPage, AppPageActions, AppPageContent, AppPageHeader, AppPageSection, AppPageSubtitle, AppPageTitle } from "../components/ui/AppPage";
 import { AppInfoCard, AppMetricCard, Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
-import { Field, Select } from "../components/ui/Input";
+import { Field, Input, Select } from "../components/ui/Input";
 import { useMediaQuery } from "../hooks/useMediaQuery";
 import { PropertyTypeTile } from "../components/calculators/PropertyTypeTile";
 import { CalculatorQuestionsForm } from "../components/calculators/CalculatorQuestionsForm";
@@ -15,14 +15,10 @@ import { formatRand } from "../utils/mortgageRepayment";
 import { CashFlowTrendChart, IncomeVsExpensesChart } from "../features/calculators/CalculatorsReportPreviewCharts";
 import { buildCalculatorReportPayload } from "../features/calculators/calculatorReportPayload";
 import { saveCalculatorReportPayload } from "../features/calculators/calculatorReportStorage";
+import { AppModal } from "../components/ui/AppModal";
+import { deleteSavedCalculatorInput, listSavedCalculatorInputs, saveCalculatorInputs, type SavedCalculatorInput } from "../services/calculatorSavedInputsSupabase";
 
 type StepId = 1 | 2 | 3;
-
-const SAVED_INPUTS_KEY = "pg.calculators.savedInputs.v1";
-
-function storageKeyForType(propertyType: PropertyTypeId): string {
-  return `${SAVED_INPUTS_KEY}.${propertyType}`;
-}
 
 export function CalculatorsPage() {
   const navigate = useNavigate();
@@ -33,6 +29,13 @@ export function CalculatorsPage() {
   const [generateBusy, setGenerateBusy] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [generatedReportId, setGeneratedReportId] = useState<string | null>(null);
+  const [saveOpen, setSaveOpen] = useState(false);
+  const [saveLabel, setSaveLabel] = useState("");
+  const [saveBusy, setSaveBusy] = useState(false);
+  const [loadOpen, setLoadOpen] = useState(false);
+  const [loadBusy, setLoadBusy] = useState(false);
+  const [savedRows, setSavedRows] = useState<SavedCalculatorInput[]>([]);
+  const [savedError, setSavedError] = useState<string | null>(null);
 
   const selectedType = useMemo((): PropertyTypeDef | null => {
     if (!propertyType) return null;
@@ -64,27 +67,36 @@ export function CalculatorsPage() {
 
   const setAnswer = (key: string, value: string) => setAnswers((a) => ({ ...a, [key]: value }));
 
-  const loadSaved = () => {
+  const refreshSaved = async () => {
     if (!propertyType) return;
+    setSavedError(null);
+    setLoadBusy(true);
     try {
-      const raw = localStorage.getItem(storageKeyForType(propertyType));
-      if (!raw) return;
-      const parsed = JSON.parse(raw) as Record<string, unknown>;
-      const next: Record<string, string> = {};
-      for (const [k, v] of Object.entries(parsed)) next[k] = v == null ? "" : String(v);
-      setAnswers(next);
-    } catch {
-      window.alert("Saved inputs could not be loaded (corrupt data).");
+      setSavedRows(await listSavedCalculatorInputs(propertyType));
+    } catch (e: unknown) {
+      setSavedError(e instanceof Error ? e.message : "Failed to load saved inputs.");
+    } finally {
+      setLoadBusy(false);
     }
   };
 
-  const saveInputs = () => {
+  const openLoad = () => {
     if (!propertyType) return;
+    setLoadOpen(true);
+    void refreshSaved();
+  };
+
+  const confirmSave = async () => {
+    if (!propertyType) return;
+    setSaveBusy(true);
     try {
-      localStorage.setItem(storageKeyForType(propertyType), JSON.stringify(answers));
-      window.alert("Saved inputs.");
-    } catch {
-      window.alert("Could not save inputs (storage unavailable).");
+      await saveCalculatorInputs({ propertyType, label: saveLabel, answers });
+      setSaveOpen(false);
+      setSaveLabel("");
+    } catch (e: unknown) {
+      window.alert(e instanceof Error ? e.message : "Could not save inputs.");
+    } finally {
+      setSaveBusy(false);
     }
   };
 
@@ -266,10 +278,10 @@ export function CalculatorsPage() {
 
                     <div className="pg-calculators-actions-row">
                       <div className="pg-calculators-actions-row__left">
-                        <Button type="button" variant="secondary" onClick={loadSaved} disabled={!propertyType}>
+                        <Button type="button" variant="secondary" onClick={openLoad} disabled={!propertyType}>
                           Load Saved Input
                         </Button>
-                        <Button type="button" variant="secondary" onClick={saveInputs} disabled={!propertyType}>
+                        <Button type="button" variant="secondary" onClick={() => setSaveOpen(true)} disabled={!propertyType}>
                           Save Inputs
                         </Button>
                       </div>
@@ -401,6 +413,113 @@ export function CalculatorsPage() {
             </aside>
           </div>
         </AppPageSection>
+
+        <AppModal
+          open={saveOpen}
+          onOpenChange={setSaveOpen}
+          title="Save inputs"
+          description={propertyType ? `Save inputs for ${propertyType.replace(/-/g, " ")}.` : undefined}
+          footer={
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+              <Button type="button" variant="secondary" onClick={() => setSaveOpen(false)} disabled={saveBusy}>
+                Cancel
+              </Button>
+              <Button type="button" variant="primary" loading={saveBusy} onClick={() => void confirmSave()} disabled={!propertyType}>
+                Save
+              </Button>
+            </div>
+          }
+        >
+          <div style={{ display: "grid", gap: 12 }}>
+            <Field label="Label (optional)" help="Give this scenario a name to find it later.">
+              <Input value={saveLabel} onChange={(e) => setSaveLabel(e.target.value)} placeholder="e.g. Durban duplex draft" />
+            </Field>
+          </div>
+        </AppModal>
+
+        <AppModal
+          open={loadOpen}
+          onOpenChange={setLoadOpen}
+          title="Load saved inputs"
+          description="Select a saved scenario to load into the form."
+          footer={
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
+              <Button type="button" variant="secondary" onClick={() => void refreshSaved()} disabled={loadBusy || !propertyType}>
+                Refresh
+              </Button>
+              <Button type="button" variant="secondary" onClick={() => setLoadOpen(false)}>
+                Close
+              </Button>
+            </div>
+          }
+        >
+          {savedError ? (
+            <div className="pg-alert pg-alert-error" role="alert">
+              {savedError}
+            </div>
+          ) : null}
+          {loadBusy ? (
+            <div className="pg-muted">Loading…</div>
+          ) : savedRows.length ? (
+            <div style={{ display: "grid", gap: 10 }}>
+              {savedRows.map((r) => {
+                const when = r.createdAt ? new Date(r.createdAt).toLocaleString() : "—";
+                return (
+                  <div
+                    key={r.id}
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "1fr auto auto",
+                      gap: 10,
+                      alignItems: "center",
+                      padding: 10,
+                      borderRadius: 12,
+                      border: "1px solid color-mix(in srgb, var(--border) 82%, transparent)"
+                    }}
+                  >
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontWeight: 800, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {r.label || "Untitled"}
+                      </div>
+                      <div className="pg-muted" style={{ fontSize: 12 }}>
+                        {when}
+                      </div>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => {
+                        setAnswers(r.answers);
+                        setLoadOpen(false);
+                      }}
+                    >
+                      Load
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={async () => {
+                        if (!window.confirm("Delete this saved input?")) return;
+                        try {
+                          await deleteSavedCalculatorInput(r.id);
+                          await refreshSaved();
+                        } catch (e: unknown) {
+                          window.alert(e instanceof Error ? e.message : "Delete failed.");
+                        }
+                      }}
+                    >
+                      Delete
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="pg-muted">No saved inputs yet.</div>
+          )}
+        </AppModal>
       </AppPageContent>
     </AppListPage>
   );
