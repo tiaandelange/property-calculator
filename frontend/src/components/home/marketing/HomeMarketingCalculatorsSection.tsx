@@ -2,7 +2,6 @@ import { homepagePublicCalculators } from "../../../data/homepageMarketingConten
 import { HomeMarketingCalculatorsWizardPreview } from "./HomeMarketingCalculatorsWizardPreview";
 import { HomeMarketingConversionHeader } from "./HomeMarketingConversionHeader";
 import { HomeMarketingSection } from "./HomeMarketingSection";
-import { HomeMarketingSectionCta } from "./HomeMarketingSectionCta";
 
 export function HomeMarketingCalculatorsSection() {
   const content = homepagePublicCalculators;
@@ -36,7 +35,6 @@ export function HomeMarketingCalculatorsSection() {
 
       <p className="hm-calc-public-note">{content.publicHubNote}</p>
 
-      <HomeMarketingSectionCta primary={content.cta} secondary={content.secondaryCta} />
     </HomeMarketingSection>
   );
 }

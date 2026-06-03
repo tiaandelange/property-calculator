@@ -1,7 +1,6 @@
-import { homepageProblems, MARKETING_CTA_VIEW_PRICING } from "../../../data/homepageMarketingContent";
+import { homepageProblems } from "../../../data/homepageMarketingContent";
 import { HomeMarketingConversionHeader } from "./HomeMarketingConversionHeader";
 import { HomeMarketingSection } from "./HomeMarketingSection";
-import { HomeMarketingSectionCta } from "./HomeMarketingSectionCta";
 
 export function HomeMarketingProblemSection() {
   const content = homepageProblems;
@@ -25,7 +24,6 @@ export function HomeMarketingProblemSection() {
           </li>
         ))}
       </ul>
-      <HomeMarketingSectionCta primary={content.cta} secondary={MARKETING_CTA_VIEW_PRICING} />
     </HomeMarketingSection>
   );
 }

@@ -1,6 +1,5 @@
 import { homepageWhoItsFor } from "../../../data/homepageMarketingContent";
 import { HomeMarketingSection, HomeMarketingSectionHeader } from "./HomeMarketingSection";
-import { HomeMarketingSectionCta } from "./HomeMarketingSectionCta";
 
 export function HomeMarketingWhoItsFor() {
   const content = homepageWhoItsFor;
@@ -19,7 +18,6 @@ export function HomeMarketingWhoItsFor() {
       <p className="hm-who-not-for">
         <strong>Not for:</strong> {content.notFor}
       </p>
-      <HomeMarketingSectionCta primary={content.cta} secondary={content.secondaryCta} />
     </HomeMarketingSection>
   );
 }

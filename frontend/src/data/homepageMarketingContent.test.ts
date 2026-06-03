@@ -29,7 +29,7 @@ describe("homepageMarketingContent", () => {
   it("uses Join Free and starter signup for free-plan CTAs", () => {
     expect(homepageHero.primaryCta).toEqual(MARKETING_CTA_JOIN_FREE);
     expect(homepageFinalCta.primary).toEqual(MARKETING_CTA_JOIN_FREE);
-    expect(homepageInlineCta.default.primary).toEqual(MARKETING_CTA_JOIN_FREE);
+    expect(homepageInlineCta.afterPricing.primary).toEqual(MARKETING_CTA_JOIN_FREE);
     expect(homepagePricingPreviewPlans.find((p) => p.code === "starter")?.cta).toEqual(MARKETING_CTA_JOIN_FREE);
   });
 

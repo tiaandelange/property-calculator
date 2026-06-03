@@ -1,7 +1,6 @@
 import { homepageFeatureHighlights } from "../../../data/homepageMarketingContent";
 import { HomeMarketingConversionHeader } from "./HomeMarketingConversionHeader";
 import { HomeMarketingSection } from "./HomeMarketingSection";
-import { HomeMarketingSectionCta } from "./HomeMarketingSectionCta";
 import { MarketingStackedPreviewCarousel } from "./MarketingStackedPreviewCarousel";
 
 export function HomeMarketingFeatureHighlights() {
@@ -23,11 +22,6 @@ export function HomeMarketingFeatureHighlights() {
               <li key={item.title}>{item.body}</li>
             ))}
           </ul>
-          <HomeMarketingSectionCta
-            primary={content.primaryCta}
-            secondary={content.secondaryCta}
-            align="left"
-          />
         </div>
         <MarketingStackedPreviewCarousel />
       </div>

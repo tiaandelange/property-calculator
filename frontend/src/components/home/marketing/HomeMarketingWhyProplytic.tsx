@@ -2,7 +2,6 @@ import { homepageWhyProplytic } from "../../../data/homepageMarketingContent";
 import { AppIcon } from "../../icons/AppIcon";
 import type { IconName } from "../../icons/iconRegistry";
 import { HomeMarketingSection, HomeMarketingSectionHeader } from "./HomeMarketingSection";
-import { HomeMarketingSectionCta } from "./HomeMarketingSectionCta";
 
 export function HomeMarketingWhyProplytic() {
   const content = homepageWhyProplytic;
@@ -23,7 +22,6 @@ export function HomeMarketingWhyProplytic() {
           </li>
         ))}
       </ul>
-      <HomeMarketingSectionCta primary={content.cta} secondary={content.secondaryCta} />
     </HomeMarketingSection>
   );
 }

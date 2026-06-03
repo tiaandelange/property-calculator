@@ -2,7 +2,6 @@ import { homepageReports } from "../../../data/homepageMarketingContent";
 import { HomeMarketingConversionHeader } from "./HomeMarketingConversionHeader";
 import { HomeMarketingReportPreviewMock } from "./HomeMarketingReportPreviewMock";
 import { HomeMarketingSection } from "./HomeMarketingSection";
-import { HomeMarketingSectionCta } from "./HomeMarketingSectionCta";
 
 export function HomeMarketingReportsSection() {
   const content = homepageReports;
@@ -30,7 +29,6 @@ export function HomeMarketingReportsSection() {
         <HomeMarketingReportPreviewMock />
       </div>
 
-      <HomeMarketingSectionCta primary={content.primaryCta} secondary={content.secondaryCta} />
     </HomeMarketingSection>
   );
 }

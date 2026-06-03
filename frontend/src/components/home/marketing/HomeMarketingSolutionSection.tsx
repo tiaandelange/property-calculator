@@ -3,7 +3,6 @@ import type { IconName } from "../../icons/iconRegistry";
 import { homepagePillars } from "../../../data/homepageMarketingContent";
 import { HomeMarketingConversionHeader } from "./HomeMarketingConversionHeader";
 import { HomeMarketingSection } from "./HomeMarketingSection";
-import { HomeMarketingSectionCta } from "./HomeMarketingSectionCta";
 
 const PILLAR_ICONS: Record<string, IconName> = {
   connected: "portfolio",
@@ -39,7 +38,6 @@ export function HomeMarketingSolutionSection() {
           </li>
         ))}
       </ul>
-      <HomeMarketingSectionCta primary={content.primaryCta} secondary={content.secondaryCta} />
     </HomeMarketingSection>
   );
 }

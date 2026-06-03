@@ -8,7 +8,6 @@ import { AppIcon } from "../../icons/AppIcon";
 import { ButtonLink } from "../../ui/Button";
 import { HomeMarketingConversionHeader } from "./HomeMarketingConversionHeader";
 import { HomeMarketingSection } from "./HomeMarketingSection";
-import { HomeMarketingSectionCta } from "./HomeMarketingSectionCta";
 
 function PricingFeatureList({
   items,
@@ -128,7 +127,6 @@ export function HomeMarketingPricingPreview() {
         </div>
       </div>
 
-      <HomeMarketingSectionCta primary={content.signupCta} secondary={content.viewAllCta} />
     </HomeMarketingSection>
   );
 }

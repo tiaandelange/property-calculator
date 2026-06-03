@@ -132,15 +132,10 @@ export const homepageWhyProplytic = {
   secondaryCta: MARKETING_CTA_VIEW_PRICING
 } as const;
 
-/** Compact CTA band repeated after key sections. */
+/** Single mid-page CTA band (after pricing — high-intent moment). Hero + final CTA cover the rest. */
 export const homepageInlineCta = {
-  default: {
-    line: "Start free — connect your properties and see portfolio numbers in one place.",
-    primary: MARKETING_CTA_JOIN_FREE,
-    secondary: MARKETING_CTA_VIEW_PRICING
-  },
-  afterReports: {
-    line: "Ready to export your first investor report?",
+  afterPricing: {
+    line: "Start free on Starter — add properties and export investor reports when you need them.",
     primary: MARKETING_CTA_JOIN_FREE,
     secondary: MARKETING_CTA_VIEW_PRICING
   }

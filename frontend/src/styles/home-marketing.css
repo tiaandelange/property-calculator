@@ -2606,10 +2606,6 @@ body:has(.pg-main-marketing-home) .pg-home-site-header-inner.pg-container {
   margin-bottom: clamp(18px, 2.5vw, 24px);
 }
 
-.hm-features-spotlight__copy .hm-section-cta {
-  margin-top: 0;
-}
-
 /* Stacked product-preview carousel */
 .hm-stack-carousel {
   min-width: 0;
