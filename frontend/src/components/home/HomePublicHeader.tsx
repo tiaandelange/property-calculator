@@ -5,7 +5,12 @@ import {
   type CalculatorMegaMenuGroup,
   type CalculatorMegaMenuItem
 } from "../../data/calculatorMegaMenu";
-import { MARKETING_PRICING_HREF, MARKETING_SIGN_IN_HREF } from "../../data/homepageMarketingContent";
+import {
+  MARKETING_HEADER_JOIN_HREF,
+  MARKETING_HEADER_JOIN_LABEL,
+  MARKETING_PRICING_HREF,
+  MARKETING_SIGN_IN_HREF
+} from "../../data/homepageMarketingContent";
 import { CalculatorIconDisplay } from "../icons/CalculatorIconDisplay";
 import { HomeBrandWordmark } from "./HomeBrandWordmark";
 
@@ -256,7 +261,7 @@ export function HomePublicHeader() {
       </div>
     ));
 
-  const trialCtaClass = "pg-home-site-header-cta";
+  const joinCtaClass = "pg-home-site-header-cta";
   const signInClass = "pg-home-site-header-sign-in";
 
   const calculatorsHeroShell =
@@ -343,8 +348,8 @@ export function HomePublicHeader() {
             <Link to={MARKETING_SIGN_IN_HREF} className={signInClass}>
               Sign In
             </Link>
-            <Link to={MARKETING_PRICING_HREF} className={trialCtaClass}>
-              Start Free Trial
+            <Link to={MARKETING_HEADER_JOIN_HREF} className={joinCtaClass}>
+              {MARKETING_HEADER_JOIN_LABEL}
             </Link>
           </div>
 
@@ -441,8 +446,8 @@ export function HomePublicHeader() {
           <Link to={MARKETING_SIGN_IN_HREF} className={signInClass} onClick={closeDrawer}>
             Sign In
           </Link>
-          <Link to={MARKETING_PRICING_HREF} className={trialCtaClass} onClick={closeDrawer}>
-            Start Free Trial
+          <Link to={MARKETING_HEADER_JOIN_HREF} className={joinCtaClass} onClick={closeDrawer}>
+            {MARKETING_HEADER_JOIN_LABEL}
           </Link>
         </div>
       </div>

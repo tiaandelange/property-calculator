@@ -9,6 +9,7 @@ export function HomeMarketingFinalCta() {
         <h2 id="hm-final-cta-heading" className="hm-final-cta__title">
           {homepageFinalCta.headline}
         </h2>
+        <p className="hm-final-cta__lead">{homepageFinalCta.lead}</p>
         <div className="hm-final-cta__actions">
           <ButtonLink href={homepageFinalCta.primary.href} variant="primary" size="lg">
             {homepageFinalCta.primary.label}

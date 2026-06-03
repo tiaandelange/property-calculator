@@ -1,30 +1,35 @@
-import { AppIcon } from "../../icons/AppIcon";
 import { homepageFeatureHighlights } from "../../../data/homepageMarketingContent";
-import { HomeMarketingSection, HomeMarketingSectionHeader } from "./HomeMarketingSection";
-
-const FEATURE_ICONS = [
-  "portfolio",
-  "tenants",
-  "invoices",
-  "statements",
-  "expenses",
-  "calculators",
-  "pdf",
-  "activity"
-] as const;
+import { HomeMarketingConversionHeader } from "./HomeMarketingConversionHeader";
+import { HomeMarketingFeatureShowcase } from "./HomeMarketingFeatureShowcase";
+import { HomeMarketingSection } from "./HomeMarketingSection";
+import { HomeMarketingSectionCta } from "./HomeMarketingSectionCta";
 
 export function HomeMarketingFeatureHighlights() {
+  const content = homepageFeatureHighlights;
+
   return (
-    <HomeMarketingSection tone="muted">
-      <HomeMarketingSectionHeader title={homepageFeatureHighlights.title} align="left" />
-      <ul className="hm-card-grid hm-card-grid--3">
-        {homepageFeatureHighlights.items.map((label, i) => (
-          <li key={label} className="hm-feature-card">
-            <AppIcon name={FEATURE_ICONS[i] ?? "property"} size="md" className="hm-feature-card__icon" />
-            <span>{label}</span>
+    <HomeMarketingSection id="features" tone="muted" className="hm-section--features">
+      <HomeMarketingConversionHeader
+        eyebrow={content.eyebrow}
+        pain={content.pain}
+        title={content.title}
+        benefit={content.benefit}
+        align="left"
+      />
+      <ul className="hm-outcome-grid hm-conv-cards">
+        {content.outcomes.map((item) => (
+          <li key={item.title} className="hm-outcome-card">
+            <h3 className="hm-outcome-card__title">{item.title}</h3>
+            <p className="hm-outcome-card__body">{item.body}</p>
           </li>
         ))}
       </ul>
+      <HomeMarketingFeatureShowcase />
+      <HomeMarketingSectionCta
+        primary={content.primaryCta}
+        secondary={content.secondaryCta}
+        align="left"
+      />
     </HomeMarketingSection>
   );
 }

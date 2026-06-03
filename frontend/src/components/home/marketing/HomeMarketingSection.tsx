@@ -17,7 +17,9 @@ export function HomeMarketingSection({
 }: HomeMarketingSectionProps) {
   return (
     <Section id={id} className={`hm-section hm-section--${tone} ${className}`.trim()}>
-      <Container className="pg-container--marketing-wide">{children}</Container>
+      <Container className="pg-container--marketing-wide">
+        <div className="hm-section__inner">{children}</div>
+      </Container>
     </Section>
   );
 }

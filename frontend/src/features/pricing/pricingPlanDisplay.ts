@@ -1,4 +1,3 @@
-import { STARTER_POST_TRIAL_PRICE_LABEL } from "../../data/pricingPageContent";
 import type { SubscriptionPlanRecord } from "../../services/subscriptionPlansSupabase";
 
 export function formatPlanPrice(amount: number, currency = "ZAR"): string {
@@ -37,7 +36,7 @@ export function planPriceSubline(plan: SubscriptionPlanRecord): string | null {
       return `Then ${formatPlanPrice(plan.monthlyPrice, plan.currency)}`;
     }
     if (isFreePlan(plan)) {
-      return `14-day free trial, then ${STARTER_POST_TRIAL_PRICE_LABEL}`;
+      return "Always free — upgrade anytime";
     }
   }
   if (plan.trialDays > 0 && plan.monthlyPrice > 0) {
@@ -125,17 +124,23 @@ export function planCta(plan: SubscriptionPlanRecord): {
   external?: boolean;
 } {
   if (plan.code === "starter") {
-    return { label: "Sign Up", href: `/signup?plan=${plan.code}`, variant: "primary" };
+    return { label: "Join Free", href: `/signup?plan=${plan.code}`, variant: "primary" };
+  }
+  if (plan.code === "investor") {
+    return { label: "Choose Investor", href: `/signup?plan=${plan.code}`, variant: "primary" };
+  }
+  if (plan.code === "portfolio") {
+    return { label: "Choose Portfolio", href: `/signup?plan=${plan.code}`, variant: "primary" };
   }
   if (plan.code === "portfolio_pro") {
-    return { label: "Subscribe", href: `/signup?plan=${plan.code}`, variant: "primary" };
+    return { label: "Contact Sales", href: "/contact", variant: "primary" };
   }
-  return { label: "Subscribe", href: `/signup?plan=${plan.code}`, variant: "primary" };
+  return { label: "Choose plan", href: `/signup?plan=${plan.code}`, variant: "primary" };
 }
 
 export function planSecondaryCta(plan: SubscriptionPlanRecord): { label: string; href: string } | null {
   if (plan.code === "portfolio_pro") {
-    return { label: "Contact us", href: "/contact" };
+    return { label: "Request Quote", href: "/contact" };
   }
   return null;
 }
@@ -148,6 +153,12 @@ export function planDisplayName(code: string, plans: SubscriptionPlanRecord[]): 
   return plans.find((p) => p.code === code)?.name ?? null;
 }
 
+/** True when the plan config includes a time-limited trial before billing. */
+export function planHasTrialPeriod(plan: SubscriptionPlanRecord): boolean {
+  return plan.trialDays > 0;
+}
+
+/** @deprecated Use planHasTrialPeriod — starter is permanently free, not a trial. */
 export function starterShowsFreeTrial(plan: SubscriptionPlanRecord): boolean {
-  return plan.code === "starter" && (plan.trialDays > 0 || isFreePlan(plan));
+  return planHasTrialPeriod(plan);
 }

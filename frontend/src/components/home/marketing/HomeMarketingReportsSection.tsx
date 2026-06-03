@@ -1,31 +1,36 @@
 import { homepageReports } from "../../../data/homepageMarketingContent";
-import { ButtonLink } from "../../ui/Button";
+import { HomeMarketingConversionHeader } from "./HomeMarketingConversionHeader";
 import { HomeMarketingReportPreviewMock } from "./HomeMarketingReportPreviewMock";
-import { HomeMarketingSection, HomeMarketingSectionHeader } from "./HomeMarketingSection";
+import { HomeMarketingSection } from "./HomeMarketingSection";
+import { HomeMarketingSectionCta } from "./HomeMarketingSectionCta";
 
 export function HomeMarketingReportsSection() {
+  const content = homepageReports;
+
   return (
     <HomeMarketingSection id="reports" className="hm-section--reports">
-      <HomeMarketingSectionHeader title={homepageReports.title} lead={homepageReports.lead} align="center" />
+      <HomeMarketingConversionHeader
+        eyebrow={content.eyebrow}
+        pain={content.pain}
+        title={content.title}
+        benefit={content.benefit}
+      />
 
       <div className="hm-reports-spotlight">
         <div className="hm-reports-spotlight__copy">
-          <ul className="hm-reports-features">
-            {homepageReports.features.map((item) => (
-              <li key={item}>{item}</li>
+          <ul className="hm-outcome-grid hm-outcome-grid--stacked hm-conv-cards">
+            {content.outcomes.map((item) => (
+              <li key={item.title} className="hm-outcome-card hm-outcome-card--compact">
+                <h3 className="hm-outcome-card__title">{item.title}</h3>
+                <p className="hm-outcome-card__body">{item.body}</p>
+              </li>
             ))}
           </ul>
-          <div className="hm-reports-spotlight__ctas">
-            <ButtonLink href={homepageReports.primaryCta.href} variant="primary">
-              {homepageReports.primaryCta.label}
-            </ButtonLink>
-            <ButtonLink href={homepageReports.secondaryCta.href} variant="secondary">
-              {homepageReports.secondaryCta.label}
-            </ButtonLink>
-          </div>
         </div>
         <HomeMarketingReportPreviewMock />
       </div>
+
+      <HomeMarketingSectionCta primary={content.primaryCta} secondary={content.secondaryCta} />
     </HomeMarketingSection>
   );
 }

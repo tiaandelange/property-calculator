@@ -54,7 +54,7 @@ describe("PricingPage QA", () => {
     );
 
     expect(await screen.findByRole("heading", { name: /frequently asked questions/i })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /start free trial/i })).toHaveAttribute("href", "/signup?plan=starter");
+    expect(screen.getByRole("link", { name: /join free/i })).toHaveAttribute("href", "/signup?plan=starter");
     expect(screen.getByRole("heading", { name: /which plan should i choose/i })).toBeInTheDocument();
   });
 });

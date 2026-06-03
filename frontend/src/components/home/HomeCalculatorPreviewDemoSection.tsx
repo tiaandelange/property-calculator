@@ -104,8 +104,8 @@ export function HomeCalculatorPreviewDemoSection() {
               Whether you are buying your first home or building a property portfolio, our tools help you understand
               the numbers before you take the next step.
             </p>
-            <ButtonLink href="/pricing" variant="primary" className="pg-home-calc-demo-primary-cta">
-              Get started free
+            <ButtonLink href="/signup?plan=starter" variant="primary" className="pg-home-calc-demo-primary-cta">
+              Join Free
               <CtaArrowIcon />
             </ButtonLink>
           </div>

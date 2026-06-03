@@ -1,6 +1,5 @@
-import { STARTER_POST_TRIAL_PRICE_LABEL } from "../../data/pricingPageContent";
 import type { SubscriptionPlanRecord } from "../../services/subscriptionPlansSupabase";
-import { formatPlanPrice, starterShowsFreeTrial } from "./pricingPlanDisplay";
+import { formatPlanPrice, planHasTrialPeriod } from "./pricingPlanDisplay";
 
 export const PRICING_PLAN_CODES = ["starter", "investor", "portfolio", "portfolio_pro"] as const;
 
@@ -33,8 +32,7 @@ function plansByCode(plans: SubscriptionPlanRecord[]): Partial<Record<PricingPla
 
 function trialCell(plan?: SubscriptionPlanRecord): ComparisonCellValue {
   if (!plan) return no;
-  if (starterShowsFreeTrial(plan)) return yes;
-  if (plan.trialDays > 0) return yes;
+  if (planHasTrialPeriod(plan)) return yes;
   return no;
 }
 
@@ -53,7 +51,7 @@ function propertyLimitText(plan?: SubscriptionPlanRecord): string {
 function monthlyPriceCell(plan?: SubscriptionPlanRecord): ComparisonCellValue {
   if (!plan) return label("—");
   if (plan.code === "starter" && plan.monthlyPrice === 0) {
-    return label(`FREE, then ${STARTER_POST_TRIAL_PRICE_LABEL}`);
+    return label("FREE");
   }
   if (plan.trialDays > 0 && plan.monthlyPrice > 0) {
     return label(`FREE trial, then ${formatPlanPrice(plan.monthlyPrice, plan.currency)}`);

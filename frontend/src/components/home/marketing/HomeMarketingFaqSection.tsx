@@ -1,16 +1,23 @@
 import { useId, useState } from "react";
-import { homepageFaq } from "../../../data/homepageMarketingContent";
-import { HomeMarketingSection, HomeMarketingSectionHeader } from "./HomeMarketingSection";
+import { homepageFaq, MARKETING_CTA_JOIN_FREE, MARKETING_CTA_VIEW_PRICING } from "../../../data/homepageMarketingContent";
+import { HomeMarketingConversionHeader } from "./HomeMarketingConversionHeader";
+import { HomeMarketingSection } from "./HomeMarketingSection";
+import { HomeMarketingSectionCta } from "./HomeMarketingSectionCta";
 
 export function HomeMarketingFaqSection() {
+  const content = homepageFaq;
   const baseId = useId();
   const [openIndex, setOpenIndex] = useState<number | null>(0);
 
   return (
     <HomeMarketingSection id="faq" className="hm-section--faq">
-      <HomeMarketingSectionHeader title="Frequently asked questions" align="center" />
+      <HomeMarketingConversionHeader
+        eyebrow={content.eyebrow}
+        title={content.title}
+        benefit={content.lead}
+      />
       <dl className="hm-faq">
-        {homepageFaq.map((item, i) => {
+        {content.items.map((item, i) => {
           const open = openIndex === i;
           const qId = `${baseId}-q-${i}`;
           const aId = `${baseId}-a-${i}`;
@@ -36,6 +43,7 @@ export function HomeMarketingFaqSection() {
           );
         })}
       </dl>
+      <HomeMarketingSectionCta primary={MARKETING_CTA_JOIN_FREE} secondary={MARKETING_CTA_VIEW_PRICING} />
     </HomeMarketingSection>
   );
 }

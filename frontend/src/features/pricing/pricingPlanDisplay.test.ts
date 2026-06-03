@@ -8,6 +8,7 @@ import {
   planPriceSubline,
   planReportLimitLabel,
   planSecondaryCta,
+  planHasTrialPeriod,
   starterShowsFreeTrial
 } from "./pricingPlanDisplay";
 
@@ -27,11 +28,11 @@ describe("pricingPlanDisplay QA", () => {
     ]);
   });
 
-  it("shows starter as FREE with trial subline", () => {
+  it("shows starter as FREE without a trial period", () => {
     expect(planPriceHeadline(plan("starter"))).toBe("FREE");
-    expect(planPriceSubline(plan("starter"))).toContain("14-day free trial");
-    expect(planPriceSubline(plan("starter"))).toContain("R99/month");
-    expect(starterShowsFreeTrial(plan("starter"))).toBe(true);
+    expect(planPriceSubline(plan("starter"))).toContain("Always free");
+    expect(planHasTrialPeriod(plan("starter"))).toBe(false);
+    expect(starterShowsFreeTrial(plan("starter"))).toBe(false);
   });
 
   it("shows investor pricing and card features", () => {
@@ -54,25 +55,25 @@ describe("pricingPlanDisplay QA", () => {
     expect(planCardFeatureLines(plan("portfolio_pro"))).toContain("Up to 75 properties");
   });
 
-  it("routes signup CTAs with plan query params", () => {
+  it("routes plan CTAs to signup or contact", () => {
     expect(planCta(plan("starter"))).toMatchObject({
       href: "/signup?plan=starter",
-      label: "Sign Up"
+      label: "Join Free"
     });
     expect(planCta(plan("investor"))).toMatchObject({
       href: "/signup?plan=investor",
-      label: "Subscribe"
+      label: "Choose Investor"
     });
     expect(planCta(plan("portfolio"))).toMatchObject({
       href: "/signup?plan=portfolio",
-      label: "Subscribe"
+      label: "Choose Portfolio"
     });
     expect(planCta(plan("portfolio_pro"))).toMatchObject({
-      href: "/signup?plan=portfolio_pro",
-      label: "Subscribe"
+      href: "/contact",
+      label: "Contact Sales"
     });
     expect(planSecondaryCta(plan("portfolio_pro"))).toEqual({
-      label: "Contact us",
+      label: "Request Quote",
       href: "/contact"
     });
   });

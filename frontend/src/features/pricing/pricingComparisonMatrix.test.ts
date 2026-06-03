@@ -27,10 +27,11 @@ describe("pricingComparisonMatrix QA", () => {
     expect(calculators?.values.investor).toEqual({ kind: "yes" });
   });
 
-  it("shows starter free trial on comparison matrix", () => {
+  it("shows free trial only on tiers with trial_days", () => {
     const rows = buildPricingComparisonRows(FALLBACK_SUBSCRIPTION_PLANS);
     const trial = rows.find((r) => r.id === "free_trial");
-    expect(trial?.values.starter).toEqual({ kind: "yes" });
+    expect(trial?.values.starter).toEqual({ kind: "no" });
+    expect(trial?.values.portfolio).toEqual({ kind: "yes" });
   });
 
   it("shows starter report limit as 3 per month", () => {

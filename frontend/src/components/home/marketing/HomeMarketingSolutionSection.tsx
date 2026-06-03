@@ -1,23 +1,36 @@
 import { AppIcon } from "../../icons/AppIcon";
+import type { IconName } from "../../icons/iconRegistry";
 import { homepagePillars } from "../../../data/homepageMarketingContent";
-import { HomeMarketingSection, HomeMarketingSectionHeader } from "./HomeMarketingSection";
+import { HomeMarketingConversionHeader } from "./HomeMarketingConversionHeader";
+import { HomeMarketingSection } from "./HomeMarketingSection";
+import { HomeMarketingSectionCta } from "./HomeMarketingSectionCta";
 
-const PILLAR_ICONS = {
-  analytics: "portfolio",
-  management: "leases",
-  calculators: "tools",
-  reports: "reports"
-} as const;
+const PILLAR_ICONS: Record<string, IconName> = {
+  connected: "portfolio",
+  portfolio: "activity",
+  admin: "leases",
+  decisions: "reports"
+};
 
 export function HomeMarketingSolutionSection() {
+  const content = homepagePillars;
+
   return (
-    <HomeMarketingSection id="features">
-      <HomeMarketingSectionHeader title={homepagePillars.title} lead={homepagePillars.lead} />
-      <ul className="hm-card-grid hm-card-grid--4">
-        {homepagePillars.items.map((item) => (
-          <li key={item.id} className="hm-pillar-card">
+    <HomeMarketingSection id="solution" className="hm-section--solution">
+      <HomeMarketingConversionHeader
+        eyebrow={content.eyebrow}
+        pain={content.pain}
+        title={content.title}
+        benefit={content.benefit}
+      />
+      <ul className="hm-card-grid hm-card-grid--4 hm-pillar-grid hm-conv-cards">
+        {content.items.map((item) => (
+          <li
+            key={item.id}
+            className={`hm-pillar-card${"emphasis" in item && item.emphasis ? " hm-pillar-card--emphasis" : ""}`}
+          >
             <AppIcon
-              name={PILLAR_ICONS[item.id as keyof typeof PILLAR_ICONS] ?? "property"}
+              name={PILLAR_ICONS[item.id] ?? "property"}
               size="lg"
               className="hm-pillar-card__icon"
             />
@@ -26,6 +39,7 @@ export function HomeMarketingSolutionSection() {
           </li>
         ))}
       </ul>
+      <HomeMarketingSectionCta primary={content.primaryCta} secondary={content.secondaryCta} />
     </HomeMarketingSection>
   );
 }

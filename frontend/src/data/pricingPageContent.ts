@@ -42,7 +42,7 @@ export const pricingFaq = [
   },
   {
     q: "Can I start without paying?",
-    a: "Yes. The Starter plan includes a 14-day free trial, then continues at R99/month unless you change plans. Online billing is not connected yet — sign up to get started."
+    a: "Yes. The Starter plan is free with up to 3 properties and a monthly report allowance. Online billing is not connected yet — sign up to get started."
   },
   {
     q: "Does Proplytic collect rent or process payments?",
@@ -68,10 +68,7 @@ export const pricingFaq = [
 
 export const pricingFinalCta = {
   title: "Start analysing your portfolio with better numbers.",
-  lead: "Try Proplytic free, then choose the plan that fits your portfolio.",
-  primary: { label: "Start free trial", href: "/signup?plan=starter" },
+  lead: "Join free on Starter, then choose the plan that fits your portfolio.",
+  primary: { label: "Join Free", href: "/signup?plan=starter" },
   secondary: { label: "Compare plans", href: "#pricing-compare" }
 } as const;
-
-/** Display-only post-trial price when Starter is stored as free in plan config. */
-export const STARTER_POST_TRIAL_PRICE_LABEL = "R99/month";

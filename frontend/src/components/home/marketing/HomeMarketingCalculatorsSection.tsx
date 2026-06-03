@@ -1,54 +1,42 @@
-import { Link } from "react-router-dom";
-import { INVESTMENT_CALCULATOR_PATH } from "../../../constants/investmentCalculatorPath";
-import { PROPERTY_TYPES } from "../../../data/calculatorPropertyTypes";
-import { homepageCalculators } from "../../../data/homepageMarketingContent";
-import { AppIcon } from "../../icons/AppIcon";
-import { ButtonLink } from "../../ui/Button";
-import { HomeMarketingSection, HomeMarketingSectionHeader } from "./HomeMarketingSection";
+import { homepagePublicCalculators } from "../../../data/homepageMarketingContent";
+import { HomeMarketingCalculatorsWizardPreview } from "./HomeMarketingCalculatorsWizardPreview";
+import { HomeMarketingConversionHeader } from "./HomeMarketingConversionHeader";
+import { HomeMarketingSection } from "./HomeMarketingSection";
+import { HomeMarketingSectionCta } from "./HomeMarketingSectionCta";
 
 export function HomeMarketingCalculatorsSection() {
-  return (
-    <HomeMarketingSection id="calculators" tone="muted" className="hm-section--calculators">
-      <HomeMarketingSectionHeader title={homepageCalculators.title} lead={homepageCalculators.lead} />
+  const content = homepagePublicCalculators;
 
-      <ol className="hm-calc-flow" aria-label="How Proplytic calculators work">
-        {homepageCalculators.flowSteps.map((step) => (
-          <li key={step.step} className="hm-calc-flow__step">
-            <span className="hm-calc-flow__num" aria-hidden>
-              {step.step}
+  return (
+    <HomeMarketingSection id="calculators" className="hm-section--calculators">
+      <HomeMarketingConversionHeader
+        eyebrow={content.eyebrow}
+        pain={content.pain}
+        title={content.title}
+        benefit={content.benefit}
+      />
+
+      <p className="hm-calc-logic-note">{content.logicNote}</p>
+
+      <ol className="hm-calc-steps" aria-label="How Proplytic calculators work">
+        {content.steps.map((step) => (
+          <li key={step.number} className="hm-calc-steps__item">
+            <span className="hm-calc-steps__num" aria-hidden>
+              {step.number}
             </span>
-            <div className="hm-calc-flow__body">
-              <h3 className="hm-calc-flow__title">{step.title}</h3>
-              <p className="hm-calc-flow__detail">{step.detail}</p>
+            <div className="hm-calc-steps__body">
+              <h3 className="hm-calc-steps__title">{step.title}</h3>
+              <p className="hm-calc-steps__detail">{step.detail}</p>
             </div>
           </li>
         ))}
       </ol>
 
-      <ul className="hm-type-grid hm-type-grid--chips" aria-label="Supported property types">
-        {PROPERTY_TYPES.map((pt) => (
-          <li key={pt.propertyType}>
-            <Link to={INVESTMENT_CALCULATOR_PATH} className="hm-type-card hm-type-card--chip">
-              <AppIcon name={pt.icon} size="sm" className="hm-type-card__icon" />
-              <span className="hm-type-card__label">{formatPropertyTypeLabel(pt.label)}</span>
-            </Link>
-          </li>
-        ))}
-      </ul>
+      <HomeMarketingCalculatorsWizardPreview />
 
-      <div className="hm-section-cta">
-        <ButtonLink href={homepageCalculators.cta.href} variant="primary">
-          {homepageCalculators.cta.label}
-        </ButtonLink>
-      </div>
+      <p className="hm-calc-public-note">{content.publicHubNote}</p>
+
+      <HomeMarketingSectionCta primary={content.cta} secondary={content.secondaryCta} />
     </HomeMarketingSection>
   );
-}
-
-/** Display label aligned with homepage marketing spec. */
-function formatPropertyTypeLabel(label: string): string {
-  if (label === "Airbnb / Short Term Rental") {
-    return "Airbnb / Short-Term Rental";
-  }
-  return label;
 }
