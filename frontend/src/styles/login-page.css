@@ -8,7 +8,8 @@
   background: var(--background);
 }
 
-.pg-main--auth-focus {
+/* Beat global `.pg-main { padding: 96px 0 40px }` (defined later in global.css) */
+main.pg-main.pg-main--auth-focus {
   padding: 0;
   margin: 0;
   max-width: none;
