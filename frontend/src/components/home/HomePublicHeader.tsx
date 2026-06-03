@@ -176,6 +176,7 @@ export function HomePublicHeader() {
         </NavLink>
       );
     }
+    if (item.kind !== "hash") return null;
     const to = `/#${item.hash}`;
     const active = isHashActive(item.hash);
     return (
