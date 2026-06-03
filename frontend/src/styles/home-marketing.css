@@ -1764,6 +1764,7 @@ body:has(.pg-main-marketing-home) .pg-home-site-header-inner.pg-container {
 .hm-section__inner > .hm-calc-public-note,
 .hm-section__inner > .hm-calc-wizard-preview,
 .hm-section__inner > .hm-reports-spotlight,
+.hm-section__inner > .hm-features-spotlight,
 .hm-section__inner > .hm-split,
 .hm-section__inner > .hm-faq,
 .hm-section__inner > .hm-section-cta {
@@ -2581,6 +2582,320 @@ body:has(.pg-main-marketing-home) .pg-home-site-header-inner.pg-container {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
+}
+
+/* Features section — copy + stacked preview carousel */
+.hm-features-spotlight {
+  display: grid;
+  grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
+  gap: clamp(24px, 3.5vw, 40px);
+  align-items: center;
+  width: 100%;
+  max-width: 100%;
+}
+
+.hm-features-spotlight__copy {
+  min-width: 0;
+}
+
+.hm-features-spotlight__copy .hm-conv-header {
+  margin-bottom: clamp(14px, 2vw, 20px);
+}
+
+.hm-features-spotlight__copy .hm-reports-features {
+  margin-bottom: clamp(18px, 2.5vw, 24px);
+}
+
+.hm-features-spotlight__copy .hm-section-cta {
+  margin-top: 0;
+}
+
+/* Stacked product-preview carousel */
+.hm-stack-carousel {
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+}
+
+.hm-stack-carousel__sr-title {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.hm-stack-carousel__stage-wrap {
+  position: relative;
+  width: 100%;
+  max-width: 100%;
+  margin: 0 auto;
+}
+
+.hm-stack-carousel__glow {
+  position: absolute;
+  inset: 8% 4% 0;
+  z-index: 0;
+  pointer-events: none;
+  border-radius: 32px;
+  background: radial-gradient(
+    68% 72% at 42% 38%,
+    color-mix(in srgb, var(--primary) 22%, transparent),
+    transparent 72%
+  );
+  filter: blur(18px);
+  opacity: 0.9;
+}
+
+.hm-stack-carousel__stage {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 100%;
+  min-height: clamp(360px, 52vw, 440px);
+  padding: 0 clamp(0px, 2vw, 12px) clamp(28px, 4vw, 40px) 0;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.hm-stack-carousel__card {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: calc(100% - clamp(20px, 4vw, 36px));
+  max-width: 100%;
+  margin: 0;
+  border-radius: 22px;
+  border: 1px solid var(--hm-card-border);
+  background: var(--surface);
+  box-shadow:
+    var(--hm-card-shadow),
+    0 20px 44px color-mix(in srgb, var(--primary) 10%, transparent);
+  overflow: hidden;
+  transform-origin: top left;
+  transition:
+    transform 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+    filter 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform, opacity, filter;
+}
+
+.hm-stack-carousel__card--reduced-motion {
+  transition: none;
+}
+
+.hm-stack-carousel__card--active {
+  z-index: 30;
+  transform: translate3d(0, 0, 0) scale(1);
+  opacity: 1;
+  filter: blur(0);
+  pointer-events: auto;
+}
+
+.hm-stack-carousel__card--next1 {
+  z-index: 20;
+  transform: translate3d(14px, 14px, 0) scale(0.965);
+  opacity: 0.68;
+  filter: blur(2.5px);
+  pointer-events: none;
+}
+
+.hm-stack-carousel__card--next2 {
+  z-index: 10;
+  transform: translate3d(28px, 28px, 0) scale(0.93);
+  opacity: 0.42;
+  filter: blur(5px);
+  pointer-events: none;
+}
+
+.hm-stack-carousel__card--hidden {
+  z-index: 0;
+  transform: translate3d(40px, 40px, 0) scale(0.9);
+  opacity: 0;
+  filter: blur(8px);
+  pointer-events: none;
+}
+
+.hm-stack-carousel__card-surface {
+  min-width: 0;
+  max-height: clamp(340px, 48vw, 420px);
+  overflow: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.hm-stack-carousel__card-surface .hm-module-preview,
+.hm-stack-carousel__card-surface .hm-report-preview {
+  margin: 0;
+}
+
+.hm-stack-carousel__card-surface .hm-app-preview__frame,
+.hm-stack-carousel__card-surface .hm-report-preview__workspace {
+  border: none;
+  box-shadow: none;
+  border-radius: 0;
+}
+
+.hm-stack-carousel__controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin-top: 14px;
+  flex-wrap: wrap;
+}
+
+.hm-stack-carousel__nav-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  border: 1px solid var(--border-soft);
+  background: var(--surface);
+  color: var(--primary);
+  cursor: pointer;
+  box-shadow: var(--hm-card-shadow);
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.hm-stack-carousel__nav-btn:hover {
+  background: var(--primary-soft);
+  border-color: color-mix(in srgb, var(--primary) 28%, var(--border-soft));
+}
+
+.hm-stack-carousel__nav-btn:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.hm-stack-carousel__nav-btn:active {
+  transform: scale(0.97);
+}
+
+.hm-stack-carousel__dots {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  max-width: min(100%, 220px);
+}
+
+.hm-stack-carousel__dot {
+  width: 8px;
+  height: 8px;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--primary) 22%, var(--border-soft));
+  cursor: pointer;
+  transition:
+    width 0.25s ease,
+    background 0.25s ease;
+}
+
+.hm-stack-carousel__dot--active {
+  width: 22px;
+  background: var(--primary);
+}
+
+.hm-stack-carousel__dot:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.hm-stack-carousel__caption {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin: 10px 0 0;
+  font-size: var(--type-sm);
+  color: var(--text-secondary);
+}
+
+.hm-stack-carousel__caption-label {
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.hm-stack-carousel__caption-meta {
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+@media (max-width: 960px) {
+  .hm-features-spotlight {
+    grid-template-columns: 1fr;
+    align-items: start;
+    gap: clamp(20px, 4vw, 28px);
+  }
+
+  .hm-stack-carousel__stage {
+    min-height: clamp(320px, 88vw, 400px);
+    padding-right: clamp(16px, 5vw, 28px);
+    padding-bottom: clamp(24px, 6vw, 36px);
+  }
+
+  .hm-stack-carousel__card {
+    width: calc(100% - clamp(16px, 5vw, 28px));
+  }
+
+  .hm-stack-carousel__card--next1 {
+    transform: translate3d(10px, 10px, 0) scale(0.97);
+  }
+
+  .hm-stack-carousel__card--next2 {
+    transform: translate3d(20px, 20px, 0) scale(0.94);
+  }
+
+  .hm-stack-carousel__card--hidden {
+    transform: translate3d(30px, 30px, 0) scale(0.91);
+  }
+}
+
+@media (max-width: 520px) {
+  .hm-features-spotlight__copy .hm-reports-features {
+    grid-template-columns: 1fr;
+  }
+
+  .hm-features-spotlight__copy .hm-section-cta {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .hm-features-spotlight__copy .hm-section-cta .pg-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .hm-stack-carousel__controls {
+    gap: 10px;
+  }
+
+  .hm-stack-carousel__nav-btn {
+    width: 48px;
+    height: 48px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hm-stack-carousel__card {
+    transition: none;
+  }
+
+  .hm-stack-carousel__glow {
+    filter: none;
+  }
 }
 
 /* Investment report export preview */
