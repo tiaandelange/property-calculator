@@ -1,11 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { FALLBACK_SUBSCRIPTION_PLANS } from "../../services/subscriptionPlansSupabase";
 import {
+  planBestFor,
+  planCardFeatureLines,
   planCta,
-  planFeatureBullets,
   planPriceHeadline,
+  planPriceSubline,
   planReportLimitLabel,
-  planSecondaryCta
+  planSecondaryCta,
+  starterShowsFreeTrial
 } from "./pricingPlanDisplay";
 
 function plan(code: string) {
@@ -24,36 +27,37 @@ describe("pricingPlanDisplay QA", () => {
     ]);
   });
 
-  it("shows starter as free with monthly report limit", () => {
-    expect(planPriceHeadline(plan("starter"))).toBe("Free");
-    expect(planReportLimitLabel(plan("starter"))).toBe("3 investment reports per month");
-    expect(plan("starter").monthlyPrice).toBe(0);
+  it("shows starter as FREE with trial subline", () => {
+    expect(planPriceHeadline(plan("starter"))).toBe("FREE");
+    expect(planPriceSubline(plan("starter"))).toContain("14-day free trial");
+    expect(planPriceSubline(plan("starter"))).toContain("R99/month");
+    expect(starterShowsFreeTrial(plan("starter"))).toBe(true);
   });
 
-  it("shows investor pricing and feature bullets", () => {
+  it("shows investor pricing and card features", () => {
     expect(planPriceHeadline(plan("investor"))).toBe("R299/month");
-    expect(planFeatureBullets(plan("investor"))).toEqual([
-      "Up to 10 properties",
-      "10 investment reports per month",
-      "Calculators + management software"
-    ]);
+    expect(planBestFor(plan("investor"))).toContain("owner-managers");
+    expect(planCardFeatureLines(plan("investor"))).toContain("Up to 10 properties");
+    expect(planCardFeatureLines(plan("investor"))).toContain("10 investment reports");
   });
 
   it("shows portfolio pricing and unlimited reports", () => {
     expect(planPriceHeadline(plan("portfolio"))).toContain("R599/month");
-    expect(planFeatureBullets(plan("portfolio"))).toContain("Up to 30 properties");
-    expect(planFeatureBullets(plan("portfolio"))).toContain("Unlimited reports");
+    expect(planCardFeatureLines(plan("portfolio"))).toContain("Up to 30 properties");
+    expect(planCardFeatureLines(plan("portfolio"))).toContain("Unlimited investment reports");
+    expect(planReportLimitLabel(plan("portfolio"))).toBe("Unlimited reports");
   });
 
-  it("shows portfolio pro pricing with contact option", () => {
-    expect(planPriceHeadline(plan("portfolio_pro"))).toBe("R999/month · or contact us");
-    expect(planFeatureBullets(plan("portfolio_pro"))).toContain("Up to 75 properties");
+  it("shows portfolio pro pricing with contact subline", () => {
+    expect(planPriceHeadline(plan("portfolio_pro"))).toBe("R999/month");
+    expect(planPriceSubline(plan("portfolio_pro"))).toContain("contact");
+    expect(planCardFeatureLines(plan("portfolio_pro"))).toContain("Up to 75 properties");
   });
 
   it("routes signup CTAs with plan query params", () => {
     expect(planCta(plan("starter"))).toMatchObject({
       href: "/signup?plan=starter",
-      label: "Get started free"
+      label: "Sign Up"
     });
     expect(planCta(plan("investor"))).toMatchObject({
       href: "/signup?plan=investor",
@@ -64,12 +68,12 @@ describe("pricingPlanDisplay QA", () => {
       label: "Subscribe"
     });
     expect(planCta(plan("portfolio_pro"))).toMatchObject({
-      href: "/contact",
-      label: "Contact us"
+      href: "/signup?plan=portfolio_pro",
+      label: "Subscribe"
     });
     expect(planSecondaryCta(plan("portfolio_pro"))).toEqual({
-      label: "Subscribe online",
-      href: "/signup?plan=portfolio_pro"
+      label: "Contact us",
+      href: "/contact"
     });
   });
 });

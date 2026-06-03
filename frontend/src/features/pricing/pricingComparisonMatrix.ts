@@ -1,5 +1,6 @@
+import { STARTER_POST_TRIAL_PRICE_LABEL } from "../../data/pricingPageContent";
 import type { SubscriptionPlanRecord } from "../../services/subscriptionPlansSupabase";
-import { formatPlanPrice, planPriceHeadline } from "./pricingPlanDisplay";
+import { formatPlanPrice, starterShowsFreeTrial } from "./pricingPlanDisplay";
 
 export const PRICING_PLAN_CODES = ["starter", "investor", "portfolio", "portfolio_pro"] as const;
 
@@ -31,8 +32,10 @@ function plansByCode(plans: SubscriptionPlanRecord[]): Partial<Record<PricingPla
 }
 
 function trialCell(plan?: SubscriptionPlanRecord): ComparisonCellValue {
-  if (!plan || plan.trialDays <= 0) return no;
-  return yes;
+  if (!plan) return no;
+  if (starterShowsFreeTrial(plan)) return yes;
+  if (plan.trialDays > 0) return yes;
+  return no;
 }
 
 function reportLimitText(plan?: SubscriptionPlanRecord): string {
@@ -44,10 +47,33 @@ function reportLimitText(plan?: SubscriptionPlanRecord): string {
 function propertyLimitText(plan?: SubscriptionPlanRecord): string {
   if (!plan) return "—";
   if (plan.propertyLimit == null) return "Unlimited";
-  return `Up to ${plan.propertyLimit} properties`;
+  return String(plan.propertyLimit);
 }
 
-/** Full feature matrix for the pricing comparison table (20 feature rows + dynamic price/limits). */
+function monthlyPriceCell(plan?: SubscriptionPlanRecord): ComparisonCellValue {
+  if (!plan) return label("—");
+  if (plan.code === "starter" && plan.monthlyPrice === 0) {
+    return label(`FREE, then ${STARTER_POST_TRIAL_PRICE_LABEL}`);
+  }
+  if (plan.trialDays > 0 && plan.monthlyPrice > 0) {
+    return label(`FREE trial, then ${formatPlanPrice(plan.monthlyPrice, plan.currency)}`);
+  }
+  if (plan.code === "portfolio_pro") {
+    return label(`${formatPlanPrice(plan.monthlyPrice, plan.currency)} or contact us`);
+  }
+  return label(formatPlanPrice(plan.monthlyPrice, plan.currency));
+}
+
+function tier(
+  starter: ComparisonCellValue,
+  investor: ComparisonCellValue,
+  portfolio: ComparisonCellValue,
+  portfolioPro: ComparisonCellValue
+): Record<PricingPlanCode, ComparisonCellValue> {
+  return { starter, investor, portfolio, portfolio_pro: portfolioPro };
+}
+
+/** Full feature matrix for the pricing comparison table. */
 export function buildPricingComparisonRows(plans: SubscriptionPlanRecord[]): ComparisonRow[] {
   const byCode = plansByCode(plans);
   const starter = byCode.starter;
@@ -55,19 +81,19 @@ export function buildPricingComparisonRows(plans: SubscriptionPlanRecord[]): Com
   const portfolio = byCode.portfolio;
   const portfolioPro = byCode.portfolio_pro;
 
+  const basic = label("Basic");
+  const limited = label("Limited");
+  const advanced = label("Advanced");
+
   return [
     {
       id: "monthly_price",
       label: "Monthly price",
       values: {
-        starter: label(starter ? planPriceHeadline(starter) : "Free"),
-        investor: label(investor ? formatPlanPrice(investor.monthlyPrice, investor.currency) : "R299/month"),
-        portfolio: label(portfolio ? formatPlanPrice(portfolio.monthlyPrice, portfolio.currency) : "R599/month"),
-        portfolio_pro: label(
-          portfolioPro
-            ? `${formatPlanPrice(portfolioPro.monthlyPrice, portfolioPro.currency)} or Contact us`
-            : "R999/month or Contact us"
-        )
+        starter: monthlyPriceCell(starter),
+        investor: monthlyPriceCell(investor),
+        portfolio: monthlyPriceCell(portfolio),
+        portfolio_pro: monthlyPriceCell(portfolioPro)
       }
     },
     {
@@ -81,184 +107,119 @@ export function buildPricingComparisonRows(plans: SubscriptionPlanRecord[]): Com
       }
     },
     {
-      id: "analytics_dashboard",
-      label: "Property analytics dashboard",
-      values: {
-        starter: label("Basic"),
-        investor: yes,
-        portfolio: yes,
-        portfolio_pro: yes
-      }
+      id: "property_limit",
+      label: "Property limit",
+      values: tier(
+        label(propertyLimitText(starter)),
+        label(propertyLimitText(investor)),
+        label(propertyLimitText(portfolio)),
+        label(propertyLimitText(portfolioPro))
+      )
     },
     {
-      id: "property_management",
-      label: "Property management tools",
-      values: {
-        starter: label("Basic"),
-        investor: yes,
-        portfolio: yes,
-        portfolio_pro: yes
-      }
+      id: "investment_report_limit",
+      label: "Investment report limit",
+      values: tier(
+        label(reportLimitText(starter)),
+        label(reportLimitText(investor)),
+        label(reportLimitText(portfolio)),
+        label(reportLimitText(portfolioPro))
+      )
+    },
+    {
+      id: "public_calculators",
+      label: "Public calculators",
+      values: tier(yes, yes, yes, yes)
+    },
+    {
+      id: "property_dashboard",
+      label: "Property dashboard",
+      values: tier(basic, yes, yes, yes)
+    },
+    {
+      id: "portfolio_analytics",
+      label: "Portfolio analytics",
+      values: tier(basic, yes, advanced, advanced)
+    },
+    {
+      id: "cash_flow_tracking",
+      label: "Cash flow tracking",
+      values: tier(basic, yes, yes, yes)
+    },
+    {
+      id: "equity_tracking",
+      label: "Equity tracking",
+      values: tier(no, yes, yes, yes)
+    },
+    {
+      id: "cash_on_cash_roi",
+      label: "Cash on Cash ROI",
+      values: tier(limited, yes, yes, yes)
+    },
+    {
+      id: "irr_projection",
+      label: "IRR / projection metrics",
+      values: tier(limited, yes, yes, yes)
+    },
+    {
+      id: "property_type_calculators",
+      label: "Property type calculator flows",
+      values: tier(no, yes, yes, yes)
     },
     {
       id: "tenant_management",
       label: "Tenant management",
-      values: {
-        starter: yes,
-        investor: yes,
-        portfolio: yes,
-        portfolio_pro: yes
-      }
+      values: tier(yes, yes, yes, yes)
     },
     {
       id: "lease_management",
       label: "Lease management",
-      values: {
-        starter: yes,
-        investor: yes,
-        portfolio: yes,
-        portfolio_pro: yes
-      }
+      values: tier(yes, yes, yes, yes)
     },
     {
       id: "invoice_generation",
       label: "Invoice generation",
-      values: {
-        starter: yes,
-        investor: yes,
-        portfolio: yes,
-        portfolio_pro: yes
-      }
+      values: tier(yes, yes, yes, yes)
     },
     {
       id: "property_statements",
       label: "Property statements",
-      values: {
-        starter: yes,
-        investor: yes,
-        portfolio: yes,
-        portfolio_pro: yes
-      }
+      values: tier(yes, yes, yes, yes)
     },
     {
       id: "tenant_statements",
       label: "Tenant statements",
-      values: {
-        starter: yes,
-        investor: yes,
-        portfolio: yes,
-        portfolio_pro: yes
-      }
+      values: tier(yes, yes, yes, yes)
     },
     {
       id: "recurring_expenses",
       label: "Recurring expenses",
-      values: {
-        starter: yes,
-        investor: yes,
-        portfolio: yes,
-        portfolio_pro: yes
-      }
+      values: tier(yes, yes, yes, yes)
     },
     {
       id: "pdf_exports",
-      label: "PDF exports",
-      values: {
-        starter: label("Limited"),
-        investor: yes,
-        portfolio: yes,
-        portfolio_pro: yes
-      }
+      label: "PDF report exports",
+      values: tier(limited, yes, yes, yes)
     },
     {
-      id: "investment_calculators",
-      label: "Investment calculators",
-      values: {
-        starter: no,
-        investor: yes,
-        portfolio: yes,
-        portfolio_pro: yes
-      }
+      id: "advanced_reports",
+      label: "Advanced reports",
+      values: tier(no, no, yes, yes)
     },
     {
-      id: "investment_reports",
-      label: "Investment reports",
-      values: {
-        starter: label("3 per month"),
-        investor: label("10 per month"),
-        portfolio: label("Unlimited"),
-        portfolio_pro: label("Unlimited")
-      }
-    },
-    {
-      id: "report_limit",
-      label: "Report limit",
-      values: {
-        starter: label(reportLimitText(starter)),
-        investor: label(reportLimitText(investor)),
-        portfolio: label(reportLimitText(portfolio)),
-        portfolio_pro: label(reportLimitText(portfolioPro))
-      }
-    },
-    {
-      id: "property_limit",
-      label: "Property / unit limit",
-      values: {
-        starter: label(propertyLimitText(starter)),
-        investor: label(propertyLimitText(investor)),
-        portfolio: label(propertyLimitText(portfolio)),
-        portfolio_pro: label(propertyLimitText(portfolioPro))
-      }
-    },
-    {
-      id: "multi_property_comparison",
-      label: "Multi-property comparison",
-      values: {
-        starter: no,
-        investor: yes,
-        portfolio: yes,
-        portfolio_pro: yes
-      }
-    },
-    {
-      id: "advanced_portfolio_reports",
-      label: "Advanced portfolio reports",
-      values: {
-        starter: no,
-        investor: no,
-        portfolio: yes,
-        portfolio_pro: yes
-      }
-    },
-    {
-      id: "branded_pdf_reports",
-      label: "Branded PDF reports",
-      values: {
-        starter: no,
-        investor: no,
-        portfolio: label("Coming soon"),
-        portfolio_pro: yes
-      }
+      id: "branded_pdfs",
+      label: "Branded PDFs",
+      values: tier(no, no, label("Coming soon"), yes)
     },
     {
       id: "priority_support",
       label: "Priority support",
-      values: {
-        starter: no,
-        investor: no,
-        portfolio: no,
-        portfolio_pro: yes
-      }
+      values: tier(no, no, no, yes)
     },
     {
       id: "future_team_access",
       label: "Future team access",
-      values: {
-        starter: no,
-        investor: no,
-        portfolio: no,
-        portfolio_pro: label("Coming soon")
-      }
+      values: tier(no, no, no, label("Coming soon"))
     }
   ];
 }

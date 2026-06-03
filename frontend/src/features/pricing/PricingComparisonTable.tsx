@@ -92,8 +92,7 @@ export function PricingComparisonTable({ plans }: { plans: SubscriptionPlanRecor
     <div className="pg-pricing-compare-wrap">
       <h2 className="pg-pricing-compare__title">Compare all features</h2>
       <p className="pg-pricing-compare__desc pg-muted">
-        Four plans for every stage of your property journey — from your first units to a large owner-managed
-        portfolio.
+        Compare portfolio limits, report allowances, analytics depth and owner-management tools across every tier.
       </p>
 
       <div className="pg-pricing-compare-panel pg-pricing-compare-panel--desktop">

@@ -1,15 +1,26 @@
 import { useEffect, useMemo, useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { Link } from "react-router-dom";
+import { Check } from "lucide-react";
 import { Container } from "../components/ui/Container";
 import { Section } from "../components/ui/Section";
 import { ButtonLink } from "../components/ui/Button";
 import { PricingComparisonTable } from "../features/pricing/PricingComparisonTable";
+import { PricingFaqSection } from "../features/pricing/PricingFaqSection";
+import {
+  pricingFinalCta,
+  pricingHero,
+  pricingRecommendations,
+  pricingValueChips,
+  pricingValueStripLead
+} from "../data/pricingPageContent";
 import {
   isPopularPlan,
+  planBestFor,
+  planCardFeatureLines,
   planCta,
-  planFeatureBullets,
   planPriceHeadline,
+  planPriceSubline,
   planSecondaryCta
 } from "../features/pricing/pricingPlanDisplay";
 import {
@@ -22,7 +33,8 @@ function PricingCard({ plan }: { plan: SubscriptionPlanRecord }) {
   const popular = isPopularPlan(plan);
   const cta = planCta(plan);
   const secondary = planSecondaryCta(plan);
-  const bullets = planFeatureBullets(plan);
+  const features = planCardFeatureLines(plan);
+  const subline = planPriceSubline(plan);
 
   return (
     <article
@@ -33,11 +45,19 @@ function PricingCard({ plan }: { plan: SubscriptionPlanRecord }) {
       <h2 id={`pricing-plan-${plan.code}`} className="pg-pricing-card__name">
         {plan.name}
       </h2>
-      {plan.description ? <p className="pg-pricing-card__desc">{plan.description}</p> : null}
-      <p className="pg-pricing-card__price">{planPriceHeadline(plan)}</p>
+      <p className="pg-pricing-card__best-for">
+        <span className="pg-pricing-card__best-for-label">Best for:</span> {planBestFor(plan)}
+      </p>
+      <div className="pg-pricing-card__price-block">
+        <p className="pg-pricing-card__price">{planPriceHeadline(plan)}</p>
+        {subline ? <p className="pg-pricing-card__price-sub">{subline}</p> : null}
+      </div>
       <ul className="pg-pricing-card__features">
-        {bullets.map((line) => (
-          <li key={line}>{line}</li>
+        {features.map((line) => (
+          <li key={line}>
+            <Check className="pg-pricing-card__check" size={16} strokeWidth={2.5} aria-hidden />
+            <span>{line}</span>
+          </li>
         ))}
       </ul>
       <div className="pg-pricing-card__actions">
@@ -57,6 +77,7 @@ function PricingCard({ plan }: { plan: SubscriptionPlanRecord }) {
 export function PricingPage() {
   const [plans, setPlans] = useState<SubscriptionPlanRecord[]>(FALLBACK_SUBSCRIPTION_PLANS);
   const [loading, setLoading] = useState(true);
+  const [billingPeriod, setBillingPeriod] = useState<"monthly" | "annual">("monthly");
 
   useEffect(() => {
     let cancelled = false;
@@ -83,19 +104,37 @@ export function PricingPage() {
         <title>Pricing | Proplytic</title>
         <meta
           name="description"
-          content="Choose a Proplytic plan for property portfolio management, reports, calculators and owner tools."
+          content="Plans for owner-managers and small portfolio investors — portfolio analytics, investment reports, calculators, invoices and statements."
         />
       </Helmet>
       <Container className="pg-container--marketing-wide">
         <header className="pg-pricing-hero">
-          <h1 className="pg-pricing-hero__title">Choose the plan that fits your property portfolio</h1>
-          <p className="pg-pricing-hero__lead">
-            Start with portfolio analytics, reports, invoices, statements and owner-management tools built for property
-            investors.
-          </p>
-          <p className="pg-pricing-hero__note">
-            Select a plan to create your account. Payment is not required yet — you will confirm billing later.
-          </p>
+          <h1 className="pg-pricing-hero__title">{pricingHero.title}</h1>
+          <p className="pg-pricing-hero__lead">{pricingHero.lead}</p>
+          <p className="pg-pricing-hero__trust">{pricingHero.trustLine}</p>
+
+          <div className="pg-pricing-billing-toggle" role="group" aria-label="Billing period">
+            <button
+              type="button"
+              className={`pg-pricing-billing-toggle__btn${billingPeriod === "monthly" ? " pg-pricing-billing-toggle__btn--active" : ""}`}
+              aria-pressed={billingPeriod === "monthly"}
+              onClick={() => setBillingPeriod("monthly")}
+            >
+              Monthly
+            </button>
+            <button
+              type="button"
+              className="pg-pricing-billing-toggle__btn pg-pricing-billing-toggle__btn--disabled"
+              disabled
+              aria-pressed={false}
+              title="Annual billing coming soon"
+            >
+              Annual
+              <span className="pg-pricing-billing-toggle__soon">Coming soon</span>
+            </button>
+          </div>
+
+          <p className="pg-pricing-hero__note">{pricingHero.paymentNote}</p>
         </header>
 
         {loading ? <p className="pg-muted pg-pricing-loading">Loading plans…</p> : null}
@@ -108,7 +147,51 @@ export function PricingPage() {
           ))}
         </div>
 
-        <PricingComparisonTable plans={ordered} />
+        <div className="pg-pricing-value-strip">
+          <p className="pg-pricing-value-strip__lead">{pricingValueStripLead}</p>
+          <ul className="pg-pricing-value-strip__chips">
+            {pricingValueChips.map((chip) => (
+              <li key={chip.id} className="pg-pricing-value-chip">
+                <span className="pg-pricing-value-chip__label">{chip.label}</span>
+                <span className="pg-pricing-value-chip__detail">{chip.detail}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div id="pricing-compare">
+          <PricingComparisonTable plans={ordered} />
+        </div>
+
+        <section className="pg-pricing-recommend" aria-labelledby="pricing-recommend-heading">
+          <h2 id="pricing-recommend-heading" className="pg-pricing-section-title">
+            Which plan should I choose?
+          </h2>
+          <ul className="pg-pricing-recommend__list">
+            {pricingRecommendations.map((item) => (
+              <li key={item.plan} className="pg-pricing-recommend__item">
+                <strong>Choose {item.plan} if:</strong> {item.body}
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        <PricingFaqSection />
+
+        <section className="pg-pricing-final-cta" aria-labelledby="pricing-final-cta-heading">
+          <h2 id="pricing-final-cta-heading" className="pg-pricing-final-cta__title">
+            {pricingFinalCta.title}
+          </h2>
+          <p className="pg-pricing-final-cta__lead">{pricingFinalCta.lead}</p>
+          <div className="pg-pricing-final-cta__actions">
+            <ButtonLink href={pricingFinalCta.primary.href} variant="primary" size="lg">
+              {pricingFinalCta.primary.label}
+            </ButtonLink>
+            <ButtonLink href={pricingFinalCta.secondary.href} variant="secondary" size="lg">
+              {pricingFinalCta.secondary.label}
+            </ButtonLink>
+          </div>
+        </section>
 
         <p className="pg-pricing-footer-note">
           Already have an account?{" "}

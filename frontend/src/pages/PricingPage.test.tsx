@@ -23,7 +23,8 @@ describe("PricingPage QA", () => {
       </HelmetProvider>
     );
 
-    expect(await screen.findByRole("heading", { name: /choose the plan/i })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: /choose the plan that fits/i })).toBeInTheDocument();
+    expect(screen.getAllByText(/Most Popular/i).length).toBeGreaterThan(0);
     expect(screen.getAllByRole("heading", { name: /starter/i }).length).toBeGreaterThan(0);
     expect(screen.getAllByRole("heading", { name: /investor/i }).length).toBeGreaterThan(0);
     expect(screen.getAllByRole("heading", { name: /^portfolio$/i }).length).toBeGreaterThan(0);
@@ -31,7 +32,7 @@ describe("PricingPage QA", () => {
     expect(FALLBACK_SUBSCRIPTION_PLANS).toHaveLength(4);
   });
 
-  it("links sign in without auth wrapper", () => {
+  it("links sign in without auth wrapper", async () => {
     render(
       <HelmetProvider>
         <MemoryRouter>
@@ -40,6 +41,20 @@ describe("PricingPage QA", () => {
       </HelmetProvider>
     );
 
-    expect(screen.getByRole("link", { name: /sign in/i })).toHaveAttribute("href", "/login");
+    expect(await screen.findByRole("link", { name: /sign in/i })).toHaveAttribute("href", "/login");
+  });
+
+  it("includes FAQ and final CTA with signup links", async () => {
+    render(
+      <HelmetProvider>
+        <MemoryRouter>
+          <PricingPage />
+        </MemoryRouter>
+      </HelmetProvider>
+    );
+
+    expect(await screen.findByRole("heading", { name: /frequently asked questions/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /start free trial/i })).toHaveAttribute("href", "/signup?plan=starter");
+    expect(screen.getByRole("heading", { name: /which plan should i choose/i })).toBeInTheDocument();
   });
 });
