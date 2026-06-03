@@ -8,6 +8,7 @@ import { SimplePage } from "../pages/SimplePage";
 import { PrivacyPolicyPage } from "../pages/PrivacyPolicyPage";
 import { TermsOfUsePage } from "../pages/TermsOfUsePage";
 import { CookieNoticePage } from "../pages/CookieNoticePage";
+import { ContactPage } from "../pages/ContactPage";
 import { SubscriptionPage } from "../pages/SubscriptionPage";
 import { SubscriptionResultPage } from "../pages/SubscriptionResultPage";
 import { RequireAuth } from "../components/auth/RequireAuth";
@@ -249,15 +250,7 @@ export function App() {
             />
           }
         />
-        <Route
-          path="/contact"
-          element={
-            <SimplePage
-              title="Contact"
-              description="Contact form page for investor enquiries and partnerships."
-            />
-          }
-        />
+        <Route path="/contact" element={<ContactPage />} />
         <Route path="/about" element={<SimplePage title="About" description="About The Property Guy and our mission." />} />
         <Route path="/privacy-policy" element={<Navigate to="/privacy" replace />} />
         <Route path="/privacy" element={<PrivacyPolicyPage />} />

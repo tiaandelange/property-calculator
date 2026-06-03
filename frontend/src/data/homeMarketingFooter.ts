@@ -15,7 +15,6 @@ export const marketingFooterProductLinks = [
 ] as const;
 
 export const marketingFooterCompanyLinks = [
-  { label: "Pricing", to: "/pricing" },
   { label: "Sign in", to: "/login" },
   { label: "Contact", to: "/contact" }
 ] as const;

@@ -140,6 +140,10 @@ The frontend is a **monorepo subfolder** — set **Root Directory** to `frontend
 | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | `frontend/api/subscription/*` |
 | `FRONTEND_URL` | Stripe checkout success/cancel URLs |
 | `CRON_SECRET` | `frontend/api/cron/run-due` |
+| `RESEND_API_KEY` | Invoice send + contact form (`POST /api/contact`) — **server only** |
+| `CONTACT_FROM_EMAIL` | **Required** for contact form — verified Resend sender (e.g. `Proplytic <contact@proplytic.co.za>`) |
+
+**Contact form** (`/contact` → `POST /api/contact`): never put `RESEND_API_KEY` or `SUPABASE_SERVICE_ROLE_KEY` in `VITE_*` or frontend source. Delivery inbox defaults to `delangetiaanoffice@gmail.com` (override with optional `CONTACT_TO_EMAIL`). If `CONTACT_FROM_EMAIL` is missing, the API returns HTTP 503 with a generic message and logs the missing variable names server-side.
 
 Do not commit these values; set them only in the Vercel project UI.
 

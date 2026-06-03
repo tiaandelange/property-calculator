@@ -110,6 +110,29 @@ describe("AppChrome", () => {
     expect(screen.queryByRole("navigation", { name: /primary workspace/i })).not.toBeInTheDocument();
   });
 
+  it("renders marketing header and footer on /contact while signed out", async () => {
+    sessionRef.current = null;
+
+    renderWithAuth(
+      <MemoryRouter initialEntries={["/contact"]}>
+        <Routes>
+          <Route element={<AppChrome />}>
+            <Route path="/contact" element={<div>Contact page body</div>} />
+          </Route>
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(within(screen.getByRole("banner")).getByRole("link", { name: /Proplytic — Home/i })).toBeInTheDocument();
+    });
+    expect(screen.getByRole("contentinfo")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText("Contact page body")).toBeInTheDocument();
+    });
+    expect(screen.queryByRole("complementary", { name: /dashboard sidebar/i })).not.toBeInTheDocument();
+  });
+
   it("renders marketing site header on calculators hub (same shell as homepage)", async () => {
     sessionRef.current = null;
 

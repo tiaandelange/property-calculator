@@ -94,6 +94,10 @@ Local dev may leave it unset and use `vercel dev` for serverless routes, or set
 | `STRIPE_WEBHOOK_SECRET` | `POST /api/subscription/webhook` |
 | `FRONTEND_URL` | e.g. `https://app.yourdomain.com` for Stripe success/cancel URLs |
 | `CRON_SECRET` | `GET/POST /api/cron/run-due` |
+| `RESEND_API_KEY` | Invoice email + contact form notifications (**never** `VITE_*`) |
+| `CONTACT_FROM_EMAIL` | **Required** for `POST /api/contact` — verified Resend sender |
+
+**Contact form delivery:** notifications go to `delangetiaanoffice@gmail.com` by default. Set optional `CONTACT_TO_EMAIL` to override. Apply migration `20260612120000_contact_submissions.sql` before enabling the form in production.
 
 **Stripe webhook URL in Dashboard:** `https://<your-domain>/api/subscription/webhook`
 

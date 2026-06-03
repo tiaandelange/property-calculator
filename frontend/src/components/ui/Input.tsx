@@ -6,16 +6,25 @@ import { typographyClassName } from "./Typography";
 export function Field({
   label,
   help,
+  fieldId,
   children
 }: {
   label: string;
   help?: string;
+  /** When set, associates the label with the control via htmlFor/id. */
+  fieldId?: string;
   children: React.ReactNode;
 }) {
+  const LabelTag = fieldId ? "label" : "div";
   return (
     <div className="pg-field">
       <div className="pg-field__label-row">
-        <div className={typographyClassName("label", "pg-label")}>{label}</div>
+        <LabelTag
+          {...(fieldId ? { htmlFor: fieldId } : {})}
+          className={typographyClassName("label", "pg-label")}
+        >
+          {label}
+        </LabelTag>
         <FieldInfoTip label={label} text={help} />
       </div>
       {children}
