@@ -1,7 +1,6 @@
 import { Link } from "react-router-dom";
 import { AppIcon } from "../../components/icons/AppIcon";
 import { Button, ButtonLink } from "../../components/ui/Button";
-import { Input } from "../../components/ui/Input";
 import { SignupPlanSummary } from "../signup/SignupPlanSummary";
 import type { SubscriptionPlanRecord } from "../../services/subscriptionPlansSupabase";
 import { LoginIconField } from "./LoginIconField";
@@ -61,29 +60,27 @@ export function LoginSignupCard({
             onSubmit();
           }}
         >
-        <LoginIconField label="Email address" icon="email">
-          <Input
-            type="email"
-            autoComplete="email"
-            value={email}
-            onChange={(e) => onEmailChange(e.target.value)}
-            placeholder="you@example.com"
-            className="pg-login-input"
-            required
-          />
-        </LoginIconField>
+        <LoginIconField
+          label="Email address"
+          icon="email"
+          type="email"
+          autoComplete="email"
+          value={email}
+          onChange={onEmailChange}
+          placeholder="you@example.com"
+          required
+        />
 
-        <LoginIconField label="Password" icon="lock">
-          <Input
-            type="password"
-            autoComplete="new-password"
-            value={password}
-            onChange={(e) => onPasswordChange(e.target.value)}
-            placeholder="••••••••"
-            className="pg-login-input"
-            required
-          />
-        </LoginIconField>
+        <LoginIconField
+          label="Password"
+          icon="lock"
+          type="password"
+          autoComplete="new-password"
+          value={password}
+          onChange={onPasswordChange}
+          placeholder="••••••••"
+          required
+        />
 
         <Button
           type="submit"

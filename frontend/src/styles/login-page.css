@@ -411,28 +411,33 @@
   color: var(--text-primary);
 }
 
-.pg-login-field__control {
+/* Icon + input — same pattern as .pg-search-field (ui-components.css) */
+.pg-login-page .pg-login-affix-field {
   position: relative;
-  display: block;
+  display: flex;
+  align-items: center;
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
 }
 
-.pg-login-field__icon {
+.pg-login-page .pg-login-affix-field__icon {
   position: absolute;
   left: 16px;
   top: 50%;
   transform: translateY(-50%);
-  width: 18px;
-  height: 18px;
+  display: block;
+  flex-shrink: 0;
   color: var(--text-muted);
   pointer-events: none;
-  z-index: 2;
+  z-index: 1;
 }
 
-.pg-login-page .pg-login-input.pg-input {
+.pg-login-page .pg-login-affix-field__input.pg-input {
   display: block;
   width: 100%;
   max-width: 100%;
+  min-width: 0;
   box-sizing: border-box;
   height: 52px;
   min-height: 52px;
@@ -443,29 +448,45 @@
   background: var(--surface);
   color: var(--text-primary);
   font-size: 16px;
-  line-height: 1.25;
+  line-height: normal;
   appearance: none;
   -webkit-appearance: none;
 }
 
-.pg-login-page .pg-login-input.pg-input::placeholder {
+.pg-login-page .pg-login-affix-field__input.pg-input::placeholder {
   color: var(--text-muted);
   opacity: 1;
 }
 
-.pg-login-page .pg-login-input.pg-input:hover {
+.pg-login-page .pg-login-affix-field__input.pg-input:hover {
   border-color: color-mix(in srgb, var(--primary) 22%, var(--border-soft));
+  background: var(--surface);
 }
 
-.pg-login-page .pg-login-input.pg-input:focus {
+.pg-login-page .pg-login-affix-field__input.pg-input:focus {
   outline: none;
   border-color: var(--primary);
   background: var(--surface);
   box-shadow: 0 0 0 3px var(--primary-soft);
 }
 
-.pg-login-page .pg-login-field__control:focus-within .pg-login-field__icon {
+.pg-login-page .pg-login-affix-field:focus-within .pg-login-affix-field__icon {
   color: var(--primary);
+}
+
+/* Override legacy .pg-input rules in global.css for auth pages */
+html[data-theme="light"] .pg-login-page .pg-login-affix-field__input.pg-input {
+  border: 1px solid var(--border-soft);
+  background: var(--surface);
+  color: var(--text-primary);
+  padding-left: 48px;
+  padding-right: 14px;
+}
+
+html[data-theme="light"] .pg-login-page .pg-login-affix-field__input.pg-input:focus {
+  border-color: var(--primary);
+  background: var(--surface);
+  box-shadow: 0 0 0 3px var(--primary-soft);
 }
 
 .pg-login-card__submit.pg-btn {

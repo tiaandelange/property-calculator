@@ -2,7 +2,6 @@ import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { AppIcon } from "../../components/icons/AppIcon";
 import { Button } from "../../components/ui/Button";
-import { Input } from "../../components/ui/Input";
 import { LoginIconField } from "./LoginIconField";
 
 type LoginSignInCardProps = {
@@ -54,37 +53,27 @@ export function LoginSignInCard({
           onSubmit();
         }}
       >
-        <LoginIconField label="Email address" icon="email">
-          <Input
-            type="email"
-            autoComplete="email"
-            value={email}
-            onChange={(e) => onEmailChange(e.target.value)}
-            placeholder="you@example.com"
-            className="pg-login-input"
-            required
-          />
-        </LoginIconField>
+        <LoginIconField
+          label="Email address"
+          icon="email"
+          type="email"
+          autoComplete="email"
+          value={email}
+          onChange={onEmailChange}
+          placeholder="you@example.com"
+          required
+        />
 
         <LoginIconField
           label="Password"
           icon="lock"
-          labelExtra={
-            <span className="pg-login-field__label-spacer" aria-hidden="true">
-              {" "}
-            </span>
-          }
-        >
-          <Input
-            type="password"
-            autoComplete="current-password"
-            value={password}
-            onChange={(e) => onPasswordChange(e.target.value)}
-            placeholder="••••••••"
-            className="pg-login-input"
-            required
-          />
-        </LoginIconField>
+          type="password"
+          autoComplete="current-password"
+          value={password}
+          onChange={onPasswordChange}
+          placeholder="••••••••"
+          required
+        />
 
         <Button
           type="submit"

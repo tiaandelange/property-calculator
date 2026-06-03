@@ -1,17 +1,27 @@
 import type { ReactNode } from "react";
 import type { IconName } from "../../components/icons/iconRegistry";
-import { AppIcon } from "../../components/icons/AppIcon";
+import { LoginAffixInput } from "./LoginAffixInput";
 
 export function LoginIconField({
   label,
   labelExtra,
   icon,
-  children
+  type = "text",
+  autoComplete,
+  placeholder,
+  value,
+  onChange,
+  required
 }: {
   label: string;
   labelExtra?: ReactNode;
   icon: IconName;
-  children: ReactNode;
+  type?: string;
+  autoComplete?: string;
+  placeholder?: string;
+  value: string;
+  onChange: (value: string) => void;
+  required?: boolean;
 }) {
   return (
     <div className="pg-login-field">
@@ -19,10 +29,15 @@ export function LoginIconField({
         <label className="pg-login-field__label">{label}</label>
         {labelExtra}
       </div>
-      <div className="pg-login-field__control">
-        <AppIcon name={icon} size="sm" className="pg-login-field__icon" aria-hidden="true" />
-        {children}
-      </div>
+      <LoginAffixInput
+        icon={icon}
+        type={type}
+        autoComplete={autoComplete}
+        placeholder={placeholder}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        required={required}
+      />
     </div>
   );
 }
