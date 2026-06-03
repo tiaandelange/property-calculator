@@ -10,7 +10,7 @@ export const PROPLYTIC_LOGO_ASSET = "/proplytic_logo_300x100.png";
 /** 300×100 horizontal lockup intrinsic aspect ratio */
 export const PROPLYTIC_LOGO_ASPECT = 3;
 
-export const PROPLYTIC_ICON_ASSET = "/proplytic_icon_500x500.png";
+export const PROPLYTIC_ICON_ASSET = "/proplytic_icon_500x500_nobg.png";
 
 /** @deprecated Use {@link PROPLYTIC_ICON_ASSET} */
 export const PROPLYTIC_MARK_ASSET = PROPLYTIC_ICON_ASSET;

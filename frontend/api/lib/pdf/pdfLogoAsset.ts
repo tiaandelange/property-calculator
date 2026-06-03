@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 
 const LOGO_CANDIDATE_FILES = [
   "proplytic_logo_300x100.png",
+  "proplytic_icon_500x500_nobg.png",
   "proplytic_icon_500x500.png",
   "proplytic-mark.png",
   "proplytic-mark-source.png",

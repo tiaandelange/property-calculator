@@ -5,7 +5,7 @@ export const HOME_PAGE_SEO = {
   description:
     "Analyse property performance, manage leases and invoices, and generate investor-ready reports for your rental portfolio.",
   path: "/",
-  ogImagePath: "/proplytic_icon_500x500.png"
+  ogImagePath: "/proplytic_icon_500x500_nobg.png"
 } as const;
 
 /**
