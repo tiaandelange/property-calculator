@@ -103,6 +103,7 @@ export async function processContactFormSubmission(
   | { status: 400; body: { error: string } }
   | { status: 500; body: { error: string } }
   | { status: 502; body: { error: string; id: string } }
+  | { status: 503; body: { error: string } }
 > {
   const parsed = parseAndValidateContactRequest(req.body);
 
