@@ -32,34 +32,35 @@ export function LoginSignupCard({
   onSubmit
 }: LoginSignupCardProps) {
   return (
-    <div className="pg-login-card">
-      <header className="pg-login-card__header">
-        <h1 className="pg-login-card__title">Create your account</h1>
-        <p className="pg-login-card__subtitle">
-          Complete registration to start using Proplytic. Billing is not charged during signup.
-        </p>
-      </header>
+    <div className="pg-login-card pg-login-card--signup">
+      <div className="pg-login-card__stack">
+        <header className="pg-login-card__header">
+          <h1 className="pg-login-card__title">Create your account</h1>
+          <p className="pg-login-card__subtitle">
+            Complete registration to start using Proplytic. Billing is not charged during signup.
+          </p>
+        </header>
 
-      <SignupPlanSummary plan={plan} invalidRequested={invalidRequested} />
+        <SignupPlanSummary plan={plan} invalidRequested={invalidRequested} />
 
-      {configHint}
+        {configHint}
 
-      {message ? (
-        <div
-          className={`pg-login-card__alert ${message.kind === "error" ? "pg-login-card__alert--error" : "pg-login-card__alert--ok"}`}
-          role={message.kind === "error" ? "alert" : "status"}
+        {message ? (
+          <div
+            className={`pg-login-card__alert ${message.kind === "error" ? "pg-login-card__alert--error" : "pg-login-card__alert--ok"}`}
+            role={message.kind === "error" ? "alert" : "status"}
+          >
+            {message.text}
+          </div>
+        ) : null}
+
+        <form
+          className="pg-login-card__form"
+          onSubmit={(e) => {
+            e.preventDefault();
+            onSubmit();
+          }}
         >
-          {message.text}
-        </div>
-      ) : null}
-
-      <form
-        className="pg-login-card__form"
-        onSubmit={(e) => {
-          e.preventDefault();
-          onSubmit();
-        }}
-      >
         <LoginIconField label="Email address" icon="email">
           <Input
             type="email"
@@ -94,28 +95,29 @@ export function LoginSignupCard({
         >
           {loading ? "Creating account…" : "Create account"}
         </Button>
-      </form>
+        </form>
 
-      <div className="pg-login-card__signup-actions">
-        <ButtonLink href="/pricing" variant="ghost" size="md">
-          View pricing
-        </ButtonLink>
-        <p className="pg-login-card__signup">
-          Already have an account?{" "}
-          <Link to="/login" className="pg-login-card__signup-link">
-            Sign in
-          </Link>
-        </p>
-      </div>
+        <div className="pg-login-card__signup-actions">
+          <ButtonLink href="/pricing" variant="ghost" size="md" fullWidth>
+            View pricing
+          </ButtonLink>
+          <p className="pg-login-card__signup">
+            Already have an account?{" "}
+            <Link to="/login" className="pg-login-card__signup-link">
+              Sign in
+            </Link>
+          </p>
+        </div>
 
-      <div className="pg-login-card__secure">
-        <span className="pg-login-card__secure-icon" aria-hidden="true">
-          <AppIcon name="shield" size="sm" />
-        </span>
-        <p>
-          <strong>Your data is secure and private.</strong>
-          <span>We never share your information.</span>
-        </p>
+        <div className="pg-login-card__secure">
+          <span className="pg-login-card__secure-icon" aria-hidden="true">
+            <AppIcon name="shield" size="sm" />
+          </span>
+          <p>
+            <strong>Your data is secure and private.</strong>
+            <span>We never share your information.</span>
+          </p>
+        </div>
       </div>
     </div>
   );

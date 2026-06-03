@@ -15,7 +15,7 @@ type SignupPlanSummaryProps = {
 export function SignupPlanSummary({ plan, invalidRequested = false }: SignupPlanSummaryProps) {
   return (
     <div
-      className={`pg-login-plan-summary${invalidRequested ? " pg-login-plan-summary--warn" : ""}`}
+      className={`pg-login-plan-summary pg-login-plan-summary--selected${invalidRequested ? " pg-login-plan-summary--warn" : ""}`}
       aria-labelledby="signup-plan-summary-title"
     >
       {invalidRequested ? (

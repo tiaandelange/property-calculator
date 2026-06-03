@@ -321,10 +321,25 @@
   width: 100%;
   max-width: 580px;
   padding: clamp(28px, 4vw, 48px);
-  border-radius: 24px;
+  border-radius: var(--radius-lg, 24px);
   border: 1px solid var(--border-soft);
   background: var(--surface);
   box-shadow: var(--shadow-soft);
+}
+
+.pg-login-card--signup {
+  max-width: 660px;
+  padding: clamp(40px, 5vw, 56px);
+}
+
+.pg-login-card__stack {
+  width: 100%;
+  max-width: 100%;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
 }
 
 .pg-login-card__header {
@@ -350,7 +365,8 @@
 
 .pg-login-card__form {
   display: grid;
-  gap: 18px;
+  gap: 20px;
+  width: 100%;
 }
 
 .pg-login-card__alert {
@@ -373,15 +389,23 @@
   border: 1px solid color-mix(in srgb, var(--success) 28%, transparent);
 }
 
+.pg-login-page .pg-login-field {
+  width: 100%;
+  min-width: 0;
+}
+
 .pg-login-field__label-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
   margin-bottom: 8px;
+  width: 100%;
 }
 
 .pg-login-field__label {
+  display: block;
+  width: 100%;
   font-size: 14px;
   font-weight: 600;
   color: var(--text-primary);
@@ -389,36 +413,66 @@
 
 .pg-login-field__control {
   position: relative;
-  display: flex;
-  align-items: center;
+  display: block;
+  width: 100%;
 }
 
 .pg-login-field__icon {
   position: absolute;
-  left: 14px;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 18px;
+  height: 18px;
   color: var(--text-muted);
   pointer-events: none;
-  z-index: 1;
+  z-index: 2;
 }
 
-.pg-login-input.pg-input {
+.pg-login-page .pg-login-input.pg-input {
+  display: block;
   width: 100%;
-  min-height: 48px;
-  padding-left: 44px;
-  padding-right: 14px;
+  max-width: 100%;
+  box-sizing: border-box;
+  height: 52px;
+  min-height: 52px;
+  margin: 0;
+  padding: 0 14px 0 48px;
   border-radius: 14px;
-  border-color: var(--border);
+  border: 1px solid var(--border-soft);
   background: var(--surface);
+  color: var(--text-primary);
+  font-size: 16px;
+  line-height: 1.25;
+  appearance: none;
+  -webkit-appearance: none;
 }
 
-.pg-login-input.pg-input:focus {
+.pg-login-page .pg-login-input.pg-input::placeholder {
+  color: var(--text-muted);
+  opacity: 1;
+}
+
+.pg-login-page .pg-login-input.pg-input:hover {
+  border-color: color-mix(in srgb, var(--primary) 22%, var(--border-soft));
+}
+
+.pg-login-page .pg-login-input.pg-input:focus {
+  outline: none;
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 18%, transparent);
+  background: var(--surface);
+  box-shadow: 0 0 0 3px var(--primary-soft);
+}
+
+.pg-login-page .pg-login-field__control:focus-within .pg-login-field__icon {
+  color: var(--primary);
 }
 
 .pg-login-card__submit.pg-btn {
+  width: 100%;
+  max-width: 100%;
   min-height: 52px;
-  margin-top: 4px;
+  margin-top: 2px;
   border-radius: 14px;
   font-size: 16px;
   font-weight: 700;
@@ -487,8 +541,46 @@
   color: var(--text-primary);
 }
 
-.pg-login-card .pg-login-plan-summary {
+/* Selected plan — centred in signup card, full width of form stack */
+.pg-login-card--signup .pg-login-plan-summary {
+  width: 100%;
+  max-width: 100%;
+  margin: 0 0 22px;
+  padding: 16px 18px;
+  border-radius: 14px;
+  border: 1px solid var(--border-soft);
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+  text-align: left;
+}
+
+.pg-login-card--signup .pg-login-plan-summary--selected:not(.pg-login-plan-summary--warn) {
+  border-color: var(--primary-border);
+  background: color-mix(in srgb, var(--primary-soft) 55%, var(--surface));
+  box-shadow:
+    var(--shadow-card),
+    0 0 0 1px color-mix(in srgb, var(--primary) 12%, transparent);
+}
+
+.pg-login-card--signup .pg-login-plan-summary__title {
+  color: var(--text-primary);
+}
+
+.pg-login-card--signup .pg-login-plan-summary__price {
+  color: var(--primary);
+}
+
+.pg-login-card--signup .pg-login-plan-summary__change a {
+  color: var(--primary);
+}
+
+.pg-login-card--signup .pg-login-card__alert {
+  width: 100%;
   margin-bottom: 20px;
+}
+
+.pg-login-card--signup .pg-login-card__header {
+  margin-bottom: 24px;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -515,14 +607,22 @@
 
   .pg-login-page__form-column {
     align-items: flex-start;
-    padding: 16px 20px 32px;
+    justify-content: flex-start;
+    padding: 16px 16px 32px;
   }
 
   .pg-login-card {
-    max-width: 100%;
+    width: calc(100% - 32px);
+    max-width: calc(100% - 32px);
+    margin-left: auto;
+    margin-right: auto;
     padding: 22px 20px;
     border-radius: 20px;
     box-shadow: var(--shadow-card);
+  }
+
+  .pg-login-card--signup {
+    padding: 20px 22px;
   }
 }
 
@@ -533,7 +633,13 @@
   }
 
   .pg-login-card {
+    width: calc(100% - 32px);
+    max-width: calc(100% - 32px);
     padding: 20px 16px;
     border-radius: 16px;
+  }
+
+  .pg-login-card--signup {
+    padding: 20px 16px;
   }
 }

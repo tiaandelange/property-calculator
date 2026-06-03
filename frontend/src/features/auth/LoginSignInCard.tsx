@@ -27,7 +27,8 @@ export function LoginSignInCard({
   onSubmit
 }: LoginSignInCardProps) {
   return (
-    <div className="pg-login-card">
+    <div className="pg-login-card pg-login-card--signin">
+      <div className="pg-login-card__stack">
       <header className="pg-login-card__header">
         <h1 className="pg-login-card__title">Welcome back 👋</h1>
         <p className="pg-login-card__subtitle">Sign in to your Proplytic account</p>
@@ -112,6 +113,7 @@ export function LoginSignInCard({
           <strong>Your data is secure and private.</strong>
           <span>We never share your information.</span>
         </p>
+      </div>
       </div>
     </div>
   );
