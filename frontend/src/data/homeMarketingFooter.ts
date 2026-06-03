@@ -20,10 +20,6 @@ export const marketingFooterCompanyLinks = [
   { label: "Contact", to: "/contact" }
 ] as const;
 
-/**
- * TODO(legal): Replace placeholder `SimplePage` targets in `App.tsx` with real policy routes
- * or CMS-backed pages when legal content is ready. Routes exist so links are never 404.
- */
 export const marketingFooterLegalLinks = [
   { label: "Privacy Policy", to: "/privacy" },
   { label: "Terms of Use", to: "/terms" },

@@ -29,6 +29,7 @@
 @import "./home-marketing.css";
 @import "./subscription-limits.css";
 @import "./login-page.css";
+@import "./legal-page.css";
 @import "./mobile-layout.css";
 
 /* Structural tokens (spacing + typography). Palette: proplytic.tokens.css */

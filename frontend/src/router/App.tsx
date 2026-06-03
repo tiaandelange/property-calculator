@@ -5,6 +5,7 @@ import { LoginPage } from "../pages/LoginPage";
 import { PricingPage } from "../pages/PricingPage";
 import { ConfirmEmailPage } from "../pages/ConfirmEmailPage";
 import { SimplePage } from "../pages/SimplePage";
+import { PrivacyPolicyPage } from "../pages/PrivacyPolicyPage";
 import { SubscriptionPage } from "../pages/SubscriptionPage";
 import { SubscriptionResultPage } from "../pages/SubscriptionResultPage";
 import { RequireAuth } from "../components/auth/RequireAuth";
@@ -256,15 +257,8 @@ export function App() {
           }
         />
         <Route path="/about" element={<SimplePage title="About" description="About The Property Guy and our mission." />} />
-        <Route
-          path="/privacy"
-          element={
-            <SimplePage
-              title="Privacy Policy"
-              description="Placeholder page — the full privacy policy will be published here. Linked from the marketing footer until content is ready."
-            />
-          }
-        />
+        <Route path="/privacy-policy" element={<Navigate to="/privacy" replace />} />
+        <Route path="/privacy" element={<PrivacyPolicyPage />} />
         <Route
           path="/terms"
           element={
