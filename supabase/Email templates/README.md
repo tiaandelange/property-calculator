@@ -16,7 +16,7 @@ These are not applied by migrations — paste each file into the matching templa
 - `{{ .ConfirmationURL }}` — confirmation link (required)
 - `{{ .SiteURL }}` — project Site URL (logo + home link)
 
-Ensure **Authentication → URL configuration → Site URL** matches your app origin (e.g. `https://proplytic.co.za`) so the logo path `/proplytic_logo_300x100.png` resolves.
+Ensure **Authentication → URL configuration → Site URL** matches your app origin (e.g. `https://proplytic.co.za`) so the logo path `/proplytic_logo_600x200_nobg.png` resolves.
 
 ### Redirect URLs
 

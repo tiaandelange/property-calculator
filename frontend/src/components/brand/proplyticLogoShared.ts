@@ -1,16 +1,22 @@
 /**
  * Official Proplytic brand assets (Vite `public/`).
  *
- * - Horizontal lockup: desktop, dashboard expanded, marketing header/footer
- * - Square mark: favicon, collapsed sidebar, mobile chrome, tight spaces
+ * - Horizontal lockup (nobg): desktop, dashboard expanded, marketing header/footer
+ * - Square mark (nobg): collapsed sidebar, mobile chrome, PWA icons, tight spaces
+ * - Square mark (white bg): browser tab favicon only
  */
 
-export const PROPLYTIC_LOGO_ASSET = "/proplytic_logo_300x100.png";
+/** Horizontal wordmark — transparent background */
+export const PROPLYTIC_LOGO_ASSET = "/proplytic_logo_600x200_nobg.png";
 
-/** 300×100 horizontal lockup intrinsic aspect ratio */
+/** 600×200 horizontal lockup intrinsic aspect ratio */
 export const PROPLYTIC_LOGO_ASPECT = 3;
 
+/** Square mark — transparent background (UI, mobile, OG image) */
 export const PROPLYTIC_ICON_ASSET = "/proplytic_icon_500x500_nobg.png";
+
+/** Square mark — white background (browser favicon only) */
+export const PROPLYTIC_FAVICON_ASSET = "/proplytic_icon_500x500.png";
 
 /** @deprecated Use {@link PROPLYTIC_ICON_ASSET} */
 export const PROPLYTIC_MARK_ASSET = PROPLYTIC_ICON_ASSET;

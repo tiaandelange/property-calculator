@@ -7,7 +7,10 @@
 | Asset | Location |
 | --- | --- |
 | React components | `frontend/src/components/brand/` |
-| PNG mark (canonical) | `frontend/public/assets/brand/proplytic-mark.png` (`1000×1000`) |
+| PNG mark (canonical, nobg) | `frontend/public/proplytic_icon_500x500_nobg.png` (`500×500`) |
+| PNG favicon (white bg) | `frontend/public/proplytic_icon_500x500.png` (`500×500`) |
+| PNG wordmark (nobg) | `frontend/public/proplytic_logo_600x200_nobg.png` (`600×200`) |
+| Legacy PNG mark | `frontend/public/assets/brand/proplytic-mark.png` |
 | PNG source (same file) | `proplytic-mark-source.png` |
 | SVG export (legacy) | `proplytic-mark.svg` |
 | SVG paths (React fallback) | `proplyticLogoShared.tsx` |

@@ -7,7 +7,7 @@ export type ProplyticLogoWordmarkProps = ImgHTMLAttributes<HTMLImageElement> & {
   compact?: boolean;
 };
 
-/** Horizontal Proplytic logo (300×100 PNG). */
+/** Horizontal Proplytic logo (600×200 nobg PNG). */
 export function ProplyticLogoWordmark({
   className,
   compact = false,

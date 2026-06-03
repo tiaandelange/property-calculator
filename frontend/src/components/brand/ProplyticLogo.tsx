@@ -15,8 +15,8 @@ export type ProplyticLogoProps = {
 
 /**
  * Reusable Proplytic brand logo.
- * - full / compact: horizontal lockup (`proplytic_logo_300x100.png`)
- * - icon / app: square mark (`proplytic_icon_500x500.png`)
+ * - full / compact: horizontal lockup (`proplytic_logo_600x200_nobg.png`)
+ * - icon / app: square mark (`proplytic_icon_500x500_nobg.png`)
  */
 export function ProplyticLogo({
   mode = "full",
