@@ -310,6 +310,12 @@ body:has(.pg-main-marketing-home) .pg-home-site-header-inner.pg-container {
   justify-content: space-between;
   gap: 8px;
   align-items: flex-start;
+  min-width: 0;
+}
+
+.hm-app-preview__metric-copy {
+  min-width: 0;
+  flex: 1 1 auto;
 }
 
 .hm-app-preview__metric-label {
@@ -338,7 +344,8 @@ body:has(.pg-main-marketing-home) .pg-home-site-header-inner.pg-container {
   border-radius: 10px;
   background: var(--primary-soft);
   color: var(--primary);
-  flex-shrink: 0;
+  flex: 0 0 32px;
+  margin-left: auto;
 }
 
 .hm-app-preview__metric-change {
@@ -715,6 +722,115 @@ body:has(.pg-main-marketing-home) .pg-home-site-header-inner.pg-container {
 
 .hm-app-preview__split--property {
   grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+/* Hero — full-width projection analysis (matches signed-in portfolio dashboard stack) */
+.hm-app-preview__analysis {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+}
+
+.hm-app-preview--hero .hm-app-preview__pdash-panel {
+  width: 100%;
+  min-width: 0;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid var(--border-soft);
+  background: var(--surface);
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--text-primary) 4%, transparent);
+}
+
+.hm-app-preview--hero .hm-app-preview__pdash-panel .pg-pdash-panel-head {
+  margin-bottom: 10px;
+}
+
+.hm-app-preview--hero .hm-app-preview__pdash-panel .pg-pdash-panel-title {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.hm-app-preview--hero .pg-pdash-projection-table-wrap {
+  border-color: var(--border-soft);
+  background: var(--surface-muted);
+}
+
+.hm-app-preview--hero .pg-pdash-projection-table--transposed thead th {
+  background: color-mix(in srgb, var(--surface-muted) 92%, var(--primary-soft));
+  color: var(--text-secondary);
+  font-size: 10px;
+}
+
+.hm-app-preview--hero .pg-pdash-projection-table--transposed tbody th {
+  background: var(--surface);
+  color: var(--text-primary);
+  font-size: 10px;
+}
+
+.hm-app-preview--hero .pg-pdash-projection-table th,
+.hm-app-preview--hero .pg-pdash-projection-table td {
+  padding: 6px 8px;
+  font-size: 10px;
+  border-bottom-color: var(--border-soft);
+}
+
+.hm-app-preview--hero .hm-app-preview__projection-chart-wrap {
+  min-height: 0;
+  height: auto;
+  padding: 4px 0 0;
+}
+
+.hm-app-preview--hero .hm-app-preview__projection-chart-svg {
+  display: block;
+  width: 100%;
+  height: 132px;
+}
+
+.hm-app-preview--hero .hm-app-preview__projection-chart-axis {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+  margin-top: 6px;
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.hm-app-preview--hero .hm-app-preview__projection-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.hm-app-preview--hero .hm-app-preview__projection-legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.hm-app-preview--hero .hm-app-preview__projection-legend-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.hm-app-preview--hero .hm-app-preview__projection-note {
+  margin: 8px 0 0;
+  font-size: 9px;
+  line-height: 1.4;
+  color: var(--text-muted);
 }
 
 .hm-app-preview__table--invoices td {
@@ -3384,11 +3500,18 @@ body:has(.pg-main-marketing-home) .pg-home-site-header-inner.pg-container {
     flex-direction: column;
     min-height: 88px;
     padding: 10px 10px 8px;
+    overflow: hidden;
   }
 
   .hm-app-preview--hero .hm-app-preview__metric-top {
     flex: 1 1 auto;
     align-items: flex-start;
+    min-width: 0;
+  }
+
+  .hm-app-preview--hero .hm-app-preview__metric-copy {
+    min-width: 0;
+    flex: 1 1 auto;
   }
 
   .hm-app-preview--hero .hm-app-preview__metric-label {
@@ -3421,31 +3544,7 @@ body:has(.pg-main-marketing-home) .pg-home-site-header-inner.pg-container {
   .hm-app-preview--hero .hm-app-preview__metric-icon {
     width: 28px;
     height: 28px;
-  }
-
-  .hm-app-preview--hero .hm-app-preview__panel--chart {
-    padding-bottom: 10px;
-  }
-
-  .hm-app-preview--hero .hm-app-preview__chart-summary {
-    margin-bottom: 6px;
-    padding-bottom: 6px;
-  }
-
-  .hm-app-preview--hero .hm-app-preview__chart-bars--hero {
-    height: 76px;
-    gap: 4px;
-    align-items: flex-end;
-    padding-bottom: 0;
-    border-bottom: 1px solid color-mix(in srgb, var(--border-soft) 90%, transparent);
-  }
-
-  .hm-app-preview--hero .hm-app-preview__chart-bar {
-    min-height: 14px;
-  }
-
-  .hm-app-preview--hero .hm-app-preview__chart-axis {
-    margin-top: 4px;
+    flex: 0 0 28px;
   }
 }
 

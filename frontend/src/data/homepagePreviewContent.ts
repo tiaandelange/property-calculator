@@ -175,6 +175,72 @@ export const homepageReportsPreviewMock = {
   chartBars: homepagePreviewReport.chartBars
 } as const;
 
+/** Single-property projection mock (Riverside duplex) — mirrors portfolio dashboard Y1…Y30 table + summary chart */
+export const homepageHeroProjectionPreview = {
+  propertyName: "Riverside duplex",
+  years: [1, 2, 5, 10, 15, 20, 30] as const,
+  metrics: [
+    {
+      key: "equity",
+      label: "Equity",
+      format: "zar" as const,
+      values: [1_240_000, 1_318_000, 1_582_000, 2_048_000, 2_615_000, 3_342_000, 5_380_000]
+    },
+    {
+      key: "cashFlow",
+      label: "Cash flow",
+      format: "zar" as const,
+      values: [101_040, 108_200, 132_400, 178_600, 228_900, 294_500, 512_800]
+    },
+    {
+      key: "income",
+      label: "Income",
+      format: "zar" as const,
+      values: [174_000, 182_700, 210_400, 268_200, 342_500, 438_600, 712_400]
+    },
+    {
+      key: "expenses",
+      label: "Expenses",
+      format: "zar" as const,
+      values: [72_960, 74_500, 78_000, 89_600, 113_600, 144_100, 199_600]
+    },
+    {
+      key: "cocRoi",
+      label: "CoC ROI",
+      format: "pct" as const,
+      values: [11.2, 11.6, 12.4, 13.1, 13.8, 14.2, 15.1]
+    },
+    {
+      key: "roi",
+      label: "ROI",
+      format: "pct" as const,
+      values: [8.4, 8.9, 9.6, 10.2, 10.8, 11.1, 11.9]
+    },
+    {
+      key: "irr",
+      label: "IRR",
+      format: "pct" as const,
+      values: [14.2, 14.2, 14.2, 14.2, 14.2, 14.2, 14.2]
+    }
+  ],
+  chartNote: "Equity uses the left axis; income, expenses, and cash flow use the right axis."
+} as const;
+
+function fmtHeroZar(n: number): string {
+  if (Math.abs(n) >= 1_000_000) return `R ${(n / 1_000_000).toFixed(2)}M`;
+  if (Math.abs(n) >= 1_000) return `R ${Math.round(n / 1_000)}k`;
+  return `R ${n.toLocaleString("en-ZA")}`;
+}
+
+function fmtHeroPct(n: number): string {
+  return `${n.toFixed(1)}%`;
+}
+
+/** Formatted cells for hero projection table */
+export function formatHeroProjectionCell(format: "zar" | "pct", value: number): string {
+  return format === "zar" ? fmtHeroZar(value) : fmtHeroPct(value);
+}
+
 /** Hero portfolio preview — aligned with homepagePreviewPortfolio */
 export const homepageHeroAppPreview = {
   caption: "Sample portfolio · illustrative UI",
@@ -190,29 +256,7 @@ export const homepageHeroAppPreview = {
     highlight: m.highlight,
     icon: m.icon
   })),
-  chart: {
-    title: homepagePreviewPortfolio.chart.title,
-    legend: homepagePreviewPortfolio.chart.meta,
-    summaryValue: homepagePreviewPortfolio.chart.summaryValue,
-    summaryChange: homepagePreviewPortfolio.chart.summaryChange,
-    values: homepagePreviewPortfolio.chart.values,
-    months: homepagePreviewPortfolio.chart.months
-  },
-  properties: homepagePreviewPortfolio.properties.map((p) => ({
-    name: p.name,
-    cashFlow: p.cashFlow,
-    yield: p.yield,
-    status: p.status
-  })),
-  reportCard: {
-    title: "Investment report",
-    property: "Riverside duplex",
-    status: "Ready to export",
-    metrics: [
-      { label: "IRR (10yr)", value: "14.2%" },
-      { label: "Cash on cash", value: "11.8%" }
-    ]
-  }
+  projection: homepageHeroProjectionPreview
 } as const;
 
 /** @deprecated Use homepageHeroAppPreview */

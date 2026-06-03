@@ -2,7 +2,9 @@
 
 export {
   homepageHeroAppPreview,
+  homepageHeroProjectionPreview,
   homepageHeroDashboardMock,
+  formatHeroProjectionCell,
   homepagePreviewCalculator,
   homepagePreviewInvoice,
   homepagePreviewManagement,
