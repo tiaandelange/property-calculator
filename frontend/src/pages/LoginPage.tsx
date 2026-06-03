@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Helmet } from "react-helmet-async";
-import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { LoginBrandPanel } from "../features/auth/LoginBrandPanel";
 import { LoginSignInCard } from "../features/auth/LoginSignInCard";
 import { LoginSignupCard } from "../features/auth/LoginSignupCard";
