@@ -37,6 +37,8 @@ import {
 } from "../features/portfolio-dashboard/portfolioDashboardUtils";
 import { usePortfolioDesktopLayout } from "../features/portfolio-dashboard/usePortfolioDesktopLayout";
 import { PortfolioAnalysisSplitSection } from "../features/portfolio-dashboard/PortfolioAnalysisSplitSection";
+import { LockedFeaturePreview } from "../lib/subscription/LockedFeaturePreview";
+import { usePlanPermissions } from "../lib/subscription/usePlanPermissions";
 
 function parseTypesParam(search: string) {
   const raw = new URLSearchParams(search).get("types");
@@ -72,6 +74,8 @@ export function OwnedPropertiesPortfolioDashboardPage() {
   const propertyId = useMemo(() => parsePropertyParam(search), [search]);
   const [chartRange, setChartRange] = useState<PortfolioChartRange>("THIS_YEAR");
   const desktopLayout = usePortfolioDesktopLayout();
+  const permissions = usePlanPermissions();
+  const showAdvancedReturns = permissions.canUseFeature("irr");
 
   const summaryQuery = useDashboardSummaryQuery({
     propertyTypes: selectedTypes,
@@ -233,12 +237,16 @@ export function OwnedPropertiesPortfolioDashboardPage() {
           value={
             loading && !data
               ? "…"
-              : cashOnCashAnnualPercent == null
+              : !showAdvancedReturns
                 ? "—"
-                : `${cashOnCashAnnualPercent.toFixed(1)}%`
+                : cashOnCashAnnualPercent == null
+                  ? "—"
+                  : `${cashOnCashAnnualPercent.toFixed(1)}%`
           }
-          changeText={cashFlowChange.text}
-          changeTone={cashFlowChange.tone}
+          changeText={
+            !showAdvancedReturns ? "Unlock with Investor plan" : cashFlowChange.text
+          }
+          changeTone={!showAdvancedReturns ? "neutral" : cashFlowChange.tone}
           icon="percent"
           iconAccent="warning"
           to="/owned-properties/metrics/returns"
@@ -348,7 +356,13 @@ export function OwnedPropertiesPortfolioDashboardPage() {
   const mainPanels = hasProperties ? (
     <>
       <div className="pg-pdash-middle pg-pdash-desktop-only">
-        <PortfolioOverviewChart data={data} range={chartRange} onRangeChange={setChartRange} />
+        <LockedFeaturePreview
+          feature="graphs"
+          title="Unlock portfolio charts with Investor."
+          className="pg-pdash-chart-lock"
+        >
+          <PortfolioOverviewChart data={data} range={chartRange} onRangeChange={setChartRange} />
+        </LockedFeaturePreview>
         <RecentActivityPanel data={data} limit={desktopLayout.activityLimit} />
       </div>
       <div className="pg-pdash-desktop-only">
@@ -371,7 +385,9 @@ export function OwnedPropertiesPortfolioDashboardPage() {
 
   const mobileStack = hasProperties ? (
     <div className="pg-pdash-mobile-stack pg-pdash-mobile-only">
-      <PortfolioOverviewChart data={data} range={chartRange} onRangeChange={setChartRange} />
+      <LockedFeaturePreview feature="graphs" title="Unlock portfolio charts with Investor.">
+        <PortfolioOverviewChart data={data} range={chartRange} onRangeChange={setChartRange} />
+      </LockedFeaturePreview>
       <RecentActivityPanel data={data} />
       <PortfolioAnalysisSplitSection
         data={data}

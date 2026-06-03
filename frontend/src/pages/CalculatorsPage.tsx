@@ -20,12 +20,19 @@ import { AppModal } from "../components/ui/AppModal";
 import { deleteSavedCalculatorInput, listSavedCalculatorInputs, saveCalculatorInputs, type SavedCalculatorInput } from "../services/calculatorSavedInputsSupabase";
 import { useSettingsQuery } from "../features/queries";
 import { DEFAULT_USER_SETTINGS } from "../features/settings/settingsDefaults";
+import { LockedFeaturePreview } from "../lib/subscription/LockedFeaturePreview";
+import { UpgradePrompt } from "../lib/subscription/UpgradePrompt";
+import { usePlanPermissions } from "../lib/subscription/usePlanPermissions";
+import { formatReportLimitUsage } from "../lib/subscription/planFeatures";
 
 type StepId = 1 | 2 | 3;
 
 export function CalculatorsPage() {
   const navigate = useNavigate();
+  const permissions = usePlanPermissions();
   const isMobile = useMediaQuery("(max-width: 767px)");
+  const [showReportUpgrade, setShowReportUpgrade] = useState(false);
+  const showIrr = permissions.canUseFeature("irr");
   const [step, setStep] = useState<StepId>(1);
   const [propertyType, setPropertyType] = useState<PropertyTypeId | "">("");
   const [answers, setAnswers] = useState<Record<string, string>>({});
@@ -139,6 +146,10 @@ export function CalculatorsPage() {
 
   const generateReport = async () => {
     if (!propertyType || !metrics) return;
+    if (!permissions.canGenerateReport && permissions.limitsActive) {
+      setShowReportUpgrade(true);
+      return;
+    }
     setValidationError(null);
     const missing = validateRequired();
     if (missing.length) {
@@ -177,6 +188,15 @@ export function CalculatorsPage() {
           <div className="pg-app-page-header__main">
             <AppPageTitle>Calculators</AppPageTitle>
             <AppPageSubtitle>Choose a property type and generate investment insights</AppPageSubtitle>
+            {permissions.limitsActive ? (
+              <p className="pg-plan-limit-hint" style={{ marginTop: 8 }}>
+                {formatReportLimitUsage(
+                  permissions.usage.investmentReportCount,
+                  permissions.getLimit("maxReportsPerMonth"),
+                  permissions.reportPeriodLabel
+                )}
+              </p>
+            ) : null}
           </div>
           <AppPageActions>
             <Button
@@ -350,13 +370,19 @@ export function CalculatorsPage() {
                   <AppMetricCard
                     label="IRR"
                     value={
-                      metrics?.internalRateofReturn == null ? "—" : `${metrics.internalRateofReturn.toFixed(1)}%`
+                      !showIrr
+                        ? "—"
+                        : metrics?.internalRateofReturn == null
+                          ? "—"
+                          : `${metrics.internalRateofReturn.toFixed(1)}%`
                     }
                     icon="percent"
                     hint={
-                      metrics?.internalRateofReturn == null
-                        ? "Requires cash invested and projected exit value."
-                        : undefined
+                      !showIrr
+                        ? "Unlock with Investor plan"
+                        : metrics?.internalRateofReturn == null
+                          ? "Requires cash invested and projected exit value."
+                          : undefined
                     }
                   />
                 </div>
@@ -394,13 +420,19 @@ export function CalculatorsPage() {
                   <AppMetricCard
                     label="IRR"
                     value={
-                      metrics?.internalRateofReturn == null ? "—" : `${metrics.internalRateofReturn.toFixed(1)}%`
+                      !showIrr
+                        ? "—"
+                        : metrics?.internalRateofReturn == null
+                          ? "—"
+                          : `${metrics.internalRateofReturn.toFixed(1)}%`
                     }
                     icon="percent"
                     hint={
-                      metrics?.internalRateofReturn == null
-                        ? "Requires cash invested and projected exit value."
-                        : undefined
+                      !showIrr
+                        ? "Unlock with Investor plan"
+                        : metrics?.internalRateofReturn == null
+                          ? "Requires cash invested and projected exit value."
+                          : undefined
                     }
                   />
                   <AppMetricCard
@@ -422,12 +454,19 @@ export function CalculatorsPage() {
                 </div>
 
                 <div className="pg-calculators-charts-2" aria-label="Report preview charts">
-                  <Card title="Income vs Expenses">
-                    <IncomeVsExpensesChart metrics={metrics} />
-                  </Card>
-                  <Card title="5-Year Projected Cash Flow">
-                    <CashFlowTrendChart metrics={metrics} projectionAssumptions={projectionAssumptions} />
-                  </Card>
+                  <LockedFeaturePreview feature="graphs" title="Unlock charts with Investor.">
+                    <Card title="Income vs Expenses">
+                      <IncomeVsExpensesChart metrics={metrics} />
+                    </Card>
+                  </LockedFeaturePreview>
+                  <LockedFeaturePreview
+                    feature="forecasting"
+                    title="Unlock long-term projections with Investor."
+                  >
+                    <Card title="5-Year Projected Cash Flow">
+                      <CashFlowTrendChart metrics={metrics} projectionAssumptions={projectionAssumptions} />
+                    </Card>
+                  </LockedFeaturePreview>
                 </div>
 
                 {/* Actions live under “Property Questions” only (avoid duplicates). */}
@@ -443,6 +482,20 @@ export function CalculatorsPage() {
             </aside>
           </div>
         </AppPageSection>
+
+        <AppModal
+          open={showReportUpgrade}
+          onOpenChange={setShowReportUpgrade}
+          title="Report limit reached"
+          description="Upgrade your plan to generate more investment reports this month."
+          footer={
+            <Button type="button" variant="secondary" onClick={() => setShowReportUpgrade(false)}>
+              Close
+            </Button>
+          }
+        >
+          <UpgradePrompt context="report" limit="maxReportsPerMonth" />
+        </AppModal>
 
         <AppModal
           open={saveOpen}

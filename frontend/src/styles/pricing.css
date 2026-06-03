@@ -414,6 +414,15 @@
   line-height: 1.5;
 }
 
+.pg-pricing-compare__footnote {
+  margin: 16px auto 0;
+  max-width: 36rem;
+  font-size: 14px;
+  line-height: 1.5;
+  text-align: center;
+  color: var(--text-secondary);
+}
+
 .pg-pricing-compare-panel {
   background: var(--surface);
   border-radius: var(--radius-lg);

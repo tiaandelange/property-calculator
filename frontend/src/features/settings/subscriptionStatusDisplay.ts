@@ -3,9 +3,9 @@ import type { UserSubscriptionRecord } from "../../services/userSubscriptionsSup
 const STATUS_LABELS: Record<string, string> = {
   trialing: "Trialing",
   active: "Active",
-  active_manual: "Active (manual)",
+  active_manual: "Active",
   pending_payment: "Pending payment",
-  past_due: "Past due",
+  past_due: "Expired",
   cancelled: "Cancelled",
   expired: "Expired"
 };

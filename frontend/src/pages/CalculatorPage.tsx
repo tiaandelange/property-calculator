@@ -24,6 +24,9 @@ import { Button, ButtonLink } from "../components/ui/Button";
 import { PlanLimitUpgradePrompt } from "../features/subscription/PlanLimitUpgradePrompt";
 import { formatReportLimitUsage } from "../features/subscription/subscriptionLimits";
 import { useSubscriptionLimits } from "../features/subscription/useSubscriptionLimits";
+import { LockedFeaturePreview } from "../lib/subscription/LockedFeaturePreview";
+import { getCalculatorPlanGateFeature } from "../lib/subscription/planGatingHelpers";
+import { usePlanPermissions } from "../lib/subscription/usePlanPermissions";
 
 ChartJS.register(ArcElement, BarElement, CategoryScale, LinearScale, Legend, Tooltip, PointElement, LineElement);
 
@@ -321,6 +324,9 @@ export function CalculatorPage() {
   const [savedId, setSavedId] = useState<string | number | null>(null);
   const [pdfBusy, setPdfBusy] = useState(false);
   const subscriptionLimits = useSubscriptionLimits();
+  const planPermissions = usePlanPermissions();
+  const calculatorGateFeature = slug ? getCalculatorPlanGateFeature(slug) : null;
+  const showForecasting = planPermissions.canUseFeature("forecasting");
   const { focusResults, onCalculateSuccess, showInputs } = useCalculatorMobileResults(slug);
 
   const runWithValues = useCallback(async (targetSlug: string, payloadValues: Record<string, any>, opts?: { userInitiated?: boolean }) => {
@@ -772,6 +778,11 @@ export function CalculatorPage() {
                       />
                     </Field>
                   </div>
+                  <LockedFeaturePreview
+                    feature="forecasting"
+                    title="Unlock growth assumptions and projections with Investor."
+                    showPreview={showForecasting}
+                  >
                   <div className="pg-calculator-input-grid" style={{ marginTop: 14 }}>
                     <Field label="Rent growth (% p.a.)" help="Drives the 5-year NOI projection.">
                       <Input
@@ -798,6 +809,7 @@ export function CalculatorPage() {
                       />
                     </Field>
                   </div>
+                  </LockedFeaturePreview>
                 </div>
               </>
             ) : null}
@@ -976,26 +988,28 @@ export function CalculatorPage() {
                   </Card>
                 ) : null}
 
-                {calc.slug !== "buy-vs-rent"
-                  ? chartsToRender.map((ch, idx) => {
-                  const opts = isMortgageStandalone
-                    ? (ch.options as any)
-                    : (mergeThemedChartOptions(ch.options as Record<string, unknown>) as any);
-                  return (
-                    <Card key={`${ch.title ?? "chart"}-${idx}`} title={ch.title ?? "Chart"}>
-                      <div className="pg-calculator-chart-host">
-                        {ch.chartType === "line" ? (
-                          <Line data={ch.data as any} options={opts} />
-                        ) : ch.chartType === "doughnut" ? (
-                          <Doughnut data={ch.data as any} options={opts} />
-                        ) : (
-                          <Bar data={ch.data as any} options={opts} />
-                        )}
-                      </div>
-                    </Card>
-                  );
-                    })
-                  : null}
+                {calc.slug !== "buy-vs-rent" ? (
+                  <LockedFeaturePreview feature="graphs" title="Unlock charts with Investor.">
+                    {chartsToRender.map((ch, idx) => {
+                      const opts = isMortgageStandalone
+                        ? (ch.options as any)
+                        : (mergeThemedChartOptions(ch.options as Record<string, unknown>) as any);
+                      return (
+                        <Card key={`${ch.title ?? "chart"}-${idx}`} title={ch.title ?? "Chart"}>
+                          <div className="pg-calculator-chart-host">
+                            {ch.chartType === "line" ? (
+                              <Line data={ch.data as any} options={opts} />
+                            ) : ch.chartType === "doughnut" ? (
+                              <Doughnut data={ch.data as any} options={opts} />
+                            ) : (
+                              <Bar data={ch.data as any} options={opts} />
+                            )}
+                          </div>
+                        </Card>
+                      );
+                    })}
+                  </LockedFeaturePreview>
+                ) : null}
 
                 {calc.slug !== "buy-vs-rent" && result?.interpretation?.text ? (
                   <Card title="Interpretation">
@@ -1086,6 +1100,18 @@ export function CalculatorPage() {
 
   const toolExplainer = getToolExplainer(calc.slug, calc.description);
 
+  const gatedCalculatorWorkspace = calculatorGateFeature ? (
+    <LockedFeaturePreview
+      feature={calculatorGateFeature}
+      title="Upgrade to Investor to unlock this calculator."
+      className="pg-calculator-tool-gate"
+    >
+      {calculatorWorkspace}
+    </LockedFeaturePreview>
+  ) : (
+    calculatorWorkspace
+  );
+
   const calculatorExplainerBelow = (
     <div className="pg-home-light-section pg-calculator-tool-explainer">
       <Container className="pg-container--marketing-wide">
@@ -1148,7 +1174,7 @@ export function CalculatorPage() {
               </p>
             </div>
             <div style={{ height: 16 }} />
-            <div className="pg-calculator-tool-header-workspace pg-calculator-tool-navy">{calculatorWorkspace}</div>
+            <div className="pg-calculator-tool-header-workspace pg-calculator-tool-navy">{gatedCalculatorWorkspace}</div>
           </Container>
         </div>
         {calculatorExplainerBelow}
@@ -1170,7 +1196,7 @@ export function CalculatorPage() {
           secondMetric ? `${secondMetric.label}: ${formatResultsMetricDisplay(secondMetric)}` : undefined
         }
         loading={loading && !result}
-        workspaceBelow={calculatorWorkspace}
+        workspaceBelow={gatedCalculatorWorkspace}
       />
 
       {calculatorExplainerBelow}

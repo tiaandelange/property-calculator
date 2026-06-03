@@ -1,3 +1,4 @@
+import { LockedFeaturePreview } from "../../lib/subscription/LockedFeaturePreview";
 import { PortfolioDetailedOverviewTable } from "./PortfolioDetailedOverviewTable";
 import { PortfolioSummaryProjectionChart } from "./PortfolioSummaryProjectionChart";
 
@@ -13,19 +14,25 @@ export function PortfolioAnalysisSplitSection({
   propertyId?: string | number | null;
 }) {
   return (
-    <section className="pg-pdash-analysis-split" aria-label="Portfolio projection analysis">
-      <PortfolioDetailedOverviewTable
-        data={data}
-        properties={properties}
-        propertyTypes={propertyTypes}
-        propertyId={propertyId}
-      />
-      <PortfolioSummaryProjectionChart
-        data={data}
-        properties={properties}
-        propertyTypes={propertyTypes}
-        propertyId={propertyId}
-      />
-    </section>
+    <LockedFeaturePreview
+      feature="portfolioDashboard"
+      title="Unlock portfolio analytics with Investor."
+      className="pg-pdash-analysis-split-wrap"
+    >
+      <section className="pg-pdash-analysis-split" aria-label="Portfolio projection analysis">
+        <PortfolioDetailedOverviewTable
+          data={data}
+          properties={properties}
+          propertyTypes={propertyTypes}
+          propertyId={propertyId}
+        />
+        <PortfolioSummaryProjectionChart
+          data={data}
+          properties={properties}
+          propertyTypes={propertyTypes}
+          propertyId={propertyId}
+        />
+      </section>
+    </LockedFeaturePreview>
   );
 }

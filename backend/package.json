@@ -15,7 +15,8 @@
     "cleanup:tenants": "tsx scripts/legacy-prisma-migration/cleanup-duplicate-tenants.ts",
     "tenants:list": "tsx scripts/legacy-prisma-migration/list-tenants.ts",
     "backup:portfolio-data": "tsx scripts/legacy-prisma-migration/export-portfolio-backup.ts",
-    "reset:portfolio-data": "tsx scripts/legacy-prisma-migration/reset-portfolio-data.ts"
+    "reset:portfolio-data": "tsx scripts/legacy-prisma-migration/reset-portfolio-data.ts",
+    "dev:seed-subscription-users": "node scripts/dev/seed-subscription-test-users.mjs"
   },
   "prisma": {
     "seed": "tsx scripts/legacy-prisma-migration/prisma/seed.ts"

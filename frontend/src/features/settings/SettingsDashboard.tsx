@@ -489,8 +489,8 @@ export function SettingsDashboard() {
         <SettingsCard
           id="subscription"
           icon="payments"
-          title="Subscription & Billing"
-          description="Your plan, usage, and billing (payments coming soon)."
+          title="Subscription"
+          description="Your plan, usage limits, and included features. Payments coming soon."
           fullWidth
         >
           <SubscriptionSettingsSection freeUsesRemaining={profile?.free_uses_remaining} />

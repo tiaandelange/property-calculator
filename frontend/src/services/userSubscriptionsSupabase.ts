@@ -38,7 +38,7 @@ export function buildInitialUserSubscriptionFields(plan: SubscriptionPlanRecord)
     const period = calendarMonthIsoBounds(now);
     return {
       plan_code: plan.code,
-      status: "active_manual",
+      status: "active",
       trial_start: null,
       trial_end: null,
       current_period_start: period.start,
@@ -169,7 +169,8 @@ export async function ensureUserSubscriptionForPlanCode(
  * Updates plan selection for testing / pre-payment access. Does not charge or touch payment_* fields.
  */
 export async function updateUserSubscriptionPlanCode(
-  planCode: string
+  planCode: string,
+  opts?: { requireAdmin?: boolean }
 ): Promise<UserSubscriptionRecord> {
   if (!isSupabaseConfigured) {
     throw new Error("Supabase is not configured.");
@@ -183,6 +184,18 @@ export async function updateUserSubscriptionPlanCode(
     data: { user }
   } = await sb.auth.getUser();
   if (!user) throw new Error("Not signed in.");
+
+  if (opts?.requireAdmin !== false) {
+    const { data: profile, error: profileErr } = await sb
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .maybeSingle();
+    if (profileErr) throw new Error(profileErr.message);
+    if (profile?.role !== "ADMIN") {
+      throw new Error("Only administrators can change plans from settings.");
+    }
+  }
 
   const plans = await listActiveSubscriptionPlans().catch(() => FALLBACK_SUBSCRIPTION_PLANS);
   const plan = plans.find((p) => p.code === planCode);

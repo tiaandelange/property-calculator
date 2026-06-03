@@ -20,7 +20,7 @@ describe("getSubscriptionUsagePeriod", () => {
       id: "1",
       userId: "u",
       planCode: "starter",
-      status: "active_manual",
+      status: "active",
       trialStart: null,
       trialEnd: null,
       currentPeriodStart: "2026-06-01T00:00:00.000Z",

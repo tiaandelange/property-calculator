@@ -7,8 +7,10 @@ import { Card } from "../components/ui/Card";
 import { AppListPage, AppPageActions, AppPageHeader, AppPageSubtitle, AppPageTitle } from "../components/ui/AppPage";
 import { Grid } from "../components/ui/Grid";
 import { Button, ButtonLink } from "../components/ui/Button";
-import { PlanLimitUpgradePrompt } from "../features/subscription/PlanLimitUpgradePrompt";
-import { useSubscriptionLimits } from "../features/subscription/useSubscriptionLimits";
+import { AppModal } from "../components/ui/AppModal";
+import { formatReportLimitUsage } from "../lib/subscription/planFeatures";
+import { UpgradePrompt } from "../lib/subscription/UpgradePrompt";
+import { usePlanPermissions } from "../lib/subscription/usePlanPermissions";
 
 type Report = {
   id: string | number;
@@ -31,7 +33,8 @@ function getKeyMetric(result: Record<string, unknown>) {
 }
 
 export function DashboardPage() {
-  const subscriptionLimits = useSubscriptionLimits();
+  const permissions = usePlanPermissions();
+  const [showReportUpgrade, setShowReportUpgrade] = useState(false);
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>("");
@@ -51,8 +54,8 @@ export function DashboardPage() {
   };
 
   const generate = async (calculationId: string | number) => {
-    if (!subscriptionLimits.canGenerateReport && subscriptionLimits.limitsActive) {
-      setError(subscriptionLimits.upgradeMessage ?? "Report limit reached for your plan.");
+    if (!permissions.canGenerateReport && permissions.limitsActive) {
+      setShowReportUpgrade(true);
       return;
     }
     setError("");
@@ -107,6 +110,15 @@ export function DashboardPage() {
         <div>
           <AppPageTitle>{greeting}</AppPageTitle>
           <AppPageSubtitle>Your saved calculations and PDF reports live here.</AppPageSubtitle>
+          {permissions.limitsActive ? (
+            <p className="pg-plan-limit-hint" style={{ marginTop: 8 }}>
+              {formatReportLimitUsage(
+                permissions.usage.investmentReportCount,
+                permissions.getLimit("maxReportsPerMonth"),
+                permissions.reportPeriodLabel
+              )}
+            </p>
+          ) : null}
         </div>
         <AppPageActions>
           <Button onClick={load} loading={loading}>
@@ -176,8 +188,10 @@ export function DashboardPage() {
                         >
                           Download PDF
                         </Button>
-                      ) : !subscriptionLimits.canGenerateReport && subscriptionLimits.limitsActive ? (
-                        <PlanLimitUpgradePrompt context="report" limits={subscriptionLimits} compact />
+                      ) : !permissions.canGenerateReport && permissions.limitsActive ? (
+                        <Button variant="secondary" type="button" onClick={() => setShowReportUpgrade(true)}>
+                          Generate PDF
+                        </Button>
                       ) : (
                         <Button variant="secondary" loading={pdfBusyCalcId === r.id} onClick={() => void generate(r.id)}>
                           {r.legacyPdfOnly ? "Regenerate PDF" : "Generate PDF"}
@@ -193,6 +207,20 @@ export function DashboardPage() {
             })}
           </Grid>
         ) : null}
+
+        <AppModal
+          open={showReportUpgrade}
+          onOpenChange={setShowReportUpgrade}
+          title="Report limit reached"
+          description="Upgrade your plan to generate more reports this month."
+          footer={
+            <Button variant="secondary" type="button" onClick={() => setShowReportUpgrade(false)}>
+              Close
+            </Button>
+          }
+        >
+          <UpgradePrompt context="report" limit="maxReportsPerMonth" />
+        </AppModal>
     </AppListPage>
   );
 }

@@ -11,6 +11,7 @@ export type SubscriptionUsagePeriod = {
 export type SubscriptionUsageCounts = {
   propertyCount: number;
   investmentReportCount: number;
+  applicationLinksActive: number;
   period: SubscriptionUsagePeriod;
 };
 
@@ -47,7 +48,7 @@ export async function fetchSubscriptionUsageCounts(
   const period = getSubscriptionUsagePeriod(subscription);
 
   if (!isSupabaseConfigured) {
-    return { propertyCount: 0, investmentReportCount: 0, period };
+    return { propertyCount: 0, investmentReportCount: 0, applicationLinksActive: 0, period };
   }
 
   const sb = getSupabase();
@@ -55,30 +56,62 @@ export async function fetchSubscriptionUsageCounts(
     data: { user }
   } = await sb.auth.getUser();
   if (!user) {
-    return { propertyCount: 0, investmentReportCount: 0, period };
+    return { propertyCount: 0, investmentReportCount: 0, applicationLinksActive: 0, period };
   }
 
-  const { count: propertyCount, error: propErr } = await sb
-    .from("properties")
-    .select("id", { count: "exact", head: true })
-    .eq("user_id", user.id);
+  const periodStart = period.start.toISOString();
+  const periodEnd = period.end.toISOString();
+
+  const [
+    { count: propertyCount, error: propErr },
+    { count: storedReportCount, error: storedErr },
+    { count: investmentTableCount, error: invErr },
+    { count: inviteCount, error: inviteErr },
+    entitlementsRes
+  ] = await Promise.all([
+    sb.from("properties").select("id", { count: "exact", head: true }).eq("user_id", user.id),
+    sb
+      .from("stored_reports")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user.id)
+      .in("report_type", ["CALCULATION", "INVESTMENT_REPORT", "PROPERTY_SUMMARY"])
+      .gte("created_at", periodStart)
+      .lt("created_at", periodEnd),
+    sb
+      .from("investment_reports")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user.id)
+      .gte("created_at", periodStart)
+      .lt("created_at", periodEnd),
+    sb
+      .from("applicant_invites")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user.id)
+      .is("revoked_at", null),
+    sb.rpc("get_user_plan_entitlements").then((r) => r)
+  ]);
 
   if (propErr) throw new Error(propErr.message);
+  if (storedErr && !isMissingTable(storedErr)) throw new Error(storedErr.message);
+  if (invErr && !isMissingTable(invErr)) throw new Error(invErr.message);
+  if (inviteErr) throw new Error(inviteErr.message);
 
-  let reportQuery = sb
-    .from("stored_reports")
-    .select("id", { count: "exact", head: true })
-    .eq("user_id", user.id)
-    .eq("report_type", "CALCULATION")
-    .gte("created_at", period.start.toISOString())
-    .lt("created_at", period.end.toISOString());
-
-  const { count: investmentReportCount, error: reportErr } = await reportQuery;
-  if (reportErr) throw new Error(reportErr.message);
+  const ent = entitlementsRes.data as {
+    usage?: { reportsGenerated?: number };
+  } | null;
+  const counterReports = Number(ent?.usage?.reportsGenerated ?? 0);
+  const tableReports = Math.max(storedReportCount ?? 0, investmentTableCount ?? 0);
 
   return {
     propertyCount: propertyCount ?? 0,
-    investmentReportCount: investmentReportCount ?? 0,
+    investmentReportCount: Math.max(counterReports, tableReports),
+    applicationLinksActive: inviteCount ?? 0,
     period
   };
+}
+
+function isMissingTable(err: { code?: string; message?: string }): boolean {
+  const code = String(err?.code ?? "");
+  const msg = String(err?.message ?? "");
+  return code === "42P01" || msg.includes("does not exist");
 }

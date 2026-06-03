@@ -11,6 +11,8 @@ import { compositionSlicesFromSummary } from "../../financials/buildPropertyFina
 import { usePropertyFinancialSummary } from "../../financials/usePropertyFinancialSummary";
 import { PropertyOverviewHero } from "./PropertyOverviewHero";
 import { PROPERTY_WORKSPACE_TABS } from "./propertyWorkspaceTabs";
+import { usePlanPermissions } from "../../../lib/subscription/usePlanPermissions";
+import { LockedFeaturePreview } from "../../../lib/subscription/LockedFeaturePreview";
 import { formatOverviewCurrency, formatOverviewPercent } from "./propertyOverviewUtils";
 
 ChartJS.register(ArcElement, CategoryScale, LinearScale, LineElement, PointElement, Tooltip, Legend);
@@ -109,6 +111,8 @@ export function WorkspaceOverviewTab({
   const monthlyCashFlow = summary?.monthlyCashFlow ?? null;
   const cashFlowTone = monthlyCashFlow == null ? undefined : monthlyCashFlow >= 0 ? "success" : "danger";
   const cocPercent = summary?.cashOnCashRoi ?? null;
+  const permissions = usePlanPermissions();
+  const showAdvancedReturns = permissions.canUseFeature("irr");
 
   return (
     <div className="pg-workspace-overview pg-prop-overview">
@@ -178,8 +182,20 @@ export function WorkspaceOverviewTab({
         />
         <MetricCard
           title="Cash on Cash ROI"
-          value={cocPercent == null ? "—" : formatOverviewPercent(cocPercent, 2)}
-          subtitle={cocPercent == null ? "Add investment details to calculate" : "Annualised return on cash invested"}
+          value={
+            !showAdvancedReturns
+              ? "—"
+              : cocPercent == null
+                ? "—"
+                : formatOverviewPercent(cocPercent, 2)
+          }
+          subtitle={
+            !showAdvancedReturns
+              ? "Unlock with Investor plan"
+              : cocPercent == null
+                ? "Add investment details to calculate"
+                : "Annualised return on cash invested"
+          }
           iconPreset="yield"
           iconTone="warning"
         />
@@ -199,26 +215,28 @@ export function WorkspaceOverviewTab({
               <div className="pg-muted">No composition data yet. Add leases or recurring expenses.</div>
             )}
           </Card>
-          <Card title="NOI trend">
-            {noiTrendRows.length ? (
-              <Line
-                data={{
-                  labels: noiTrendRows.map((r: any) => r.label),
-                  datasets: [
-                    {
-                      label: "NOI",
-                      data: noiTrendRows.map((r: any) => r.noi),
-                      borderColor: getChartSemanticColors().info,
-                      backgroundColor: "rgba(77,150,255,0.15)"
-                    }
-                  ]
-                }}
-                options={{ plugins: { legend: { display: false } } }}
-              />
-            ) : (
-              <div className="pg-muted">No trend yet.</div>
-            )}
-          </Card>
+          <LockedFeaturePreview feature="graphs" title="Unlock charts with Investor.">
+            <Card title="NOI trend">
+              {noiTrendRows.length ? (
+                <Line
+                  data={{
+                    labels: noiTrendRows.map((r: any) => r.label),
+                    datasets: [
+                      {
+                        label: "NOI",
+                        data: noiTrendRows.map((r: any) => r.noi),
+                        borderColor: getChartSemanticColors().info,
+                        backgroundColor: "rgba(77,150,255,0.15)"
+                      }
+                    ]
+                  }}
+                  options={{ plugins: { legend: { display: false } } }}
+                />
+              ) : (
+                <div className="pg-muted">No trend yet.</div>
+              )}
+            </Card>
+          </LockedFeaturePreview>
         </div>
 
         <div className="pg-prop-overview-snapshot-grid">

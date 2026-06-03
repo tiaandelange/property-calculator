@@ -10,6 +10,8 @@ import {
   getOrCreateApplicantInvite
 } from "../../services/applicantApplicationsSupabase";
 import { listPropertyUnits } from "../../services/propertyUnitsSupabase";
+import { UpgradePrompt } from "../../lib/subscription/UpgradePrompt";
+import { usePlanPermissions } from "../../lib/subscription/usePlanPermissions";
 
 export function ApplicantInviteModal({
   open,
@@ -28,6 +30,8 @@ export function ApplicantInviteModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
+  const permissions = usePlanPermissions();
+  const canInvite = permissions.canCreateApplicationLink;
 
   const activeUnits = useMemo(
     () => units.filter((u) => u.isActive !== false).sort((a, b) => a.sortOrder - b.sortOrder),
@@ -86,7 +90,7 @@ export function ApplicantInviteModal({
   }, [open, propertyId]);
 
   useEffect(() => {
-    if (!open || !inviteReady) {
+    if (!open || !inviteReady || !canInvite) {
       setToken("");
       return;
     }
@@ -108,7 +112,7 @@ export function ApplicantInviteModal({
     return () => {
       cancelled = true;
     };
-  }, [open, propertyId, unitId, inviteReady, showUnitField]);
+  }, [open, propertyId, unitId, inviteReady, showUnitField, canInvite]);
 
   const shareUrl = token ? applicantApplyUrl(token) : "";
 
@@ -136,7 +140,11 @@ export function ApplicantInviteModal({
           <Button type="button" variant="soft" onClick={() => onOpenChange(false)}>
             Close
           </Button>
-          <Button type="button" disabled={!inviteReady || !token || loading} onClick={() => void copyLink()}>
+          <Button
+            type="button"
+            disabled={!canInvite || !inviteReady || !token || loading}
+            onClick={() => void copyLink()}
+          >
             {copied ? "Copied" : "Copy link"}
           </Button>
         </div>
@@ -146,8 +154,14 @@ export function ApplicantInviteModal({
         <Link to="/settings#applicant-form-template">Edit default form template</Link>
       </p>
 
+      {!canInvite && !permissions.isLoading ? (
+        <UpgradePrompt feature="applicationLinks" limit="maxApplicationLinks" context="feature" />
+      ) : null}
+
       {error ? <div className="pg-alert pg-alert-error">{error}</div> : null}
 
+      {canInvite ? (
+        <>
       <div className="pg-applicant-invite-modal__row">
         <Field label="Property">
           <select
@@ -198,6 +212,8 @@ export function ApplicantInviteModal({
         <p className="pg-applicant-invite-modal__url pg-muted" aria-live="polite">
           {shareUrl}
         </p>
+      ) : null}
+        </>
       ) : null}
     </AppModal>
   );

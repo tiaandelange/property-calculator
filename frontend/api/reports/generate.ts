@@ -1,7 +1,10 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { randomUUID } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
-import { assertInvestmentReportQuota } from "../lib/investmentReportQuota.js";
+import {
+  assertInvestmentReportQuota,
+  recordInvestmentReportGenerated
+} from "../lib/investmentReportQuota.js";
 import { renderPdfDefinitionToBuffer } from "../lib/pdfMakeServer.js";
 import { buildCalculationReportPdfDefinition, buildInvestmentReportPdfDefinition, buildPropertySummaryPdfDefinition } from "../lib/reportPdfBuilders.js";
 import { assemblePropertyInvestmentReportData } from "../lib/propertyInvestmentReportData.js";
@@ -193,6 +196,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
         return;
       }
 
+      await recordInvestmentReportGenerated(sb);
+
       const { data: signed, error: signErr } = await sb.storage.from(REPORTS_BUCKET).createSignedUrl(storageKey, 600);
       if (signErr || !signed?.signedUrl) {
         res.status(201).json({
@@ -219,6 +224,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       const pid = typeof propertyIdRaw === "string" ? propertyIdRaw : String(propertyIdRaw ?? "");
       if (!isUuid(pid)) {
         res.status(400).json({ error: "propertyId must be a UUID for PROPERTY_SUMMARY reports." });
+        return;
+      }
+
+      const quotaErr = await assertInvestmentReportQuota(sb);
+      if (quotaErr) {
+        res.status(403).json({ error: quotaErr });
         return;
       }
 
@@ -323,6 +334,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
         res.status(500).json({ error: "Failed to save report metadata." });
         return;
       }
+
+      await recordInvestmentReportGenerated(sb);
 
       const { data: signed, error: signErr } = await sb.storage.from(REPORTS_BUCKET).createSignedUrl(storageKey, 600);
       if (signErr || !signed?.signedUrl) {
@@ -440,6 +453,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
           return;
         }
       }
+
+      await recordInvestmentReportGenerated(sb);
 
       const { data: signed, error: signErr } = await sb.storage.from(REPORTS_BUCKET).createSignedUrl(storageKey, 600);
       if (signErr || !signed?.signedUrl) {

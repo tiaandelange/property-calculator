@@ -1,41 +1,45 @@
 import type { CSSProperties, ReactNode } from "react";
-import { ButtonLink } from "../../components/ui/Button";
-import type { ButtonVariant } from "../../components/ui/buttonStyles";
-import { PlanLimitUpgradePrompt } from "./PlanLimitUpgradePrompt";
-import { formatPropertyLimitUsage } from "./subscriptionLimits";
-import { useSubscriptionLimits } from "./useSubscriptionLimits";
+import { Link } from "react-router-dom";
+import { UpgradePrompt } from "../../lib/subscription/UpgradePrompt";
+import { usePlanPermissions } from "../../lib/subscription/usePlanPermissions";
+import { formatPropertyLimitUsage } from "../../lib/subscription/planFeatures";
 
 type AddPropertyButtonProps = {
-  variant?: ButtonVariant;
-  children?: ReactNode;
-  className?: string;
-  style?: CSSProperties;
+  variant?: "primary" | "soft";
   showUsageHint?: boolean;
+  style?: CSSProperties;
+  children?: ReactNode;
 };
 
 export function AddPropertyButton({
   variant = "primary",
-  children = "Add Property",
-  className,
+  showUsageHint = false,
   style,
-  showUsageHint = false
+  children = "Add property"
 }: AddPropertyButtonProps) {
-  const limits = useSubscriptionLimits();
+  const permissions = usePlanPermissions();
 
-  if (!limits.isLoading && !limits.canCreateProperty && limits.limitsActive) {
-    return <PlanLimitUpgradePrompt context="property" limits={limits} compact />;
+  if (!permissions.isLoading && permissions.limitsActive && !permissions.canCreateProperty) {
+    return <UpgradePrompt context="property" limit="maxProperties" compact />;
   }
 
+  const className =
+    variant === "soft" ? "pg-btn pg-btn--soft pg-btn--sm" : "pg-btn pg-btn--primary pg-btn--sm";
+
+  const usageHint =
+    showUsageHint && permissions.limitsActive
+      ? formatPropertyLimitUsage(
+          permissions.usage.propertyCount,
+          permissions.getLimit("maxProperties")
+        )
+      : null;
+
   return (
-    <span className="pg-add-property-button-wrap">
-      <ButtonLink href="/owned-properties/new" variant={variant} className={className} style={style}>
+    <span className="pg-add-property-btn-wrap" style={style}>
+      <Link to="/owned-properties/new" className={className}>
         {children}
-      </ButtonLink>
-      {showUsageHint && limits.limitsActive && limits.propertyLimit != null ? (
-        <span className="pg-plan-limit-hint">
-          {formatPropertyLimitUsage(limits.currentPropertyCount, limits.propertyLimit)}
-        </span>
-      ) : null}
+      </Link>
+      {usageHint ? <span className="pg-muted pg-add-property-btn-wrap__hint">{usageHint}</span> : null}
     </span>
   );
 }

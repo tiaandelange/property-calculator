@@ -1,14 +1,10 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
+import { AppIcon } from "../../components/icons";
 import { Button, ButtonLink } from "../../components/ui/Button";
-import {
-  formatPlanPrice,
-  planFeatureBullets,
-  planPriceHeadline,
-  planPropertyLimitLabel,
-  planReportLimitLabel
-} from "../pricing/pricingPlanDisplay";
+import { useAuth } from "../../contexts/AuthContext";
+import { SIGNUP_PLAN_CODES } from "../signup/signupPlan";
+import { formatPlanPrice } from "../pricing/pricingPlanDisplay";
 import { useSubscriptionDashboardQuery, useWorkspaceId } from "../queries";
 import { queryKeys } from "../../lib/queryKeys";
 import { updateUserSubscriptionPlanCode } from "../../services/userSubscriptionsSupabase";
@@ -20,6 +16,11 @@ import {
   formatUsagePeriodRange,
   subscriptionHasPaymentProvider
 } from "./subscriptionStatusDisplay";
+import {
+  planApplicationLinksLimitLabel,
+  subscriptionDashboardFeatureRows,
+  type SubscriptionFeatureRow
+} from "./subscriptionDashboardFeatures";
 
 function UsageMeter({
   label,
@@ -49,56 +50,39 @@ function UsageMeter({
   );
 }
 
-function PlanPickerCard({
-  plan,
-  isCurrent,
-  changing,
-  onChangePlan
-}: {
-  plan: SubscriptionPlanRecord;
-  isCurrent: boolean;
-  changing: boolean;
-  onChangePlan: (code: string) => void;
-}) {
-  const bullets = planFeatureBullets(plan);
+function FeatureChecklist({ rows }: { rows: SubscriptionFeatureRow[] }) {
+  if (!rows.length) return null;
   return (
-    <article
-      className={`pg-settings-subscription-plan${isCurrent ? " pg-settings-subscription-plan--current" : ""}`}
-      aria-current={isCurrent ? "true" : undefined}
-    >
-      {isCurrent ? <span className="pg-settings-subscription-plan__tag">Current plan</span> : null}
-      <h3 className="pg-settings-subscription-plan__name">{plan.name}</h3>
-      <p className="pg-settings-subscription-plan__price">{planPriceHeadline(plan)}</p>
-      <ul className="pg-settings-subscription-plan__features">
-        {bullets.map((line) => (
-          <li key={line}>{line}</li>
-        ))}
-      </ul>
-      {isCurrent ? (
-        <Button variant="outline" size="sm" fullWidth disabled>
-          Current plan
-        </Button>
-      ) : (
-        <Button
-          variant="secondary"
-          size="sm"
-          fullWidth
-          loading={changing}
-          disabled={changing}
-          onClick={() => onChangePlan(plan.code)}
+    <ul className="pg-settings-subscription-features" aria-label="Plan features">
+      {rows.map((row) => (
+        <li
+          key={row.key}
+          className={`pg-settings-subscription-features__item${
+            row.enabled ? "" : " pg-settings-subscription-features__item--locked"
+          }`}
         >
-          Change plan
-        </Button>
-      )}
-    </article>
+          <span className="pg-settings-subscription-features__icon" aria-hidden>
+            <AppIcon name={row.enabled ? "success" : "lock"} size="sm" />
+          </span>
+          <span>{row.label}</span>
+          <span className="pg-settings-subscription-features__state">
+            {row.enabled ? "Included" : "Locked"}
+          </span>
+        </li>
+      ))}
+    </ul>
   );
 }
+
+const ADMIN_TEST_PLANS = SIGNUP_PLAN_CODES;
 
 type SubscriptionSettingsSectionProps = {
   freeUsesRemaining: number | null | undefined;
 };
 
 export function SubscriptionSettingsSection({ freeUsesRemaining }: SubscriptionSettingsSectionProps) {
+  const { profile } = useAuth();
+  const isAdmin = profile?.role === "ADMIN";
   const workspaceId = useWorkspaceId();
   const queryClient = useQueryClient();
   const { data, isLoading, error, refetch } = useSubscriptionDashboardQuery();
@@ -111,19 +95,21 @@ export function SubscriptionSettingsSection({ freeUsesRemaining }: SubscriptionS
   const currentPlan =
     subscription != null ? plans.find((p) => p.code === subscription.planCode) : null;
 
-  const handleChangePlan = async (planCode: string) => {
-    if (!subscription) {
-      setPlanMessage({
-        kind: "error",
-        text: "No subscription record yet. Choose a plan from pricing and sign up, or contact support."
-      });
-      return;
-    }
+  const propertyLimit = currentPlan?.maxProperties ?? currentPlan?.propertyLimit ?? null;
+  const reportLimit =
+    currentPlan?.hasUnlimitedReports || currentPlan?.includesUnlimitedReports
+      ? null
+      : (currentPlan?.maxReportsPerMonth ?? currentPlan?.reportLimit ?? null);
+  const applicationLinkLimit = currentPlan?.maxApplicationLinks ?? null;
+
+  const featureRows = subscriptionDashboardFeatureRows(currentPlan ?? null, { isAdmin });
+
+  const handleAdminSwitchPlan = async (planCode: string) => {
     const target = plans.find((p) => p.code === planCode);
-    if (!target) return;
+    if (!target || subscription?.planCode === planCode) return;
     if (
       !window.confirm(
-        `Switch to ${target.name} for internal testing only? No payment will be collected. Payment processing is coming soon.`
+        `Switch your account to ${target.name} for internal testing? No payment will be collected.`
       )
     ) {
       return;
@@ -132,13 +118,13 @@ export function SubscriptionSettingsSection({ freeUsesRemaining }: SubscriptionS
     setChangingCode(planCode);
     setPlanMessage(null);
     try {
-      await updateUserSubscriptionPlanCode(planCode);
+      await updateUserSubscriptionPlanCode(planCode, { requireAdmin: true });
       if (workspaceId) {
         await queryClient.invalidateQueries({ queryKey: queryKeys.subscription(workspaceId) });
       }
       setPlanMessage({
         kind: "ok",
-        text: `Plan updated to ${target.name}. Billing is not active yet — this change is for testing only.`
+        text: `Plan updated to ${target.name}. Refresh gated pages to see feature changes.`
       });
     } catch (e) {
       setPlanMessage({
@@ -171,9 +157,18 @@ export function SubscriptionSettingsSection({ freeUsesRemaining }: SubscriptionS
   return (
     <div className="pg-settings-subscription">
       <div className="pg-settings-subscription-notice" role="status">
-        <strong>Payment processing coming soon.</strong> Plan changes update your internal subscription
-        record only and do not charge a card. Manage billing will activate when payments are connected.
+        <strong>Payment processing coming soon.</strong> Your plan controls feature access and usage
+        limits. No card is stored and no charges are made from this screen.
       </div>
+
+      {isAdmin ? (
+        <div className="pg-settings-subscription-admin-banner" role="status">
+          <span className="pg-settings-badge pg-settings-badge--admin">Admin</span>
+          <span className="pg-settings-subscription-admin-banner__text">
+            You have unlimited access. Use the dev switcher below to test plan tiers.
+          </span>
+        </div>
+      ) : null}
 
       {!subscription ? (
         <div className="pg-settings-subscription-legacy">
@@ -189,9 +184,11 @@ export function SubscriptionSettingsSection({ freeUsesRemaining }: SubscriptionS
             <span className="pg-settings-badge pg-settings-badge--muted">Legacy profile</span>
           </div>
           <p className="pg-settings-subscription-legacy__hint">
-            Pick a Proplytic plan to unlock property limits and portfolio features.{" "}
-            <Link to="/pricing">View plans</Link>
+            Pick a Proplytic plan to unlock property limits and portfolio features.
           </p>
+          <ButtonLink href="/pricing" variant="primary" size="sm">
+            View plans
+          </ButtonLink>
         </div>
       ) : (
         <>
@@ -213,7 +210,7 @@ export function SubscriptionSettingsSection({ freeUsesRemaining }: SubscriptionS
                 {subscriptionHasPaymentProvider(subscription) ? (
                   <div className="pg-settings-row-desc">Payment provider linked</div>
                 ) : (
-                  <div className="pg-settings-row-desc">No payment provider on file</div>
+                  <div className="pg-settings-row-desc">Internal plan only — billing not connected</div>
                 )}
               </div>
               <span className={formatSubscriptionStatusBadgeClass(subscription.status)}>
@@ -224,7 +221,7 @@ export function SubscriptionSettingsSection({ freeUsesRemaining }: SubscriptionS
               <div className="pg-settings-row">
                 <div>
                   <div className="pg-settings-row-label">Trial ends</div>
-                  <div className="pg-settings-row-desc">Access continues until trial end; billing not charged yet</div>
+                  <div className="pg-settings-row-desc">Access until trial end; not billed yet</div>
                 </div>
                 <span>{trialEndLabel}</span>
               </div>
@@ -232,22 +229,26 @@ export function SubscriptionSettingsSection({ freeUsesRemaining }: SubscriptionS
             {currentPlan ? (
               <>
                 <div className="pg-settings-row">
-                  <div>
-                    <div className="pg-settings-row-label">Monthly price</div>
-                  </div>
+                  <div className="pg-settings-row-label">Monthly price</div>
                   <span>{formatPlanPrice(currentPlan.monthlyPrice, currentPlan.currency)}</span>
                 </div>
                 <div className="pg-settings-row">
-                  <div>
-                    <div className="pg-settings-row-label">Property limit</div>
-                  </div>
-                  <span>{planPropertyLimitLabel(currentPlan)}</span>
+                  <div className="pg-settings-row-label">Property limit</div>
+                  <span>
+                    {propertyLimit == null
+                      ? "Unlimited"
+                      : `Up to ${propertyLimit} ${propertyLimit === 1 ? "property" : "properties"}`}
+                  </span>
                 </div>
                 <div className="pg-settings-row">
-                  <div>
-                    <div className="pg-settings-row-label">Report limit</div>
-                  </div>
-                  <span>{planReportLimitLabel(currentPlan)}</span>
+                  <div className="pg-settings-row-label">Report limit (per month)</div>
+                  <span>
+                    {reportLimit == null ? "Unlimited" : `${reportLimit} reports`}
+                  </span>
+                </div>
+                <div className="pg-settings-row">
+                  <div className="pg-settings-row-label">Application link limit</div>
+                  <span>{planApplicationLinksLimitLabel(currentPlan)}</span>
                 </div>
               </>
             ) : null}
@@ -259,56 +260,75 @@ export function SubscriptionSettingsSection({ freeUsesRemaining }: SubscriptionS
               <p className="pg-settings-subscription-usage__period">
                 {usage.period.label}: {formatUsagePeriodRange(usage.period)}
               </p>
+              <UsageMeter label="Properties" used={usage.propertyCount} limit={propertyLimit} />
               <UsageMeter
-                label="Properties"
-                used={usage.propertyCount}
-                limit={currentPlan?.propertyLimit ?? null}
+                label="Reports generated"
+                used={usage.investmentReportCount}
+                limit={reportLimit}
               />
               <UsageMeter
-                label="Investment reports (PDF)"
-                used={usage.investmentReportCount}
+                label="Active applicant links"
+                used={usage.applicationLinksActive}
                 limit={
-                  currentPlan?.includesUnlimitedReports ? null : (currentPlan?.reportLimit ?? null)
+                  currentPlan?.hasApplicationLinks && applicationLinkLimit == null
+                    ? null
+                    : applicationLinkLimit
                 }
               />
             </div>
           ) : null}
+
+          <div className="pg-settings-subscription-features-panel">
+            <h3 className="pg-settings-subscription-features-panel__title">Features on your plan</h3>
+            <FeatureChecklist rows={featureRows} />
+          </div>
         </>
       )}
 
-      <div className="pg-settings-actions pg-settings-subscription-actions">
-        <Button variant="outline" size="sm" disabled title="Available when payment processing launches">
-          Upgrade
-        </Button>
-        <Button variant="outline" size="sm" disabled title="Available when payment processing launches">
-          Downgrade
-        </Button>
-        <Button variant="outline" size="sm" disabled title="Billing portal coming soon">
-          Manage billing
-        </Button>
-        <ButtonLink href="/pricing" variant="ghost" size="sm">
-          Compare plans
-        </ButtonLink>
-      </div>
-
       {planMessage ? (
-        <div className={`pg-alert${planMessage.kind === "error" ? " pg-alert-error" : ""}`}>{planMessage.text}</div>
+        <div className={`pg-alert${planMessage.kind === "error" ? " pg-alert-error" : ""}`}>
+          {planMessage.text}
+        </div>
       ) : null}
 
-      {subscription && plans.length > 0 ? (
-        <div className="pg-settings-subscription-plans">
-          <h3 className="pg-settings-subscription-plans__title">All plans</h3>
-          <div className="pg-settings-subscription-plans__grid">
-            {plans.map((plan) => (
-              <PlanPickerCard
-                key={plan.code}
-                plan={plan}
-                isCurrent={plan.code === subscription.planCode}
-                changing={changingCode === plan.code}
-                onChangePlan={handleChangePlan}
-              />
-            ))}
+      {isAdmin && subscription ? (
+        <div className="pg-settings-subscription-admin-dev">
+          <h3 className="pg-settings-subscription-admin-dev__title">Admin plan switcher (dev)</h3>
+          <p className="pg-settings-subscription-admin-dev__hint">
+            Updates your <code>user_subscriptions</code> row for testing gating. Service-role{" "}
+            <code>set_user_plan(email, plan)</code> can assign plans to other users — see{" "}
+            <code>docs/dev/SUBSCRIPTION_TEST_USERS.md</code>.
+          </p>
+          <div className="pg-settings-subscription-admin-dev__buttons" role="group" aria-label="Switch test plan">
+            {ADMIN_TEST_PLANS.map((code) => {
+              const plan = plans.find((p) => p.code === code);
+              const isCurrent = subscription.planCode === code;
+              return (
+                <Button
+                  key={code}
+                  type="button"
+                  variant={isCurrent ? "primary" : "secondary"}
+                  size="sm"
+                  disabled={isCurrent || changingCode != null}
+                  loading={changingCode === code}
+                  onClick={() => void handleAdminSwitchPlan(code)}
+                >
+                  {plan?.name ?? code}
+                  {isCurrent ? " · current" : ""}
+                </Button>
+              );
+            })}
           </div>
+        </div>
+      ) : !isAdmin ? (
+        <div className="pg-settings-subscription-cta">
+          <ButtonLink href="/pricing" variant="primary" size="sm">
+            View plans
+          </ButtonLink>
+          <p className="pg-settings-subscription-cta__hint">
+            Compare tiers and upgrade when billing launches. Plan changes are managed by support until
+            then.
+          </p>
         </div>
       ) : null}
     </div>

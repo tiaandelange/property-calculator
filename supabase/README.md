@@ -51,6 +51,16 @@ Run `migrations/20260530120000_bootstrap_admin_delangetiaan.sql` after auth prof
 
 To add another bootstrap admin later, append their email to the array inside `public.is_bootstrap_admin_email()` and re-run the migration’s `UPDATE` block (or run an equivalent `UPDATE` in the SQL editor).
 
+## Dev subscription tier test users
+
+Four `@test.local` accounts (starter / investor / portfolio / portfolio_pro) plus `set_user_plan` (service role only). See [`docs/dev/SUBSCRIPTION_TEST_USERS.md`](../docs/dev/SUBSCRIPTION_TEST_USERS.md).
+
+```bash
+cd backend && npm run dev:seed-subscription-users
+```
+
+Migration: `20260610140000_dev_subscription_test_users.sql`. Manual SQL: `dev/seed_subscription_test_users.sql`.
+
 ## Validation
 
 There is no `supabase/config.toml` in this repo yet. Validate by:

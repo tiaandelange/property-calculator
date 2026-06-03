@@ -27,7 +27,10 @@ export {
   useTenantsDirectoryQuery,
   useTenantsListQuery
 } from "./usePortfolioQueries";
-export { useSubscriptionDashboardQuery } from "./useSubscriptionQuery";
+export {
+  useSubscriptionQuery,
+  useSubscriptionDashboardQuery
+} from "./useSubscriptionQuery";
 export {
   useProfileQuery,
   usePropertyInvoicesQuery,

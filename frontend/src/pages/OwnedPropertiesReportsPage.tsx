@@ -24,8 +24,11 @@ import { logReportsQuery } from "../lib/authDebug";
 import { classifyReportsError, reportsErrorMessage } from "../lib/reportsPageErrors";
 import { deleteStoredReport, getStoredReportSignedUrl, listPropertyStoredReports, type PropertyStoredReportRow } from "../services/storedReportsSupabase";
 import { deleteInvestmentReport, getInvestmentReportSignedUrl, listInvestmentReports, type InvestmentReportRow } from "../services/investmentReportsSupabase";
+import { formatReportLimitUsage } from "../lib/subscription/planFeatures";
+import { usePlanPermissions } from "../lib/subscription/usePlanPermissions";
 
 export function OwnedPropertiesReportsPage() {
+  const permissions = usePlanPermissions();
   const [rows, setRows] = useState<PropertyStoredReportRow[]>([]);
   const [investmentRows, setInvestmentRows] = useState<InvestmentReportRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -130,6 +133,15 @@ export function OwnedPropertiesReportsPage() {
             <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
               <div className="pg-muted">
                 Property reports generated from the Properties workspace.
+                {permissions.limitsActive ? (
+                  <p className="pg-plan-limit-hint" style={{ marginTop: 8 }}>
+                    {formatReportLimitUsage(
+                      permissions.usage.investmentReportCount,
+                      permissions.getLimit("maxReportsPerMonth"),
+                      permissions.reportPeriodLabel
+                    )}
+                  </p>
+                ) : null}
               </div>
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                 <ButtonLink href="/owned-properties/reports" variant="ghost">Generate Portfolio Report</ButtonLink>

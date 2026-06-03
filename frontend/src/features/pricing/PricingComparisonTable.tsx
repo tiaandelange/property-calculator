@@ -1,4 +1,4 @@
-import { Check, X } from "lucide-react";
+import { Check, Lock } from "lucide-react";
 import { ButtonLink } from "../../components/ui/Button";
 import type { SubscriptionPlanRecord } from "../../services/subscriptionPlansSupabase";
 import {
@@ -22,8 +22,8 @@ function CompareValue({ value }: { value: ComparisonCellValue }) {
     );
   }
   return (
-    <span className="pg-pricing-compare__icon pg-pricing-compare__icon--no" aria-label="Not included">
-      <X size={18} strokeWidth={2.5} aria-hidden />
+    <span className="pg-pricing-compare__icon pg-pricing-compare__icon--no" aria-label="Locked">
+      <Lock size={17} strokeWidth={2.25} aria-hidden />
     </span>
   );
 }
@@ -92,7 +92,7 @@ export function PricingComparisonTable({ plans }: { plans: SubscriptionPlanRecor
     <div className="pg-pricing-compare-wrap">
       <h2 className="pg-pricing-compare__title">Compare all features</h2>
       <p className="pg-pricing-compare__desc pg-muted">
-        Compare portfolio limits, report allowances, analytics depth and owner-management tools across every tier.
+        See what each plan includes — property limits, reports, analytics, and owner-management tools at a glance.
       </p>
 
       <div className="pg-pricing-compare-panel pg-pricing-compare-panel--desktop">
@@ -172,6 +172,10 @@ export function PricingComparisonTable({ plans }: { plans: SubscriptionPlanRecor
           </article>
         </div>
       </div>
+
+      <p className="pg-pricing-compare__footnote">
+        Start free, upgrade when your portfolio needs deeper analytics and reporting.
+      </p>
     </div>
   );
 }

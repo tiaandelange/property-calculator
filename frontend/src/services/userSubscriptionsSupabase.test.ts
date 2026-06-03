@@ -3,10 +3,10 @@ import { FALLBACK_SUBSCRIPTION_PLANS } from "./subscriptionPlansSupabase";
 import { buildInitialUserSubscriptionFields } from "./userSubscriptionsSupabase";
 
 describe("buildInitialUserSubscriptionFields", () => {
-  it("uses active_manual with monthly period for free starter", () => {
+  it("uses active with monthly period for free starter", () => {
     const starter = FALLBACK_SUBSCRIPTION_PLANS.find((p) => p.code === "starter")!;
     const fields = buildInitialUserSubscriptionFields(starter);
-    expect(fields.status).toBe("active_manual");
+    expect(fields.status).toBe("active");
     expect(fields.trial_start).toBeNull();
     expect(fields.trial_end).toBeNull();
     expect(fields.current_period_start).toBeTruthy();

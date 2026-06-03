@@ -1,35 +1,36 @@
-import { useMemo } from "react";
-import { useAuth } from "../../contexts/AuthContext";
-import { useSubscriptionDashboardQuery } from "../queries/useSubscriptionQuery";
-import {
-  computeSubscriptionLimits,
-  type ComputedSubscriptionLimits
-} from "./subscriptionLimits";
+import { PLAN_LIMIT_UPGRADE_MESSAGE } from "../../lib/subscription/planFeatures";
+import { usePlanPermissions, type PlanPermissions } from "../../lib/subscription/usePlanPermissions";
+import type { ComputedSubscriptionLimits } from "./subscriptionLimits";
 
+/** @deprecated Prefer usePlanPermissions from lib/subscription */
 export type SubscriptionLimits = ComputedSubscriptionLimits & {
   isLoading: boolean;
   isError: boolean;
 };
 
+/** @deprecated Prefer usePlanPermissions — thin adapter for legacy imports */
 export function useSubscriptionLimits(): SubscriptionLimits {
-  const { profile } = useAuth();
-  const { data, isLoading, isError } = useSubscriptionDashboardQuery();
-
-  const limits = useMemo(
-    () =>
-      computeSubscriptionLimits({
-        plans: data?.plans ?? [],
-        subscription: data?.subscription ?? null,
-        usage: data?.usage ?? null,
-        freeUsesRemaining: profile?.free_uses_remaining,
-        role: profile?.role
-      }),
-    [data?.plans, data?.subscription, data?.usage, profile?.free_uses_remaining, profile?.role]
-  );
-
+  const permissions = usePlanPermissions();
   return {
-    ...limits,
-    isLoading,
-    isError
+    currentPlan: permissions.currentPlan,
+    planName: permissions.planName,
+    propertyLimit: permissions.limits.maxProperties,
+    reportLimit: permissions.limits.maxReportsPerMonth,
+    currentPropertyCount: permissions.usage.propertyCount,
+    currentReportCount: permissions.usage.investmentReportCount,
+    canCreateProperty: permissions.canCreateProperty,
+    canGenerateReport: permissions.canGenerateReport,
+    upgradeMessage:
+      permissions.hasReachedLimit("maxProperties") ||
+      permissions.hasReachedLimit("maxReportsPerMonth")
+        ? PLAN_LIMIT_UPGRADE_MESSAGE
+        : null,
+    isLegacyProfile: permissions.isLegacyProfile,
+    limitsActive: permissions.limitsActive,
+    reportPeriodLabel: permissions.reportPeriodLabel,
+    isLoading: permissions.isLoading,
+    isError: permissions.isError
   };
 }
+
+export type { PlanPermissions };
