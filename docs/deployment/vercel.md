@@ -101,6 +101,17 @@ Local dev may leave it unset and use `vercel dev` for serverless routes, or set
 
 **Stripe webhook URL in Dashboard:** `https://<your-domain>/api/subscription/webhook`
 
+### Hobby plan: 12 serverless function limit
+
+Vercel Hobby allows **12** Serverless Functions per deployment. This repo consolidates routes so URLs stay the same but fewer entry files are deployed:
+
+| Public URL | Entry file |
+| ---------- | ---------- |
+| `/api/subscription/checkout`, `/api/subscription/cancel` | `api/subscription/[action].ts` |
+| `/api/properties/:id/bond/preview-at-date`, `…/statement-row`, `…/backfill-statement-rows` | `api/properties/[propertyId]/bond/[action].ts` |
+
+Dev-only `api/reports/pdf-smoke-test` was removed (use local `vercel dev` + report generate if needed).
+
 Render/Railway backend is **optional** (health check only); subscription no longer lives there.
 
 ## Custom domain
