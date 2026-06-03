@@ -41,7 +41,9 @@ export const HOMEPAGE_WORKFLOW_DISCLAIMER =
 
 export const homepageHero = {
   eyebrow: "For owner-managers & small portfolio investors",
+  eyebrowMobile: "For owner-managers",
   headline: "Stop spreadsheet chaos. See which properties are actually winning.",
+  headlineMobile: "Stop spreadsheet chaos. See which properties are winning.",
   subheadline:
     "One workspace for portfolio analytics, rental admin and investor PDFs — connected data, cleaner decisions, less month-end reconciliation.",
   primaryCta: MARKETING_CTA_JOIN_FREE,
