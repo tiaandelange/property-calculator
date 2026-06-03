@@ -46,14 +46,25 @@ export function HomeMarketingHeroAppPreview() {
               <h3 className="hm-app-preview__panel-title">{preview.chart.title}</h3>
               <span className="hm-app-preview__panel-meta">{preview.chart.legend}</span>
             </div>
+            <div className="hm-app-preview__chart-summary" aria-hidden>
+              <span className="hm-app-preview__chart-summary-value">{preview.chart.summaryValue}</span>
+              <span className="hm-app-preview__chart-summary-change hm-app-preview__metric-change--up">
+                {preview.chart.summaryChange}
+              </span>
+            </div>
             <div className="hm-app-preview__chart-wrap">
-              <div className="hm-app-preview__chart-bars" aria-hidden>
+              <div className="hm-app-preview__chart-bars hm-app-preview__chart-bars--hero" aria-hidden>
                 {preview.chart.values.map((value, index) => (
                   <span
                     key={index}
                     className="hm-app-preview__chart-bar"
-                    style={{ height: `${Math.round((value / maxBar) * 100)}%` }}
+                    style={{ height: `${Math.round((value / maxBar) * 78 + 22)}%` }}
                   />
+                ))}
+              </div>
+              <div className="hm-app-preview__chart-axis" aria-hidden>
+                {preview.chart.months.map((month) => (
+                  <span key={month}>{month}</span>
                 ))}
               </div>
             </div>

@@ -14,14 +14,16 @@ export const homepagePreviewPortfolio = {
   crumbs: ["Portfolio", "Dashboard"],
   chips: [{ label: "6 properties" }, { label: "Mar 2026", muted: true }],
   metrics: [
-    { label: "Total equity", value: "R 4.82M", change: "+R 318k YoY", changeTone: "up", highlight: true, icon: "portfolio" },
-    { label: "Net cash flow", value: "R 41,200", change: "+8.2% vs last month", changeTone: "up", icon: "wallet" },
-    { label: "Portfolio yield", value: "9.4%", change: "Gross · weighted", changeTone: "neutral", icon: "percent" },
-    { label: "Occupancy", value: "94%", change: "17 of 18 units let", changeTone: "neutral", icon: "leases" }
+    { label: "Total Equity", value: "R 4.82M", change: "+R 318k YoY", changeTone: "up", highlight: true, icon: "portfolio" },
+    { label: "Net Cash Flow", value: "R 41,200", change: "+8.2% MoM", changeTone: "up", icon: "wallet" },
+    { label: "Yield", value: "9.4%", change: "Gross weighted", changeTone: "neutral", icon: "percent" },
+    { label: "Occupancy", value: "94%", change: "17 / 18 let", changeTone: "neutral", icon: "leases" }
   ] as PreviewMetric[],
   chart: {
     title: "Net cash flow · 12 months",
     meta: "After opex & debt",
+    summaryValue: "R 41,200 net cash flow",
+    summaryChange: "+8.2% vs last month",
     values: [28, 34, 31, 38, 36, 42, 40, 45, 43, 48, 46, 52] as const,
     months: ["A", "M", "J", "J", "A", "S", "O", "N", "D", "J", "F", "M"] as const
   },
@@ -191,7 +193,10 @@ export const homepageHeroAppPreview = {
   chart: {
     title: homepagePreviewPortfolio.chart.title,
     legend: homepagePreviewPortfolio.chart.meta,
-    values: homepagePreviewPortfolio.chart.values
+    summaryValue: homepagePreviewPortfolio.chart.summaryValue,
+    summaryChange: homepagePreviewPortfolio.chart.summaryChange,
+    values: homepagePreviewPortfolio.chart.values,
+    months: homepagePreviewPortfolio.chart.months
   },
   properties: homepagePreviewPortfolio.properties.map((p) => ({
     name: p.name,

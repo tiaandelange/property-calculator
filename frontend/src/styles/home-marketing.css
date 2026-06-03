@@ -654,7 +654,7 @@ body:has(.pg-main-marketing-home) .pg-home-site-header-inner.pg-container {
   }
 }
 
-@media (min-width: 1024px) {
+@media (min-width: 1280px) {
   .hm-app-preview--hero .hm-app-preview__metrics--4 {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
@@ -672,6 +672,29 @@ body:has(.pg-main-marketing-home) .pg-home-site-header-inner.pg-container {
   font-size: 9px;
   font-weight: 600;
   color: var(--text-muted);
+}
+
+.hm-app-preview__chart-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px 12px;
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border-soft) 85%, transparent);
+}
+
+.hm-app-preview__chart-summary-value {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.hm-app-preview__chart-summary-change {
+  font-size: 10px;
+  font-weight: 700;
 }
 
 .hm-app-preview__chart-wrap {
@@ -722,47 +745,30 @@ body:has(.pg-main-marketing-home) .pg-home-site-header-inner.pg-container {
   text-align: center;
 }
 
-.hm-showcase {
-  display: grid;
-  grid-template-columns: repeat(12, minmax(0, 1fr));
+/* Feature previews — structured rows (desktop grid via min-width: 901px below) */
+.hm-showcase--structured {
+  display: flex;
+  flex-direction: column;
   gap: clamp(12px, 1.8vw, 16px);
   margin: 0;
+  width: 100%;
+  max-width: 100%;
 }
 
-.hm-showcase__item {
-  grid-column: span 6;
+.hm-showcase__row {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(12px, 1.8vw, 16px);
   min-width: 0;
 }
 
-.hm-showcase__item--portfolio,
-.hm-showcase__item--report {
-  grid-column: span 12;
+.hm-showcase__cell {
+  min-width: 0;
+  width: 100%;
 }
 
-@media (min-width: 900px) {
-  .hm-showcase__item--portfolio {
-    grid-column: span 7;
-  }
-
-  .hm-showcase__item--property {
-    grid-column: span 5;
-  }
-
-  .hm-showcase__item--statement {
-    grid-column: span 4;
-  }
-
-  .hm-showcase__item--invoice {
-    grid-column: span 4;
-  }
-
-  .hm-showcase__item--report {
-    grid-column: span 8;
-  }
-
-  .hm-showcase__item--calculator {
-    grid-column: span 4;
-  }
+.hm-showcase__cell .hm-module-preview {
+  height: 100%;
 }
 
 .hm-preview-badge {
@@ -1631,7 +1637,7 @@ body:has(.pg-main-marketing-home) .pg-home-site-header-inner.pg-container {
 .hm-section__inner > .hm-card-grid,
 .hm-section__inner > .hm-who-grid,
 .hm-section__inner > .hm-why-grid,
-.hm-section__inner > .hm-showcase,
+.hm-section__inner > .hm-showcase--structured,
 .hm-section__inner > .hm-outcome-grid,
 .hm-section__inner > .hm-feature-grid,
 .hm-section__inner > .hm-pricing-grid,
@@ -3314,6 +3320,152 @@ body:has(.pg-main-marketing-home) .pg-home-site-header-inner.pg-container {
 }
 
 /* -------------------------------------------------------------------------- */
+/* Desktop homepage polish (≥901px — does not affect mobile ≤900px rules) */
+/* -------------------------------------------------------------------------- */
+@media (min-width: 901px) {
+  .hm-home {
+    --hm-section-gap: clamp(28px, 3.5vw, 48px);
+    --hm-stack-gap: clamp(14px, 1.8vw, 20px);
+  }
+
+  .hm-section--features .hm-outcome-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .hm-showcase--structured {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+    align-items: stretch;
+  }
+
+  .hm-showcase--structured .hm-showcase__row {
+    display: contents;
+  }
+
+  .hm-showcase__cell--portfolio,
+  .hm-showcase__row--calculator .hm-showcase__cell--calculator {
+    grid-column: 1 / -1;
+  }
+
+  .hm-showcase__cell {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .hm-showcase__cell .hm-module-preview {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .hm-showcase__cell .hm-app-preview__frame,
+  .hm-showcase__cell .hm-report-preview__workspace,
+  .hm-showcase__cell .hm-calc-wizard-preview__frame {
+    flex: 1 1 auto;
+  }
+
+  /* Hero dashboard mock — compact metrics & chart */
+  .hm-app-preview--hero .hm-app-preview__shell {
+    min-height: 320px;
+  }
+
+  .hm-app-preview--hero .hm-app-preview__metrics--4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    align-items: stretch;
+  }
+
+  .hm-app-preview--hero .hm-app-preview__metric {
+    display: flex;
+    flex-direction: column;
+    min-height: 88px;
+    padding: 10px 10px 8px;
+  }
+
+  .hm-app-preview--hero .hm-app-preview__metric-top {
+    flex: 1 1 auto;
+    align-items: flex-start;
+  }
+
+  .hm-app-preview--hero .hm-app-preview__metric-label {
+    font-size: 9px;
+    letter-spacing: 0.05em;
+    line-height: 1.25;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .hm-app-preview--hero .hm-app-preview__metric-value {
+    font-size: 1.05rem;
+    line-height: 1.15;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .hm-app-preview--hero .hm-app-preview__metric-change {
+    margin-top: auto;
+    padding-top: 6px;
+    font-size: 9px;
+    line-height: 1.25;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .hm-app-preview--hero .hm-app-preview__metric-icon {
+    width: 28px;
+    height: 28px;
+  }
+
+  .hm-app-preview--hero .hm-app-preview__panel--chart {
+    padding-bottom: 10px;
+  }
+
+  .hm-app-preview--hero .hm-app-preview__chart-summary {
+    margin-bottom: 6px;
+    padding-bottom: 6px;
+  }
+
+  .hm-app-preview--hero .hm-app-preview__chart-bars--hero {
+    height: 76px;
+    gap: 4px;
+    align-items: flex-end;
+    padding-bottom: 0;
+    border-bottom: 1px solid color-mix(in srgb, var(--border-soft) 90%, transparent);
+  }
+
+  .hm-app-preview--hero .hm-app-preview__chart-bar {
+    min-height: 14px;
+  }
+
+  .hm-app-preview--hero .hm-app-preview__chart-axis {
+    margin-top: 4px;
+  }
+}
+
+@media (min-width: 1280px) {
+  .hm-app-preview--hero .hm-app-preview__metrics--4 {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .hm-app-preview--hero .hm-app-preview__metric {
+    min-height: 84px;
+  }
+}
+
+@media (min-width: 1440px) {
+  .hm-showcase--structured {
+    gap: 20px;
+  }
+}
+
+/* -------------------------------------------------------------------------- */
 /* Mobile */
 /* -------------------------------------------------------------------------- */
 @media (max-width: 960px) {
@@ -3438,11 +3590,10 @@ body:has(.pg-main-marketing-home) .pg-home-site-header-inner.pg-container {
     max-width: 100%;
   }
 
-  .hm-showcase__item {
+  .hm-showcase__cell {
     width: 100%;
     max-width: 100%;
     min-width: 0;
-    grid-column: auto;
   }
 
   .hm-home .hm-hero,
