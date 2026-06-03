@@ -147,7 +147,7 @@ export const PRIVACY_POLICY_SECTIONS: PrivacyPolicySection[] = [
     id: "cookies-and-analytics",
     title: "Cookies and Analytics",
     paragraphs: [
-      "We may use cookies and similar technologies that are necessary for the application to function, and we may use analytics or performance tooling to understand how the service is used."
+      "We use cookies and browser storage that are necessary for sign-in, preferences, and reliable operation of the application."
     ]
   },
   {

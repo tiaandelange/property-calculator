@@ -6,6 +6,8 @@ import { PricingPage } from "../pages/PricingPage";
 import { ConfirmEmailPage } from "../pages/ConfirmEmailPage";
 import { SimplePage } from "../pages/SimplePage";
 import { PrivacyPolicyPage } from "../pages/PrivacyPolicyPage";
+import { TermsOfUsePage } from "../pages/TermsOfUsePage";
+import { CookieNoticePage } from "../pages/CookieNoticePage";
 import { SubscriptionPage } from "../pages/SubscriptionPage";
 import { SubscriptionResultPage } from "../pages/SubscriptionResultPage";
 import { RequireAuth } from "../components/auth/RequireAuth";
@@ -259,24 +261,9 @@ export function App() {
         <Route path="/about" element={<SimplePage title="About" description="About The Property Guy and our mission." />} />
         <Route path="/privacy-policy" element={<Navigate to="/privacy" replace />} />
         <Route path="/privacy" element={<PrivacyPolicyPage />} />
-        <Route
-          path="/terms"
-          element={
-            <SimplePage
-              title="Terms of Use"
-              description="Placeholder page — the full terms of use will be published here. Linked from the marketing footer until content is ready."
-            />
-          }
-        />
-        <Route
-          path="/cookie-notice"
-          element={
-            <SimplePage
-              title="Cookie Notice"
-              description="Placeholder page — the cookie notice will be published here. Linked from the marketing footer until content is ready."
-            />
-          }
-        />
+        <Route path="/terms-of-use" element={<Navigate to="/terms" replace />} />
+        <Route path="/terms" element={<TermsOfUsePage />} />
+        <Route path="/cookie-notice" element={<CookieNoticePage />} />
         <Route path="/admin" element={<Auth label="Admin"><AdminPanelPage /></Auth>} />
         <Route
           path="/help"
