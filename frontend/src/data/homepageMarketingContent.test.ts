@@ -21,7 +21,7 @@ const MARKETING_JSON = JSON.stringify({
 
 describe("homepageMarketingContent", () => {
   it("provides shorter mobile hero copy variants", () => {
-    expect(homepageHero.eyebrowMobile).toBe("For owner-managers");
+    expect(homepageHero.eyebrowMobile).toBe("FOR OWNER-MANAGERS");
     expect(homepageHero.headlineMobile).toContain("Stop spreadsheet chaos");
     expect(homepageHero.headlineMobile).not.toContain("actually");
   });

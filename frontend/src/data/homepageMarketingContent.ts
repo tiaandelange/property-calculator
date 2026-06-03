@@ -41,7 +41,7 @@ export const HOMEPAGE_WORKFLOW_DISCLAIMER =
 
 export const homepageHero = {
   eyebrow: "For owner-managers & small portfolio investors",
-  eyebrowMobile: "For owner-managers",
+  eyebrowMobile: "FOR OWNER-MANAGERS",
   headline: "Stop spreadsheet chaos. See which properties are actually winning.",
   headlineMobile: "Stop spreadsheet chaos. See which properties are winning.",
   subheadline:
