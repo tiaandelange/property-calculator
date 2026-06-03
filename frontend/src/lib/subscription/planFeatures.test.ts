@@ -15,6 +15,7 @@ describe("computePlanPermissions", () => {
       usage: {
         propertyCount: 99,
         investmentReportCount: 99,
+        applicationLinksActive: 0,
         period: { label: "Month", start: new Date(), end: new Date() }
       },
       role: "ADMIN"
@@ -47,6 +48,7 @@ describe("computePlanPermissions", () => {
       usage: {
         propertyCount: 2,
         investmentReportCount: 1,
+        applicationLinksActive: 0,
         period: { label: "Month", start: new Date(), end: new Date() }
       }
     });
@@ -82,6 +84,7 @@ describe("computePlanPermissions", () => {
       usage: {
         propertyCount: 1,
         investmentReportCount: 0,
+        applicationLinksActive: 0,
         period: { label: "Month", start: new Date(), end: new Date() }
       }
     });
@@ -111,6 +114,7 @@ describe("computePlanPermissions", () => {
       usage: {
         propertyCount: 5,
         investmentReportCount: 50,
+        applicationLinksActive: 0,
         period: { label: "Month", start: new Date(), end: new Date() }
       }
     });

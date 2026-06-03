@@ -7,7 +7,8 @@ describe("computeSubscriptionLimits", () => {
     const limits = computeSubscriptionLimits({
       plans: FALLBACK_SUBSCRIPTION_PLANS,
       subscription: null,
-      usage: { propertyCount: 10, investmentReportCount: 2, period: { label: "Month", start: new Date(), end: new Date() } },
+      usage: { propertyCount: 10, applicationLinksActive: 0,
+        investmentReportCount: 2, period: { label: "Month", start: new Date(), end: new Date() } },
       freeUsesRemaining: null
     });
     expect(limits.canCreateProperty).toBe(true);
@@ -29,7 +30,8 @@ describe("computeSubscriptionLimits", () => {
         paymentProvider: null,
         paymentSubscriptionId: null
       },
-      usage: { propertyCount: 1, investmentReportCount: 3, period: { label: "Month", start: new Date(), end: new Date() } }
+      usage: { propertyCount: 1, applicationLinksActive: 0,
+        investmentReportCount: 3, period: { label: "Month", start: new Date(), end: new Date() } }
     });
     expect(limits.canGenerateReport).toBe(false);
     expect(limits.reportLimit).toBe(3);
@@ -50,7 +52,8 @@ describe("computeSubscriptionLimits", () => {
         paymentProvider: null,
         paymentSubscriptionId: null
       },
-      usage: { propertyCount: 3, investmentReportCount: 0, period: { label: "Trial", start: new Date(), end: new Date() } }
+      usage: { propertyCount: 3, applicationLinksActive: 0,
+        investmentReportCount: 0, period: { label: "Trial", start: new Date(), end: new Date() } }
     });
     expect(limits.canCreateProperty).toBe(false);
     expect(limits.propertyLimit).toBe(3);
@@ -72,7 +75,8 @@ describe("computeSubscriptionLimits", () => {
         paymentProvider: null,
         paymentSubscriptionId: null
       },
-      usage: { propertyCount: 1, investmentReportCount: 10, period: { label: "Month", start: new Date(), end: new Date() } }
+      usage: { propertyCount: 1, applicationLinksActive: 0,
+        investmentReportCount: 10, period: { label: "Month", start: new Date(), end: new Date() } }
     });
     expect(limits.canGenerateReport).toBe(false);
     expect(limits.reportLimit).toBe(10);
@@ -93,7 +97,8 @@ describe("computeSubscriptionLimits", () => {
         paymentProvider: null,
         paymentSubscriptionId: null
       },
-      usage: { propertyCount: 5, investmentReportCount: 100, period: { label: "Trial", start: new Date(), end: new Date() } }
+      usage: { propertyCount: 5, applicationLinksActive: 0,
+        investmentReportCount: 100, period: { label: "Trial", start: new Date(), end: new Date() } }
     });
     expect(limits.canGenerateReport).toBe(true);
     expect(limits.reportLimit).toBeNull();

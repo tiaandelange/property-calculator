@@ -22,6 +22,7 @@ describe("canCreateApplicationLinkFromSnapshot", () => {
       usage: {
         propertyCount: 1,
         investmentReportCount: 0,
+        applicationLinksActive: 0,
         period: { label: "Month", start: new Date(), end: new Date() }
       }
     });
@@ -49,10 +50,10 @@ describe("canCreateApplicationLinkFromSnapshot", () => {
       usage: {
         propertyCount: 1,
         investmentReportCount: 0,
+        applicationLinksActive: 10,
         period: { label: "Month", start: new Date(), end: new Date() }
       }
     });
-    snapshot.usage.applicationLinksActive = 10;
 
     expect(canCreateApplicationLinkFromSnapshot(snapshot)).toBe(false);
   });
