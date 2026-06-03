@@ -40,6 +40,11 @@ export function AppChrome() {
   const isMarketingCalculatorsShell =
     location.pathname === "/calculators" ||
     (/^\/calculators\/.+/.test(location.pathname) && !location.pathname.startsWith("/calculators/report"));
+  const isAuthFocusShell =
+    location.pathname === "/login" ||
+    location.pathname === "/signup" ||
+    location.pathname === "/confirm-email" ||
+    location.pathname.startsWith("/confirm-email/");
 
   const workspaceAppearance = useMemo((): WorkspaceAppearance => {
     if (settingsQuery.data) {
@@ -94,6 +99,15 @@ export function AppChrome() {
         </div>
       );
     }
+    if (isAuthFocusShell) {
+      return (
+        <div className="pg-app pg-app--auth-focus">
+          <main className="pg-main pg-main--auth-focus">
+            <RouteFallback />
+          </main>
+        </div>
+      );
+    }
     return (
       <div className="pg-app pg-app--marketing-public">
         <HomePublicHeader />
@@ -111,6 +125,16 @@ export function AppChrome() {
         <AuthenticatedShell userRole={me?.role ?? null}>
           <Outlet />
         </AuthenticatedShell>
+      </div>
+    );
+  }
+
+  if (isAuthFocusShell) {
+    return (
+      <div className="pg-app pg-app--auth-focus">
+        <main className="pg-main pg-main--auth-focus">
+          <Outlet />
+        </main>
       </div>
     );
   }

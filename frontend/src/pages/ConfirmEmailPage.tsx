@@ -1,40 +1,29 @@
 import { useEffect, useState } from "react";
 import { Helmet } from "react-helmet-async";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Container } from "../components/ui/Container";
 import { Section } from "../components/ui/Section";
 import { Card } from "../components/ui/Card";
 import { ButtonLink } from "../components/ui/Button";
 import { getSupabase, isSupabaseConfigured } from "../lib/supabaseClient";
-import { formatAuthError } from "../utils/authErrors";
-import type { EmailOtpType } from "@supabase/supabase-js";
+import { completeConfirmEmailAuth, parseConfirmEmailRedirect } from "../lib/confirmEmailAuth";
 import { PageBrandMark } from "../components/brand/PageBrandMark";
 
-/** Supabase email confirmation (`token_hash` + `type` query params). */
+/** Supabase email confirmation (PKCE `code`, hash tokens, or `token_hash` + `type`). */
 export function ConfirmEmailPage() {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
   const [redirectIn, setRedirectIn] = useState<number | null>(null);
-
-  const tokenHash = searchParams.get("token_hash");
-  const typeParam = searchParams.get("type");
 
   useEffect(() => {
     let cancelled = false;
 
     async function run() {
-      if (!tokenHash || !typeParam) {
-        if (!cancelled) {
-          setLoading(false);
-          setMessage({
-            kind: "error",
-            text: "Missing confirmation parameters. Open the link from your email, or go back to sign in."
-          });
-        }
-        return;
-      }
+      const redirect = parseConfirmEmailRedirect(
+        window.location.search,
+        window.location.hash
+      );
 
       if (!isSupabaseConfigured) {
         if (!cancelled) {
@@ -48,14 +37,11 @@ export function ConfirmEmailPage() {
       }
 
       const sb = getSupabase();
-      const { error } = await sb.auth.verifyOtp({
-        token_hash: tokenHash,
-        type: typeParam as EmailOtpType
-      });
+      const result = await completeConfirmEmailAuth(sb, redirect);
       if (cancelled) return;
       setLoading(false);
-      if (error) {
-        setMessage({ kind: "error", text: formatAuthError(error) });
+      if (!result.ok) {
+        setMessage({ kind: "error", text: result.message });
         return;
       }
       setMessage({ kind: "ok", text: "You have been successfully verified." });
@@ -66,7 +52,7 @@ export function ConfirmEmailPage() {
     return () => {
       cancelled = true;
     };
-  }, [tokenHash, typeParam]);
+  }, []);
 
   useEffect(() => {
     if (redirectIn === null) return;

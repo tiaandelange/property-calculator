@@ -1,17 +1,15 @@
 import { useEffect, useState } from "react";
 import { Helmet } from "react-helmet-async";
-import { Container } from "../components/ui/Container";
-import { Section } from "../components/ui/Section";
-import { Card } from "../components/ui/Card";
-import { Button, ButtonLink } from "../components/ui/Button";
-import { Field, Input } from "../components/ui/Input";
-import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import { LoginBrandPanel } from "../features/auth/LoginBrandPanel";
+import { LoginSignInCard } from "../features/auth/LoginSignInCard";
+import { LoginSignupCard } from "../features/auth/LoginSignupCard";
+import { ProplyticLogo } from "../components/brand/ProplyticLogo";
 import {
   FALLBACK_SUBSCRIPTION_PLANS,
   listActiveSubscriptionPlans,
   type SubscriptionPlanRecord
 } from "../services/subscriptionPlansSupabase";
-import { SignupPlanSummary } from "../features/signup/SignupPlanSummary";
 import {
   PENDING_SIGNUP_PLAN_STORAGE_KEY,
   resolveSignupPlanSelection,
@@ -22,7 +20,6 @@ import { getConfirmEmailRedirectUrl } from "../lib/authRedirect";
 import { formatAuthError } from "../utils/authErrors";
 import { logSignInFlow } from "../lib/authDebug";
 import { useAuth } from "../contexts/AuthContext";
-import { PageBrandMark } from "../components/brand/PageBrandMark";
 import { ensureUserSubscriptionForPlanCode } from "../services/userSubscriptionsSupabase";
 
 export function LoginPage() {
@@ -207,76 +204,56 @@ export function LoginPage() {
   const stateReason = (location.state as { reason?: string } | null)?.reason;
   const configHint =
     stateReason === "supabase_unconfigured" ? (
-      <div className="pg-alert pg-alert-error" style={{ marginBottom: 12 }}>
+      <div className="pg-login-card__alert pg-login-card__alert--error" style={{ marginBottom: 12 }}>
         Supabase environment variables are missing. Add them to <code className="pg-code">frontend/.env.local</code>{" "}
         and reload.
       </div>
     ) : null;
 
   return (
-    <Section>
+    <div className="pg-login-page">
       <Helmet>
         <title>{isSignupEntry ? "Create Account" : "Sign In"} | Proplytic</title>
-        <meta name="description" content="Sign in or create an account to save calculations and generate reports." />
+        <meta
+          name="description"
+          content="Sign in or create an account to save calculations and generate reports."
+        />
       </Helmet>
-      <Container>
-        <div className="pg-auth-layout">
-          <PageBrandMark linkToHome />
-          <div className="pg-auth-marketing">
-            <h2 className="pg-h2" style={{ marginTop: 0 }}>
-              Track deals. Save reports. Manage your portfolio.
-            </h2>
-            <p className="pg-lead">
-              Starter is free with 3 investment reports per month. Upgrade for more properties, reports, and portfolio tools.
-            </p>
-          </div>
-          <Card>
-            <div style={{ display: "grid", gap: 10 }}>
-              <h1 className="pg-h2" style={{ margin: 0 }}>
-                {isSignupEntry ? "Create your account" : "Sign in to save reports"}
-              </h1>
-              <p className="pg-lead" style={{ margin: 0 }}>
-                {isSignupEntry
-                  ? "Complete registration to start using Proplytic. Billing is not charged during signup."
-                  : "Create an account to track your calculations and generate downloadable PDFs."}
-              </p>
-            </div>
 
-            <div style={{ height: 18 }} />
+      <Link to="/" className="pg-login-page__mobile-logo" aria-label="Proplytic — Home">
+        <ProplyticLogo mode="full" title="Proplytic" />
+      </Link>
 
-            {signupPlan.showSummary ? (
-              <SignupPlanSummary plan={signupPlan.plan} invalidRequested={signupPlan.invalidRequested} />
-            ) : null}
-
-            {configHint}
-
-            <Field label="Email" help="Use the same email you’ll confirm.">
-              <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" />
-            </Field>
-            <Field label="Password" help="At least 8 characters recommended.">
-              <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" />
-            </Field>
-
-            <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-              <Button onClick={() => void submit("login")} loading={loading === "login"}>
-                Sign In
-              </Button>
-              <Button variant="secondary" onClick={() => void submit("register")} loading={loading === "register"}>
-                Create Account
-              </Button>
-              <ButtonLink href="/pricing" variant="ghost">
-                View pricing
-              </ButtonLink>
-            </div>
-
-            {message ? (
-              <div className={`pg-alert ${message.kind === "error" ? "pg-alert-error" : ""}`} style={{ marginTop: 16 }}>
-                {message.text}
-              </div>
-            ) : null}
-          </Card>
+      <div className="pg-login-page__grid">
+        <LoginBrandPanel />
+        <div className="pg-login-page__form-column">
+          {isSignupEntry ? (
+            <LoginSignupCard
+              email={email}
+              password={password}
+              loading={loading === "register"}
+              message={message}
+              configHint={configHint}
+              plan={signupPlan.plan}
+              invalidRequested={signupPlan.invalidRequested}
+              onEmailChange={setEmail}
+              onPasswordChange={setPassword}
+              onSubmit={() => void submit("register")}
+            />
+          ) : (
+            <LoginSignInCard
+              email={email}
+              password={password}
+              loading={loading === "login"}
+              message={message}
+              configHint={configHint}
+              onEmailChange={setEmail}
+              onPasswordChange={setPassword}
+              onSubmit={() => void submit("login")}
+            />
+          )}
         </div>
-      </Container>
-    </Section>
+      </div>
+    </div>
   );
 }
