@@ -3,6 +3,8 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const LOGO_CANDIDATE_FILES = [
+  "proplytic_logo_300x100.png",
+  "proplytic_icon_500x500.png",
   "proplytic-mark.png",
   "proplytic-mark-source.png",
   "proplytic-mark.svg",
@@ -10,6 +12,10 @@ const LOGO_CANDIDATE_FILES = [
 ] as const;
 
 const LOGO_RELATIVE_DIRS = [
+  ["..", "..", "public"],
+  ["..", "..", "..", "public"],
+  ["public"],
+  ["frontend", "public"],
   ["..", "..", "public", "assets", "brand"],
   ["..", "..", "..", "public", "assets", "brand"],
   ["public", "assets", "brand"],

@@ -15,10 +15,8 @@ export type ProplyticLogoProps = {
 
 /**
  * Reusable Proplytic brand logo.
- * - full: icon + wordmark
- * - compact: smaller wordmark (sidebar / mobile)
- * - icon: house mark only
- * - app: rounded app-icon tile
+ * - full / compact: horizontal lockup (`proplytic_logo_300x100.png`)
+ * - icon / app: square mark (`proplytic_icon_500x500.png`)
  */
 export function ProplyticLogo({
   mode = "full",
@@ -33,7 +31,7 @@ export function ProplyticLogo({
   if (mode === "icon") {
     return (
       <span className={wrapClass} {...rest}>
-        <ProplyticLogoIcon width={width ?? 32} height={height ?? 32} aria-label={title} />
+        <ProplyticLogoIcon width={width ?? 32} height={height ?? 32} aria-label={title} role="img" />
       </span>
     );
   }
@@ -41,22 +39,24 @@ export function ProplyticLogo({
   if (mode === "app") {
     return (
       <span className={wrapClass} {...rest}>
-        <ProplyticLogoAppIcon width={width ?? 64} height={height ?? 64} aria-label={title} />
+        <ProplyticLogoAppIcon width={width ?? 64} height={height ?? 64} aria-label={title} role="img" />
       </span>
     );
   }
 
   const compact = mode === "compact";
-  const iconSize =
-    typeof width === "number"
-      ? width
-      : compact
-        ? 28
-        : 34;
+  const logoHeight =
+    typeof height === "number" ? height : compact ? 28 : typeof width === "number" ? undefined : 36;
 
   return (
     <span className={wrapClass} role="img" aria-label={title} {...rest}>
-      <ProplyticLogoWordmark compact={compact} iconSize={iconSize} />
+      <ProplyticLogoWordmark
+        compact={compact}
+        alt=""
+        aria-hidden
+        height={logoHeight}
+        width={typeof width === "number" ? width : undefined}
+      />
     </span>
   );
 }

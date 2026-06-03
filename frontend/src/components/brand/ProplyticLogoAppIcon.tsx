@@ -1,56 +1,34 @@
-import type { SVGProps } from "react";
-import { PROPLYTIC_MARK_ASSET, PROPLYTIC_MARK_VIEWBOX } from "./proplyticLogoShared";
+import type { ImgHTMLAttributes } from "react";
+import { PROPLYTIC_ICON_ASSET } from "./proplyticLogoShared";
 
-export type ProplyticLogoAppIconProps = SVGProps<SVGSVGElement> & {
-  /** @deprecated Official mark is a fixed gradient SVG; ignored when using the asset. */
+export type ProplyticLogoAppIconProps = ImgHTMLAttributes<HTMLImageElement> & {
+  /** @deprecated Ignored — official mark is a fixed PNG */
   gradientId?: string;
+  /** @deprecated Ignored */
+  viewBox?: string;
 };
 
-/** Rounded app-icon tile with centered official house mark. */
+/** Rounded app-icon tile with the official square mark. */
 export function ProplyticLogoAppIcon({
   gradientId: _gradientId,
+  viewBox: _viewBox,
   width = 64,
   height = 64,
-  viewBox = PROPLYTIC_MARK_VIEWBOX,
+  alt = "Proplytic",
+  className,
   role = "img",
-  "aria-label": ariaLabel = "Proplytic",
   ...props
 }: ProplyticLogoAppIconProps) {
-  const inset = 147;
-  const tile = 1000;
-
   return (
-    <svg
+    <img
+      src={PROPLYTIC_ICON_ASSET}
       width={width}
       height={height}
-      viewBox={viewBox}
-      xmlns="http://www.w3.org/2000/svg"
+      alt={alt}
       role={role}
-      aria-label={ariaLabel}
+      decoding="async"
+      className={["proplytic-logo-img", "proplytic-logo-img--app", className].filter(Boolean).join(" ")}
       {...props}
-    >
-      <defs>
-        <filter id="proplytic-app-shadow" x="-20%" y="-20%" width="140%" height="140%">
-          <feDropShadow dx="0" dy="10" stdDeviation="14" floodColor="#6C4CFF" floodOpacity="0.18" />
-        </filter>
-      </defs>
-      <rect
-        x="29"
-        y="29"
-        width="942"
-        height="942"
-        rx="200"
-        fill="var(--surface, #ffffff)"
-        filter="url(#proplytic-app-shadow)"
-      />
-      <image
-        href={PROPLYTIC_MARK_ASSET}
-        x={inset}
-        y={inset}
-        width={tile - inset * 2}
-        height={tile - inset * 2}
-        preserveAspectRatio="xMidYMid meet"
-      />
-    </svg>
+    />
   );
 }

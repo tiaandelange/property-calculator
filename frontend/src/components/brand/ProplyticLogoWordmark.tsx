@@ -1,38 +1,33 @@
-import type { HTMLAttributes } from "react";
-import { ProplyticLogoIcon } from "./ProplyticLogoIcon";
+import type { ImgHTMLAttributes } from "react";
+import { PROPLYTIC_LOGO_ASSET } from "./proplyticLogoShared";
 
-export type ProplyticLogoWordmarkProps = HTMLAttributes<HTMLSpanElement> & {
+export type ProplyticLogoWordmarkProps = ImgHTMLAttributes<HTMLImageElement> & {
+  /** @deprecated Icon is bundled in the horizontal PNG */
   iconSize?: number;
   compact?: boolean;
 };
 
-/** Full Proplytic wordmark — house icon + text with purple dot on the “i”. */
+/** Horizontal Proplytic logo (300×100 PNG). */
 export function ProplyticLogoWordmark({
   className,
-  iconSize,
   compact = false,
+  iconSize: _iconSize,
+  alt = "",
   ...props
 }: ProplyticLogoWordmarkProps) {
-  const size = iconSize ?? (compact ? 28 : 34);
-
   return (
-    <span className={["proplytic-logo-wordmark", compact ? "proplytic-logo-wordmark--compact" : "", className].filter(Boolean).join(" ")} {...props}>
-      <ProplyticLogoIcon
-        className="proplytic-logo-wordmark__icon"
-        width={size}
-        height={size}
-        gradientId={compact ? "proplytic-wordmark-fill-compact" : "proplytic-wordmark-fill"}
-        aria-hidden
-        role="presentation"
-      />
-      <span className="proplytic-logo-wordmark__text" aria-hidden>
-        Proplyt
-        <span className="proplytic-logo-wordmark__i">
-          <span className="proplytic-logo-wordmark__i-dot" />
-          <span className="proplytic-logo-wordmark__i-stem">i</span>
-        </span>
-        c
-      </span>
-    </span>
+    <img
+      src={PROPLYTIC_LOGO_ASSET}
+      alt={alt}
+      decoding="async"
+      className={[
+        "proplytic-logo-img",
+        compact ? "proplytic-logo-img--compact" : "proplytic-logo-img--full",
+        className
+      ]
+        .filter(Boolean)
+        .join(" ")}
+      {...props}
+    />
   );
 }
