@@ -525,6 +525,112 @@ body:has(.pg-main-marketing-home) .pg-home-site-header-inner.pg-container {
   min-height: 360px;
 }
 
+/* Hero compact mock — shown only ≤480px; desktop mock hidden there */
+.hm-app-preview--hero-compact {
+  display: none;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.hm-app-preview__compact-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border-soft);
+  min-width: 0;
+}
+
+.hm-app-preview__compact-title {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--text-primary);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.hm-app-preview__compact-chip {
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--primary);
+  background: var(--primary-soft);
+  border: 1px solid color-mix(in srgb, var(--primary) 22%, transparent);
+  max-width: 100%;
+}
+
+.hm-app-preview__compact-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 10px;
+  min-width: 0;
+}
+
+.hm-app-preview--hero-compact .hm-app-preview__metric {
+  padding: 10px;
+  min-width: 0;
+}
+
+.hm-app-preview--hero-compact .hm-app-preview__metric-label {
+  font-size: 9px;
+}
+
+.hm-app-preview--hero-compact .hm-app-preview__metric-value {
+  font-size: 0.95rem;
+  overflow-wrap: anywhere;
+}
+
+.hm-app-preview--hero-compact .hm-app-preview__metric-change {
+  font-size: 9px;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.hm-app-preview__chart-bars--compact {
+  height: 64px;
+}
+
+.hm-app-preview__compact-property {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: auto auto;
+  gap: 2px 8px;
+  align-items: center;
+  margin-top: 10px;
+  padding: 10px;
+  border-radius: 12px;
+  border: 1px solid var(--border-soft);
+  background: var(--surface);
+  min-width: 0;
+}
+
+.hm-app-preview__compact-property-name {
+  grid-column: 1;
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+
+.hm-app-preview__compact-property-meta {
+  grid-column: 1;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+
+.hm-app-preview__compact-property .hm-app-preview__metric-icon {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+}
+
 .hm-app-preview__shell--compact {
   min-height: 260px;
 }
@@ -3269,6 +3375,34 @@ body:has(.pg-main-marketing-home) .pg-home-site-header-inner.pg-container {
   }
 }
 
+@media (max-width: 900px) {
+  html:has(.hm-home),
+  body:has(.hm-home) {
+    overflow-x: hidden;
+    max-width: 100%;
+  }
+
+  #root:has(.hm-home),
+  .pg-app--marketing-public:has(.hm-home) {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  .hm-home {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  .hm-home .pg-container,
+  .hm-home .pg-container--marketing-wide {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+}
+
 @media (max-width: 640px) {
   html:has(.pg-main-marketing-home),
   body:has(.pg-main-marketing-home) {
@@ -3279,6 +3413,36 @@ body:has(.pg-main-marketing-home) .pg-home-site-header-inner.pg-container {
   .hm-home {
     max-width: 100%;
     overflow-x: hidden;
+  }
+
+  .hm-home .hm-preview-data-table {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .hm-home .hm-preview-data-table-wrap {
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .hm-home .hm-pricing-compare__table-wrap {
+    margin: 0;
+    max-width: 100%;
+  }
+
+  .hm-showcase {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .hm-showcase__item {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    grid-column: auto;
   }
 
   .hm-home .hm-hero,
@@ -3363,9 +3527,14 @@ body:has(.pg-main-marketing-home) .pg-home-site-header-inner.pg-container {
   }
 
   .hm-hero-ctas .pg-btn,
+  .hm-hero-cta-btn,
   .hm-hero-tertiary {
+    width: 100%;
     max-width: 100%;
+    min-width: 0;
     box-sizing: border-box;
+    white-space: normal;
+    text-align: center;
   }
 
   .hm-hero-visual {
@@ -3516,6 +3685,63 @@ body:has(.pg-main-marketing-home) .pg-home-site-header-inner.pg-container {
     max-width: 100%;
     justify-content: center;
   }
+}
+
+/* Galaxy S21 class viewports (~360px CSS width) */
+@media (max-width: 480px) {
+  .hm-hero-grid {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 100%;
+    gap: 20px;
+  }
+
+  .hm-hero-copy,
+  .hm-hero-visual {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    flex: 0 0 auto;
+  }
+
+  .hm-hero-eyebrow__text--desktop,
+  .hm-hero-title__text--desktop {
+    display: none;
+  }
+
+  .hm-hero-eyebrow__text--mobile {
+    display: inline;
+  }
+
+  .hm-hero-title__text--mobile {
+    display: block;
+  }
+
+  .hm-hero-title {
+    font-size: clamp(2rem, 11vw, 2.625rem);
+    line-height: 1.08;
+  }
+
+  .hm-hero-subtitle {
+    font-size: clamp(1.0625rem, 4.5vw, 1.1875rem);
+  }
+
+  .hm-app-preview--hero-desktop {
+    display: none !important;
+  }
+
+  .hm-app-preview--hero-compact {
+    display: block;
+  }
+
+  .hm-app-preview--hero-compact .hm-app-preview__frame {
+    width: 100%;
+    max-width: 100%;
+    padding: 8px;
+    box-sizing: border-box;
+  }
+
 }
 
 @media (max-width: 400px) {

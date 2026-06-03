@@ -3,6 +3,7 @@ import { homepageHero } from "../../../data/homepageMarketingContent";
 import { ButtonLink } from "../../ui/Button";
 import { Container } from "../../ui/Container";
 import { HomeMarketingHeroAppPreview } from "./HomeMarketingHeroAppPreview";
+import { HomeMarketingHeroAppPreviewMobile } from "./HomeMarketingHeroAppPreviewMobile";
 
 export function HomeMarketingHero() {
   return (
@@ -21,10 +22,20 @@ export function HomeMarketingHero() {
             </h1>
             <p className="hm-hero-subtitle">{homepageHero.subheadline}</p>
             <div className="hm-hero-ctas">
-              <ButtonLink href={homepageHero.primaryCta.href} variant="primary" size="lg">
+              <ButtonLink
+                href={homepageHero.primaryCta.href}
+                variant="primary"
+                size="lg"
+                className="hm-hero-cta-btn"
+              >
                 {homepageHero.primaryCta.label}
               </ButtonLink>
-              <ButtonLink href={homepageHero.secondaryCta.href} variant="secondary" size="lg">
+              <ButtonLink
+                href={homepageHero.secondaryCta.href}
+                variant="secondary"
+                size="lg"
+                className="hm-hero-cta-btn"
+              >
                 {homepageHero.secondaryCta.label}
               </ButtonLink>
               <Link to={homepageHero.tertiaryCta.href} className="hm-hero-tertiary">
@@ -34,10 +45,11 @@ export function HomeMarketingHero() {
           </div>
           <div className="hm-hero-visual">
             <HomeMarketingHeroAppPreview />
+            <HomeMarketingHeroAppPreviewMobile />
           </div>
         </div>
       </Container>
     </header>
   );
 }
-
+
