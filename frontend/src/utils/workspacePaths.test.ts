@@ -14,6 +14,7 @@ describe("isWorkspacePath", () => {
     expect(isWorkspacePath("/about")).toBe(false);
     expect(isWorkspacePath("/calculators")).toBe(false);
     expect(isWorkspacePath("/calculators/transfer-bond-costs")).toBe(false);
+    expect(isWorkspacePath("/investment-calculator")).toBe(true);
     expect(isWorkspacePath("/help")).toBe(false);
     expect(isWorkspacePath("/contact")).toBe(false);
     expect(isWorkspacePath("/faq")).toBe(false);

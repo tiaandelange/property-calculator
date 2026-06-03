@@ -1,9 +1,8 @@
 import { Helmet } from "react-helmet-async";
 import { Link } from "react-router-dom";
 import { ButtonLink } from "../components/ui/Button";
-import { calculators } from "../data/calculators";
-import { groupCalculators } from "../data/calculatorHubGroups";
 import { getHomepagePopularCalculatorCards } from "../data/homepageCalculators";
+import { publicCalculatorLandingGroups } from "../data/publicCalculatorLandingGroups";
 import { Container } from "../components/ui/Container";
 import { Section } from "../components/ui/Section";
 import { Card } from "../components/ui/Card";
@@ -30,18 +29,24 @@ const UNDERSTANDING = [
 ] as const;
 
 export function CalculatorHubPage() {
-  const groups = groupCalculators(calculators);
   const popular = getHomepagePopularCalculatorCards();
 
   return (
     <Section className="pg-calc-hub-page">
       <Helmet>
-        <title>Mortgage calculator &amp; property calculators | The Property Guy</title>
+        <title>Property investment calculators | Proplytic</title>
         <meta
           name="description"
-          content="Calculate monthly bond repayments with sliders, then open dedicated calculators for transfer costs, affordability, rental yield, IRR and more — each on its own page for clear results."
+          content="Run quick property calculations before building your full portfolio report — bond payment, transfer costs, cash flow, cap rate, IRR and more. No sign-in required."
         />
       </Helmet>
+
+      <Container className="pg-container pg-container--marketing-wide pg-calc-hub-intro">
+        <h1 className="pg-h1 pg-calc-hub-page-title">Property Investment Calculators</h1>
+        <p className="pg-lead pg-calc-hub-page-lead">
+          Run quick property calculations before building your full portfolio report.
+        </p>
+      </Container>
 
       <CalculatorHubMortgageSection />
 
@@ -87,25 +92,37 @@ export function CalculatorHubPage() {
 
           <div id="all-calculators" className="pg-calc-hub-all">
             <div className="pg-calc-hub-groups">
-            {groups.map((g) => (
-              <div key={g.title} className="pg-calc-hub-group">
-                <h2 className="pg-calc-hub-group-title">{g.title}</h2>
-                <div className="pg-calc-hub-grid">
-                  {g.items.map((c) => (
-                    <Link key={c.slug} to={`/calculators/${c.slug}`} className="pg-calc-hub-card">
-                      <Card>
-                        <div className="pg-card-pad">
-                          <div className="pg-card-title">{c.name}</div>
-                          <p className="pg-lead" style={{ margin: 0, fontSize: 14 }}>
-                            {c.description}
-                          </p>
+              {publicCalculatorLandingGroups.map((g) => (
+                <div key={g.title} className="pg-calc-hub-group">
+                  <h2 className="pg-calc-hub-group-title">{g.title}</h2>
+                  <div className="pg-calc-hub-grid">
+                    {g.items.map((item) =>
+                      item.kind === "tool" ? (
+                        <Link key={item.id} to={`/calculators/${item.slug}`} className="pg-calc-hub-card">
+                          <Card>
+                            <div className="pg-card-pad">
+                              <CalculatorIconDisplay slug={item.slug} size="md" className="pg-calc-hub-card-icon" />
+                              <div className="pg-card-title">{item.name}</div>
+                              <p className="pg-lead pg-calc-hub-card-desc">{item.description}</p>
+                              <span className="pg-calc-hub-card-cta">Open calculator</span>
+                            </div>
+                          </Card>
+                        </Link>
+                      ) : (
+                        <div key={item.id} className="pg-calc-hub-card pg-calc-hub-card--soon" aria-disabled="true">
+                          <Card>
+                            <div className="pg-card-pad">
+                              <div className="pg-card-title">{item.name}</div>
+                              <p className="pg-lead pg-calc-hub-card-desc">{item.description}</p>
+                              <span className="pg-calc-hub-card-cta pg-calc-hub-card-cta--muted">Coming soon</span>
+                            </div>
+                          </Card>
                         </div>
-                      </Card>
-                    </Link>
-                  ))}
+                      )
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
             </div>
           </div>
         </Container>

@@ -1,4 +1,5 @@
 import type { IconName } from "../components/icons/iconRegistry";
+import { INVESTMENT_CALCULATOR_PATH } from "../constants/investmentCalculatorPath";
 
 export type WorkspaceNavItem = {
   id: string;
@@ -19,7 +20,7 @@ export const WORKSPACE_SIDEBAR_NAV: WorkspaceNavItem[] = [
   { id: "financials", label: "Financials", icon: "financials", to: "/financials" },
   { id: "documents", label: "Documents", icon: "documents", to: "/documents" },
   { id: "reports", label: "Reports", icon: "reports", to: "/owned-properties/reports" },
-  { id: "calculators", label: "Calculators", icon: "calculators", to: "/calculators" },
+  { id: "calculators", label: "Calculators", icon: "calculators", to: INVESTMENT_CALCULATOR_PATH },
   { id: "messages", label: "Messages", icon: "messages", disabled: true },
   { id: "settings", label: "Settings", icon: "settings", to: "/settings", bottomNav: true },
 ];
@@ -48,7 +49,7 @@ export function isWorkspaceNavActive(pathname: string, item: WorkspaceNavItem): 
     return pathname.includes("/owned-properties/reports");
   }
   if (item.id === "calculators") {
-    return pathname === "/calculators";
+    return pathname === INVESTMENT_CALCULATOR_PATH;
   }
   return pathname === item.to || pathname.startsWith(`${item.to}/`);
 }
@@ -65,7 +66,7 @@ export function workspacePageTitle(pathname: string): string {
   if (pathname.startsWith("/financials")) return "Financials";
   if (pathname.includes("/owned-properties/reports")) return "Reports";
   if (pathname.startsWith("/documents")) return "Documents";
-  if (pathname === "/calculators") return "Calculators";
+  if (pathname === INVESTMENT_CALCULATOR_PATH) return "Calculators";
   if (pathname.startsWith("/settings")) return "Settings";
   if (pathname.startsWith("/account")) return "Settings";
   if (pathname.startsWith("/subscription")) return "Subscription";

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { Calculator, CircleHelp, LayoutDashboard, Settings, type LucideIcon } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { INVESTMENT_CALCULATOR_PATH } from "../../constants/investmentCalculatorPath";
 import { calculators } from "../../data/calculators";
 import { groupCalculators } from "../../data/calculatorHubGroups";
 import { useAuth } from "../../contexts/AuthContext";
@@ -125,7 +126,8 @@ export function WorkspaceRail({ userRole }: WorkspaceRailProps) {
     [location.pathname]
   );
 
-  const calcActive = location.pathname.startsWith("/calculators");
+  const calcActive =
+    location.pathname === INVESTMENT_CALCULATOR_PATH || /^\/calculators\/[^/]+/.test(location.pathname);
   const settingsActive =
     location.pathname.startsWith("/account") ||
     location.pathname.startsWith("/subscription") ||
@@ -218,7 +220,7 @@ export function WorkspaceRail({ userRole }: WorkspaceRailProps) {
             {...expandedProps("calc")}
             onMouseEnter={() => scheduleHoverOpen("calc")}
             onMouseLeave={scheduleHoverClose}
-            onClick={() => onPrimaryPointerDown("calc", "/calculators")}
+            onClick={() => onPrimaryPointerDown("calc", INVESTMENT_CALCULATOR_PATH)}
             onKeyDown={(e) => {
               if (e.key === "Enter" || e.key === " " || e.key === "ArrowDown") {
                 e.preventDefault();
@@ -330,15 +332,28 @@ export function WorkspaceRail({ userRole }: WorkspaceRailProps) {
               className="pg-workspace-flyout-inner pg-workspace-flyout-scroll"
               aria-label="Calculators"
             >
-              {calcGroups.map((g, gi) => (
+              <ul className="pg-workspace-flyout-list">
+                <li role="none">
+                  <Link
+                    role="menuitem"
+                    id={`${baseId}-calc-first`}
+                    to={INVESTMENT_CALCULATOR_PATH}
+                    className="pg-workspace-flyout-link"
+                    data-active={location.pathname === INVESTMENT_CALCULATOR_PATH ? "true" : "false"}
+                    onClick={onFlyoutLinkNavigate}
+                  >
+                    Portfolio investment calculator
+                  </Link>
+                </li>
+              </ul>
+              {calcGroups.map((g) => (
                 <div key={g.title} className="pg-workspace-flyout-group">
                   <div className="pg-workspace-flyout-subtitle">{g.title}</div>
                   <ul className="pg-workspace-flyout-list">
-                    {g.items.map((c, ci) => (
+                    {g.items.map((c) => (
                       <li key={c.slug} role="none">
                         <Link
                           role="menuitem"
-                          id={gi === 0 && ci === 0 ? `${baseId}-calc-first` : undefined}
                           to={`/calculators/${c.slug}`}
                           className="pg-workspace-flyout-link"
                           data-active={location.pathname === `/calculators/${c.slug}` ? "true" : "false"}

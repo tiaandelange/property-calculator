@@ -2,7 +2,7 @@ import { calculators } from "./calculators";
 
 /**
  * Central registry for homepage calculator links (quick launcher + popular band).
- * Routes match `App.tsx`: `/calculators/:slug` → `CalculatorPage`, which resolves the
+ * Routes match `App.tsx`: `/calculators` → public hub; `/calculators/:slug` → `CalculatorPage`, which resolves the
  * template from `calculators` by `slug`. `templateKey` is therefore the same as that slug.
  */
 

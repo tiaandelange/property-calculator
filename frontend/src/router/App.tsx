@@ -195,8 +195,16 @@ export function App() {
           path="/calculators"
           element={
             <RouteBoundary label="Calculators">
-              <CalculatorsPage />
+              <CalculatorHubPage />
             </RouteBoundary>
+          }
+        />
+        <Route
+          path="/investment-calculator"
+          element={
+            <Auth label="Investment Calculator">
+              <CalculatorsPage />
+            </Auth>
           }
         />
         <Route

@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { INVESTMENT_CALCULATOR_PATH } from "../../../constants/investmentCalculatorPath";
 import { PROPERTY_TYPES } from "../../../data/calculatorPropertyTypes";
 import { homepageCalculators } from "../../../data/homepageMarketingContent";
 import { AppIcon } from "../../icons/AppIcon";
@@ -27,7 +28,7 @@ export function HomeMarketingCalculatorsSection() {
       <ul className="hm-type-grid hm-type-grid--chips" aria-label="Supported property types">
         {PROPERTY_TYPES.map((pt) => (
           <li key={pt.propertyType}>
-            <Link to={homepageCalculators.cta.href} className="hm-type-card hm-type-card--chip">
+            <Link to={INVESTMENT_CALCULATOR_PATH} className="hm-type-card hm-type-card--chip">
               <AppIcon name={pt.icon} size="sm" className="hm-type-card__icon" />
               <span className="hm-type-card__label">{formatPropertyTypeLabel(pt.label)}</span>
             </Link>
