@@ -27,6 +27,17 @@ function serviceRoleKeyFromEnv(): string {
   return (process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim();
 }
 
+/** Same fallback chain as invoice email (`invoiceEmail.ts`). */
+const INVOICE_EMAIL_FROM_DEFAULT = "Proplytic Accounts <invoices@proplytic.co.za>";
+
+export function contactFromEmailFromEnv(): string {
+  return (
+    process.env.CONTACT_FROM_EMAIL?.trim() ||
+    process.env.INVOICE_EMAIL_FROM?.trim() ||
+    INVOICE_EMAIL_FROM_DEFAULT
+  );
+}
+
 /** Lists missing server env vars (names only — never values). */
 export function missingContactServerEnvVars(): string[] {
   const missing: string[] = [];
@@ -39,9 +50,6 @@ export function missingContactServerEnvVars(): string[] {
   }
   if (!process.env.RESEND_API_KEY?.trim()) {
     missing.push("RESEND_API_KEY");
-  }
-  if (!process.env.CONTACT_FROM_EMAIL?.trim()) {
-    missing.push("CONTACT_FROM_EMAIL");
   }
 
   return missing;
@@ -62,7 +70,7 @@ export function getContactServerConfig(): ContactServerConfigResult {
   return {
     ok: true,
     config: {
-      fromEmail: process.env.CONTACT_FROM_EMAIL!.trim(),
+      fromEmail: contactFromEmailFromEnv(),
       toEmail: process.env.CONTACT_TO_EMAIL?.trim() || CONTACT_DELIVERY_EMAIL_DEFAULT
     }
   };

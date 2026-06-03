@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   CONTACT_DELIVERY_EMAIL_DEFAULT,
   CONTACT_PUBLIC_CONFIG_ERROR,
+  contactFromEmailFromEnv,
   getContactServerConfig,
   missingContactServerEnvVars
 } from "./contactServerEnv";
@@ -12,6 +13,7 @@ const ENV_KEYS = [
   "SUPABASE_SERVICE_ROLE_KEY",
   "RESEND_API_KEY",
   "CONTACT_FROM_EMAIL",
+  "INVOICE_EMAIL_FROM",
   "CONTACT_TO_EMAIL"
 ] as const;
 
@@ -50,12 +52,7 @@ describe("contactServerEnv", () => {
   it("reports all required vars when unset", () => {
     for (const key of ENV_KEYS) delete process.env[key];
     expect(missingContactServerEnvVars().sort()).toEqual(
-      [
-        "CONTACT_FROM_EMAIL",
-        "RESEND_API_KEY",
-        "SUPABASE_SERVICE_ROLE_KEY",
-        "SUPABASE_URL"
-      ].sort()
+      ["RESEND_API_KEY", "SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_URL"].sort()
     );
   });
 
@@ -66,16 +63,25 @@ describe("contactServerEnv", () => {
     expect(getContactServerConfig().ok).toBe(true);
   });
 
-  it("fails when CONTACT_FROM_EMAIL is missing", () => {
+  it("falls back to INVOICE_EMAIL_FROM when CONTACT_FROM_EMAIL is unset", () => {
     setValidContactEnv();
     delete process.env.CONTACT_FROM_EMAIL;
+    process.env.INVOICE_EMAIL_FROM = "Proplytic <hello@proplytic.co.za>";
+    expect(contactFromEmailFromEnv()).toBe("Proplytic <hello@proplytic.co.za>");
     const result = getContactServerConfig();
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.status).toBe(503);
-      expect(result.publicError).toBe(CONTACT_PUBLIC_CONFIG_ERROR);
-      expect(result.missing).toContain("CONTACT_FROM_EMAIL");
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.config.fromEmail).toBe("Proplytic <hello@proplytic.co.za>");
     }
+  });
+
+  it("falls back to default sender when neither contact nor invoice from is set", () => {
+    for (const key of ENV_KEYS) delete process.env[key];
+    process.env.SUPABASE_URL = "https://example.supabase.co";
+    process.env.SUPABASE_SERVICE_ROLE_KEY = "service-role-test-key";
+    process.env.RESEND_API_KEY = "re_test_key";
+    expect(contactFromEmailFromEnv()).toBe("Proplytic Accounts <invoices@proplytic.co.za>");
+    expect(getContactServerConfig().ok).toBe(true);
   });
 
   it("returns ready config with default delivery address", () => {

@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta http-equiv="x-ua-compatible" content="ie=edge" />
+    <title>Your Proplytic email was changed</title>
+  </head>
+  <body
+    style="
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      background-color: #f1f5f9;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    "
+  >
+    <div style="display: none; max-height: 0; overflow: hidden; opacity: 0; color: #f1f5f9; font-size: 1px; line-height: 1px">
+      Your Proplytic account email address was updated.
+    </div>
+
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #f1f5f9">
+      <tr>
+        <td align="center" style="padding: 40px 16px">
+          <table
+            role="presentation"
+            cellpadding="0"
+            cellspacing="0"
+            border="0"
+            width="100%"
+            style="max-width: 520px; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; box-shadow: 0 12px 32px rgba(15, 23, 42, 0.08)"
+          >
+            <tr>
+              <td align="center" style="padding: 32px 32px 8px">
+                <a href="{{ .SiteURL }}" style="text-decoration: none; display: inline-block" target="_blank" rel="noopener noreferrer">
+                  <img
+                    src="{{ .SiteURL }}/proplytic_logo_600x200_nobg.png"
+                    width="180"
+                    height="60"
+                    alt="Proplytic"
+                    style="display: block; border: 0; max-width: 180px; height: auto"
+                  />
+                </a>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 32px 32px">
+                <h1 style="margin: 0 0 12px; font-size: 24px; font-weight: 700; line-height: 1.25; letter-spacing: -0.02em; color: #0f172a">
+                  Email address changed
+                </h1>
+                <p style="margin: 0 0 24px; font-size: 15px; line-height: 1.55; color: #475569">
+                  The email address on your Proplytic account was updated from
+                  <strong style="color: #0f172a">{{ .OldEmail }}</strong> to
+                  <strong style="color: #0f172a">{{ .Email }}</strong>.
+                </p>
+                <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+                  <tr>
+                    <td align="center" style="padding: 0 0 24px">
+                      <a
+                        href="{{ .SiteURL }}"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style="
+                          display: inline-block;
+                          padding: 14px 28px;
+                          background-color: #7c3aed;
+                          color: #ffffff;
+                          font-size: 15px;
+                          font-weight: 600;
+                          line-height: 1.2;
+                          text-decoration: none;
+                          border-radius: 999px;
+                          box-shadow: 0 10px 32px rgba(124, 58, 237, 0.28);
+                        "
+                      >
+                        Go to Proplytic
+                      </a>
+                    </td>
+                  </tr>
+                </table>
+                <hr style="border: 0; border-top: 1px solid #eef2f7; margin: 0 0 20px" />
+                <p style="margin: 0; font-size: 12px; line-height: 1.5; color: #94a3b8">
+                  If you did not make this change, contact
+                  <a href="mailto:privacy@proplytic.co.za" style="color: #7c3aed; text-decoration: underline">privacy@proplytic.co.za</a>
+                  immediately.
+                </p>
+              </td>
+            </tr>
+          </table>
+          <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="max-width: 520px">
+            <tr>
+              <td align="center" style="padding: 20px 16px 0">
+                <p style="margin: 0; font-size: 12px; line-height: 1.5; color: #94a3b8">
+                  &copy; Proplytic &middot; Property portfolio analytics &amp; reports
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

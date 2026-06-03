@@ -5,7 +5,7 @@ Run after deploying contact API + page and applying `supabase/migrations/2026061
 ## Vercel env (server only)
 
 - `RESEND_API_KEY`
-- `CONTACT_FROM_EMAIL` (verified Resend sender)
+- `CONTACT_FROM_EMAIL` (optional — verified Resend sender; else `INVOICE_EMAIL_FROM` / invoice default)
 - `SUPABASE_URL` (or `VITE_SUPABASE_URL`)
 - `SUPABASE_SERVICE_ROLE_KEY`
 

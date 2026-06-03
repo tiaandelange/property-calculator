@@ -95,7 +95,7 @@ Local dev may leave it unset and use `vercel dev` for serverless routes, or set
 | `FRONTEND_URL` | e.g. `https://app.yourdomain.com` for Stripe success/cancel URLs |
 | `CRON_SECRET` | `GET/POST /api/cron/run-due` |
 | `RESEND_API_KEY` | Invoice email + contact form notifications (**never** `VITE_*`) |
-| `CONTACT_FROM_EMAIL` | **Required** for `POST /api/contact` — verified Resend sender |
+| `CONTACT_FROM_EMAIL` | Optional for `POST /api/contact` — falls back to `INVOICE_EMAIL_FROM` / default invoice sender |
 
 **Contact form delivery:** notifications go to `delangetiaanoffice@gmail.com` by default. Set optional `CONTACT_TO_EMAIL` to override. Apply migration `20260612120000_contact_submissions.sql` before enabling the form in production.
 
