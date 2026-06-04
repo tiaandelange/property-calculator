@@ -278,7 +278,7 @@ body:has(.pg-main-marketing-home) .pg-home-site-header-inner.pg-container {
 
 .hm-hero-visual__float {
   width: min(100%, 480px);
-  transform: perspective(800px) rotateX(8deg) rotateY(-3deg) translateY(0);
+  transform: perspective(1600px) rotateX(8deg) rotateY(-3deg) translateY(0);
   transform-style: preserve-3d;
   transform-origin: 50% 80%;
   border-radius: 22px;
@@ -292,10 +292,10 @@ body:has(.pg-main-marketing-home) .pg-home-site-header-inner.pg-container {
 @keyframes hm-hero-dashboard-float {
   0%,
   100% {
-    transform: perspective(800px) rotateX(8deg) rotateY(-3deg) translateY(0);
+    transform: perspective(1600px) rotateX(8deg) rotateY(-3deg) translateY(0);
   }
   50% {
-    transform: perspective(800px) rotateX(8deg) rotateY(-3deg) translateY(-12px);
+    transform: perspective(1600px) rotateX(8deg) rotateY(-3deg) translateY(-12px);
   }
 }
 
