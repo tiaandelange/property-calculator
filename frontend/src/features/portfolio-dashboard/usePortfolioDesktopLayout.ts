@@ -27,21 +27,21 @@ function layoutForWidth(width: number): PortfolioDesktopLayout {
     return { ...DEFAULT_LAYOUT, propertyLimit: 4, activityLimit: 6, isPhoneViewport: true, tier: "compact" };
   }
   if (width < 1100) {
-    return { propertyLimit: 4, activityLimit: 6, showSecondaryMetrics: false, isPhoneViewport: false, tier: "compact" };
+    return { propertyLimit: 4, activityLimit: 6, showSecondaryMetrics: true, isPhoneViewport: false, tier: "compact" };
   }
   if (width < 1280) {
-    return { propertyLimit: 4, activityLimit: 6, showSecondaryMetrics: false, isPhoneViewport: false, tier: "standard" };
+    return { propertyLimit: 4, activityLimit: 6, showSecondaryMetrics: true, isPhoneViewport: false, tier: "standard" };
   }
   if (width < 1400) {
-    return { propertyLimit: 4, activityLimit: 7, showSecondaryMetrics: false, isPhoneViewport: false, tier: "standard" };
+    return { propertyLimit: 4, activityLimit: 7, showSecondaryMetrics: true, isPhoneViewport: false, tier: "standard" };
   }
   if (width < 1600) {
-    return { propertyLimit: 5, activityLimit: 8, showSecondaryMetrics: false, isPhoneViewport: false, tier: "wide" };
+    return { propertyLimit: 5, activityLimit: 8, showSecondaryMetrics: true, isPhoneViewport: false, tier: "wide" };
   }
   if (width < 1920) {
-    return { propertyLimit: 6, activityLimit: 9, showSecondaryMetrics: false, isPhoneViewport: false, tier: "wide" };
+    return { propertyLimit: 6, activityLimit: 9, showSecondaryMetrics: true, isPhoneViewport: false, tier: "wide" };
   }
-  return { propertyLimit: 8, activityLimit: 10, showSecondaryMetrics: false, isPhoneViewport: false, tier: "ultra" };
+  return { propertyLimit: 8, activityLimit: 10, showSecondaryMetrics: true, isPhoneViewport: false, tier: "ultra" };
 }
 
 /** Desktop dashboard density from viewport width (resize-safe, no layout thrash). */

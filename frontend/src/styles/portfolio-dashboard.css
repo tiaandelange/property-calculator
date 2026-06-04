@@ -171,9 +171,10 @@
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
-.pg-pdash--wide .pg-pdash-metrics-secondary.pg-pfin-metrics,
-.pg-pdash--ultra .pg-pdash-metrics-secondary.pg-pfin-metrics {
-  display: grid;
+@media (min-width: 768px) {
+  .pg-pdash-desktop-only .pg-pdash-metrics-secondary.pg-pfin-metrics {
+    display: grid;
+  }
 }
 
 /* Middle grid */
