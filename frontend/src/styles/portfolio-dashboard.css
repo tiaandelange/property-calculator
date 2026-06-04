@@ -612,8 +612,17 @@
     gap: var(--pdash-gap);
   }
 
+  /* Override .pg-pfin-metrics 2-col rule (max-width: 900px) so net worth spans full width */
   .pg-pdash-metrics-mobile-hero.pg-pfin-metrics {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr) !important;
+    width: 100%;
+  }
+
+  .pg-pdash-metrics-mobile-hero.pg-pfin-metrics > .pg-pfin-metric-card,
+  .pg-pdash-metrics-mobile-hero.pg-pfin-metrics > .pg-pfin-metric-card--link {
+    grid-column: 1 / -1;
+    width: 100%;
+    max-width: none;
   }
 
   .pg-pdash-metrics-mobile-grid.pg-pfin-metrics {
