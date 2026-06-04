@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { Helmet } from "react-helmet-async";
 import { Link } from "react-router-dom";
+import { PublicPageSeo } from "../components/seo/PublicPageSeo";
+import { PRICING_PAGE_SEO } from "../lib/publicPageSeo";
 import { Check } from "lucide-react";
 import { Container } from "../components/ui/Container";
 import { Section } from "../components/ui/Section";
@@ -100,13 +101,7 @@ export function PricingPage() {
 
   return (
     <Section className="pg-pricing-page">
-      <Helmet>
-        <title>Pricing | Proplytic</title>
-        <meta
-          name="description"
-          content="Plans for owner-managers and small portfolio investors — portfolio analytics, investment reports, calculators, invoices and statements."
-        />
-      </Helmet>
+      <PublicPageSeo seo={PRICING_PAGE_SEO} />
       <Container className="pg-container--marketing-wide">
         <header className="pg-pricing-hero">
           <h1 className="pg-pricing-hero__title">{pricingHero.title}</h1>

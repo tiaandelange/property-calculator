@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
-import { Helmet } from "react-helmet-async";
 import type { CalculatorToolPageMeta } from "../../../data/calculatorToolPageMeta";
+import { PublicPageSeo } from "../../seo/PublicPageSeo";
+import type { PublicPageSeoConfig } from "../../../lib/publicPageSeo";
 import { Container } from "../../ui/Container";
 import { Section } from "../../ui/Section";
 import { CalculatorToolFooterDisclaimer } from "./CalculatorToolFooterDisclaimer";
@@ -33,16 +34,19 @@ export function CalculatorToolPageLayout({
   isMobile,
   children
 }: CalculatorToolPageLayoutProps) {
+  const pageSeo: PublicPageSeoConfig = {
+    title: meta.seoTitle,
+    description: meta.seoDescription,
+    path: `/calculators/${slug}`
+  };
+
   return (
     <Section
       className={["pg-calculator-detail-page", "pg-calc-tool-page", isMobile ? "pg-calc-tool-page--mobile" : ""]
         .filter(Boolean)
         .join(" ")}
     >
-      <Helmet>
-        <title>{meta.seoTitle}</title>
-        <meta name="description" content={meta.seoDescription} />
-      </Helmet>
+      <PublicPageSeo seo={pageSeo} />
       <Container className="pg-container pg-container--marketing-wide pg-calc-tool-page__container">
         <CalculatorToolPageHeader
           slug={slug}

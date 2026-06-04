@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { Helmet } from "react-helmet-async";
 import { ReportsDirectorySection } from "../components/reports/ReportsDirectorySection";
+import { PublicPageSeo } from "../components/seo/PublicPageSeo";
+import { REPORTS_PAGE_SEO } from "../lib/publicPageSeo";
 import { ReportsExplainSection } from "../components/reports/ReportsExplainSection";
 import { ReportsBenefitsStrip } from "../components/reports/ReportsBenefitsStrip";
 import { ReportsLandingHero } from "../components/reports/ReportsLandingHero";
@@ -19,13 +20,7 @@ export function ReportsPage() {
 
   return (
     <Section className="pg-reports-hub-page pg-reports-hub-page--public">
-      <Helmet>
-        <title>Property PDF Reports South Africa | Proplytic</title>
-        <meta
-          name="description"
-          content="Create investor-ready property reports, portfolio summaries, rental statements, invoices and cash flow PDFs with Proplytic."
-        />
-      </Helmet>
+      <PublicPageSeo seo={REPORTS_PAGE_SEO} />
 
       <ReportsLandingHero />
 

@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { Helmet } from "react-helmet-async";
 import { CalculatorHubLandingHero } from "../components/calculators/CalculatorHubLandingHero";
+import { PublicPageSeo } from "../components/seo/PublicPageSeo";
+import { CALCULATORS_HUB_PAGE_SEO } from "../lib/publicPageSeo";
 import { CalculatorHubDirectorySection } from "../components/calculators/CalculatorHubDirectorySection";
 import type { CalculatorHubCategoryId } from "../data/calculatorHubDirectory";
 import { Section } from "../components/ui/Section";
@@ -16,13 +17,7 @@ export function CalculatorHubPage() {
 
   return (
     <Section className="pg-calc-hub-page">
-      <Helmet>
-        <title>Property investment calculators | Proplytic</title>
-        <meta
-          name="description"
-          content="Run quick property calculations before building your full portfolio report — bond payment, transfer costs, cash flow, cap rate, IRR and more. No sign-in required."
-        />
-      </Helmet>
+      <PublicPageSeo seo={CALCULATORS_HUB_PAGE_SEO} />
 
       <CalculatorHubLandingHero searchQuery={searchQuery} onSearchQueryChange={setSearchQuery} />
 
