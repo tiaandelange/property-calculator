@@ -32,8 +32,9 @@
   display: block;
 }
 
-.pg-pdash-mobile-only {
-  display: none;
+.pg-pdash-mobile-only,
+.pg-pdash-metrics--mobile {
+  display: none !important;
 }
 
 /* Welcome (mobile) */
@@ -602,11 +603,11 @@
   }
 
   .pg-pdash-mobile-only {
-    display: block;
+    display: block !important;
   }
 
   .pg-pdash-metrics--mobile {
-    display: flex;
+    display: flex !important;
     flex-direction: column;
     gap: var(--pdash-gap);
   }
@@ -672,7 +673,10 @@
 }
 
 @media (min-width: 768px) {
-  .pg-pdash-metric--mobile-only {
+  .pg-pdash-metric--mobile-only,
+  .pg-pdash-mobile-only,
+  .pg-pdash-metrics--mobile,
+  .pg-pdash-metrics-mobile-skeleton {
     display: none !important;
   }
 }

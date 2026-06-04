@@ -127,9 +127,6 @@ export function OwnedPropertiesPortfolioDashboardPage() {
 
   const portfolioEquity = Number(data?.portfolioEquity ?? 0);
   const totalPropertyCount = Number((k.totalProperties as { value?: number })?.value ?? data?.totalProperties ?? 0);
-  const occupancyRatePct = Number(data?.occupancyRate ?? 0) * 100;
-  const occupiedCount = Number(data?.occupiedProperties ?? 0);
-  const tenantRequired = Number(data?.tenantRequiredProperties ?? 0);
   const userName = displayUserName(session?.user?.email, profile?.full_name ?? null);
 
   const charts = (data?.charts ?? {}) as Record<string, unknown>;
@@ -256,64 +253,6 @@ export function OwnedPropertiesPortfolioDashboardPage() {
           to="/tenants"
         />
       </WorkspaceMetricsRow>
-      {desktopLayout.showSecondaryMetrics ? (
-        <WorkspaceMetricsRow className="pg-pdash-metrics-secondary">
-          <WorkspaceMetricCard
-            label="Occupancy Rate"
-            value={
-              loading && !data
-                ? "…"
-                : tenantRequired > 0
-                  ? `${occupancyRatePct.toFixed(0)}%`
-                  : "—"
-            }
-            helper={
-              tenantRequired > 0 ? `${occupiedCount} of ${tenantRequired} occupied` : "No rental units in filter"
-            }
-            info={PORTFOLIO_DASHBOARD_METRIC_INFO.occupancy}
-            icon="activity"
-            accent="success"
-            to="/owned-properties/metrics/leases"
-          />
-          <WorkspaceMetricCard
-            label="Monthly Cash Flow"
-            value={loading && !data ? "…" : fmtZar(dashboardKpis.monthlyCashFlow)}
-            helper={cashFlowChange.text}
-            info={PORTFOLIO_DASHBOARD_METRIC_INFO.monthlyCashFlow}
-            icon="income"
-            accent={dashboardKpis.monthlyCashFlow >= 0 ? "success" : "danger"}
-            to="/owned-properties/metrics/cash-flow"
-          />
-          <WorkspaceMetricCard
-            label="Monthly Expenses"
-            value={loading && !data ? "…" : fmtZar(dashboardKpis.monthlyExpenses)}
-            helper="Recurring expenses + bond payments"
-            info={PORTFOLIO_DASHBOARD_METRIC_INFO.monthlyExpenses}
-            icon="expense"
-            accent="info"
-            to="/owned-properties/metrics/expenses"
-          />
-          <WorkspaceMetricCard
-            label="Cap Rate"
-            value={
-              loading && !data
-                ? "…"
-                : dashboardKpis.capRatePercent == null
-                  ? "—"
-                  : `${dashboardKpis.capRatePercent.toFixed(2)}%`
-            }
-            helper={
-              dashboardKpis.totalMarketValue > 0
-                ? `NOI ${fmtZar(dashboardKpis.monthlyNoi)} / ${fmtZar(dashboardKpis.totalMarketValue)} value`
-                : "Add current market values"
-            }
-            info={PORTFOLIO_DASHBOARD_METRIC_INFO.capRate}
-            icon="cap-rate"
-            accent="primary"
-            to="/owned-properties/metrics/returns"
-          />
-        </WorkspaceMetricsRow>
-      ) : null}
     </div>
   );
 
@@ -484,19 +423,20 @@ export function OwnedPropertiesPortfolioDashboardPage() {
               {mobileWelcome}
               <div className="pg-pdash-desktop-only">
                 <MetricCardsSkeletonRow count={4} />
-                {desktopLayout.showSecondaryMetrics ? <MetricCardsSkeletonRow count={4} /> : null}
               </div>
+              {desktopLayout.isPhoneViewport ? (
               <div className="pg-pdash-metrics-mobile-skeleton pg-pdash-mobile-only">
                 <div className="pg-metric-card-skeleton pg-pdash-metrics-mobile-hero-skeleton" aria-hidden />
                 <MetricCardsSkeletonRow count={4} />
               </div>
+              ) : null}
               <SkeletonGrid count={2} columns={2} />
             </>
           ) : (
             <>
               {mobileWelcome}
               {portfolioMetricsDesktop}
-              {portfolioMetricsMobile}
+              {desktopLayout.isPhoneViewport ? portfolioMetricsMobile : null}
               {mainPanels}
               {mobileStack}
             </>
