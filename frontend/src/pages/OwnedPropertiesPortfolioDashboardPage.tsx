@@ -194,8 +194,8 @@ export function OwnedPropertiesPortfolioDashboardPage() {
       });
   }, [properties, charts]);
 
-  const portfolioMetrics = (
-    <div className="pg-pdash-metrics">
+  const portfolioMetricsDesktop = (
+    <div className="pg-pdash-metrics pg-pdash-desktop-only">
       <WorkspaceMetricsRow className="pg-pdash-metrics-primary">
         <WorkspaceMetricCard
           className="pg-pdash-metrics-hero"
@@ -317,6 +317,80 @@ export function OwnedPropertiesPortfolioDashboardPage() {
     </div>
   );
 
+  const portfolioMetricsMobile = (
+    <div className="pg-pdash-metrics pg-pdash-metrics--mobile pg-pdash-mobile-only">
+      <WorkspaceMetricsRow className="pg-pdash-metrics-mobile-hero">
+        <WorkspaceMetricCard
+          className="pg-pdash-metrics-hero"
+          label="Total Portfolio Value (Net Worth)"
+          value={loading && !data ? "…" : fmtZar(portfolioEquity)}
+          helper={equityChange.text}
+          info={PORTFOLIO_DASHBOARD_METRIC_INFO.netWorth}
+          icon="portfolio"
+          accent="primary"
+          to="/owned-properties/metrics/equity"
+        />
+      </WorkspaceMetricsRow>
+      <WorkspaceMetricsRow className="pg-pdash-metrics-mobile-grid">
+        <WorkspaceMetricCard
+          className="pg-pdash-metric--income"
+          label="Monthly Income"
+          value={loading && !data ? "…" : fmtZar(dashboardKpis.monthlyIncome)}
+          helper={incomeChange.text}
+          info={PORTFOLIO_DASHBOARD_METRIC_INFO.monthlyIncome}
+          icon="rent"
+          accent="success"
+          to="/owned-properties/metrics/cash-flow"
+        />
+        <WorkspaceMetricCard
+          label="Cash on Cash ROI"
+          value={
+            loading && !data
+              ? "…"
+              : !showAdvancedReturns
+                ? "—"
+                : dashboardKpis.cashOnCashAnnualPercent == null
+                  ? "—"
+                  : `${dashboardKpis.cashOnCashAnnualPercent.toFixed(1)}%`
+          }
+          helper={!showAdvancedReturns ? "Unlock with Investor plan" : cashFlowChange.text}
+          info={PORTFOLIO_DASHBOARD_METRIC_INFO.cashOnCashRoi}
+          icon="percent"
+          accent="warning"
+          to="/owned-properties/metrics/returns"
+        />
+        <WorkspaceMetricCard
+          label="Monthly Expenses"
+          value={loading && !data ? "…" : fmtZar(dashboardKpis.monthlyExpenses)}
+          helper="Recurring expenses + bond payments"
+          info={PORTFOLIO_DASHBOARD_METRIC_INFO.monthlyExpenses}
+          icon="expense"
+          accent="info"
+          to="/owned-properties/metrics/expenses"
+        />
+        <WorkspaceMetricCard
+          label="Cap Rate"
+          value={
+            loading && !data
+              ? "…"
+              : dashboardKpis.capRatePercent == null
+                ? "—"
+                : `${dashboardKpis.capRatePercent.toFixed(2)}%`
+          }
+          helper={
+            dashboardKpis.totalMarketValue > 0
+              ? `NOI ${fmtZar(dashboardKpis.monthlyNoi)} / ${fmtZar(dashboardKpis.totalMarketValue)} value`
+              : "Add current market values"
+          }
+          info={PORTFOLIO_DASHBOARD_METRIC_INFO.capRate}
+          icon="cap-rate"
+          accent="primary"
+          to="/owned-properties/metrics/returns"
+        />
+      </WorkspaceMetricsRow>
+    </div>
+  );
+
   const mobileWelcome = (
     <div className="pg-pdash-welcome pg-pdash-mobile-only">
       <p className="pg-pdash-welcome-kicker">Welcome back,</p>
@@ -408,14 +482,21 @@ export function OwnedPropertiesPortfolioDashboardPage() {
           ) : loading && !data ? (
             <>
               {mobileWelcome}
-              <MetricCardsSkeletonRow count={4} />
-              {desktopLayout.showSecondaryMetrics ? <MetricCardsSkeletonRow count={4} /> : null}
+              <div className="pg-pdash-desktop-only">
+                <MetricCardsSkeletonRow count={4} />
+                {desktopLayout.showSecondaryMetrics ? <MetricCardsSkeletonRow count={4} /> : null}
+              </div>
+              <div className="pg-pdash-metrics-mobile-skeleton pg-pdash-mobile-only">
+                <div className="pg-metric-card-skeleton pg-pdash-metrics-mobile-hero-skeleton" aria-hidden />
+                <MetricCardsSkeletonRow count={4} />
+              </div>
               <SkeletonGrid count={2} columns={2} />
             </>
           ) : (
             <>
               {mobileWelcome}
-              {portfolioMetrics}
+              {portfolioMetricsDesktop}
+              {portfolioMetricsMobile}
               {mainPanels}
               {mobileStack}
             </>

@@ -605,40 +605,33 @@
     display: block;
   }
 
-  .pg-pdash-metrics {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .pg-pdash-metrics--mobile {
+    display: flex;
+    flex-direction: column;
     gap: var(--pdash-gap);
   }
 
-  .pg-pdash-metrics > .pg-pfin-metrics {
-    display: contents;
-    margin-bottom: 0;
+  .pg-pdash-metrics-mobile-hero.pg-pfin-metrics {
+    grid-template-columns: 1fr;
   }
 
-  .pg-pdash-metrics-hero.pg-pfin-metric-card {
-    grid-column: 1 / -1;
-    order: 1;
+  .pg-pdash-metrics-mobile-grid.pg-pfin-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .pg-pdash-metric--properties {
-    order: 2;
+  .pg-pdash-metrics-mobile-skeleton {
+    display: flex;
+    flex-direction: column;
+    gap: var(--pdash-gap);
   }
 
-  .pg-pdash-metric--tenants {
-    order: 3;
+  .pg-pdash-metrics-mobile-skeleton .pg-metric-cards-skeleton {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .pg-pdash-metric--income {
-    order: 4;
-  }
-
-  .pg-pdash-metric--desktop-only {
-    display: none !important;
-  }
-
-  .pg-pdash-metrics-secondary.pg-pfin-metrics {
-    display: none !important;
+  .pg-pdash-metrics-mobile-hero-skeleton {
+    width: 100%;
+    min-height: 120px;
   }
 
   .pg-pdash-middle {
