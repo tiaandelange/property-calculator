@@ -6,8 +6,11 @@
  * - Square mark (white bg): browser tab favicon only
  */
 
-/** Horizontal wordmark — transparent background */
+/** Horizontal wordmark — transparent background (light header / light pages) */
 export const PROPLYTIC_LOGO_ASSET = "/proplytic_logo_600x200_nobg.png";
+
+/** Horizontal wordmark for glass header on dark hero — upload `*_nobg_light.png` when ready */
+export const PROPLYTIC_LOGO_ASSET_ON_DARK = "/proplytic_logo_600x200_nobg_light.png";
 
 /** 600×200 horizontal lockup intrinsic aspect ratio */
 export const PROPLYTIC_LOGO_ASPECT = 3;

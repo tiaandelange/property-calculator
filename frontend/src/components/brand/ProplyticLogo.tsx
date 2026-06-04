@@ -11,6 +11,8 @@ export type ProplyticLogoProps = {
   width?: number | string;
   height?: number | string;
   title?: string;
+  /** Wordmark asset for dark backgrounds (marketing hero header) */
+  wordmarkVariant?: "default" | "on-dark";
 } & Omit<HTMLAttributes<HTMLSpanElement>, "children">;
 
 /**
@@ -24,6 +26,7 @@ export function ProplyticLogo({
   width,
   height,
   title = "Proplytic",
+  wordmarkVariant = "default",
   ...rest
 }: ProplyticLogoProps) {
   const wrapClass = ["proplytic-logo", className].filter(Boolean).join(" ");
@@ -52,6 +55,7 @@ export function ProplyticLogo({
     <span className={wrapClass} role="img" aria-label={title} {...rest}>
       <ProplyticLogoWordmark
         compact={compact}
+        variant={wordmarkVariant}
         alt=""
         aria-hidden
         height={logoHeight}

@@ -12,6 +12,7 @@ import {
   MARKETING_SIGN_IN_HREF
 } from "../../data/homepageMarketingContent";
 import { CalculatorIconDisplay } from "../icons/CalculatorIconDisplay";
+import { useHomeHeaderSurface } from "../../hooks/useHomeHeaderSurface";
 import { HomeBrandWordmark } from "./HomeBrandWordmark";
 
 const CALCULATOR_MEGA_MENU_GROUPS = getCalculatorMegaMenuGroups();
@@ -41,6 +42,8 @@ function getFocusable(root: HTMLElement): HTMLElement[] {
 
 export function HomePublicHeader() {
   const location = useLocation();
+  const isMarketingHome = location.pathname === "/";
+  const headerSurface = useHomeHeaderSurface(isMarketingHome);
   const [scrolled, setScrolled] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [mobileCalcOpen, setMobileCalcOpen] = useState(false);
@@ -55,11 +58,12 @@ export function HomePublicHeader() {
   const calculatorsMegaPanelId = useId();
 
   useEffect(() => {
+    if (isMarketingHome) return;
     const onScroll = () => setScrolled(window.scrollY > 20);
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
-  }, []);
+  }, [isMarketingHome]);
 
   useEffect(() => {
     const onHash = () => setHash(window.location.hash);
@@ -271,14 +275,19 @@ export function HomePublicHeader() {
     <>
       <header
         className="pg-home-site-header"
+        data-surface={isMarketingHome ? headerSurface : "light"}
         data-scrolled={scrolled ? "true" : "false"}
         data-drawer-open={drawerOpen ? "true" : "false"}
         data-calculators-hero-shell={calculatorsHeroShell ? "true" : "false"}
+        data-marketing-home={isMarketingHome ? "true" : "false"}
       >
         <div className="pg-container pg-container--marketing-wide pg-home-site-header-inner">
           <div className="pg-home-site-header-brand">
             <Link to="/" className="pg-home-site-header-logo" aria-label="Proplytic — Home">
-              <HomeBrandWordmark alt="" />
+              <HomeBrandWordmark
+                alt=""
+                variant={isMarketingHome && headerSurface === "hero" ? "on-dark" : "default"}
+              />
             </Link>
           </div>
 
