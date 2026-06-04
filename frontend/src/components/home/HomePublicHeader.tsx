@@ -44,7 +44,13 @@ function getFocusable(root: HTMLElement): HTMLElement[] {
 export function HomePublicHeader() {
   const location = useLocation();
   const isMarketingHome = location.pathname === "/";
-  const { surface: headerSurface, revealed: headerRevealed } = useHomeHeaderSurface(isMarketingHome);
+  const isCalculatorsHubLanding = location.pathname === PUBLIC_CALCULATORS_HREF;
+  const marketingHeroContext = isMarketingHome
+    ? "home"
+    : isCalculatorsHubLanding
+      ? "calculators-hub"
+      : null;
+  const { surface: headerSurface, revealed: headerRevealed } = useHomeHeaderSurface(marketingHeroContext);
   const [scrolled, setScrolled] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [mobileCalcOpen, setMobileCalcOpen] = useState(false);
@@ -60,12 +66,12 @@ export function HomePublicHeader() {
   const mobileCalculatorsPanelId = useId();
 
   useEffect(() => {
-    if (isMarketingHome) return;
+    if (marketingHeroContext) return;
     const onScroll = () => setScrolled(window.scrollY > 20);
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
-  }, [isMarketingHome]);
+  }, [marketingHeroContext]);
 
   useEffect(() => {
     const onHash = () => setHash(window.location.hash);
@@ -236,7 +242,7 @@ export function HomePublicHeader() {
     <>
       <header
         className="pg-home-site-header"
-        data-surface={isMarketingHome ? headerSurface : "light"}
+        data-surface={marketingHeroContext ? headerSurface : "light"}
         data-revealed={drawerOpen || calculatorsMegaOpen || headerRevealed ? "true" : "false"}
         data-scrolled={scrolled ? "true" : "false"}
         data-drawer-open={drawerOpen ? "true" : "false"}
@@ -248,7 +254,7 @@ export function HomePublicHeader() {
             <Link to="/" className="pg-home-site-header-logo" aria-label="Proplytic — Home">
               <HomeBrandWordmark
                 alt=""
-                variant={isMarketingHome && headerSurface === "hero" ? "on-dark" : "default"}
+                variant={marketingHeroContext && headerSurface === "hero" ? "on-dark" : "default"}
               />
             </Link>
           </div>

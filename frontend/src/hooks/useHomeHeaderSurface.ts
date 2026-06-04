@@ -2,6 +2,9 @@ import { useEffect, useRef, useState } from "react";
 
 export type HomeHeaderSurface = "hero" | "light";
 
+/** Which marketing page supplies the dark hero band for header glass treatment. */
+export type MarketingHeroContext = "home" | "calculators-hub" | null;
+
 const HERO_BOTTOM_BUFFER = 28;
 const LIGHT_TOP_OFFSET = 48;
 const TOP_REVEAL_SCROLL_Y = 20;
@@ -15,9 +18,14 @@ function getScrollDeltaThreshold(): number {
   return window.matchMedia("(pointer: coarse)").matches ? 2 : 6;
 }
 
-function resolveHomepageSurface(): HomeHeaderSurface {
-  const hero = document.querySelector<HTMLElement>(".hm-hero");
-  const lightSection = document.querySelector<HTMLElement>(".hm-trust");
+function resolveMarketingHeroSurface(context: MarketingHeroContext): HomeHeaderSurface {
+  if (!context) return "light";
+
+  const heroSelector = context === "home" ? ".hm-hero" : ".pg-calc-hub-landing-hero";
+  const lightSelector = context === "home" ? ".hm-trust" : ".pg-calc-hub-light";
+
+  const hero = document.querySelector<HTMLElement>(heroSelector);
+  const lightSection = document.querySelector<HTMLElement>(lightSelector);
 
   if (!hero || !lightSection) {
     return getScrollTop() > 80 ? "light" : "hero";
@@ -44,11 +52,11 @@ export type HomeHeaderScrollState = {
 };
 
 /**
- * Marketing header: glass/light theme by scroll position; hide on scroll down,
- * reveal slowly on scroll up. At the very top of the homepage, always visible.
+ * Marketing header: glass/dark theme by scroll position; hide on scroll down,
+ * reveal slowly on scroll up. At the very top of the page, always visible.
  */
-export function useHomeHeaderSurface(isMarketingHome: boolean): HomeHeaderScrollState {
-  const [surface, setSurface] = useState<HomeHeaderSurface>(isMarketingHome ? "hero" : "light");
+export function useHomeHeaderSurface(heroContext: MarketingHeroContext): HomeHeaderScrollState {
+  const [surface, setSurface] = useState<HomeHeaderSurface>(heroContext ? "hero" : "light");
   const [revealed, setRevealed] = useState(true);
   const lastScrollY = useRef(0);
   const revealedRef = useRef(true);
@@ -65,7 +73,7 @@ export function useHomeHeaderSurface(isMarketingHome: boolean): HomeHeaderScroll
       const delta = scrollY - lastScrollY.current;
       const threshold = getScrollDeltaThreshold();
 
-      const nextSurface = isMarketingHome ? resolveHomepageSurface() : "light";
+      const nextSurface = heroContext ? resolveMarketingHeroSurface(heroContext) : "light";
       setSurface(nextSurface);
 
       let nextRevealed = revealedRef.current;
@@ -114,7 +122,7 @@ export function useHomeHeaderSurface(isMarketingHome: boolean): HomeHeaderScroll
       window.visualViewport?.removeEventListener("scroll", scheduleUpdate);
       window.visualViewport?.removeEventListener("resize", scheduleUpdate);
     };
-  }, [isMarketingHome]);
+  }, [heroContext]);
 
   return { surface, revealed };
 }
