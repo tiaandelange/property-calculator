@@ -109,9 +109,9 @@ export async function uploadPropertyDocument(
   assertAllowedPropertyDocumentFile(file);
 
   const sb = getSupabase();
-  const { data: userData, error: userErr } = await sb.auth.getUser();
+  const { data: sessionData, error: userErr } = await sb.auth.getSession();
   if (userErr) throw toError(userErr);
-  const uid = userData.user?.id;
+  const uid = sessionData.session?.user?.id;
   if (!uid) throw new Error("Not signed in.");
 
   const docType = opts?.documentType && DOC_TYPES.has(opts.documentType) ? opts.documentType : "OTHER";

@@ -26,7 +26,7 @@ export function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
-  const { session, initializing, initialized, refreshSession, recognizeSession } = useAuth();
+  const { session, initializing, initialized, isAuthenticated, refreshSession, recognizeSession } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState<null | "login" | "register">(null);
@@ -52,7 +52,8 @@ export function LoginPage() {
   }, []);
 
   useEffect(() => {
-    if (!initialized || initializing || !session) return;
+    if (!initialized || initializing || loading) return;
+    if (!session?.user?.id || !isAuthenticated) return;
 
     logSignInFlow("redirect-after-session", { hasSession: true });
 
@@ -75,7 +76,7 @@ export function LoginPage() {
     }
 
     navigate("/owned-properties/dashboard", { replace: true });
-  }, [session, initializing, initialized, location.state, navigate, searchParams]);
+  }, [session, initializing, initialized, isAuthenticated, loading, location.state, navigate, searchParams]);
 
   useEffect(() => {
     if (!session?.user?.id) return;

@@ -50,11 +50,11 @@ function rowToMetrics(row: DefaultsRow): PortfolioProjectionMetrics {
 }
 
 async function requireUserId(): Promise<string> {
-  const sb = getSupabase();
-  const { data, error } = await sb.auth.getUser();
-  if (error) throw toError(error);
-  if (!data.user?.id) throw new Error("Not signed in.");
-  return data.user.id;
+  try {
+    return await requireUserIdFromSession();
+  } catch (e) {
+    throw toError(e instanceof Error ? e : new Error(String(e)));
+  }
 }
 
 /** Returns true when `profiles.role` is ADMIN for the signed-in user. */

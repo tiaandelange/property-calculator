@@ -13,6 +13,11 @@ export function logAuthEvent(event: string, detail?: Record<string, unknown>): v
   console.info("[AuthEvent]", event, { ...detail, route: route(), at: stamp() });
 }
 
+export function logAuthState(detail: Record<string, unknown>): void {
+  if (!import.meta.env.DEV) return;
+  console.info("[AuthState]", { ...detail, route: route(), at: stamp() });
+}
+
 export function logAuthSignOut(source: string, reason?: string): void {
   if (!import.meta.env.DEV) return;
   console.warn("[Auth] signOut called", {

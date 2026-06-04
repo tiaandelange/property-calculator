@@ -10,10 +10,13 @@ export function classifyReportsError(error: unknown): ReportsPageErrorKind {
     msg.includes("jwt expired") ||
     msg.includes("jwt malformed") ||
     (msg.includes("session") && (msg.includes("missing") || msg.includes("expired"))) ||
-    msg.includes("http 401") ||
     code === "pgrst301"
   ) {
     return "session";
+  }
+
+  if (msg.includes("http 401")) {
+    return "permission";
   }
 
   if (

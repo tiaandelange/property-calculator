@@ -24,15 +24,9 @@ export async function generateReportViaVercel(opts: {
   payload?: Record<string, unknown>;
 }): Promise<GenerateReportResponse> {
   const sb = getSupabase();
-  let token: string | undefined;
   const { data: sessionData, error: sessionErr } = await sb.auth.getSession();
   if (sessionErr) throw sessionErr;
-  token = sessionData.session?.access_token;
-  if (!token) {
-    const { data: refreshed, error: refreshErr } = await sb.auth.refreshSession();
-    if (refreshErr) throw refreshErr;
-    token = refreshed.session?.access_token;
-  }
+  const token = sessionData.session?.access_token;
   if (!token) throw new Error("Not signed in.");
 
   const body: Record<string, unknown> = { reportType: opts.reportType };

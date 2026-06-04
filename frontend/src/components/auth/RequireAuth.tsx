@@ -42,7 +42,7 @@ export function RequireAuth({ children }: { children: React.ReactElement }) {
     return <RouteFallback />;
   }
 
-  if (!isAuthenticated || !session) {
+  if (!isAuthenticated || !session?.user?.id) {
     const to = loginRedirectPath(location.pathname, location.search);
     logProtectedRoute("redirect", {
       path: location.pathname,

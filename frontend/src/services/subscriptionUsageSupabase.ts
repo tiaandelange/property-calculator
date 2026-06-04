@@ -52,9 +52,9 @@ export async function fetchSubscriptionUsageCounts(
   }
 
   const sb = getSupabase();
-  const {
-    data: { user }
-  } = await sb.auth.getUser();
+  const { data: sessionWrap, error: sessionErr } = await sb.auth.getSession();
+  if (sessionErr) throw sessionErr;
+  const user = sessionWrap.session?.user ?? null;
   if (!user) {
     return { propertyCount: 0, investmentReportCount: 0, applicationLinksActive: 0, period };
   }

@@ -161,9 +161,9 @@ export async function uploadTenantDocumentOwner(
 ): Promise<TenantDocumentRecord> {
   assertAllowedPropertyDocumentFile(file);
   const sb = getSupabase();
-  const { data: userData, error: userErr } = await sb.auth.getUser();
+  const { data: sessionData, error: userErr } = await sb.auth.getSession();
   if (userErr) throw new Error(userErr.message);
-  const uid = userData.user?.id;
+  const uid = sessionData.session?.user?.id;
   if (!uid) throw new Error("Not signed in.");
 
   const { data: existing, error: existingErr } = await sb
@@ -248,9 +248,9 @@ export async function uploadLeaseContractOwner(
 ): Promise<TenantDocumentRecord> {
   assertAllowedPropertyDocumentFile(file);
   const sb = getSupabase();
-  const { data: userData, error: userErr } = await sb.auth.getUser();
+  const { data: sessionData, error: userErr } = await sb.auth.getSession();
   if (userErr) throw new Error(userErr.message);
-  const uid = userData.user?.id;
+  const uid = sessionData.session?.user?.id;
   if (!uid) throw new Error("Not signed in.");
 
   const { data: leaseRow, error: leaseErr } = await sb

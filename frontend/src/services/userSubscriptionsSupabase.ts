@@ -89,9 +89,9 @@ function mapUserSubscriptionRow(row: Record<string, unknown>): UserSubscriptionR
 export async function getUserSubscriptionForCurrentUser(): Promise<UserSubscriptionRecord | null> {
   if (!isSupabaseConfigured) return null;
   const sb = getSupabase();
-  const {
-    data: { user }
-  } = await sb.auth.getUser();
+  const { data: sessionWrap, error: sessionErr } = await sb.auth.getSession();
+  if (sessionErr) throw sessionErr;
+  const user = sessionWrap.session?.user ?? null;
   if (!user) return null;
 
   const { data, error } = await sb
@@ -123,9 +123,9 @@ export async function ensureUserSubscriptionForPlanCode(
   }
 
   const sb = getSupabase();
-  const {
-    data: { user }
-  } = await sb.auth.getUser();
+  const { data: sessionWrap, error: sessionErr } = await sb.auth.getSession();
+  if (sessionErr) throw sessionErr;
+  const user = sessionWrap.session?.user ?? null;
   if (!user) {
     return { created: false, skipped: true };
   }
@@ -180,9 +180,9 @@ export async function updateUserSubscriptionPlanCode(
   }
 
   const sb = getSupabase();
-  const {
-    data: { user }
-  } = await sb.auth.getUser();
+  const { data: sessionWrap, error: sessionErr } = await sb.auth.getSession();
+  if (sessionErr) throw sessionErr;
+  const user = sessionWrap.session?.user ?? null;
   if (!user) throw new Error("Not signed in.");
 
   if (opts?.requireAdmin !== false) {

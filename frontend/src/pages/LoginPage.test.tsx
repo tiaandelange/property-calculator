@@ -80,6 +80,12 @@ vi.mock("../lib/supabaseClient", () => ({
     auth: {
       signInWithPassword,
       signUp,
+      getSession: vi.fn(() =>
+        Promise.resolve({
+          data: { session: { user: { id: "u1" } } },
+          error: null
+        })
+      ),
       getUser: vi.fn(() => Promise.resolve({ data: { user: { id: "u1" } }, error: null }))
     },
     from: vi.fn(fromMock)

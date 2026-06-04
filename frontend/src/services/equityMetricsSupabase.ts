@@ -20,9 +20,9 @@ export type EquityMetricRow = {
 
 export async function listEquityMetrics(): Promise<{ properties: EquityMetricRow[] }> {
   const sb = getSupabase();
-  const { data: userData, error: userErr } = await sb.auth.getUser();
+  const { data: sessionData, error: userErr } = await sb.auth.getSession();
   if (userErr) throw toError(userErr);
-  const uid = userData.user?.id;
+  const uid = sessionData.session?.user?.id;
   if (!uid) throw new Error("Not signed in.");
 
   const { data, error } = await sb
@@ -59,9 +59,9 @@ export async function updateEquityMetrics(
   updates: Array<{ propertyId: string | number; currentEstimatedValue: number | null; outstandingBondBalance: number | null }>
 ): Promise<{ updatedCount: number }> {
   const sb = getSupabase();
-  const { data: userData, error: userErr } = await sb.auth.getUser();
+  const { data: sessionData, error: userErr } = await sb.auth.getSession();
   if (userErr) throw toError(userErr);
-  const uid = userData.user?.id;
+  const uid = sessionData.session?.user?.id;
   if (!uid) throw new Error("Not signed in.");
 
   let updatedCount = 0;

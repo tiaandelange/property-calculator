@@ -22,11 +22,11 @@ function toError(e: PostgrestError | Error): Error {
 }
 
 async function requireUserId(): Promise<string> {
-  const sb = getSupabase();
-  const { data, error } = await sb.auth.getUser();
-  if (error) throw toError(error);
-  if (!data.user?.id) throw new Error("Not signed in.");
-  return data.user.id;
+  try {
+    return await requireUserIdFromSession();
+  } catch (e) {
+    throw toError(e instanceof Error ? e : new Error(String(e)));
+  }
 }
 
 function rowToLink(row: Record<string, unknown>): TenantUnitLinkRecord {

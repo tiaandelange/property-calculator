@@ -1,7 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { fetchProfileForUserId, type ProfileForApp } from "../api/profileFromSupabase";
-import { logAuthEvent, logAuthSignOut } from "../lib/authDebug";
+import { logAuthEvent, logAuthSignOut, logAuthState } from "../lib/authDebug";
 import { isInvalidRefreshTokenError, sessionFromInitialAuthEvent } from "../lib/authSessionPolicy";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 
@@ -14,6 +14,7 @@ export type AuthContextValue = {
   /** True after the first session resolution (bootstrap or INITIAL_SESSION). */
   initialized: boolean;
   /** Alias for `initializing` — auth state is still unknown. */
+  authLoading: boolean;
   isLoadingAuth: boolean;
   /** Last auth bootstrap error (does not clear session on its own). */
   authError: Error | null;
@@ -46,12 +47,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setInitialized(true);
     setInitializing(false);
     logAuthEvent("auth ready", { reason, hasSession: Boolean(sessionRef.current) });
+    logAuthState({
+      initialized: true,
+      authLoading: false,
+      hasUser: Boolean(sessionRef.current?.user?.id)
+    });
   }, []);
 
   const applySession = useCallback((next: Session | null, reason: string) => {
     sessionRef.current = next;
     setSession(next);
     logAuthEvent("session updated", { reason, hasSession: Boolean(next) });
+    logAuthState({
+      initialized: initializedRef.current,
+      authLoading: !initializedRef.current,
+      hasUser: Boolean(next?.user?.id)
+    });
   }, []);
 
   const recognizeSession = useCallback(
@@ -119,19 +130,64 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     let cancelled = false;
 
+    logAuthState({ initialized: false, authLoading: true, hasUser: false });
+
+    const {
+      data: { subscription }
+    } = client.auth.onAuthStateChange((event, nextSession) => {
+      if (cancelled) return;
+
+      logAuthEvent("onAuthStateChange", { event, hasSession: Boolean(nextSession) });
+
+      if (event === "INITIAL_SESSION") {
+        const resolved = sessionFromInitialAuthEvent(nextSession, sessionRef.current);
+        applySession(resolved, `event:${event}`);
+        markInitialized("INITIAL_SESSION");
+        return;
+      }
+
+      if (event === "SIGNED_OUT") {
+        void client.auth.getSession().then(({ data, error }) => {
+          if (cancelled) return;
+          if (!error && data.session) {
+            logAuthEvent("SIGNED_OUT ignored — session still in storage");
+            applySession(data.session, "SIGNED_OUT:recovered");
+            return;
+          }
+          applySession(null, `event:${event}`);
+        });
+        return;
+      }
+
+      if (nextSession) {
+        applySession(nextSession, `event:${event}`);
+        if (!initializedRef.current) markInitialized(event);
+        return;
+      }
+
+      if (event === "TOKEN_REFRESHED" || event === "USER_UPDATED") {
+        logAuthEvent("auth event with null session — keeping cached session", { event });
+      }
+    });
+
     void client.auth.getSession().then(({ data, error }) => {
-      if (cancelled || initializedRef.current) return;
+      if (cancelled) return;
       if (error) {
         console.warn("[auth] bootstrap getSession", error.message);
         setAuthError(error);
-        return;
-      }
-      if (data.session) {
+        if (isInvalidRefreshTokenError(error.message)) {
+          applySession(null, "bootstrap:invalid_refresh_token");
+        }
+      } else if (data.session) {
         applySession(data.session, "bootstrap:getSession");
+      }
+      if (!initializedRef.current) {
+        markInitialized("bootstrap:getSession");
       }
     });
 
     const initTimeout = window.setTimeout(() => {
+      if (cancelled || initializedRef.current) return;
       void client.auth.getSession().then(({ data, error }) => {
         if (cancelled || initializedRef.current) return;
         if (!error && data.session) {
@@ -142,46 +198,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         markInitialized("timeout");
       });
     }, INIT_TIMEOUT_MS);
-
-    const {
-      data: { subscription }
-    } = client.auth.onAuthStateChange((event, nextSession) => {
-      logAuthEvent("onAuthStateChange", { event, hasSession: Boolean(nextSession) });
-
-      setTimeout(() => {
-        if (cancelled) return;
-
-        if (event === "SIGNED_OUT") {
-          void client.auth.getSession().then(({ data, error }) => {
-            if (cancelled) return;
-            if (!error && data.session) {
-              logAuthEvent("SIGNED_OUT ignored — session still in storage");
-              applySession(data.session, "SIGNED_OUT:recovered");
-              markInitialized("SIGNED_OUT:recovered");
-              return;
-            }
-            applySession(null, `event:${event}`);
-            markInitialized("SIGNED_OUT");
-          });
-          return;
-        }
-
-        if (event === "INITIAL_SESSION") {
-          const resolved = sessionFromInitialAuthEvent(nextSession, sessionRef.current);
-          applySession(resolved, `event:${event}`);
-          markInitialized("INITIAL_SESSION");
-          return;
-        }
-
-        if (nextSession) {
-          applySession(nextSession, `event:${event}`);
-          if (!initializedRef.current) markInitialized(event);
-          return;
-        }
-
-        // TOKEN_REFRESHED / USER_UPDATED with null payload — keep cached session.
-      }, 0);
-    });
 
     return () => {
       cancelled = true;
@@ -229,7 +245,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setProfile(null);
   }, [applySession]);
 
-  const isAuthenticated = initialized && Boolean(session);
+  const isAuthenticated = initialized && Boolean(session?.user?.id);
 
   const value = useMemo<AuthContextValue>(
     () => ({
@@ -238,6 +254,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       profile,
       initializing,
       initialized,
+      authLoading: initializing,
       isLoadingAuth: initializing,
       authError,
       isAuthenticated,

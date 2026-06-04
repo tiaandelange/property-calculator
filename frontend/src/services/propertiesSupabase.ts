@@ -1,4 +1,5 @@
 import type { PostgrestError } from "@supabase/supabase-js";
+import { requireUserIdFromSession } from "../lib/authSession";
 import { getSupabase } from "../lib/supabaseClient";
 import {
   buildPropertyInsertRow,
@@ -32,11 +33,11 @@ function toError(e: PostgrestError | Error): Error {
 }
 
 async function requireUserId(): Promise<string> {
-  const sb = getSupabase();
-  const { data, error } = await sb.auth.getUser();
-  if (error) throw toError(error);
-  if (!data.user?.id) throw new Error("Not signed in.");
-  return data.user.id;
+  try {
+    return await requireUserIdFromSession();
+  } catch (e) {
+    throw toError(e instanceof Error ? e : new Error(String(e)));
+  }
 }
 
 function groupRowsByPropertyId(rows: Record<string, unknown>[]): Map<string, Record<string, unknown>[]> {

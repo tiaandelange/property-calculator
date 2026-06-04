@@ -18,8 +18,13 @@ export async function getLocalAuthUser(): Promise<User | null> {
   return session?.user ?? null;
 }
 
+export async function requireUserIdFromSession(): Promise<string> {
+  const session = await getLocalAuthSession();
+  if (!session?.user?.id) throw new Error("Not signed in.");
+  return session.user.id;
+}
+
+/** @deprecated Prefer {@link requireUserIdFromSession} */
 export async function requireLocalUserId(): Promise<string> {
-  const user = await getLocalAuthUser();
-  if (!user?.id) throw new Error("Not signed in.");
-  return user.id;
+  return requireUserIdFromSession();
 }
