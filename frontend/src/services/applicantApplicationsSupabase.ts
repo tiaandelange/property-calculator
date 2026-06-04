@@ -1,3 +1,4 @@
+import { requireUserIdFromSession } from "../lib/authSession";
 import { getSupabase } from "../lib/supabaseClient";
 import {
   DEFAULT_APPLICANT_FORM_TEMPLATE,

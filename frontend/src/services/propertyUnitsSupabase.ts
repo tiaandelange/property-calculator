@@ -1,4 +1,5 @@
 import type { PostgrestError } from "@supabase/supabase-js";
+import { requireUserIdFromSession } from "../lib/authSession";
 import { getSupabase } from "../lib/supabaseClient";
 import type { PropertyUnitDraft } from "../features/properties/units/propertyUnitTypes";
 
