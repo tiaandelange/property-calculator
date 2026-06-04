@@ -14,6 +14,7 @@ import {
 import { CalculatorIconDisplay } from "../icons/CalculatorIconDisplay";
 import { useHomeHeaderSurface } from "../../hooks/useHomeHeaderSurface";
 import { HomeBrandWordmark } from "./HomeBrandWordmark";
+import { HomeMobileCalculatorsPanel } from "./HomeMobileCalculatorsPanel";
 
 const CALCULATOR_MEGA_MENU_GROUPS = getCalculatorMegaMenuGroups();
 const PUBLIC_CALCULATORS_HREF = "/calculators";
@@ -56,6 +57,7 @@ export function HomePublicHeader() {
   const calculatorsMegaCloseTimer = useRef<number | null>(null);
   const titleId = useId();
   const calculatorsMegaPanelId = useId();
+  const mobileCalculatorsPanelId = useId();
 
   useEffect(() => {
     if (isMarketingHome) return;
@@ -195,68 +197,27 @@ export function HomePublicHeader() {
     );
   };
 
-  const renderMegaMenuItems = (
-    groups: CalculatorMegaMenuGroup[],
-    variant: "desktop" | "mobile",
-    onNavigate?: () => void
-  ) =>
+  const renderDesktopMegaMenuItems = (groups: CalculatorMegaMenuGroup[], onNavigate?: () => void) =>
     groups.map((group: CalculatorMegaMenuGroup) => (
-      <div
-        key={group.title}
-        className={variant === "desktop" ? "pg-home-site-header-mega-col" : "pg-home-site-drawer-mega-block"}
-      >
-        <div
-          className={
-            variant === "desktop" ? "pg-home-site-header-mega-col-title" : "pg-home-site-drawer-mega-col-title"
-          }
-        >
-          {group.title}
-        </div>
-        <ul className={variant === "desktop" ? "pg-home-site-header-mega-list" : "pg-home-site-drawer-mega-list"}>
+      <div key={group.title} className="pg-home-site-header-mega-col">
+        <div className="pg-home-site-header-mega-col-title">{group.title}</div>
+        <ul className="pg-home-site-header-mega-list">
           {group.items.map((cal: CalculatorMegaMenuItem) => (
             <li key={cal.slug}>
               <Link
                 to={cal.route}
-                className={
-                  variant === "desktop" ? "pg-home-site-header-mega-item" : "pg-home-site-drawer-mega-item"
-                }
-                tabIndex={variant === "desktop" && !calculatorsMegaOpen ? -1 : undefined}
+                className="pg-home-site-header-mega-item"
+                tabIndex={!calculatorsMegaOpen ? -1 : undefined}
                 onClick={onNavigate}
               >
                 <CalculatorIconDisplay
                   slug={cal.slug}
-                  size={variant === "desktop" ? "md" : "sm"}
-                  className={
-                    variant === "desktop"
-                      ? "pg-home-site-header-mega-item-icon"
-                      : "pg-home-site-drawer-mega-item-icon"
-                  }
+                  size="md"
+                  className="pg-home-site-header-mega-item-icon"
                 />
-                <span
-                  className={
-                    variant === "desktop"
-                      ? "pg-home-site-header-mega-item-text"
-                      : "pg-home-site-drawer-mega-item-text"
-                  }
-                >
-                  <span
-                    className={
-                      variant === "desktop"
-                        ? "pg-home-site-header-mega-item-title"
-                        : "pg-home-site-drawer-mega-item-title"
-                    }
-                  >
-                    {cal.name}
-                  </span>
-                  <span
-                    className={
-                      variant === "desktop"
-                        ? "pg-home-site-header-mega-item-desc"
-                        : "pg-home-site-drawer-mega-item-desc"
-                    }
-                  >
-                    {cal.tagline}
-                  </span>
+                <span className="pg-home-site-header-mega-item-text">
+                  <span className="pg-home-site-header-mega-item-title">{cal.name}</span>
+                  <span className="pg-home-site-header-mega-item-desc">{cal.tagline}</span>
                 </span>
               </Link>
             </li>
@@ -343,7 +304,7 @@ export function HomePublicHeader() {
                     >
                       <div className="pg-home-site-header-mega-panel-inner">
                         <div className="pg-home-site-header-mega-grid">
-                          {renderMegaMenuItems(CALCULATOR_MEGA_MENU_GROUPS, "desktop")}
+                          {renderDesktopMegaMenuItems(CALCULATOR_MEGA_MENU_GROUPS)}
                         </div>
                       </div>
                     </div>
@@ -407,51 +368,56 @@ export function HomePublicHeader() {
             Menu
           </h2>
         </div>
-        <nav className="pg-home-site-drawer-nav" aria-label="Primary mobile">
-          {NAV.map((item) => {
-            if (item.kind === "calculators-mega") {
-              return (
-                <div key={item.key} className="pg-home-site-drawer-calculators">
-                  <div className="pg-home-site-drawer-row pg-home-site-drawer-row--mega">
-                    <button
-                      type="button"
-                      className={`pg-home-site-drawer-mega-toggle${mobileCalcOpen ? " pg-home-site-drawer-mega-toggle--open" : ""}`}
-                      aria-expanded={mobileCalcOpen}
-                      onClick={() => setMobileCalcOpen((o) => !o)}
-                    >
-                      <span>{item.label}</span>
-                      <svg width="11" height="11" viewBox="0 0 11 11" aria-hidden="true">
-                        <path
-                          d="M2.25 3.75L5.5 7L8.75 3.75"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="1.35"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
-                    </button>
-                    <NavLink
-                      to={PUBLIC_CALCULATORS_HREF}
-                      className="pg-home-site-drawer-mega-hub-link"
-                      onClick={closeDrawer}
-                    >
-                      All calculators
-                    </NavLink>
+        <div className="pg-home-site-drawer__scroll">
+          <nav className="pg-home-site-drawer-nav" aria-label="Primary mobile">
+            {NAV.map((item) => {
+              if (item.kind === "calculators-mega") {
+                return (
+                  <div key={item.key} className="pg-home-site-drawer-calculators">
+                    <div className="pg-home-site-drawer-calc-head">
+                      <button
+                        type="button"
+                        className={`pg-home-site-drawer-mega-toggle${mobileCalcOpen ? " pg-home-site-drawer-mega-toggle--open" : ""}`}
+                        aria-expanded={mobileCalcOpen}
+                        aria-controls={mobileCalculatorsPanelId}
+                        onClick={() => setMobileCalcOpen((o) => !o)}
+                      >
+                        <span>{item.label}</span>
+                        <svg width="11" height="11" viewBox="0 0 11 11" aria-hidden="true">
+                          <path
+                            d="M2.25 3.75L5.5 7L8.75 3.75"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="1.35"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                      </button>
+                      <NavLink
+                        to={PUBLIC_CALCULATORS_HREF}
+                        className="pg-home-site-drawer-mega-hub-link"
+                        onClick={closeDrawer}
+                      >
+                        View all →
+                      </NavLink>
+                    </div>
+                    <HomeMobileCalculatorsPanel
+                      open={mobileCalcOpen}
+                      panelId={mobileCalculatorsPanelId}
+                      onNavigate={closeDrawer}
+                    />
                   </div>
-                  {mobileCalcOpen ? (
-                    <div className="pg-home-site-drawer-mega-scroll">{renderMegaMenuItems(CALCULATOR_MEGA_MENU_GROUPS, "mobile", closeDrawer)}</div>
-                  ) : null}
+                );
+              }
+              return (
+                <div key={item.key} className="pg-home-site-drawer-row">
+                  {renderNavLink(item, closeDrawer)}
                 </div>
               );
-            }
-            return (
-              <div key={item.key} className="pg-home-site-drawer-row">
-                {renderNavLink(item, closeDrawer)}
-              </div>
-            );
-          })}
-        </nav>
+            })}
+          </nav>
+        </div>
         <div className="pg-home-site-drawer-cta-wrap pg-home-site-header-auth-actions pg-home-site-header-auth-actions--stacked">
           <Link to={MARKETING_SIGN_IN_HREF} className={signInClass} onClick={closeDrawer}>
             Sign In
