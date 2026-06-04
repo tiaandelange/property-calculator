@@ -12,16 +12,31 @@ import {
 import type { PreviewMetric } from "../../../data/homepagePreviewContent";
 import { HomeMarketingPreviewModuleLabel, HomeMarketingPreviewShell } from "./HomeMarketingPreviewShell";
 
-function PreviewMetrics({ metrics, columns = 2 }: { metrics: readonly PreviewMetric[]; columns?: 2 | 4 }) {
+function PreviewMetrics({
+  metrics,
+  columns = 2,
+  heroCube = false
+}: {
+  metrics: readonly PreviewMetric[];
+  columns?: 2 | 4;
+  heroCube?: boolean;
+}) {
+  const metricsClass = [
+    "hm-app-preview__metrics",
+    columns === 4 || heroCube ? "hm-app-preview__metrics--4" : ""
+  ]
+    .filter(Boolean)
+    .join(" ");
+
   return (
-    <div className={`hm-app-preview__metrics${columns === 4 ? " hm-app-preview__metrics--4" : ""}`}>
+    <div className={metricsClass}>
       {metrics.map((metric) => (
         <article
           key={metric.label}
           className={`hm-app-preview__metric${metric.highlight ? " hm-app-preview__metric--highlight" : ""}`}
         >
           <div className="hm-app-preview__metric-top">
-            <div>
+            <div className="hm-app-preview__metric-copy">
               <p className="hm-app-preview__metric-label">{metric.label}</p>
               <p className="hm-app-preview__metric-value">{metric.value}</p>
             </div>
@@ -82,14 +97,27 @@ function StatusBadge({ status }: { status: string }) {
   return <span className={`hm-preview-badge hm-preview-badge--${tone}`}>{status}</span>;
 }
 
-export function HomeMarketingPortfolioPreview({ showLabel = true }: { showLabel?: boolean }) {
+export function HomeMarketingPortfolioPreview({
+  showLabel = true,
+  heroCube = false
+}: {
+  showLabel?: boolean;
+  heroCube?: boolean;
+}) {
   const data = homepagePreviewPortfolio;
 
   return (
-    <div className="hm-module-preview hm-module-preview--portfolio">
+    <div
+      className={[
+        "hm-module-preview hm-module-preview--portfolio",
+        heroCube ? "hm-app-preview--hero-cube" : ""
+      ]
+        .filter(Boolean)
+        .join(" ")}
+    >
       {showLabel ? <HomeMarketingPreviewModuleLabel>{data.moduleLabel}</HomeMarketingPreviewModuleLabel> : null}
       <HomeMarketingPreviewShell crumbs={data.crumbs} chips={data.chips} activeNav={0} compact dense>
-        <PreviewMetrics metrics={data.metrics} />
+        <PreviewMetrics metrics={data.metrics} heroCube={heroCube} />
         <div className="hm-app-preview__split">
           <section className="hm-app-preview__panel hm-app-preview__panel--chart">
             <div className="hm-app-preview__panel-head">
@@ -132,11 +160,24 @@ export function HomeMarketingPortfolioPreview({ showLabel = true }: { showLabel?
   );
 }
 
-export function HomeMarketingPropertyPreview({ showLabel = true }: { showLabel?: boolean }) {
+export function HomeMarketingPropertyPreview({
+  showLabel = true,
+  heroCube = false
+}: {
+  showLabel?: boolean;
+  heroCube?: boolean;
+}) {
   const data = homepagePreviewProperty;
 
   return (
-    <div className="hm-module-preview hm-module-preview--property">
+    <div
+      className={[
+        "hm-module-preview hm-module-preview--property",
+        heroCube ? "hm-app-preview--hero-cube" : ""
+      ]
+        .filter(Boolean)
+        .join(" ")}
+    >
       {showLabel ? <HomeMarketingPreviewModuleLabel>{data.moduleLabel}</HomeMarketingPreviewModuleLabel> : null}
       <HomeMarketingPreviewShell crumbs={data.crumbs} chips={data.chips} activeNav={1} compact dense>
         <div className="hm-preview-property-head">
@@ -146,7 +187,7 @@ export function HomeMarketingPropertyPreview({ showLabel = true }: { showLabel?:
           </div>
           <StatusBadge status={data.lease.status} />
         </div>
-        <PreviewMetrics metrics={data.metrics} columns={4} />
+        <PreviewMetrics metrics={data.metrics} columns={heroCube ? 2 : 4} heroCube={heroCube} />
         <div className="hm-app-preview__split hm-app-preview__split--property">
           <section className="hm-app-preview__panel">
             <div className="hm-app-preview__panel-head">

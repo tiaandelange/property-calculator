@@ -4,12 +4,17 @@ import { homepageHeroAppPreview } from "../../../data/homepageMarketingContent";
 import { HomeMarketingPreviewShell } from "./HomeMarketingPreviewShell";
 import { HomeMarketingHeroProjectionSections } from "./HomeMarketingHeroProjectionSections";
 
-export function HomeMarketingHeroAppPreview() {
+export function HomeMarketingHeroAppPreview({ heroCube = false }: { heroCube?: boolean }) {
   const preview = homepageHeroAppPreview;
 
   return (
     <div
-      className="hm-app-preview hm-app-preview--hero hm-app-preview--hero-desktop"
+      className={[
+        "hm-app-preview hm-app-preview--hero hm-app-preview--hero-desktop",
+        heroCube ? "hm-app-preview--hero-cube" : ""
+      ]
+        .filter(Boolean)
+        .join(" ")}
       role="img"
       aria-label="Proplytic portfolio dashboard preview with equity, cash flow, yield, occupancy, detailed overview projection table and summary growth chart"
     >

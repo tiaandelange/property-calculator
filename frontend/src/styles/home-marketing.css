@@ -160,8 +160,8 @@ body:has(.pg-main-marketing-home) .pg-home-site-header-inner.pg-container {
 }
 
 .hm-hero-cube {
-  --hm-hero-cube-width: min(100%, 400px);
-  --hm-hero-cube-height: clamp(360px, 52vw, 490px);
+  --hm-hero-cube-width: min(100%, 480px);
+  --hm-hero-cube-height: clamp(432px, 62vw, 588px);
   width: var(--hm-hero-cube-width);
   margin-inline: auto;
 }
@@ -229,11 +229,71 @@ body:has(.pg-main-marketing-home) .pg-home-site-header-inner.pg-container {
 }
 
 .hm-hero-cube .hm-app-preview__shell {
-  min-height: 300px;
+  min-height: 360px;
 }
 
-.hm-hero-cube .hm-app-preview--hero .hm-app-preview__metrics--4 {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+/* Hero cube — 2×2 summary cards (matches portfolio overview / --hero dashboard) */
+.hm-hero-cube .hm-app-preview__metrics,
+.hm-hero-cube .hm-app-preview__metrics--4 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 10px;
+  align-items: stretch;
+}
+
+.hm-hero-cube .hm-app-preview__metric {
+  display: flex;
+  flex-direction: column;
+  min-height: 88px;
+  padding: 10px 10px 8px;
+  overflow: hidden;
+}
+
+.hm-hero-cube .hm-app-preview__metric-top {
+  flex: 1 1 auto;
+  align-items: flex-start;
+  min-width: 0;
+}
+
+.hm-hero-cube .hm-app-preview__metric-copy {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.hm-hero-cube .hm-app-preview__metric-label {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hm-hero-cube .hm-app-preview__metric-value {
+  font-size: 1.05rem;
+  font-weight: 800;
+  line-height: 1.15;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hm-hero-cube .hm-app-preview__metric-change {
+  margin-top: auto;
+  padding-top: 6px;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hm-hero-cube .hm-app-preview__metric-icon {
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
 }
 
 .hm-hero-trust-strip {
@@ -4046,8 +4106,8 @@ body:has(.pg-main-marketing-home) .pg-home-site-header-inner.pg-container {
   }
 
   .hm-hero-cube {
-    --hm-hero-cube-width: min(100%, 320px);
-    --hm-hero-cube-height: clamp(320px, 78vw, 400px);
+    --hm-hero-cube-width: min(100%, 384px);
+    --hm-hero-cube-height: clamp(384px, 94vw, 480px);
   }
 
   .hm-hero-grid {
@@ -4224,8 +4284,8 @@ body:has(.pg-main-marketing-home) .pg-home-site-header-inner.pg-container {
   }
 
   .hm-hero-cube {
-    --hm-hero-cube-width: min(100%, 350px);
-    --hm-hero-cube-height: clamp(340px, 70vw, 450px);
+    --hm-hero-cube-width: min(100%, 420px);
+    --hm-hero-cube-height: clamp(408px, 84vw, 540px);
   }
 
   .hm-hero-visual {

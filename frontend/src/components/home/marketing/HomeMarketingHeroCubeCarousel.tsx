@@ -15,17 +15,17 @@ const HERO_DASHBOARD_SLIDES = [
   {
     id: "portfolio-overview",
     badge: "Portfolio overview",
-    content: <HomeMarketingHeroAppPreview />
+    content: <HomeMarketingHeroAppPreview heroCube />
   },
   {
     id: "portfolio-analytics",
     badge: "Portfolio analytics",
-    content: <HomeMarketingPortfolioPreview showLabel={false} />
+    content: <HomeMarketingPortfolioPreview showLabel={false} heroCube />
   },
   {
     id: "property-dashboard",
     badge: "Property dashboard",
-    content: <HomeMarketingPropertyPreview showLabel={false} />
+    content: <HomeMarketingPropertyPreview showLabel={false} heroCube />
   }
 ] as const;
 
