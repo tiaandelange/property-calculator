@@ -44,16 +44,25 @@ function resolveMarketingHeroSurface(context: MarketingHeroContext): HomeHeaderS
   const headerH =
     parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--home-site-header-h")) ||
     72;
-  const heroBottom = hero.getBoundingClientRect().bottom;
+  const headerBand = headerH + LIGHT_TOP_OFFSET;
+  const heroRect = hero.getBoundingClientRect();
+  const heroBottom = heroRect.bottom;
   const lightTop = lightSection.getBoundingClientRect().top;
+
+  if (lightTop <= headerBand) {
+    return "light";
+  }
 
   if (heroBottom > headerH + HERO_BOTTOM_BUFFER) {
     return "hero";
   }
-  if (lightTop <= headerH + LIGHT_TOP_OFFSET) {
-    return "light";
+
+  const heroUnderHeader = heroBottom > headerH && heroRect.top < headerBand;
+  if (heroUnderHeader) {
+    return "hero";
   }
-  return "light";
+
+  return getScrollTop() > 80 ? "light" : "hero";
 }
 
 export type HomeHeaderScrollState = {
@@ -117,6 +126,9 @@ export function useHomeHeaderSurface(heroContext: MarketingHeroContext): HomeHea
     };
 
     update();
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(update);
+    });
     window.addEventListener("scroll", scheduleUpdate, { passive: true });
     document.addEventListener("scroll", scheduleUpdate, { passive: true, capture: true });
     window.addEventListener("resize", scheduleUpdate, { passive: true });
