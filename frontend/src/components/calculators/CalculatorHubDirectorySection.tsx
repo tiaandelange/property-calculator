@@ -63,7 +63,7 @@ export function CalculatorHubDirectorySection({
               data-active={activeCategory === cat.id ? "true" : "false"}
               onClick={() => onCategoryChange(cat.id)}
             >
-              <IconContainerByName name={cat.icon} accent="purple" size="sm" className="pg-calc-hub-filter-pill__icon" />
+              <IconContainerByName icon={cat.icon} accent="purple" size="sm" className="pg-calc-hub-filter-pill__icon" />
               <span>{cat.label}</span>
             </button>
           ))}

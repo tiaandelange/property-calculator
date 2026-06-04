@@ -20,13 +20,13 @@ export function CalculatorHubLandingHeroMockup() {
     <div className="pg-calc-hub-landing-hero__visual" aria-hidden>
       {FLOATING_TILES.map((tile) => (
         <span key={tile.className} className={`pg-calc-hub-landing-hero__float-tile ${tile.className}`}>
-          <IconContainerByName name={tile.icon} accent="purple" size="sm" />
+          <IconContainerByName icon={tile.icon} accent="purple" size="sm" />
         </span>
       ))}
       <div className="pg-calc-hub-landing-hero__mockup-wrap">
         <article className="pg-calc-hub-landing-hero__mockup">
           <header className="pg-calc-hub-landing-hero__mockup-head">
-            <IconContainerByName name="wallet" accent="purple" size="sm" />
+            <IconContainerByName icon="wallet" accent="purple" size="sm" />
             <span className="pg-calc-hub-landing-hero__mockup-title">Cash Flow</span>
             <span className="pg-calc-hub-landing-hero__mockup-badge">+ 8.2%</span>
           </header>

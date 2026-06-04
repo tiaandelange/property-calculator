@@ -67,7 +67,7 @@ export function CalculatorHubLandingHero({
             <ul className="pg-calc-hub-landing-hero__features" aria-label="Calculator highlights">
               {FEATURES.map((feature) => (
                 <li key={feature.title}>
-                  <IconContainerByName name={feature.icon} accent="purple" size="sm" />
+                  <IconContainerByName icon={feature.icon} accent="purple" size="sm" />
                   <div>
                     <span className="pg-calc-hub-landing-hero__feature-title">{feature.title}</span>
                     <span className="pg-calc-hub-landing-hero__feature-desc">{feature.description}</span>
