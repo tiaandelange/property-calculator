@@ -150,10 +150,15 @@
   flex-shrink: 0;
 }
 
-.pg-pdash-mobile-stats {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+/* Mobile summary cards — same pg-pfin-metric-card pattern as /tenants */
+.pg-pdash-mobile-metrics {
+  display: flex;
+  flex-direction: column;
   gap: var(--pdash-gap);
+}
+
+.pg-pdash-mobile-metrics .pg-pfin-metrics {
+  margin-bottom: 0;
 }
 
 /* Middle grid */
@@ -584,6 +589,10 @@
 
   .pg-pdash-mobile-only {
     display: block;
+  }
+
+  .pg-pdash-mobile-metrics-primary.pg-pfin-metrics {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .pg-pdash-metrics-row {

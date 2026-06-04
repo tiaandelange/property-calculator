@@ -20,6 +20,7 @@ import {
   useWorkspaceId
 } from "../features/queries";
 import { PortfolioMetricCard } from "../features/portfolio-dashboard/PortfolioMetricCard";
+import { WorkspaceMetricCard, WorkspaceMetricsRow } from "../components/workspace/WorkspaceMetricCard";
 import { PortfolioOverviewChart } from "../features/portfolio-dashboard/PortfolioOverviewChart";
 import { RecentActivityPanel } from "../features/portfolio-dashboard/RecentActivityPanel";
 import {
@@ -317,39 +318,43 @@ export function OwnedPropertiesPortfolioDashboardPage() {
   );
 
   const mobileHero = (
-    <div className="pg-pdash-mobile-only">
-      <PortfolioMetricCard
-        label="Total Portfolio Value (Net Worth)"
-        value={loading && !data ? "…" : fmtZar(portfolioEquity)}
-        changeText={equityChange.text}
-        changeTone={equityChange.tone}
-        icon="portfolio"
-        iconAccent="primary"
-        highlighted
-      />
-      <div className="pg-pdash-mobile-stats">
-        <PortfolioMetricCard
+    <div className="pg-pdash-mobile-only pg-pdash-mobile-metrics">
+      <WorkspaceMetricsRow className="pg-pdash-mobile-metrics-primary">
+        <WorkspaceMetricCard
+          label="Total Portfolio Value (Net Worth)"
+          value={loading && !data ? "…" : fmtZar(portfolioEquity)}
+          helper={equityChange.text}
+          icon="portfolio"
+          accent="primary"
+          to="/owned-properties/metrics/equity"
+        />
+      </WorkspaceMetricsRow>
+      <WorkspaceMetricsRow className="pg-pdash-mobile-metrics-secondary">
+        <WorkspaceMetricCard
           label="Properties"
           value={loading && !data ? "…" : totalPropertyCount.toLocaleString()}
+          helper="In your portfolio"
           icon="properties"
-          iconAccent="info"
-          compact
+          accent="info"
+          to="/owned-properties/my-properties"
         />
-        <PortfolioMetricCard
+        <WorkspaceMetricCard
           label="Tenants"
           value={propertiesLoading ? "…" : tenantCount.toLocaleString()}
+          helper="Active tenants"
           icon="tenants"
-          iconAccent="primary"
-          compact
+          accent="primary"
+          to="/tenants"
         />
-        <PortfolioMetricCard
+        <WorkspaceMetricCard
           label="Monthly Income"
           value={loading && !data ? "…" : fmtZar(monthlyIncomeFromLeases)}
+          helper={incomeChange.text}
           icon="rent"
-          iconAccent="success"
-          compact
+          accent="success"
+          to="/owned-properties/metrics/cash-flow"
         />
-      </div>
+      </WorkspaceMetricsRow>
     </div>
   );
 

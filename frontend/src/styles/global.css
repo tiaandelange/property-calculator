@@ -464,7 +464,8 @@ textarea {
   padding: 64px 0;
 }
 
-.pg-section.pg-calc-hub-page {
+.pg-section.pg-calc-hub-page,
+.pg-section.pg-reports-hub-page {
   padding: 0;
 }
 

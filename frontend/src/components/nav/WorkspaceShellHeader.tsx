@@ -1,5 +1,4 @@
 import { ChevronDown, UserCircle } from "lucide-react";
-import { ProplyticLogo } from "../brand/ProplyticLogo";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
@@ -107,13 +106,6 @@ export function WorkspaceShellHeader({ mobile = false }: { mobile?: boolean }) {
   if (mobile) {
     return (
       <header className="pg-dashboard-mobile-topbar">
-        <Link
-          to="/owned-properties/dashboard"
-          className="pg-dashboard-mobile-brand-link"
-          aria-label="Proplytic — Dashboard"
-        >
-          <ProplyticLogo mode="icon" width={28} height={28} title="Proplytic" />
-        </Link>
         <h1 className="pg-dashboard-mobile-topbar-title">
           {showPropertySwitcher && propertyCtx ? "Properties" : title}
         </h1>

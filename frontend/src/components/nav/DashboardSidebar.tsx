@@ -122,19 +122,11 @@ export function DashboardSidebar({
       aria-label="Dashboard sidebar"
     >
       <div className="pg-dashboard-sidebar-brand">
-        {collapsed ? (
-          <Link
-            to="/owned-properties/dashboard"
-            className="pg-dashboard-sidebar-logo-icon"
-            aria-label="Proplytic — Dashboard"
-          >
-            <ProplyticLogo mode="icon" width={36} height={36} title="Proplytic" />
-          </Link>
-        ) : (
+        {!collapsed ? (
           <Link to="/owned-properties/dashboard" className="pg-dashboard-sidebar-logo" aria-label="Proplytic — Dashboard">
             <ProplyticLogo mode="compact" title="Proplytic" />
           </Link>
-        )}
+        ) : null}
         <button
           type="button"
           className="pg-dashboard-sidebar-collapse-btn pg-dashboard-shell-icon-btn"

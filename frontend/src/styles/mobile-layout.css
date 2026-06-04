@@ -66,6 +66,13 @@
     word-break: break-word;
   }
 
+  /* Metric summary cards (tenants, dashboard mobile): keep labels/values on normal word breaks */
+  .pg-dashboard-shell .pg-pfin-metric-card,
+  .pg-dashboard-shell .pg-pfin-metric-card * {
+    overflow-wrap: normal;
+    word-break: normal;
+  }
+
   .pg-dashboard-shell .pg-ptable-mobile-card__title,
   .pg-dashboard-shell .pg-tenants-name,
   .pg-dashboard-shell .pg-leases-name,
