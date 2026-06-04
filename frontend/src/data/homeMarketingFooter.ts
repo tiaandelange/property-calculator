@@ -8,7 +8,7 @@ export const marketingFooterBrandTagline =
 
 export const marketingFooterProductLinks = [
   { label: "Features", to: "/#features" },
-  { label: "Reports", to: "/#reports" },
+  { label: "Reports", to: "/reports" },
   { label: "Calculators", to: "/#calculators" },
   { label: "Pricing", to: "/pricing" },
   { label: "FAQ", to: "/#faq" }

@@ -27,9 +27,11 @@ type NavDef =
   | { key: string; label: string; kind: "hash"; hash: string }
   | { key: "calculators"; label: string; kind: "calculators-mega" };
 
+const PUBLIC_REPORTS_HREF = "/reports";
+
 const NAV: NavDef[] = [
   { key: "features", label: "Features", kind: "hash", hash: "features" },
-  { key: "reports", label: "Reports", kind: "hash", hash: "reports" },
+  { key: "reports", label: "Reports", kind: "route", to: PUBLIC_REPORTS_HREF },
   { key: "calculators", label: "Calculators", kind: "calculators-mega" },
   { key: "pricing", label: "Pricing", kind: "route", to: MARKETING_PRICING_HREF },
   { key: "faq", label: "FAQ", kind: "hash", hash: "faq" }
@@ -45,11 +47,14 @@ export function HomePublicHeader() {
   const location = useLocation();
   const isMarketingHome = location.pathname === "/";
   const isCalculatorsHubLanding = location.pathname === PUBLIC_CALCULATORS_HREF;
+  const isReportsHubLanding = location.pathname === PUBLIC_REPORTS_HREF;
   const marketingHeroContext = isMarketingHome
     ? "home"
     : isCalculatorsHubLanding
       ? "calculators-hub"
-      : null;
+      : isReportsHubLanding
+        ? "reports-hub"
+        : null;
   const { surface: headerSurface, revealed: headerRevealed } = useHomeHeaderSurface(marketingHeroContext);
   const headerRevealedOnPage = marketingHeroContext ? headerRevealed : true;
   const [scrolled, setScrolled] = useState(false);
@@ -237,7 +242,9 @@ export function HomePublicHeader() {
   const signInClass = "pg-home-site-header-sign-in";
 
   const calculatorsHeroShell =
-    location.pathname === PUBLIC_CALCULATORS_HREF || /^\/calculators\/.+/.test(location.pathname);
+    location.pathname === PUBLIC_CALCULATORS_HREF ||
+    location.pathname === PUBLIC_REPORTS_HREF ||
+    /^\/calculators\/.+/.test(location.pathname);
 
   return (
     <>

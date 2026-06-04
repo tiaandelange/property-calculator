@@ -23,6 +23,10 @@ const CalculatorHubPage = lazyWithRetry(
   () => import("../pages/CalculatorHubPage").then((m) => ({ default: m.CalculatorHubPage })),
   { label: "Calculators" }
 );
+const ReportsPage = lazyWithRetry(
+  () => import("../pages/ReportsPage").then((m) => ({ default: m.ReportsPage })),
+  { label: "Reports" }
+);
 const CalculatorsPage = lazyWithRetry(
   () => import("../pages/CalculatorsPage").then((m) => ({ default: m.CalculatorsPage })),
   { label: "Calculators" }
@@ -200,6 +204,14 @@ export function App() {
           element={
             <RouteBoundary label="Calculators">
               <CalculatorHubPage />
+            </RouteBoundary>
+          }
+        />
+        <Route
+          path="/reports"
+          element={
+            <RouteBoundary label="Reports">
+              <ReportsPage />
             </RouteBoundary>
           }
         />

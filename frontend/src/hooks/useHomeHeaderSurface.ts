@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 export type HomeHeaderSurface = "hero" | "light";
 
 /** Which marketing page supplies the dark hero band for header glass treatment. */
-export type MarketingHeroContext = "home" | "calculators-hub" | null;
+export type MarketingHeroContext = "home" | "calculators-hub" | "reports-hub" | null;
 
 const HERO_BOTTOM_BUFFER = 28;
 const LIGHT_TOP_OFFSET = 48;
@@ -21,8 +21,18 @@ function getScrollDeltaThreshold(): number {
 function resolveMarketingHeroSurface(context: MarketingHeroContext): HomeHeaderSurface {
   if (!context) return "light";
 
-  const heroSelector = context === "home" ? ".hm-hero" : ".pg-calc-hub-landing-hero";
-  const lightSelector = context === "home" ? ".hm-trust" : ".pg-calc-hub-light";
+  const heroSelector =
+    context === "home"
+      ? ".hm-hero"
+      : context === "calculators-hub"
+        ? ".pg-calc-hub-landing-hero"
+        : ".pg-reports-hub-landing-hero";
+  const lightSelector =
+    context === "home"
+      ? ".hm-trust"
+      : context === "calculators-hub"
+        ? ".pg-calc-hub-light"
+        : ".pg-reports-hub-light";
 
   const hero = document.querySelector<HTMLElement>(heroSelector);
   const lightSection = document.querySelector<HTMLElement>(lightSelector);
