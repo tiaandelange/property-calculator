@@ -295,6 +295,8 @@ function buildIllustrativeFiveYearLineChart(metric: { label: string; value: numb
 }
 
 type SummaryMetricLike = {
+  key?: string;
+  label?: string;
   unit?: string;
   value?: unknown;
   formatted?: string;
@@ -620,7 +622,7 @@ export function CalculatorPage() {
   };
 
   const primarySummaryMetric = summary[0] as SummaryMetricLike | undefined;
-  const heroMetricBlocks = summary.slice(1, 5).map((m: SummaryMetricLike & { label?: string }) => ({
+  const heroMetricBlocks = summary.slice(1, 5).map((m: SummaryMetricLike) => ({
     label: String(m.label ?? ""),
     value: formatResultsMetricDisplay(m)
   }));
@@ -966,7 +968,7 @@ export function CalculatorPage() {
                   />
                 ) : calc.slug !== "buy-vs-rent" && extraSummaryMetrics.length > 0 ? (
                   <div className="pg-calculator-kpi-grid pg-calculator-kpi-grid--extra">
-                    {extraSummaryMetrics.map((m: SummaryMetricLike & { key?: string }) => (
+                    {extraSummaryMetrics.map((m: SummaryMetricLike) => (
                       <Card key={m.key ?? m.label} pad={false} className="pg-card-pad pg-calculator-kpi-card">
                         <div className="pg-kpi">
                           <div className="pg-kpi-value">{formatResultsMetricDisplay(m)}</div>
