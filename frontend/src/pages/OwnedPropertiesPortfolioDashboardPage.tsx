@@ -22,7 +22,7 @@ import {
 import { WorkspaceMetricCard, WorkspaceMetricsRow } from "../components/workspace/WorkspaceMetricCard";
 import {
   PORTFOLIO_DASHBOARD_METRIC_INFO,
-  parsePortfolioDashboardKpis
+  resolvePortfolioDashboardKpis
 } from "../features/portfolio-dashboard/portfolioDashboardKpis";
 import { PortfolioOverviewChart } from "../features/portfolio-dashboard/PortfolioOverviewChart";
 import { RecentActivityPanel } from "../features/portfolio-dashboard/RecentActivityPanel";
@@ -117,8 +117,12 @@ export function OwnedPropertiesPortfolioDashboardPage() {
   const hasProperties = Number((k.totalProperties as { value?: number })?.value ?? data?.totalProperties ?? 0) > 0;
 
   const dashboardKpis = useMemo(
-    () => parsePortfolioDashboardKpis(data as Record<string, unknown> | null | undefined),
-    [data]
+    () =>
+      resolvePortfolioDashboardKpis(data as Record<string, unknown> | null | undefined, properties, {
+        propertyTypes: selectedTypes,
+        propertyId
+      }),
+    [data, properties, selectedTypes, propertyId]
   );
 
   const portfolioEquity = Number(data?.portfolioEquity ?? 0);
