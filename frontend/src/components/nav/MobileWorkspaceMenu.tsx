@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
+import { useWorkspaceWordmarkVariant } from "../../hooks/useWorkspaceWordmarkVariant";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { AppIcon, IconButton } from "../../components/icons";
@@ -19,13 +20,7 @@ export function MobileWorkspaceMenu({ open, onClose }: Props) {
   const { signOut } = useAuth();
   const queryClient = useQueryClient();
   const workspaceId = useWorkspaceId();
-  const [wordmarkVariant, setWordmarkVariant] = useState<"default" | "on-dark">("default");
-
-  useEffect(() => {
-    if (!open) return;
-    const isLightTheme = document.documentElement.getAttribute("data-theme") === "light";
-    setWordmarkVariant(isLightTheme ? "default" : "on-dark");
-  }, [open]);
+  const wordmarkVariant = useWorkspaceWordmarkVariant();
 
   useEffect(() => {
     if (!open) return;

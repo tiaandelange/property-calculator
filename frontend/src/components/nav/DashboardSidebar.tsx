@@ -1,4 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
+import { useWorkspaceWordmarkVariant } from "../../hooks/useWorkspaceWordmarkVariant";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { AppIcon } from "../../components/icons";
@@ -105,6 +106,7 @@ export function DashboardSidebar({
   const { signOut } = useAuth();
   const queryClient = useQueryClient();
   const workspaceId = useWorkspaceId();
+  const wordmarkVariant = useWorkspaceWordmarkVariant();
 
   const warmRoute = (to?: string) => {
     if (!to) return;
@@ -124,7 +126,7 @@ export function DashboardSidebar({
       <div className="pg-dashboard-sidebar-brand">
         {!collapsed ? (
           <Link to="/owned-properties/dashboard" className="pg-dashboard-sidebar-logo" aria-label="Proplytic — Dashboard">
-            <ProplyticLogo mode="compact" title="Proplytic" />
+            <ProplyticLogo mode="compact" title="Proplytic" wordmarkVariant={wordmarkVariant} />
           </Link>
         ) : null}
         <button
