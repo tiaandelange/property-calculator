@@ -10,7 +10,8 @@ export function WorkspaceMetricCard({
   accent = "primary",
   to,
   compact,
-  valueStyle
+  valueStyle,
+  className
 }: {
   label: string;
   value: ReactNode;
@@ -20,7 +21,9 @@ export function WorkspaceMetricCard({
   to?: string;
   compact?: boolean;
   valueStyle?: CSSProperties;
+  className?: string;
 }) {
+  const cardClass = ["pg-pfin-metric-card", className].filter(Boolean).join(" ");
   const body = (
     <>
       <IconContainer icon={icon} accent={accent} size={compact ? "md" : "lg"} />
@@ -36,13 +39,13 @@ export function WorkspaceMetricCard({
 
   if (to) {
     return (
-      <Link to={to} className="pg-pfin-metric-card pg-pfin-metric-card--link">
+      <Link to={to} className={`${cardClass} pg-pfin-metric-card--link`}>
         {body}
       </Link>
     );
   }
 
-  return <div className="pg-pfin-metric-card">{body}</div>;
+  return <div className={cardClass}>{body}</div>;
 }
 
 export function WorkspaceMetricsRow({

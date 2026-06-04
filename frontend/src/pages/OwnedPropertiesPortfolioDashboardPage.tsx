@@ -19,7 +19,6 @@ import {
   useTenantsListQuery,
   useWorkspaceId
 } from "../features/queries";
-import { PortfolioMetricCard } from "../features/portfolio-dashboard/PortfolioMetricCard";
 import { WorkspaceMetricCard, WorkspaceMetricsRow } from "../components/workspace/WorkspaceMetricCard";
 import { PortfolioOverviewChart } from "../features/portfolio-dashboard/PortfolioOverviewChart";
 import { RecentActivityPanel } from "../features/portfolio-dashboard/RecentActivityPanel";
@@ -201,39 +200,38 @@ export function OwnedPropertiesPortfolioDashboardPage() {
       });
   }, [properties, charts]);
 
-  const cashFlowTone = monthlyLeaseBasisCashFlow >= 0 ? "up" : "down";
-
-  const desktopMetrics = (
-    <>
-      <div className="pg-pdash-metrics-row pg-pdash-metrics-row--primary pg-pdash-desktop-only">
-        <PortfolioMetricCard
+  const portfolioMetrics = (
+    <div className="pg-pdash-metrics">
+      <WorkspaceMetricsRow className="pg-pdash-metrics-primary">
+        <WorkspaceMetricCard
+          className="pg-pdash-metrics-hero"
           label="Total Portfolio Value (Net Worth)"
           value={loading && !data ? "…" : fmtZar(portfolioEquity)}
-          changeText={equityChange.text}
-          changeTone={equityChange.tone}
+          helper={equityChange.text}
           icon="portfolio"
-          iconAccent="primary"
+          accent="primary"
           to="/owned-properties/metrics/equity"
         />
-        <PortfolioMetricCard
+        <WorkspaceMetricCard
+          className="pg-pdash-metric--income"
           label="Monthly Income"
           value={loading && !data ? "…" : fmtZar(monthlyIncomeFromLeases)}
-          changeText={incomeChange.text}
-          changeTone={incomeChange.tone}
+          helper={incomeChange.text}
           icon="rent"
-          iconAccent="success"
+          accent="success"
           to="/owned-properties/metrics/cash-flow"
         />
-        <PortfolioMetricCard
+        <WorkspaceMetricCard
+          className="pg-pdash-metric--properties"
           label="Total Properties"
           value={loading && !data ? "…" : totalPropertyCount.toLocaleString()}
-          changeText="— 0% vs last month"
-          changeTone="neutral"
+          helper="In your portfolio"
           icon="properties"
-          iconAccent="info"
+          accent="info"
           to="/owned-properties/my-properties"
         />
-        <PortfolioMetricCard
+        <WorkspaceMetricCard
+          className="pg-pdash-metric--desktop-only"
           label="Cash on Cash ROI"
           value={
             loading && !data
@@ -244,18 +242,24 @@ export function OwnedPropertiesPortfolioDashboardPage() {
                   ? "—"
                   : `${cashOnCashAnnualPercent.toFixed(1)}%`
           }
-          changeText={
-            !showAdvancedReturns ? "Unlock with Investor plan" : cashFlowChange.text
-          }
-          changeTone={!showAdvancedReturns ? "neutral" : cashFlowChange.tone}
+          helper={!showAdvancedReturns ? "Unlock with Investor plan" : cashFlowChange.text}
           icon="percent"
-          iconAccent="warning"
+          accent="warning"
           to="/owned-properties/metrics/returns"
         />
-      </div>
+        <WorkspaceMetricCard
+          className="pg-pdash-metric--mobile-only"
+          label="Tenants"
+          value={propertiesLoading ? "…" : tenantCount.toLocaleString()}
+          helper="Active tenants"
+          icon="tenants"
+          accent="primary"
+          to="/tenants"
+        />
+      </WorkspaceMetricsRow>
       {desktopLayout.showSecondaryMetrics ? (
-        <div className="pg-pdash-metrics-row pg-pdash-metrics-row--secondary pg-pdash-desktop-only">
-          <PortfolioMetricCard
+        <WorkspaceMetricsRow className="pg-pdash-metrics-secondary">
+          <WorkspaceMetricCard
             label="Occupancy Rate"
             value={
               loading && !data
@@ -264,97 +268,52 @@ export function OwnedPropertiesPortfolioDashboardPage() {
                   ? `${occupancyRatePct.toFixed(0)}%`
                   : "—"
             }
-            changeText={
+            helper={
               tenantRequired > 0 ? `${occupiedCount} of ${tenantRequired} occupied` : "No rental units in filter"
             }
-            changeTone="neutral"
             icon="activity"
-            iconAccent="success"
+            accent="success"
             to="/owned-properties/metrics/leases"
           />
-          <PortfolioMetricCard
+          <WorkspaceMetricCard
             label="Monthly Cash Flow"
             value={loading && !data ? "…" : fmtZar(monthlyLeaseBasisCashFlow)}
-            changeText={cashFlowChange.text}
-            changeTone={cashFlowTone}
+            helper={cashFlowChange.text}
             icon="income"
-            iconAccent={monthlyLeaseBasisCashFlow >= 0 ? "success" : "danger"}
+            accent={monthlyLeaseBasisCashFlow >= 0 ? "success" : "danger"}
             to="/owned-properties/metrics/cash-flow"
           />
-          <PortfolioMetricCard
+          <WorkspaceMetricCard
             label="Monthly Expenses"
             value={loading && !data ? "…" : fmtZar(monthlyExpensesAllIn)}
-            changeText="Operating + bond payments"
-            changeTone="neutral"
+            helper="Operating + bond payments"
             icon="expense"
-            iconAccent="info"
+            accent="info"
             to="/owned-properties/metrics/expenses"
           />
-          <PortfolioMetricCard
+          <WorkspaceMetricCard
             label="Rent Attention"
             value={loading && !data ? "…" : rentAttention.toLocaleString()}
-            changeText={
+            helper={
               rentOverdue > 0
                 ? `${rentOverdue} overdue`
                 : rentDueSoon > 0
                   ? `${rentDueSoon} due soon`
                   : "All clear"
             }
-            changeTone={rentOverdue > 0 ? "down" : rentDueSoon > 0 ? "neutral" : "up"}
             icon="rent"
-            iconAccent={rentOverdue > 0 ? "danger" : "warning"}
+            accent={rentOverdue > 0 ? "danger" : "warning"}
             to="/financials"
           />
-        </div>
+        </WorkspaceMetricsRow>
       ) : null}
-    </>
+    </div>
   );
 
   const mobileWelcome = (
     <div className="pg-pdash-welcome pg-pdash-mobile-only">
       <p className="pg-pdash-welcome-kicker">Welcome back,</p>
       <h2 className="pg-pdash-welcome-name">{userName} 👋</h2>
-    </div>
-  );
-
-  const mobileHero = (
-    <div className="pg-pdash-mobile-only pg-pdash-mobile-metrics">
-      <WorkspaceMetricsRow className="pg-pdash-mobile-metrics-primary">
-        <WorkspaceMetricCard
-          label="Total Portfolio Value (Net Worth)"
-          value={loading && !data ? "…" : fmtZar(portfolioEquity)}
-          helper={equityChange.text}
-          icon="portfolio"
-          accent="primary"
-          to="/owned-properties/metrics/equity"
-        />
-      </WorkspaceMetricsRow>
-      <WorkspaceMetricsRow className="pg-pdash-mobile-metrics-secondary">
-        <WorkspaceMetricCard
-          label="Properties"
-          value={loading && !data ? "…" : totalPropertyCount.toLocaleString()}
-          helper="In your portfolio"
-          icon="properties"
-          accent="info"
-          to="/owned-properties/my-properties"
-        />
-        <WorkspaceMetricCard
-          label="Tenants"
-          value={propertiesLoading ? "…" : tenantCount.toLocaleString()}
-          helper="Active tenants"
-          icon="tenants"
-          accent="primary"
-          to="/tenants"
-        />
-        <WorkspaceMetricCard
-          label="Monthly Income"
-          value={loading && !data ? "…" : fmtZar(monthlyIncomeFromLeases)}
-          helper={incomeChange.text}
-          icon="rent"
-          accent="success"
-          to="/owned-properties/metrics/cash-flow"
-        />
-      </WorkspaceMetricsRow>
     </div>
   );
 
@@ -449,8 +408,7 @@ export function OwnedPropertiesPortfolioDashboardPage() {
           ) : (
             <>
               {mobileWelcome}
-              {desktopMetrics}
-              {mobileHero}
+              {portfolioMetrics}
               {mainPanels}
               {mobileStack}
             </>

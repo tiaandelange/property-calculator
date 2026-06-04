@@ -150,15 +150,29 @@
   flex-shrink: 0;
 }
 
-/* Mobile summary cards — same pg-pfin-metric-card pattern as /tenants */
-.pg-pdash-mobile-metrics {
+/* Summary cards — pg-pfin-metric-card (same pattern as /tenants) */
+.pg-pdash-metrics {
   display: flex;
   flex-direction: column;
   gap: var(--pdash-gap);
 }
 
-.pg-pdash-mobile-metrics .pg-pfin-metrics {
+.pg-pdash-metrics .pg-pfin-metrics {
   margin-bottom: 0;
+}
+
+.pg-pdash-metrics-primary.pg-pfin-metrics {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.pg-pdash-metrics-secondary.pg-pfin-metrics {
+  display: none;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.pg-pdash--wide .pg-pdash-metrics-secondary.pg-pfin-metrics,
+.pg-pdash--ultra .pg-pdash-metrics-secondary.pg-pfin-metrics {
+  display: grid;
 }
 
 /* Middle grid */
@@ -591,23 +605,40 @@
     display: block;
   }
 
-  .pg-pdash-mobile-metrics {
+  .pg-pdash-metrics {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: var(--pdash-gap);
   }
 
-  .pg-pdash-mobile-metrics > .pg-pfin-metrics {
+  .pg-pdash-metrics > .pg-pfin-metrics {
     display: contents;
     margin-bottom: 0;
   }
 
-  .pg-pdash-mobile-metrics-primary .pg-pfin-metric-card {
+  .pg-pdash-metrics-hero.pg-pfin-metric-card {
     grid-column: 1 / -1;
+    order: 1;
   }
 
-  .pg-pdash-metrics-row {
-    display: none;
+  .pg-pdash-metric--properties {
+    order: 2;
+  }
+
+  .pg-pdash-metric--tenants {
+    order: 3;
+  }
+
+  .pg-pdash-metric--income {
+    order: 4;
+  }
+
+  .pg-pdash-metric--desktop-only {
+    display: none !important;
+  }
+
+  .pg-pdash-metrics-secondary.pg-pfin-metrics {
+    display: none !important;
   }
 
   .pg-pdash-middle {
@@ -647,9 +678,15 @@
   }
 }
 
+@media (min-width: 768px) {
+  .pg-pdash-metric--mobile-only {
+    display: none !important;
+  }
+}
+
 /* Tablet / small desktop */
 @media (min-width: 768px) and (max-width: 1099px) {
-  .pg-pdash-metrics-row--primary {
+  .pg-pdash-metrics-primary.pg-pfin-metrics {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -664,10 +701,6 @@
 
 /* Standard desktop */
 @media (min-width: 1100px) and (max-width: 1279px) {
-  .pg-pdash-metrics-row--primary {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-
   .pg-pdash-properties-grid {
     grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   }
