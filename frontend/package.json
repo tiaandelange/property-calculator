@@ -16,6 +16,8 @@
     "verify:public-env": "node ../backend/scripts/verify-public-frontend-env.mjs"
   },
   "dependencies": {
+    "@esbuild/win32-x64": "^0.28.0",
+    "@rollup/rollup-win32-x64-msvc": "^4.60.2",
     "@supabase/supabase-js": "^2.105.4",
     "@tanstack/react-query": "^5.100.14",
     "chart.js": "^4.4.6",
