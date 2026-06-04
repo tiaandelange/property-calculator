@@ -1,14 +1,10 @@
 import { Link } from "react-router-dom";
 import { homepageHero } from "../../../data/homepageMarketingContent";
-import { useMediaQuery } from "../../../hooks/useMediaQuery";
 import { ButtonLink } from "../../ui/Button";
 import { Container } from "../../ui/Container";
-import { HomeMarketingHeroAppPreview } from "./HomeMarketingHeroAppPreview";
-import { HomeMarketingHeroAppPreviewMobile } from "./HomeMarketingHeroAppPreviewMobile";
+import { HomeMarketingHeroCubeCarousel } from "./HomeMarketingHeroCubeCarousel";
 
 export function HomeMarketingHero() {
-  const isMobileHero = useMediaQuery("(max-width: 767px)");
-
   return (
     <header className="hm-hero" aria-labelledby="hm-hero-heading">
       <div className="hm-hero-glow" aria-hidden />
@@ -47,7 +43,7 @@ export function HomeMarketingHero() {
             </div>
           </div>
           <div className="hm-hero-visual">
-            {isMobileHero ? <HomeMarketingHeroAppPreviewMobile /> : <HomeMarketingHeroAppPreview />}
+            <HomeMarketingHeroCubeCarousel />
           </div>
         </div>
       </Container>
