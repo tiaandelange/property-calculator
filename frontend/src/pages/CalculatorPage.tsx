@@ -1,5 +1,4 @@
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Helmet } from "react-helmet-async";
 import { useParams } from "react-router-dom";
 import { Bar, Doughnut, Line } from "react-chartjs-2";
 import { Chart as ChartJS, ArcElement, BarElement, CategoryScale, Legend, LinearScale, LineElement, PointElement, Tooltip } from "chart.js";
@@ -11,10 +10,18 @@ import { getSupabase } from "../lib/supabaseClient";
 import { runCalculatorLocally, saveCalculationResult } from "../services/calculationsSupabase";
 import { fetchPdfBlob, isAbsoluteHttpUrl, openPdfBlobInNewTab } from "../api/pdfBlob";
 import { generateReportViaVercel } from "../services/reportsVercel";
-import { CalculatorToolHero } from "../components/calculators/CalculatorToolHero";
+import { CalculatorToolPageLayout } from "../components/calculators/tool/CalculatorToolPageLayout";
+import { CalculatorToolProTip } from "../components/calculators/tool/CalculatorToolProTip";
+import { CalculatorToolResultsHero } from "../components/calculators/tool/CalculatorToolResultsHero";
+import { getCalculatorToolPageMeta } from "../data/calculatorToolPageMeta";
 import { BuyVsRentSimpleResults } from "../components/calculators/BuyVsRentSimpleResults";
 import type { SimpleBuyVsRentCoreResult } from "@calculatorShared/buyVsRentSimple/simpleBuyVsRentTypes";
-import { useCalculatorMobileResults } from "../hooks/useCalculatorMobileResults";
+import { useCalculatorMobileLayout } from "../hooks/useCalculatorMobileLayout";
+import { CalculatorToolInputsAccordion } from "../components/calculators/tool/CalculatorToolInputsAccordion";
+import { CalculatorToolAmortisationTable } from "../components/calculators/tool/CalculatorToolAmortisationTable";
+import { CalculatorToolBreakdownList } from "../components/calculators/tool/CalculatorToolBreakdownList";
+import { CalculatorToolStickyBar } from "../components/calculators/tool/CalculatorToolStickyBar";
+import { buildCalculatorInputSummary } from "../utils/formatCalculatorInputSummary";
 import { Container } from "../components/ui/Container";
 import { Section } from "../components/ui/Section";
 import { Grid } from "../components/ui/Grid";
@@ -235,6 +242,26 @@ function mergeThemedChartOptions(base: Record<string, unknown> | null | undefine
   };
 }
 
+/** Responsive chart options for narrow viewports (no formula changes). */
+function mergeMobileChartOptions(base: Record<string, unknown> | null | undefined): Record<string, unknown> {
+  const themed = mergeThemedChartOptions(base);
+  const plugins = (themed.plugins as Record<string, unknown> | undefined) ?? {};
+  const legend = (plugins.legend as Record<string, unknown> | undefined) ?? {};
+  return {
+    ...themed,
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      ...plugins,
+      legend: {
+        ...legend,
+        position: "top",
+        align: "end"
+      }
+    }
+  };
+}
+
 function buildIllustrativeFiveYearLineChart(metric: { label: string; value: number }) {
   const growth = 0.03;
   const series = [0, 1, 2, 3, 4].map((y) => Math.round(metric.value * (1 + growth) ** y));
@@ -311,6 +338,7 @@ function formatZarResultsAmount(n: number): string {
 }
 
 const MONTHLY_PAYMENT_RELATED = ["transfer-bond-costs", "ltv", "cash-flow", "dscr"] as const;
+const CALCULATOR_TOOL_FORM_ID = "calculator-tool-form";
 
 export function CalculatorPage() {
   const { slug } = useParams();
@@ -327,7 +355,8 @@ export function CalculatorPage() {
   const planPermissions = usePlanPermissions();
   const calculatorGateFeature = slug ? getCalculatorPlanGateFeature(slug) : null;
   const showForecasting = planPermissions.canUseFeature("forecasting");
-  const { focusResults, onCalculateSuccess, showInputs } = useCalculatorMobileResults(slug);
+  const { isMobile, inputsExpanded, setInputsExpanded, onCalculateSuccess, showStickyActions } =
+    useCalculatorMobileLayout(slug);
 
   const runWithValues = useCallback(async (targetSlug: string, payloadValues: Record<string, any>, opts?: { userInitiated?: boolean }) => {
     setError("");
@@ -504,9 +533,6 @@ export function CalculatorPage() {
 
   const summary = result?.summary ?? [];
   const chartData = result?.chartData ?? [];
-  const firstMetric = summary[0];
-  const secondMetric = summary[1];
-
   const chartsToRender = useMemo(() => {
     const raw = (chartData ?? []) as Array<{ chartType: string; title?: string; data?: unknown; options?: unknown }>;
     const hasLine = raw.some((c) => c.chartType === "line");
@@ -554,30 +580,64 @@ export function CalculatorPage() {
     }
   };
 
+  const pageMeta = getCalculatorToolPageMeta(calc.slug);
   const themedPage = getCalculatorToolPage(calc.slug);
-  const isMortgageStandalone = calc.slug === "monthly-payment";
 
-  const relatedSlugs = isMortgageStandalone
-    ? [...MONTHLY_PAYMENT_RELATED]
-    : (themedPage?.relatedSlugs ?? []).filter((s) => s !== calc.slug);
+  const relatedSlugs = (themedPage?.relatedSlugs ?? [...MONTHLY_PAYMENT_RELATED]).filter((s) => s !== calc.slug);
+
+  const handleShare = useCallback(async () => {
+    const url = window.location.href;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: pageMeta.seoHeading, url });
+        return;
+      }
+    } catch {
+      /* user cancelled or unsupported */
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+    } catch {
+      /* clipboard unavailable */
+    }
+  }, [pageMeta.seoHeading]);
 
   const relatedLinks = relatedSlugs
     .map((s) => calculators.find((c) => c.slug === s))
     .filter(Boolean) as typeof calculators;
 
-  const calculatorDetailLayoutClass = [
-    "pg-calculator-detail-layout",
-    calc.slug !== "monthly-payment" ? "pg-calculator-detail-layout--split-4060" : "",
-    focusResults ? "pg-calculator-detail-layout--mobile-results" : ""
-  ]
-    .filter(Boolean)
-    .join(" ");
+  const inputSummaryRows = useMemo(
+    () => buildCalculatorInputSummary(calc.slug, calc.groups, values),
+    [calc.slug, calc.groups, values]
+  );
+
+  const workspaceLayoutClass = ["pg-calc-tool-workspace-grid", "pg-calculator-detail-layout"].join(" ");
+
+  const chartOptionsForViewport = (base: Record<string, unknown> | null | undefined, slug: string) => {
+    if (isMobile) return mergeMobileChartOptions(base) as Record<string, unknown>;
+    if (slug === "monthly-payment") return (base ?? {}) as Record<string, unknown>;
+    return mergeThemedChartOptions(base) as Record<string, unknown>;
+  };
+
+  const primarySummaryMetric = summary[0] as SummaryMetricLike | undefined;
+  const heroMetricBlocks = summary.slice(1, 5).map((m: SummaryMetricLike & { label?: string }) => ({
+    label: String(m.label ?? ""),
+    value: formatResultsMetricDisplay(m)
+  }));
+  const extraSummaryMetrics = summary.slice(5);
+  const primarySuffix =
+    calc.slug === "monthly-payment" && primarySummaryMetric?.unit === "currency" ? " / month" : undefined;
 
   const calculatorWorkspace = (
-    <Grid cols={2} className={calculatorDetailLayoutClass}>
-        <div id="calculator-inputs-pane" className="pg-calculator-pane pg-calculator-pane--inputs">
-        <Card title="Inputs">
-          <form onSubmit={submit}>
+    <div className={workspaceLayoutClass}>
+        <div id="calculator-inputs-pane" className="pg-calculator-pane pg-calc-tool-col pg-calc-tool-col--inputs">
+        <CalculatorToolInputsAccordion
+          summaryRows={inputSummaryRows}
+          expanded={inputsExpanded}
+          onToggleExpanded={() => setInputsExpanded((v) => !v)}
+          isMobile={isMobile}
+        >
+          <form id={CALCULATOR_TOOL_FORM_ID} onSubmit={submit}>
             {calc.groups.map((group) => (
               <div key={group.title} style={{ marginBottom: 18 }}>
                 <div className="pg-card-title" style={{ marginBottom: 10 }}>
@@ -814,7 +874,7 @@ export function CalculatorPage() {
               </>
             ) : null}
 
-            <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+            <div className="pg-calc-tool-form-actions pg-calc-tool-form-actions--inline">
               <Button type="submit" loading={loading}>
                 {calc.slug === "noi" ? "Calculate NOI" : "Calculate"}
               </Button>
@@ -857,26 +917,23 @@ export function CalculatorPage() {
                 )}
               </p>
             ) : null}
-            <div className="pg-muted" style={{ marginTop: 12, fontSize: 12 }}>
-              Estimates only — not financial, legal, or tax advice.
-            </div>
           </form>
-        </Card>
+        </CalculatorToolInputsAccordion>
+        <CalculatorToolProTip text={pageMeta.proTip} />
         </div>
 
-        <div className="pg-calculator-pane pg-calculator-pane--results">
-        <Card title="Results">
-          {focusResults ? (
-            <div className="pg-calculator-mobile-recalc-bar">
-              <Button type="button" variant="secondary" onClick={showInputs}>
-                Edit inputs
-              </Button>
-              <Button type="button" onClick={() => void run(true)} loading={loading}>
-                Recalculate
-              </Button>
-            </div>
+        <div className="pg-calculator-pane pg-calc-tool-col pg-calc-tool-col--results">
+        <div className="pg-calc-tool-panel pg-calc-tool-panel--results">
+          {calc.slug !== "buy-vs-rent" ? (
+            <CalculatorToolResultsHero
+              title={pageMeta.primaryResultTitle}
+              primaryValue={primarySummaryMetric ? formatResultsMetricDisplay(primarySummaryMetric) : undefined}
+              primarySuffix={primarySuffix}
+              metrics={result ? heroMetricBlocks : []}
+              loading={loading && !result}
+            />
           ) : null}
-          <div className="pg-calculator-results-stack">
+          <div className="pg-calculator-results-stack pg-calc-tool-results-stack">
             {!result && !error ? (
               <div className="pg-muted">Run the calculator to see key metrics and charts.</div>
             ) : null}
@@ -907,10 +964,10 @@ export function CalculatorPage() {
                     }
                     getChartOptions={(base) => mergeThemedChartOptions(base) as Record<string, unknown>}
                   />
-                ) : calc.slug !== "buy-vs-rent" ? (
-                  <div className="pg-calculator-kpi-grid">
-                    {summary.map((m: any) => (
-                      <Card key={m.key} pad={false} className="pg-card-pad pg-calculator-kpi-card">
+                ) : calc.slug !== "buy-vs-rent" && extraSummaryMetrics.length > 0 ? (
+                  <div className="pg-calculator-kpi-grid pg-calculator-kpi-grid--extra">
+                    {extraSummaryMetrics.map((m: SummaryMetricLike & { key?: string }) => (
+                      <Card key={m.key ?? m.label} pad={false} className="pg-card-pad pg-calculator-kpi-card">
                         <div className="pg-kpi">
                           <div className="pg-kpi-value">{formatResultsMetricDisplay(m)}</div>
                           <div className="pg-kpi-label">{m.label}</div>
@@ -921,7 +978,33 @@ export function CalculatorPage() {
                 ) : null}
 
                 {calc.slug === "transfer-bond-costs" && result?.breakdown?.transferCosts ? (
-                  <Card title="Detailed cost breakdown">
+                  <>
+                  <CalculatorToolBreakdownList
+                    title="Detailed cost breakdown"
+                    rows={(
+                      [
+                        ["Transfer duty", result.breakdown.transferCosts.transferDuty],
+                        ["Transfer attorney (ex VAT)", result.breakdown.transferCosts.transferAttorneyFee],
+                        ["VAT on transfer attorney", result.breakdown.transferCosts.transferAttorneyFeeVat],
+                        ["Deeds Office transfer fee", result.breakdown.transferCosts.deedsOfficeTransferFee],
+                        ["Municipal / rates clearance provision", result.breakdown.transferCosts.municipalRatesClearanceProvision],
+                        ["Postages & petties", result.breakdown.transferCosts.postagesAndPettiesEstimate],
+                        ["FICA estimate", result.breakdown.transferCosts.ficaFeeEstimate],
+                        ["Deeds search estimate", result.breakdown.transferCosts.deedsSearchFeeEstimate],
+                        ["Electronic instruction estimate", result.breakdown.transferCosts.electronicInstructionFeeEstimate],
+                        ["Transfer subtotal", result.breakdown.transferCosts.transferSubtotal],
+                        ["Bond attorney (ex VAT)", result.breakdown.bondCosts.bondAttorneyFee],
+                        ["VAT on bond attorney", result.breakdown.bondCosts.bondAttorneyFeeVat],
+                        ["Deeds Office bond fee", result.breakdown.bondCosts.deedsOfficeBondFee],
+                        ["Bond subtotal", result.breakdown.bondCosts.bondSubtotal]
+                      ] as [string, number][]
+                    ).map(([label, val]) => ({
+                      label,
+                      value: typeof val === "number" ? formatZarResultsAmount(val) : "—",
+                      variant: label.includes("subtotal") ? ("subtotal" as const) : ("detail" as const)
+                    }))}
+                  />
+                  <Card title="Detailed cost breakdown" className="pg-calc-tool-panel pg-calc-tool-panel--table pg-calc-tool-table--desktop">
                     <table
                       className="pg-table pg-transfer-cost-breakdown"
                       style={{ width: "100%", fontSize: 13, borderCollapse: "collapse" }}
@@ -976,6 +1059,7 @@ export function CalculatorPage() {
                       </tbody>
                     </table>
                   </Card>
+                  </>
                 ) : null}
 
                 {calc.slug === "transfer-bond-costs" && Array.isArray(result?.assumptionsUsed?.assumptions) ? (
@@ -991,11 +1075,17 @@ export function CalculatorPage() {
                 {calc.slug !== "buy-vs-rent" ? (
                   <LockedFeaturePreview feature="graphs" title="Unlock charts with Investor.">
                     {chartsToRender.map((ch, idx) => {
-                      const opts = isMortgageStandalone
-                        ? (ch.options as any)
-                        : (mergeThemedChartOptions(ch.options as Record<string, unknown>) as any);
+                      const opts = chartOptionsForViewport(ch.options as Record<string, unknown>, calc.slug) as any;
+                      const displayTitle =
+                        calc.slug === "monthly-payment" && ch.chartType === "bar"
+                          ? "Repayment Breakdown"
+                          : (ch.title ?? "Chart");
                       return (
-                        <Card key={`${ch.title ?? "chart"}-${idx}`} title={ch.title ?? "Chart"}>
+                        <Card
+                          key={`${ch.title ?? "chart"}-${idx}`}
+                          title={displayTitle}
+                          className="pg-calc-tool-panel pg-calc-tool-panel--chart"
+                        >
                           <div className="pg-calculator-chart-host">
                             {ch.chartType === "line" ? (
                               <Line data={ch.data as any} options={opts} />
@@ -1009,6 +1099,15 @@ export function CalculatorPage() {
                       );
                     })}
                   </LockedFeaturePreview>
+                ) : null}
+
+                {calc.slug === "monthly-payment" &&
+                Array.isArray(result?.breakdown?.amortisationScheduleMonthly) &&
+                Array.isArray(result?.breakdown?.amortisationScheduleYearly) ? (
+                  <CalculatorToolAmortisationTable
+                    monthly={result.breakdown.amortisationScheduleMonthly}
+                    yearly={result.breakdown.amortisationScheduleYearly}
+                  />
                 ) : null}
 
                 {calc.slug !== "buy-vs-rent" && result?.interpretation?.text ? (
@@ -1030,16 +1129,16 @@ export function CalculatorPage() {
               </div>
             ) : null}
           </div>
-        </Card>
         </div>
-    </Grid>
+        </div>
+    </div>
   );
 
   const calculatorFooterGrids = (
     <>
       <div style={{ height: 24 }} />
 
-      <Grid cols={2} className={calculatorDetailLayoutClass}>
+      <Grid cols={2} className={workspaceLayoutClass}>
         <Card title="Tips">
           <div style={{ display: "grid", gap: 10 }}>
             <div className="pg-muted">Use multiple metrics to avoid blind spots.</div>
@@ -1112,94 +1211,47 @@ export function CalculatorPage() {
     calculatorWorkspace
   );
 
-  const calculatorExplainerBelow = (
-    <div className="pg-home-light-section pg-calculator-tool-explainer">
-      <Container className="pg-container--marketing-wide">
-        {transferBondSeo}
-        <p className="pg-lead pg-calculator-tool-explainer-lead">{toolExplainer.usageExplained}</p>
-        <div className="pg-calculator-tool-pros-cons">
-          <div className="pg-calculator-tool-pros-block">
-            <h2 className="pg-calculator-tool-explainer-h">Advantages</h2>
-            <ul className="pg-calculator-tool-explainer-list">
-              {toolExplainer.advantages.map((line) => (
-                <li key={line}>{line}</li>
-              ))}
-            </ul>
-          </div>
-          <div className="pg-calculator-tool-cons-block">
-            <h2 className="pg-calculator-tool-explainer-h">Disadvantages &amp; limits</h2>
-            <ul className="pg-calculator-tool-explainer-list">
-              {toolExplainer.disadvantages.map((line) => (
-                <li key={line}>{line}</li>
-              ))}
-            </ul>
-          </div>
+  const calculatorSupplementary = (
+    <div className="pg-calculator-tool-explainer">
+      {transferBondSeo}
+      <p className="pg-lead pg-calculator-tool-explainer-lead">{toolExplainer.usageExplained}</p>
+      <div className="pg-calculator-tool-pros-cons">
+        <div className="pg-calculator-tool-pros-block">
+          <h2 className="pg-calculator-tool-explainer-h">Advantages</h2>
+          <ul className="pg-calculator-tool-explainer-list">
+            {toolExplainer.advantages.map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
         </div>
-        {calculatorFooterGrids}
-      </Container>
+        <div className="pg-calculator-tool-cons-block">
+          <h2 className="pg-calculator-tool-explainer-h">Disadvantages &amp; limits</h2>
+          <ul className="pg-calculator-tool-explainer-list">
+            {toolExplainer.disadvantages.map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
+        </div>
+      </div>
+      {calculatorFooterGrids}
     </div>
   );
 
-  const helmet = (
-    <Helmet>
-      <title>
-        {calc.slug === "transfer-bond-costs"
-          ? "South African Transfer and Bond Cost Calculator | The Property Guy"
-          : `${calc.name} | The Property Guy`}
-      </title>
-      <meta
-        name="description"
-        content={
-          calc.slug === "transfer-bond-costs"
-            ? "Estimate transfer duty, conveyancing fees, Deeds Office fees and bond registration costs when buying property in South Africa."
-            : `${calc.name} calculator for South African property investors.`
-        }
-      />
-    </Helmet>
-  );
-
-  if (isMortgageStandalone) {
-    return (
-      <Section className="pg-calculator-detail-page">
-        {helmet}
-        <div className="pg-calc-hub-dark-band pg-calculator-tool-hero-band">
-          <div className="pg-calc-hub-hero-base" aria-hidden="true" />
-          <Container className="pg-container--marketing-wide pg-calc-hub-dark-band-inner">
-            <div style={{ display: "grid", gap: 10, marginBottom: 8 }}>
-              <h1 className="pg-h2" style={{ margin: 0 }}>
-                {calc.name}
-              </h1>
-              <p className="pg-lead" style={{ margin: 0 }}>
-                {calc.description} Use this to evaluate deals quickly and save the result to your report library.
-              </p>
-            </div>
-            <div style={{ height: 16 }} />
-            <div className="pg-calculator-tool-header-workspace pg-calculator-tool-navy">{gatedCalculatorWorkspace}</div>
-          </Container>
-        </div>
-        {calculatorExplainerBelow}
-      </Section>
-    );
-  }
-
   return (
-    <Section className="pg-calc-hub-page pg-calculator-detail-page">
-      {helmet}
-      <CalculatorToolHero
-        titleBefore={themedPage!.titleBefore}
-        accent={themedPage!.accent}
-        titleAfter={themedPage!.titleAfter}
-        lead={themedPage!.lead}
-        floatingLabel={firstMetric?.label}
-        floatingValue={firstMetric ? formatResultsMetricDisplay(firstMetric) : undefined}
-        floatingSub={
-          secondMetric ? `${secondMetric.label}: ${formatResultsMetricDisplay(secondMetric)}` : undefined
-        }
-        loading={loading && !result}
-        workspaceBelow={gatedCalculatorWorkspace}
-      />
-
-      {calculatorExplainerBelow}
-    </Section>
+    <CalculatorToolPageLayout
+      slug={calc.slug}
+      meta={pageMeta}
+      onSave={() => void run(true)}
+      onShare={() => void handleShare()}
+      saveLoading={loading}
+      isMobile={isMobile}
+      workspace={gatedCalculatorWorkspace}
+      supplementary={calculatorSupplementary}
+      stickyBar={
+        showStickyActions ? (
+          <CalculatorToolStickyBar formId={CALCULATOR_TOOL_FORM_ID} onReset={reset} loading={loading} />
+        ) : null
+      }
+    />
   );
 }
