@@ -14,17 +14,14 @@ const AUTOPLAY_MS = 2600;
 const HERO_DASHBOARD_SLIDES = [
   {
     id: "portfolio-overview",
-    badge: "Portfolio overview",
     content: <HomeMarketingHeroAppPreview heroCube />
   },
   {
     id: "portfolio-analytics",
-    badge: "Portfolio analytics",
     content: <HomeMarketingPortfolioPreview showLabel={false} heroCube />
   },
   {
     id: "property-dashboard",
-    badge: "Property dashboard",
     content: <HomeMarketingPropertyPreview showLabel={false} heroCube />
   }
 ] as const;
@@ -73,7 +70,6 @@ export function HomeMarketingHeroCubeCarousel() {
       >
         {HERO_DASHBOARD_SLIDES.map((slide) => (
           <SwiperSlide key={slide.id} className="hm-hero-cube__slide">
-            <span className="hm-hero-cube__badge">{slide.badge}</span>
             <div className="hm-hero-cube__slide-inner">{slide.content}</div>
           </SwiperSlide>
         ))}

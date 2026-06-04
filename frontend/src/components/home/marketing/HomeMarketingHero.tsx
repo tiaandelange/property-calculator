@@ -2,11 +2,13 @@ import { Link } from "react-router-dom";
 import { homepageHero } from "../../../data/homepageMarketingContent";
 import { ButtonLink } from "../../ui/Button";
 import { Container } from "../../ui/Container";
+import { HomeMarketingHeroBackdrop } from "./HomeMarketingHeroBackdrop";
 import { HomeMarketingHeroCubeCarousel } from "./HomeMarketingHeroCubeCarousel";
 
 export function HomeMarketingHero() {
   return (
     <header className="hm-hero" aria-labelledby="hm-hero-heading">
+      <HomeMarketingHeroBackdrop />
       <div className="hm-hero-glow" aria-hidden />
       <Container className="pg-container--marketing-wide hm-hero__container">
         <div className="hm-hero-grid">

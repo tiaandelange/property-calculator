@@ -61,6 +61,71 @@ body:has(.pg-main-marketing-home) .pg-home-site-header-inner.pg-container {
   isolation: isolate;
 }
 
+/* Animated dots / % behind hero copy and cube */
+.hm-hero-backdrop {
+  position: absolute;
+  top: var(--home-site-header-h, 72px);
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.hm-hero-backdrop__particle {
+  position: absolute;
+  animation: hm-hero-backdrop-float linear infinite;
+  opacity: 0;
+}
+
+.hm-hero-backdrop__particle--dot {
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--primary) 55%, white);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--primary) 35%, transparent);
+}
+
+.hm-hero-backdrop__particle--pct {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: auto !important;
+  height: auto !important;
+  font-weight: 800;
+  line-height: 1;
+  color: color-mix(in srgb, var(--primary) 70%, white);
+  text-shadow: 0 0 18px color-mix(in srgb, var(--primary) 40%, transparent);
+  user-select: none;
+}
+
+@keyframes hm-hero-backdrop-float {
+  0% {
+    opacity: 0;
+    transform: translate(0, 8px) scale(0.85);
+  }
+  12% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 0.35;
+    transform: translate(10px, -22px) scale(1);
+  }
+  88% {
+    opacity: 0.5;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-6px, -40px) scale(0.9);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hm-hero-backdrop__particle {
+    animation: none;
+    opacity: 0.2;
+  }
+}
+
 .hm-hero-glow {
   position: absolute;
   top: var(--home-site-header-h, 72px);
@@ -188,27 +253,23 @@ body:has(.pg-main-marketing-home) .pg-home-site-header-inner.pg-container {
   background: color-mix(in srgb, var(--primary) 28%, #0f1420);
 }
 
-.hm-hero-cube__badge {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  z-index: 2;
-  padding: 6px 12px;
-  border-radius: 999px;
-  font-size: var(--type-xs);
-  font-weight: var(--weight-semibold);
-  color: var(--hm-hero-band-text);
-  background: color-mix(in srgb, var(--hm-hero-band-text) 8%, transparent);
-  border: 1px solid color-mix(in srgb, var(--hm-hero-band-text) 18%, transparent);
-  backdrop-filter: blur(8px);
-}
-
 .hm-hero-cube__slide-inner {
   height: 100%;
-  overflow: auto;
+  overflow: hidden;
   padding: 8px;
   background: #ffffff;
-  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: none;
+  touch-action: none;
+  pointer-events: none;
+  user-select: none;
+}
+
+.hm-hero-cube__slide-inner .hm-app-preview,
+.hm-hero-cube__slide-inner .hm-module-preview,
+.hm-hero-cube__slide-inner .hm-app-preview__shell,
+.hm-hero-cube__slide-inner .hm-app-preview__workspace {
+  overflow: hidden;
+  pointer-events: none;
 }
 
 .hm-hero-cube .hm-app-preview,
@@ -294,6 +355,102 @@ body:has(.pg-main-marketing-home) .pg-home-site-header-inner.pg-container {
   width: 28px;
   height: 28px;
   flex: 0 0 28px;
+}
+
+/* Hero cube — Riverside duplex bond vs income (full width) */
+.hm-hero-cube__bond-chart {
+  width: 100%;
+  min-width: 0;
+  margin-top: 4px;
+}
+
+.hm-hero-cube__bond-chart-bars {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 6px;
+  height: 120px;
+  padding: 4px 2px 0;
+}
+
+.hm-hero-cube__bond-chart-group {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.hm-hero-cube__bond-chart-pair {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 4px;
+  width: 100%;
+  height: 100px;
+}
+
+.hm-hero-cube__bond-chart-bar {
+  flex: 1;
+  max-width: 18px;
+  min-height: 10px;
+  border-radius: 4px 4px 2px 2px;
+}
+
+.hm-hero-cube__bond-chart-bar--bond {
+  background: linear-gradient(
+    180deg,
+    var(--warning) 0%,
+    color-mix(in srgb, var(--warning) 45%, #ffffff) 100%
+  );
+}
+
+.hm-hero-cube__bond-chart-bar--income {
+  background: linear-gradient(
+    180deg,
+    var(--primary) 0%,
+    color-mix(in srgb, var(--primary) 50%, #ffffff) 100%
+  );
+}
+
+.hm-hero-cube__bond-chart-month {
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.hm-hero-cube__bond-chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-soft);
+}
+
+.hm-hero-cube__bond-chart-legend-item {
+  font-size: 9px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.hm-hero-cube__bond-chart-legend-item::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.hm-hero-cube__bond-chart-legend-item--bond::before {
+  background: var(--warning);
+}
+
+.hm-hero-cube__bond-chart-legend-item--income::before {
+  background: var(--primary);
 }
 
 .hm-hero-trust-strip {

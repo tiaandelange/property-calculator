@@ -56,7 +56,17 @@ export const homepagePreviewProperty = {
     { label: "Bond repayment", amount: "R 9,840" },
     { label: "Rates & levies", amount: "R 2,180" },
     { label: "Insurance", amount: "R 620" }
-  ]
+  ],
+  bondVsIncome: {
+    title: "Bond payment vs monthly income",
+    meta: "Riverside duplex · illustrative",
+    months: ["J", "F", "M", "A", "M", "J"] as const,
+    /** Scaled units (×100) for chart bar heights */
+    bond: [98, 98, 98, 98, 98, 98] as const,
+    income: [145, 145, 145, 145, 145, 145] as const,
+    bondLabel: "Bond",
+    incomeLabel: "Rent income"
+  }
 } as const;
 
 export const homepagePreviewStatement = {

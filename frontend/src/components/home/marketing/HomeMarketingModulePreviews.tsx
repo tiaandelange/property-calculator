@@ -10,6 +10,7 @@ import {
   homepagePreviewStatement
 } from "../../../data/homepagePreviewContent";
 import type { PreviewMetric } from "../../../data/homepagePreviewContent";
+import { HomeMarketingHeroPropertyBondChart } from "./HomeMarketingHeroPropertyBondChart";
 import { HomeMarketingPreviewModuleLabel, HomeMarketingPreviewShell } from "./HomeMarketingPreviewShell";
 
 function PreviewMetrics({
@@ -188,40 +189,44 @@ export function HomeMarketingPropertyPreview({
           <StatusBadge status={data.lease.status} />
         </div>
         <PreviewMetrics metrics={data.metrics} columns={heroCube ? 2 : 4} heroCube={heroCube} />
-        <div className="hm-app-preview__split hm-app-preview__split--property">
-          <section className="hm-app-preview__panel">
-            <div className="hm-app-preview__panel-head">
-              <h3 className="hm-app-preview__panel-title">Active lease</h3>
-            </div>
-            <dl className="hm-preview-dl">
-              <div>
-                <dt>Tenant</dt>
-                <dd>{data.lease.tenant}</dd>
+        {heroCube ? (
+          <HomeMarketingHeroPropertyBondChart />
+        ) : (
+          <div className="hm-app-preview__split hm-app-preview__split--property">
+            <section className="hm-app-preview__panel">
+              <div className="hm-app-preview__panel-head">
+                <h3 className="hm-app-preview__panel-title">Active lease</h3>
               </div>
-              <div>
-                <dt>Rent</dt>
-                <dd>{data.lease.rent}</dd>
+              <dl className="hm-preview-dl">
+                <div>
+                  <dt>Tenant</dt>
+                  <dd>{data.lease.tenant}</dd>
+                </div>
+                <div>
+                  <dt>Rent</dt>
+                  <dd>{data.lease.rent}</dd>
+                </div>
+                <div>
+                  <dt>Term</dt>
+                  <dd>{data.lease.term}</dd>
+                </div>
+              </dl>
+            </section>
+            <section className="hm-app-preview__panel">
+              <div className="hm-app-preview__panel-head">
+                <h3 className="hm-app-preview__panel-title">Monthly expenses</h3>
               </div>
-              <div>
-                <dt>Term</dt>
-                <dd>{data.lease.term}</dd>
-              </div>
-            </dl>
-          </section>
-          <section className="hm-app-preview__panel">
-            <div className="hm-app-preview__panel-head">
-              <h3 className="hm-app-preview__panel-title">Monthly expenses</h3>
-            </div>
-            <ul className="hm-preview-line-list">
-              {data.expenses.map((row) => (
-                <li key={row.label}>
-                  <span>{row.label}</span>
-                  <span>{row.amount}</span>
-                </li>
-              ))}
-            </ul>
-          </section>
-        </div>
+              <ul className="hm-preview-line-list">
+                {data.expenses.map((row) => (
+                  <li key={row.label}>
+                    <span>{row.label}</span>
+                    <span>{row.amount}</span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          </div>
+        )}
       </HomeMarketingPreviewShell>
     </div>
   );
