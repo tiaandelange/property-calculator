@@ -149,6 +149,21 @@
   padding-right: 88px;
 }
 
+.pg-pricing-card__save {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin: -4px 0 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--success);
+}
+
+.pg-pricing-card__save-icon {
+  flex-shrink: 0;
+  color: var(--success);
+}
+
 .pg-pricing-card__best-for {
   margin: 0 0 14px;
   font-size: 13px;

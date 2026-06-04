@@ -1,4 +1,11 @@
 import type { SubscriptionPlanRecord } from "../../services/subscriptionPlansSupabase";
+import {
+  type BillingPeriod,
+  formatAnnualPlanTotal,
+  formatPlanPrice,
+  annualPlanTotal,
+  isFreePlan
+} from "./pricingPlanDisplay";
 
 export const PRICING_PLAN_CODES = ["starter", "investor", "portfolio", "portfolio_pro"] as const;
 
@@ -32,16 +39,35 @@ function tier(
  * Feature matrix for the pricing page comparison table only.
  * Copy is fixed for marketing clarity; plan catalog / gating logic is unchanged.
  */
-export function buildPricingComparisonRows(_plans: SubscriptionPlanRecord[]): ComparisonRow[] {
+function comparisonPriceLabel(plan: SubscriptionPlanRecord, billing: BillingPeriod): string {
+  if (isFreePlan(plan)) return "Free";
+  if (billing === "annual") {
+    return formatAnnualPlanTotal(annualPlanTotal(plan.monthlyPrice), plan.currency);
+  }
+  return formatPlanPrice(plan.monthlyPrice, plan.currency);
+}
+
+export function buildPricingComparisonRows(
+  plans: SubscriptionPlanRecord[],
+  billing: BillingPeriod = "monthly"
+): ComparisonRow[] {
+  const byCode = Object.fromEntries(plans.map((p) => [p.code, p])) as Partial<
+    Record<PricingPlanCode, SubscriptionPlanRecord>
+  >;
+  const priceFor = (code: PricingPlanCode, fallback: string): ComparisonCellValue => {
+    const plan = byCode[code];
+    return label(plan ? comparisonPriceLabel(plan, billing) : fallback);
+  };
+
   return [
     {
       id: "monthly_price",
-      label: "Monthly price",
+      label: billing === "annual" ? "Annual price" : "Monthly price",
       values: tier(
-        label("Free"),
-        label("R299/month"),
-        label("R599/month"),
-        label("R999/month")
+        priceFor("starter", "Free"),
+        priceFor("investor", "R299/month"),
+        priceFor("portfolio", "R599/month"),
+        priceFor("portfolio_pro", "R999/month")
       )
     },
     {

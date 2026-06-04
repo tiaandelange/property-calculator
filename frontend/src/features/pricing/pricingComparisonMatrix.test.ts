@@ -36,6 +36,14 @@ describe("pricingComparisonMatrix", () => {
     ]);
   });
 
+  it("uses 10-month annual totals in the comparison price row", () => {
+    const rows = buildPricingComparisonRows(FALLBACK_SUBSCRIPTION_PLANS, "annual");
+    const price = rows.find((r) => r.id === "monthly_price");
+    expect(price?.label).toBe("Annual price");
+    expect(price?.values.investor).toEqual({ kind: "text", text: "R2,990/year" });
+    expect(price?.values.portfolio).toEqual({ kind: "text", text: "R5,990/year" });
+  });
+
   it("shows Starter as Free with locked analytics", () => {
     const rows = buildPricingComparisonRows(FALLBACK_SUBSCRIPTION_PLANS);
     const price = rows.find((r) => r.id === "monthly_price");

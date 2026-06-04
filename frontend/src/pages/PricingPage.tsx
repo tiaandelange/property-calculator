@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { PublicPageSeo } from "../components/seo/PublicPageSeo";
 import { PRICING_PAGE_SEO } from "../lib/publicPageSeo";
-import { Check } from "lucide-react";
+import { BadgePercent, Check } from "lucide-react";
 import { Container } from "../components/ui/Container";
 import { Section } from "../components/ui/Section";
 import { ButtonLink } from "../components/ui/Button";
@@ -16,6 +16,9 @@ import {
   pricingValueStripLead
 } from "../data/pricingPageContent";
 import {
+  annualBillingSavingsPercent,
+  type BillingPeriod,
+  isPaidPlan,
   isPopularPlan,
   planBestFor,
   planCardFeatureLines,
@@ -30,12 +33,20 @@ import {
   type SubscriptionPlanRecord
 } from "../services/subscriptionPlansSupabase";
 
-function PricingCard({ plan }: { plan: SubscriptionPlanRecord }) {
+function PricingCard({
+  plan,
+  billingPeriod
+}: {
+  plan: SubscriptionPlanRecord;
+  billingPeriod: BillingPeriod;
+}) {
   const popular = isPopularPlan(plan);
   const cta = planCta(plan);
   const secondary = planSecondaryCta(plan);
   const features = planCardFeatureLines(plan);
-  const subline = planPriceSubline(plan);
+  const subline = planPriceSubline(plan, billingPeriod);
+  const showAnnualSave = billingPeriod === "annual" && isPaidPlan(plan);
+  const savePercent = showAnnualSave ? annualBillingSavingsPercent(plan.monthlyPrice) : null;
 
   return (
     <article
@@ -46,11 +57,17 @@ function PricingCard({ plan }: { plan: SubscriptionPlanRecord }) {
       <h2 id={`pricing-plan-${plan.code}`} className="pg-pricing-card__name">
         {plan.name}
       </h2>
+      {showAnnualSave && savePercent != null ? (
+        <p className="pg-pricing-card__save">
+          <BadgePercent className="pg-pricing-card__save-icon" size={15} strokeWidth={2.25} aria-hidden />
+          <span>Save {savePercent}%</span>
+        </p>
+      ) : null}
       <p className="pg-pricing-card__best-for">
         <span className="pg-pricing-card__best-for-label">Best for:</span> {planBestFor(plan)}
       </p>
       <div className="pg-pricing-card__price-block">
-        <p className="pg-pricing-card__price">{planPriceHeadline(plan)}</p>
+        <p className="pg-pricing-card__price">{planPriceHeadline(plan, billingPeriod)}</p>
         {subline ? <p className="pg-pricing-card__price-sub">{subline}</p> : null}
       </div>
       <ul className="pg-pricing-card__features">
@@ -119,13 +136,11 @@ export function PricingPage() {
             </button>
             <button
               type="button"
-              className="pg-pricing-billing-toggle__btn pg-pricing-billing-toggle__btn--disabled"
-              disabled
-              aria-pressed={false}
-              title="Annual billing coming soon"
+              className={`pg-pricing-billing-toggle__btn${billingPeriod === "annual" ? " pg-pricing-billing-toggle__btn--active" : ""}`}
+              aria-pressed={billingPeriod === "annual"}
+              onClick={() => setBillingPeriod("annual")}
             >
               Annual
-              <span className="pg-pricing-billing-toggle__soon">Coming soon</span>
             </button>
           </div>
 
@@ -137,7 +152,7 @@ export function PricingPage() {
         <div className="pg-pricing-grid" role="list">
           {ordered.map((plan) => (
             <div key={plan.code} role="listitem">
-              <PricingCard plan={plan} />
+              <PricingCard plan={plan} billingPeriod={billingPeriod} />
             </div>
           ))}
         </div>
@@ -155,7 +170,7 @@ export function PricingPage() {
         </div>
 
         <div id="pricing-compare">
-          <PricingComparisonTable plans={ordered} />
+          <PricingComparisonTable plans={ordered} billingPeriod={billingPeriod} />
         </div>
 
         <section className="pg-pricing-recommend" aria-labelledby="pricing-recommend-heading">

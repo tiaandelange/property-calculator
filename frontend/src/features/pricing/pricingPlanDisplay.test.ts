@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { FALLBACK_SUBSCRIPTION_PLANS } from "../../services/subscriptionPlansSupabase";
 import {
+  annualBillingSavingsPercent,
+  annualPlanTotal,
   planBestFor,
   planCardFeatureLines,
   planCta,
@@ -53,6 +55,14 @@ describe("pricingPlanDisplay QA", () => {
     expect(planPriceHeadline(plan("portfolio_pro"))).toBe("R999/month");
     expect(planPriceSubline(plan("portfolio_pro"))).toContain("contact");
     expect(planCardFeatureLines(plan("portfolio_pro"))).toContain("Up to 75 properties");
+  });
+
+  it("computes annual billing as 10 months with 17% savings vs 12 months", () => {
+    expect(annualPlanTotal(299)).toBe(2990);
+    expect(annualBillingSavingsPercent(299)).toBe(17);
+    expect(planPriceHeadline(plan("investor"), "annual")).toBe("R2,990/year");
+    expect(planPriceSubline(plan("investor"), "annual")).toContain("R249/month");
+    expect(planPriceSubline(plan("investor"), "annual")).toContain("pay for 10 months");
   });
 
   it("routes plan CTAs to signup or contact", () => {

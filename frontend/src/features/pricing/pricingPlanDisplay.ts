@@ -1,18 +1,65 @@
 import type { SubscriptionPlanRecord } from "../../services/subscriptionPlansSupabase";
 
+/** Annual billing charges 10 months of the listed monthly price (not 12). */
+export const ANNUAL_BILLING_MONTH_COUNT = 10;
+
+export type BillingPeriod = "monthly" | "annual";
+
+export function annualPlanTotal(monthlyPrice: number): number {
+  return monthlyPrice * ANNUAL_BILLING_MONTH_COUNT;
+}
+
+/** Effective monthly cost when paying the 10-month annual total across 12 months. */
+export function annualEffectiveMonthly(monthlyPrice: number): number {
+  return (monthlyPrice * ANNUAL_BILLING_MONTH_COUNT) / 12;
+}
+
+/**
+ * Savings vs paying the listed monthly price for 12 months.
+ * (12-month total − 10-month total) / 12-month total — same as 1 − 10/12.
+ */
+export function annualBillingSavingsPercent(monthlyPrice: number): number {
+  if (monthlyPrice <= 0) return 0;
+  const tenMonthTotal = annualPlanTotal(monthlyPrice);
+  const twelveMonthTotal = monthlyPrice * 12;
+  return Math.round((1 - tenMonthTotal / twelveMonthTotal) * 100);
+}
+
+export function isPaidPlan(plan: SubscriptionPlanRecord): boolean {
+  return plan.monthlyPrice > 0;
+}
+
+function formatZarAmount(amount: number): string {
+  return amount.toLocaleString("en-US", { maximumFractionDigits: 0 });
+}
+
 export function formatPlanPrice(amount: number, currency = "ZAR"): string {
   if (amount === 0) return "Free";
   if (currency === "ZAR") {
-    return `R${amount.toLocaleString("en-ZA", { maximumFractionDigits: 0 })}/month`;
+    return `R${formatZarAmount(amount)}/month`;
   }
   return `${amount.toLocaleString()}/${currency}/month`;
+}
+
+export function formatAnnualPlanTotal(amount: number, currency = "ZAR"): string {
+  if (currency === "ZAR") {
+    return `R${formatZarAmount(amount)}/year`;
+  }
+  return `${amount.toLocaleString()}/${currency}/year`;
 }
 
 export function isFreePlan(plan: SubscriptionPlanRecord): boolean {
   return plan.monthlyPrice === 0;
 }
 
-export function planPriceHeadline(plan: SubscriptionPlanRecord): string {
+export function planPriceHeadline(
+  plan: SubscriptionPlanRecord,
+  billing: BillingPeriod = "monthly"
+): string {
+  if (billing === "annual" && isPaidPlan(plan)) {
+    return formatAnnualPlanTotal(annualPlanTotal(plan.monthlyPrice), plan.currency);
+  }
+
   if (plan.code === "starter") {
     if (plan.trialDays > 0 && plan.monthlyPrice > 0) {
       return "FREE";
@@ -30,7 +77,15 @@ export function planPriceHeadline(plan: SubscriptionPlanRecord): string {
   return formatPlanPrice(plan.monthlyPrice, plan.currency);
 }
 
-export function planPriceSubline(plan: SubscriptionPlanRecord): string | null {
+export function planPriceSubline(
+  plan: SubscriptionPlanRecord,
+  billing: BillingPeriod = "monthly"
+): string | null {
+  if (billing === "annual" && isPaidPlan(plan)) {
+    const effective = Math.round(annualEffectiveMonthly(plan.monthlyPrice));
+    return `${formatPlanPrice(effective, plan.currency)} · pay for ${ANNUAL_BILLING_MONTH_COUNT} months`;
+  }
+
   if (plan.code === "starter") {
     if (plan.trialDays > 0 && plan.monthlyPrice > 0) {
       return `Then ${formatPlanPrice(plan.monthlyPrice, plan.currency)}`;

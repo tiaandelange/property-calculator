@@ -8,7 +8,7 @@ import {
   type ComparisonRow,
   type PricingPlanCode
 } from "./pricingComparisonMatrix";
-import { isPopularPlan, planCta, planSecondaryCta } from "./pricingPlanDisplay";
+import { type BillingPeriod, isPopularPlan, planCta, planSecondaryCta } from "./pricingPlanDisplay";
 
 function CompareValue({ value }: { value: ComparisonCellValue }) {
   if (value.kind === "text") {
@@ -82,9 +82,15 @@ function MobileFeatureRow({
   );
 }
 
-export function PricingComparisonTable({ plans }: { plans: SubscriptionPlanRecord[] }) {
+export function PricingComparisonTable({
+  plans,
+  billingPeriod = "monthly"
+}: {
+  plans: SubscriptionPlanRecord[];
+  billingPeriod?: BillingPeriod;
+}) {
   const ordered = orderPlansForComparison(plans);
-  const rows = buildPricingComparisonRows(plans);
+  const rows = buildPricingComparisonRows(plans, billingPeriod);
 
   if (!ordered.length) return null;
 
