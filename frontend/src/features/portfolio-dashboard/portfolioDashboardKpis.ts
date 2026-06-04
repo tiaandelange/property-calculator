@@ -80,11 +80,12 @@ export function parsePortfolioDashboardKpis(
       ? (annualCashFlow / totalBuyingCosts) * 100
       : numOrNull(cocKpi.valuePercent);
 
+  const averageCapRate = num(data?.averageCapRate);
   const capRatePercent =
     totalMarketValue > 0 && monthlyNoi !== 0
       ? ((monthlyNoi * 12) / totalMarketValue) * 100
-      : num(data?.averageCapRate) > 0
-        ? num(data.averageCapRate) * 100
+      : averageCapRate > 0
+        ? averageCapRate * 100
         : null;
 
   return {
