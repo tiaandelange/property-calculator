@@ -29,12 +29,31 @@ body:has(.pg-main-marketing-home) .pg-home-site-header {
   --hm-header-hero-text: #f8fafc;
   --hm-header-hero-text-muted: #cbd5e1;
   transition:
-    transform 0.48s cubic-bezier(0.22, 1, 0.36, 1),
-    opacity 0.42s ease,
+    transform 0.32s ease-in,
+    opacity 0.28s ease-in,
+    background 0.35s ease,
+    border-color 0.35s ease,
+    box-shadow 0.35s ease,
+    backdrop-filter 0.35s ease;
+}
+
+body:has(.pg-main-marketing-home) .pg-home-site-header[data-revealed="true"] {
+  transform: translateY(0);
+  opacity: 1;
+  pointer-events: auto;
+  transition:
+    transform 0.58s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.52s ease,
     background 0.35s ease,
     border-color 0.35s ease,
     box-shadow 0.42s ease,
     backdrop-filter 0.35s ease;
+}
+
+body:has(.pg-main-marketing-home) .pg-home-site-header[data-revealed="false"] {
+  transform: translateY(-100%);
+  opacity: 0;
+  pointer-events: none;
 }
 
 body:has(.pg-main-marketing-home) .pg-home-site-header[data-surface="hero"] {
@@ -43,20 +62,6 @@ body:has(.pg-main-marketing-home) .pg-home-site-header[data-surface="hero"] {
   -webkit-backdrop-filter: blur(16px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow: none;
-  transform: translateY(0);
-  opacity: 1;
-  pointer-events: auto;
-}
-
-body:has(.pg-main-marketing-home) .pg-home-site-header[data-surface="hidden"] {
-  background: rgba(10, 10, 20, 0.2);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border-bottom-color: transparent;
-  box-shadow: none;
-  transform: translateY(-100%);
-  opacity: 0;
-  pointer-events: none;
 }
 
 body:has(.pg-main-marketing-home) .pg-home-site-header[data-surface="light"] {
@@ -65,9 +70,6 @@ body:has(.pg-main-marketing-home) .pg-home-site-header[data-surface="light"] {
   -webkit-backdrop-filter: blur(14px);
   border-bottom: 1px solid var(--border-soft);
   box-shadow: 0 8px 28px rgba(15, 23, 42, 0.1);
-  transform: translateY(0);
-  opacity: 1;
-  pointer-events: auto;
 }
 
 body:has(.pg-main-marketing-home) .pg-home-site-header[data-surface="hero"] .pg-home-site-header-nav--desktop .pg-home-site-header-link {

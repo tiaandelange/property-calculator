@@ -43,7 +43,7 @@ function getFocusable(root: HTMLElement): HTMLElement[] {
 export function HomePublicHeader() {
   const location = useLocation();
   const isMarketingHome = location.pathname === "/";
-  const headerSurface = useHomeHeaderSurface(isMarketingHome);
+  const { surface: headerSurface, revealed: headerRevealed } = useHomeHeaderSurface(isMarketingHome);
   const [scrolled, setScrolled] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [mobileCalcOpen, setMobileCalcOpen] = useState(false);
@@ -276,6 +276,7 @@ export function HomePublicHeader() {
       <header
         className="pg-home-site-header"
         data-surface={isMarketingHome ? headerSurface : "light"}
+        data-revealed={drawerOpen || calculatorsMegaOpen || headerRevealed ? "true" : "false"}
         data-scrolled={scrolled ? "true" : "false"}
         data-drawer-open={drawerOpen ? "true" : "false"}
         data-calculators-hero-shell={calculatorsHeroShell ? "true" : "false"}
