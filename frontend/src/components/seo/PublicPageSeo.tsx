@@ -26,8 +26,10 @@ export function PublicPageSeo({ seo }: PublicPageSeoProps) {
       <meta property="og:title" content={seo.title} />
       <meta property="og:description" content={seo.description} />
       <meta property="og:url" content={canonicalUrl} />
+      <meta property="og:locale" content="en_ZA" />
       <meta property="og:image" content={ogImageUrl} />
       <meta property="og:image:secure_url" content={ogImageUrl} />
+      <meta property="og:image:type" content="image/png" />
       <meta property="og:image:width" content={String(DEFAULT_OG_IMAGE.width)} />
       <meta property="og:image:height" content={String(DEFAULT_OG_IMAGE.height)} />
       <meta property="og:image:alt" content={DEFAULT_OG_IMAGE.alt} />

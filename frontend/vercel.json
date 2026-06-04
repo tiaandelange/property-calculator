@@ -36,7 +36,7 @@
 
   "rewrites": [
     {
-      "source": "/((?!api/).*)",
+      "source": "/((?!api/|social/|assets/|.*\\..+$).*)",
       "destination": "/index.html"
     }
   ],

@@ -22,5 +22,5 @@
       "zod/*": ["./node_modules/zod/*"]
     }
   },
-  "include": ["src", "api"]
+  "include": ["src", "api", "seo"]
 }

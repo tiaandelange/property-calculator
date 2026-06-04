@@ -2,7 +2,7 @@ import {
   buildSocialPreviewHtml,
   getPublicPageSeoForPath,
   isSocialPreviewCrawler
-} from "./src/lib/publicPageSeo";
+} from "./frontend/seo/socialPreview.mjs";
 
 export const config = {
   matcher: [
@@ -16,7 +16,7 @@ export const config = {
   ]
 };
 
-export default function middleware(request: Request) {
+export default function middleware(request) {
   const userAgent = request.headers.get("user-agent");
   if (!isSocialPreviewCrawler(userAgent)) {
     return;

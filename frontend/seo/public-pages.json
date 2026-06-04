@@ -1,0 +1,73 @@
+{
+  "siteOrigin": "https://proplytic.co.za",
+  "ogImage": {
+    "path": "/social/proplytic-og-home.png",
+    "width": 1200,
+    "height": 630,
+    "alt": "Proplytic property portfolio software preview with analytics dashboard, cash flow, property value and portfolio metrics."
+  },
+  "staticPages": {
+    "/": {
+      "title": "Proplytic | Property Portfolio Software South Africa",
+      "description": "Powerful portfolio analytics, property calculators, reports, invoices and tenant management — all in one place.",
+      "path": "/"
+    },
+    "/calculators": {
+      "title": "Property Calculators South Africa | Proplytic",
+      "description": "Use Proplytic’s property calculators to estimate bond payments, transfer costs, rental cash flow, ROI and buying versus renting decisions.",
+      "path": "/calculators"
+    },
+    "/reports": {
+      "title": "Property PDF Reports South Africa | Proplytic",
+      "description": "Create investor-ready property reports, portfolio summaries, rental statements, invoices and cash flow PDFs with Proplytic.",
+      "path": "/reports"
+    },
+    "/pricing": {
+      "title": "Pricing | Proplytic",
+      "description": "Choose a Proplytic plan for property portfolio analytics, calculators, reports, invoices and rental admin.",
+      "path": "/pricing"
+    },
+    "/features": {
+      "title": "Property Portfolio Software Features | Proplytic",
+      "description": "Track properties, tenants, leases, income, expenses, invoices, reports and portfolio performance in one connected workspace.",
+      "path": "/features"
+    },
+    "/resources": {
+      "title": "Property Calculators & Resources | Proplytic",
+      "description": "Free South African property calculators for bond payments, transfer costs, cash flow, ROI and investment analysis.",
+      "path": "/resources"
+    }
+  },
+  "calculatorSlugs": {
+    "monthly-payment": {
+      "title": "Monthly Bond Payment Calculator | Proplytic",
+      "description": "Calculate your estimated monthly home loan repayment, total interest, total repayment and amortisation breakdown.",
+      "path": "/calculators/monthly-payment"
+    },
+    "monthly-bond-payment": {
+      "title": "Monthly Bond Payment Calculator | Proplytic",
+      "description": "Calculate your estimated monthly home loan repayment, total interest, total repayment and amortisation breakdown.",
+      "path": "/calculators/monthly-bond-payment"
+    },
+    "buy-vs-rent": {
+      "title": "Buy vs Rent Calculator | Proplytic",
+      "description": "Compare the long-term financial outcome of buying a property versus renting over time.",
+      "path": "/calculators/buy-vs-rent"
+    },
+    "transfer-bond-costs": {
+      "title": "Transfer and Bond Costs Calculator South Africa | Proplytic",
+      "description": "Estimate transfer duty, bond registration costs, attorney fees and the total cash needed to register a property in South Africa.",
+      "path": "/calculators/transfer-bond-costs"
+    },
+    "cash-flow": {
+      "title": "Rental Cash Flow Calculator | Proplytic",
+      "description": "Estimate your monthly rental income, operating expenses, debt service and net property cash flow.",
+      "path": "/calculators/cash-flow"
+    },
+    "rental-cash-flow": {
+      "title": "Rental Cash Flow Calculator | Proplytic",
+      "description": "Estimate your monthly rental income, operating expenses, debt service and net property cash flow.",
+      "path": "/calculators/rental-cash-flow"
+    }
+  }
+}
