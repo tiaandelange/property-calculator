@@ -547,10 +547,8 @@ body:has(.pg-main-marketing-home) .pg-home-site-header[data-surface="hero"] .pg-
   text-overflow: ellipsis;
 }
 
-.hm-hero-cube .hm-app-preview__metric-icon {
-  width: 28px;
-  height: 28px;
-  flex: 0 0 28px;
+.hm-hero-cube .hm-app-preview__metric-top .pg-icon-container--sm {
+  flex-shrink: 0;
 }
 
 /* Hero cube — Riverside duplex bond vs income (full width) */
@@ -839,16 +837,9 @@ body:has(.pg-main-marketing-home) .pg-home-site-header[data-surface="hero"] .pg-
   font-variant-numeric: tabular-nums;
 }
 
-.hm-app-preview__metric-icon {
-  display: grid;
-  place-items: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 10px;
-  background: var(--primary-soft);
-  color: var(--primary);
-  flex: 0 0 32px;
+.hm-app-preview__metric-top .hm-app-preview__metric-icon.pg-icon-container {
   margin-left: auto;
+  flex-shrink: 0;
 }
 
 .hm-app-preview__metric-change {
@@ -4461,10 +4452,8 @@ body:has(.pg-main-marketing-home) .pg-home-site-header[data-surface="hero"] .pg-
     text-overflow: ellipsis;
   }
 
-  .hm-app-preview--hero .hm-app-preview__metric-icon {
-    width: 28px;
-    height: 28px;
-    flex: 0 0 28px;
+  .hm-app-preview--hero .hm-app-preview__metric-top .pg-icon-container--sm {
+    flex-shrink: 0;
   }
 }
 

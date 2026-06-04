@@ -58,14 +58,14 @@ export const homepagePreviewProperty = {
     { label: "Insurance", amount: "R 620" }
   ],
   bondVsIncome: {
-    title: "Bond payment vs monthly income",
+    title: "Bond payment vs rental income",
     meta: "Riverside duplex · illustrative",
-    months: ["J", "F", "M", "A", "M", "J"] as const,
-    /** Scaled units (×100) for chart bar heights */
-    bond: [98, 98, 98, 98, 98, 98] as const,
-    income: [145, 145, 145, 145, 145, 145] as const,
+    years: ["Y1", "Y2", "Y3", "Y4", "Y5", "Y6"] as const,
+    /** Scaled chart units — bond declines, income rises over time */
+    bond: [98, 90, 82, 74, 66, 58] as const,
+    income: [118, 124, 130, 136, 142, 148] as const,
     bondLabel: "Bond",
-    incomeLabel: "Rent income"
+    incomeLabel: "Income"
   }
 } as const;
 

@@ -22,7 +22,7 @@ function seriesPoints(
     .join(" ");
 }
 
-/** Full-width bond vs rent income line chart for hero cube property slide. */
+/** Full-width bond vs rental income line chart for hero cube property slide. */
 export function HomeMarketingHeroPropertyBondChart() {
   const chart = homepagePreviewProperty.bondVsIncome;
   const max = Math.max(...chart.bond, ...chart.income);
@@ -64,19 +64,19 @@ export function HomeMarketingHeroPropertyBondChart() {
           />
         </svg>
         <div className="hm-hero-cube__bond-chart-months" role="presentation">
-          {chart.months.map((month) => (
-            <span key={month} className="hm-hero-cube__bond-chart-month">
-              {month}
+          {chart.years.map((year) => (
+            <span key={year} className="hm-hero-cube__bond-chart-month">
+              {year}
             </span>
           ))}
         </div>
       </div>
       <div className="hm-hero-cube__bond-chart-legend">
         <span className="hm-hero-cube__bond-chart-legend-item hm-hero-cube__bond-chart-legend-item--bond">
-          {chart.bondLabel} · R 9,840
+          {chart.bondLabel}
         </span>
         <span className="hm-hero-cube__bond-chart-legend-item hm-hero-cube__bond-chart-legend-item--income">
-          {chart.incomeLabel} · R 14,500
+          {chart.incomeLabel}
         </span>
       </div>
     </section>

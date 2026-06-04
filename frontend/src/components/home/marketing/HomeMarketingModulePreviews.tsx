@@ -1,5 +1,3 @@
-import { AppIcon } from "../../icons/AppIcon";
-import type { IconName } from "../../icons/iconRegistry";
 import {
   homepagePreviewCalculator,
   homepagePreviewInvoice,
@@ -11,6 +9,7 @@ import {
 } from "../../../data/homepagePreviewContent";
 import type { PreviewMetric } from "../../../data/homepagePreviewContent";
 import { HomeMarketingHeroPropertyBondChart } from "./HomeMarketingHeroPropertyBondChart";
+import { PreviewMetricIcon } from "./homeMarketingPreviewMetricIcon";
 import { HomeMarketingPreviewModuleLabel, HomeMarketingPreviewShell } from "./HomeMarketingPreviewShell";
 
 function PreviewMetrics({
@@ -41,9 +40,7 @@ function PreviewMetrics({
               <p className="hm-app-preview__metric-label">{metric.label}</p>
               <p className="hm-app-preview__metric-value">{metric.value}</p>
             </div>
-            <span className="hm-app-preview__metric-icon" aria-hidden>
-              <AppIcon name={metric.icon as IconName} size="sm" />
-            </span>
+            <PreviewMetricIcon label={metric.label} icon={metric.icon} />
           </div>
           {metric.change ? (
             <p className={`hm-app-preview__metric-change hm-app-preview__metric-change--${metric.changeTone ?? "neutral"}`}>

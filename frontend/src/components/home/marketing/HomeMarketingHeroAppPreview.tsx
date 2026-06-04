@@ -1,8 +1,7 @@
-import { AppIcon } from "../../icons/AppIcon";
-import type { IconName } from "../../icons/iconRegistry";
 import { homepageHeroAppPreview } from "../../../data/homepageMarketingContent";
 import { HomeMarketingPreviewShell } from "./HomeMarketingPreviewShell";
 import { HomeMarketingHeroProjectionSections } from "./HomeMarketingHeroProjectionSections";
+import { PreviewMetricIcon } from "./homeMarketingPreviewMetricIcon";
 
 export function HomeMarketingHeroAppPreview({ heroCube = false }: { heroCube?: boolean }) {
   const preview = homepageHeroAppPreview;
@@ -34,9 +33,7 @@ export function HomeMarketingHeroAppPreview({ heroCube = false }: { heroCube?: b
                   <p className="hm-app-preview__metric-label">{metric.label}</p>
                   <p className="hm-app-preview__metric-value">{metric.value}</p>
                 </div>
-                <span className="hm-app-preview__metric-icon" aria-hidden>
-                  <AppIcon name={metric.icon as IconName} size="sm" />
-                </span>
+                <PreviewMetricIcon label={metric.label} icon={metric.icon} />
               </div>
               <p className={`hm-app-preview__metric-change hm-app-preview__metric-change--${metric.changeTone}`}>
                 {metric.change}
