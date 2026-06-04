@@ -143,14 +143,16 @@ select.pg-input:focus,
 
 .pg-search-field__icon {
   position: absolute;
-  left: 14px;
+  left: 16px;
+  z-index: 1;
   color: var(--text-muted);
   pointer-events: none;
   flex-shrink: 0;
 }
 
-.pg-search-field__input {
-  padding-left: 42px;
+.pg-search-field .pg-input.pg-search-field__input {
+  padding-left: 46px;
+  padding-right: 16px;
 }
 
 .pg-search-field:focus-within .pg-search-field__icon {

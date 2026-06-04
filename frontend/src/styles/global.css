@@ -2692,11 +2692,6 @@ textarea {
   max-width: 42rem;
 }
 
-.pg-reports-hub-search {
-  max-width: 28rem;
-  margin: 0 auto;
-}
-
 .pg-reports-hub-filters {
   margin-bottom: clamp(28px, 4vw, 40px);
 }
@@ -3287,9 +3282,9 @@ textarea {
     text-align: left;
   }
 
-  .pg-reports-hub-search {
+  .pg-reports-hub-light-header .pg-marketing-search--light-section {
     max-width: none;
-    width: 100%;
+    margin-inline: 0;
   }
 
   .pg-reports-hub-filters {

@@ -5029,23 +5029,32 @@ body:where(:has(.pg-main-marketing-home), :has(.hm-home), :has(.pg-calc-hub-land
   color: var(--pg-calc-hub-hero-secondary);
 }
 
-.pg-calc-hub-landing-hero__search {
+/* -------------------------------------------------------------------------- */
+/* Marketing site search (parent: calculators hub hero)                          */
+/* -------------------------------------------------------------------------- */
+.pg-marketing-search {
   width: 100%;
-  max-width: none;
 }
 
-.pg-calc-hub-landing-hero__search .pg-search-field__icon {
+.pg-marketing-search .pg-search-field__icon {
   left: 16px;
   z-index: 1;
-  color: var(--pg-calc-hub-hero-muted);
 }
 
-.pg-calc-hub-landing-hero__search .pg-search-field__input {
+.pg-marketing-search .pg-input.pg-search-field__input {
   padding-left: 46px;
   padding-right: 16px;
 }
 
-.pg-calc-hub-landing-hero__search-input {
+.pg-marketing-search--full-width {
+  max-width: none;
+}
+
+.pg-marketing-search--hero-dark .pg-search-field__icon {
+  color: var(--pg-calc-hub-hero-muted);
+}
+
+.pg-marketing-search--hero-dark .pg-marketing-search__input {
   min-height: 48px;
   border-radius: 999px;
   background: color-mix(in srgb, #fff 8%, transparent);
@@ -5053,13 +5062,39 @@ body:where(:has(.pg-main-marketing-home), :has(.hm-home), :has(.pg-calc-hub-land
   color: var(--pg-calc-hub-hero-text);
 }
 
-.pg-calc-hub-landing-hero__search-input::placeholder {
+.pg-marketing-search--hero-dark .pg-marketing-search__input::placeholder {
   color: color-mix(in srgb, var(--pg-calc-hub-hero-muted) 85%, transparent);
 }
 
-.pg-calc-hub-landing-hero__search-input:focus-visible {
+.pg-marketing-search--hero-dark .pg-marketing-search__input:focus-visible {
   border-color: color-mix(in srgb, var(--primary) 55%, transparent);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 18%, transparent);
+}
+
+.pg-marketing-search--light-section {
+  max-width: 28rem;
+  margin-inline: auto;
+}
+
+.pg-marketing-search--light-section .pg-marketing-search__input {
+  min-height: 48px;
+  border-radius: 999px;
+  background: #fff;
+  border-color: var(--home-light-card-border);
+  color: var(--home-light-card-text);
+}
+
+.pg-marketing-search--light-section .pg-marketing-search__input::placeholder {
+  color: var(--home-light-card-muted);
+}
+
+.pg-marketing-search--light-section .pg-marketing-search__input:focus-visible {
+  border-color: color-mix(in srgb, var(--primary) 45%, var(--home-light-card-border));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 14%, transparent);
+}
+
+.pg-marketing-search--light-section:focus-within .pg-search-field__icon {
+  color: var(--primary);
 }
 
 .pg-calc-hub-landing-hero__features {
@@ -5315,7 +5350,7 @@ body:where(:has(.pg-main-marketing-home), :has(.hm-home), :has(.pg-calc-hub-land
     margin-top: 8px;
   }
 
-  .pg-calc-hub-landing-hero__search {
+  .pg-marketing-search--hero-dark {
     max-width: none;
   }
 

@@ -7,7 +7,7 @@ import {
 import { filterReportsHubItems, normalizeReportsHubQuery } from "../../utils/reportsHubFilter";
 import { IconContainerByName } from "../icons";
 import { Container } from "../ui/Container";
-import { SearchInput } from "../ui/Input";
+import { MarketingSearchInput } from "../ui/MarketingSearchInput";
 import { Button } from "../ui/Button";
 import { ReportsDirectoryCard } from "./ReportsDirectoryCard";
 
@@ -43,16 +43,15 @@ export function ReportsDirectorySection({
           <p className="pg-lead pg-reports-hub-light-lead">
             From portfolio summaries to tenant statements — create the right PDF for every property decision.
           </p>
-          <SearchInput
+          <MarketingSearchInput
             id="reports-hub-search"
+            variant="light-section"
             type="search"
             value={searchQuery}
             onChange={(e) => onSearchQueryChange(e.target.value)}
             placeholder="Search report types..."
             aria-label="Search report types"
             autoComplete="off"
-            wrapperClassName="pg-reports-hub-search"
-            className="pg-reports-hub-search__input"
           />
         </header>
 

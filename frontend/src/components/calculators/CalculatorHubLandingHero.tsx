@@ -1,6 +1,6 @@
 import { Calculator } from "lucide-react";
 import { IconContainerByName } from "../icons";
-import { SearchInput } from "../ui/Input";
+import { MarketingSearchInput } from "../ui/MarketingSearchInput";
 import { Container } from "../ui/Container";
 import { CalculatorHubLandingHeroBackdrop } from "./CalculatorHubLandingHeroBackdrop";
 import { CalculatorHubLandingHeroMockup } from "./CalculatorHubLandingHeroMockup";
@@ -53,16 +53,16 @@ export function CalculatorHubLandingHero({
             <p className="pg-calc-hub-landing-hero__subtitle">
               Powerful, easy-to-use calculators built for South African property investors.
             </p>
-            <SearchInput
+            <MarketingSearchInput
               id={searchInputId}
+              variant="hero-dark"
+              fullWidth
               type="search"
               value={searchQuery}
               onChange={(e) => onSearchQueryChange(e.target.value)}
               placeholder="Search calculators..."
               aria-label="Search calculators"
               autoComplete="off"
-              wrapperClassName="pg-calc-hub-landing-hero__search"
-              className="pg-calc-hub-landing-hero__search-input"
             />
             <ul className="pg-calc-hub-landing-hero__features" aria-label="Calculator highlights">
               {FEATURES.map((feature) => (
