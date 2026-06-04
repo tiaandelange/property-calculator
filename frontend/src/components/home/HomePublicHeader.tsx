@@ -51,6 +51,7 @@ export function HomePublicHeader() {
       ? "calculators-hub"
       : null;
   const { surface: headerSurface, revealed: headerRevealed } = useHomeHeaderSurface(marketingHeroContext);
+  const headerRevealedOnPage = marketingHeroContext ? headerRevealed : true;
   const [scrolled, setScrolled] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [mobileCalcOpen, setMobileCalcOpen] = useState(false);
@@ -243,7 +244,7 @@ export function HomePublicHeader() {
       <header
         className="pg-home-site-header"
         data-surface={marketingHeroContext ? headerSurface : "light"}
-        data-revealed={drawerOpen || calculatorsMegaOpen || headerRevealed ? "true" : "false"}
+        data-revealed={drawerOpen || calculatorsMegaOpen || headerRevealedOnPage ? "true" : "false"}
         data-scrolled={scrolled ? "true" : "false"}
         data-drawer-open={drawerOpen ? "true" : "false"}
         data-calculators-hero-shell={calculatorsHeroShell ? "true" : "false"}

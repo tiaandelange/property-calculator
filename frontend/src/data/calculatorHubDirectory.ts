@@ -3,6 +3,7 @@ import type { IconName } from "../components/icons/iconRegistry";
 
 export type CalculatorHubCategoryId =
   | "all"
+  | "popular"
   | "purchase-financing"
   | "income-operations"
   | "investment-analysis"
@@ -25,6 +26,7 @@ export const CALCULATOR_HUB_CATEGORIES: Array<{
   icon: IconName;
 }> = [
   { id: "all", label: "All", icon: "calculators" },
+  { id: "popular", label: "Popular", icon: "star" },
   { id: "purchase-financing", label: "Purchase & Financing", icon: "property" },
   { id: "income-operations", label: "Income & Operations", icon: "wallet" },
   { id: "investment-analysis", label: "Investment Analysis", icon: "reports" },
@@ -148,4 +150,34 @@ export const calculatorHubDirectoryGroups: CalculatorHubDirectoryGroup[] = [
 
 export function resolveCalculatorHubTool(slug: string): CalculatorDef | undefined {
   return bySlug.get(slug);
+}
+
+/** Slugs shown under the Popular category filter (display order). */
+export const CALCULATOR_HUB_POPULAR_SLUGS = [
+  "monthly-payment",
+  "transfer-bond-costs",
+  "cash-flow",
+  "cash-on-cash-return",
+  "buy-vs-rent"
+] as const;
+
+function findDirectoryItemBySlug(slug: string): CalculatorHubDirectoryItem | undefined {
+  for (const group of calculatorHubDirectoryGroups) {
+    const item = group.items.find((entry) => entry.kind === "tool" && entry.slug === slug);
+    if (item) return item;
+  }
+  return undefined;
+}
+
+/** Single “Popular” group for the hub directory when that filter is active. */
+export function calculatorHubPopularGroup(): CalculatorHubDirectoryGroup {
+  const items = CALCULATOR_HUB_POPULAR_SLUGS.flatMap((slug) => {
+    const item = findDirectoryItemBySlug(slug);
+    return item ? [item] : [];
+  });
+  return {
+    categoryId: "purchase-financing",
+    title: "Popular",
+    items
+  };
 }

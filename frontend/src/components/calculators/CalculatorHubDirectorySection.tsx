@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import {
   CALCULATOR_HUB_CATEGORIES,
   calculatorHubDirectoryGroups,
+  calculatorHubPopularGroup,
   type CalculatorHubCategoryId
 } from "../../data/calculatorHubDirectory";
 import {
@@ -28,10 +29,13 @@ export function CalculatorHubDirectorySection({
   onResetFilters
 }: CalculatorHubDirectorySectionProps) {
   const filteredGroups = useMemo(() => {
-    const byCategory = calculatorHubDirectoryGroups.filter((group) =>
-      calculatorHubGroupMatchesCategory(group.categoryId, activeCategory)
-    );
-    return filterCalculatorDirectoryGroups(byCategory, searchQuery);
+    const baseGroups =
+      activeCategory === "popular"
+        ? [calculatorHubPopularGroup()]
+        : calculatorHubDirectoryGroups.filter((group) =>
+            calculatorHubGroupMatchesCategory(group.categoryId, activeCategory)
+          );
+    return filterCalculatorDirectoryGroups(baseGroups, searchQuery);
   }, [searchQuery, activeCategory]);
 
   const isEmpty = filteredGroups.length === 0;

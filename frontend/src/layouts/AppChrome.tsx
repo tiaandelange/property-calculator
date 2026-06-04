@@ -37,9 +37,7 @@ export function AppChrome() {
 
   const useWorkspaceChrome = initialized && !initializing && Boolean(session) && isWorkspacePath(location.pathname);
   const isMarketingHome = location.pathname === "/";
-  const isMarketingCalculatorsShell =
-    location.pathname === "/calculators" ||
-    (/^\/calculators\/.+/.test(location.pathname) && !location.pathname.startsWith("/calculators/report"));
+  const isMarketingCalculatorsHub = location.pathname === "/calculators";
   const isAuthFocusShell =
     location.pathname === "/login" ||
     location.pathname === "/signup" ||
@@ -146,7 +144,7 @@ export function AppChrome() {
         className={
           isMarketingHome
             ? "pg-main pg-main-marketing pg-main-marketing-home"
-            : isMarketingCalculatorsShell
+            : isMarketingCalculatorsHub
               ? "pg-main pg-main-marketing pg-main-marketing-calculators-hub"
               : "pg-main pg-main-marketing pg-main-marketing-site"
         }

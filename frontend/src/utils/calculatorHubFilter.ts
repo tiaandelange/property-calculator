@@ -55,6 +55,6 @@ export function calculatorHubGroupMatchesCategory(
   categoryId: string,
   activeCategory: CalculatorHubCategoryId | string
 ): boolean {
-  if (!activeCategory || activeCategory === "all") return true;
+  if (!activeCategory || activeCategory === "all" || activeCategory === "popular") return true;
   return categoryId === activeCategory;
 }

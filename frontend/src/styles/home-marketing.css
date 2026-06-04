@@ -5031,11 +5031,18 @@ body:where(:has(.pg-main-marketing-home), :has(.hm-home), :has(.pg-calc-hub-land
 
 .pg-calc-hub-landing-hero__search {
   width: 100%;
-  max-width: 420px;
+  max-width: none;
 }
 
 .pg-calc-hub-landing-hero__search .pg-search-field__icon {
+  left: 16px;
+  z-index: 1;
   color: var(--pg-calc-hub-hero-muted);
+}
+
+.pg-calc-hub-landing-hero__search .pg-search-field__input {
+  padding-left: 46px;
+  padding-right: 16px;
 }
 
 .pg-calc-hub-landing-hero__search-input {

@@ -76,18 +76,23 @@ export function useHomeHeaderSurface(heroContext: MarketingHeroContext): HomeHea
       const nextSurface = heroContext ? resolveMarketingHeroSurface(heroContext) : "light";
       setSurface(nextSurface);
 
-      let nextRevealed = revealedRef.current;
-      if (scrollY <= TOP_REVEAL_SCROLL_Y) {
-        nextRevealed = true;
-      } else if (delta > threshold) {
-        nextRevealed = false;
-      } else if (delta < -threshold) {
-        nextRevealed = true;
-      }
+      if (heroContext) {
+        let nextRevealed = revealedRef.current;
+        if (scrollY <= TOP_REVEAL_SCROLL_Y) {
+          nextRevealed = true;
+        } else if (delta > threshold) {
+          nextRevealed = false;
+        } else if (delta < -threshold) {
+          nextRevealed = true;
+        }
 
-      if (nextRevealed !== revealedRef.current) {
-        revealedRef.current = nextRevealed;
-        setRevealed(nextRevealed);
+        if (nextRevealed !== revealedRef.current) {
+          revealedRef.current = nextRevealed;
+          setRevealed(nextRevealed);
+        }
+      } else if (!revealedRef.current) {
+        revealedRef.current = true;
+        setRevealed(true);
       }
 
       lastScrollY.current = scrollY;
