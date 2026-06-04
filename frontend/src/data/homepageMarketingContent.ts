@@ -72,21 +72,22 @@ export const homepageMarketingStatsBands = [
     stats: [
       {
         id: "portfolio-value",
-        label: "Illustrative portfolio value",
+        label: "Portfolio Value",
         value: 2_418_342,
         format: "currency" as const,
         prefix: "R"
       },
       {
-        id: "properties",
-        label: "Properties in one workspace",
-        value: 12,
-        format: "number" as const
+        id: "total-cash-flow",
+        label: "Total Cash Flow",
+        value: 4_328,
+        format: "currency" as const,
+        prefix: "R"
       },
       {
-        id: "occupancy",
-        label: "Occupancy on active leases",
-        value: 94,
+        id: "cash-on-cash-roi",
+        label: "Cash on Cash ROI",
+        value: 52.3,
         format: "percent" as const
       }
     ]

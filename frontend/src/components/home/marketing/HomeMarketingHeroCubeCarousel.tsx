@@ -9,7 +9,7 @@ import {
 import "swiper/css";
 import "swiper/css/effect-cube";
 
-const AUTOPLAY_MS = 2600;
+const AUTOPLAY_MS = 4000;
 
 const HERO_DASHBOARD_SLIDES = [
   {

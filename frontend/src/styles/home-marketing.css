@@ -167,7 +167,7 @@ body:has(.pg-main-marketing-home) .pg-home-site-header-inner.pg-container {
   z-index: 1;
   padding: clamp(20px, 3vw, 28px);
   border-radius: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: none;
   background: rgba(15, 15, 20, 0.35);
   box-shadow:
     0 24px 48px rgba(0, 0, 0, 0.28),
@@ -272,13 +272,13 @@ body:has(.pg-main-marketing-home) .pg-home-site-header-inner.pg-container {
   align-items: center;
   min-width: 0;
   overflow: visible;
-  perspective: 1500px;
+  perspective: 800px;
   perspective-origin: 52% 42%;
 }
 
 .hm-hero-visual__float {
   width: min(100%, 480px);
-  transform: perspective(1500px) rotateX(8deg) rotateY(-3deg) translateY(0);
+  transform: perspective(800px) rotateX(8deg) rotateY(-3deg) translateY(0);
   transform-style: preserve-3d;
   transform-origin: 50% 80%;
   border-radius: 22px;
@@ -292,10 +292,10 @@ body:has(.pg-main-marketing-home) .pg-home-site-header-inner.pg-container {
 @keyframes hm-hero-dashboard-float {
   0%,
   100% {
-    transform: perspective(1500px) rotateX(8deg) rotateY(-3deg) translateY(0);
+    transform: perspective(800px) rotateX(8deg) rotateY(-3deg) translateY(0);
   }
   50% {
-    transform: perspective(1500px) rotateX(8deg) rotateY(-3deg) translateY(-12px);
+    transform: perspective(800px) rotateX(8deg) rotateY(-3deg) translateY(-12px);
   }
 }
 
@@ -1946,6 +1946,11 @@ body:has(.pg-main-marketing-home) .pg-home-site-header-inner.pg-container {
     radial-gradient(520px 200px at 18% 50%, color-mix(in srgb, var(--primary) 20%, transparent), transparent 70%),
     linear-gradient(180deg, var(--hm-stats-band-bg) 0%, var(--hm-stats-band-surface) 100%);
   border-block: 1px solid color-mix(in srgb, var(--hm-stats-band-text) 10%, transparent);
+}
+
+.hm-hero + .hm-stats-band--dark {
+  border-top: none;
+  padding-top: clamp(8px, 1.5vw, 14px);
 }
 
 .hm-stats-band--light {
@@ -4445,19 +4450,23 @@ body:has(.pg-main-marketing-home) .pg-home-site-header-inner.pg-container {
     --hm-hero-cube-height: clamp(384px, 94vw, 480px);
   }
 
+  .hm-hero-visual {
+    perspective: 700px;
+  }
+
   .hm-hero-visual__float {
     width: min(100%, 384px);
-    transform: perspective(1200px) rotateX(5deg) rotateY(0deg) translateY(0);
+    transform: perspective(700px) rotateX(5deg) rotateY(0deg) translateY(0);
     animation-name: hm-hero-dashboard-float-mobile;
   }
 
   @keyframes hm-hero-dashboard-float-mobile {
     0%,
     100% {
-      transform: perspective(1200px) rotateX(5deg) rotateY(0deg) translateY(0);
+      transform: perspective(700px) rotateX(5deg) rotateY(0deg) translateY(0);
     }
     50% {
-      transform: perspective(1200px) rotateX(5deg) rotateY(0deg) translateY(-8px);
+      transform: perspective(700px) rotateX(5deg) rotateY(0deg) translateY(-8px);
     }
   }
 
