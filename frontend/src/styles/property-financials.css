@@ -83,11 +83,23 @@
   min-height: 88px;
 }
 
+.pg-pfin-metric-card__label-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.pg-pfin-metric-card__label-row .pg-field-info {
+  flex-shrink: 0;
+}
+
 .pg-pfin-metric-card__label {
   font-size: var(--type-metric-label);
   font-weight: var(--weight-medium);
   line-height: var(--leading-normal);
   color: var(--text-secondary);
+  min-width: 0;
 }
 
 .pg-pfin-metric-card__value {

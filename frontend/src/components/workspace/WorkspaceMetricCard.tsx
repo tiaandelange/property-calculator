@@ -1,5 +1,6 @@
 import type { CSSProperties, ReactNode } from "react";
 import { Link } from "react-router-dom";
+import { FieldInfoTip } from "../ui/FieldInfoTip";
 import { IconContainer, type IconContainerAccent, type IconName } from "../icons";
 
 export function WorkspaceMetricCard({
@@ -11,7 +12,8 @@ export function WorkspaceMetricCard({
   to,
   compact,
   valueStyle,
-  className
+  className,
+  info
 }: {
   label: string;
   value: ReactNode;
@@ -22,13 +24,17 @@ export function WorkspaceMetricCard({
   compact?: boolean;
   valueStyle?: CSSProperties;
   className?: string;
+  info?: string;
 }) {
   const cardClass = ["pg-pfin-metric-card", className].filter(Boolean).join(" ");
   const body = (
     <>
       <IconContainer icon={icon} accent={accent} size={compact ? "md" : "lg"} />
       <div className="pg-pfin-metric-card__copy">
-        <div className="pg-pfin-metric-card__label">{label}</div>
+        <div className="pg-pfin-metric-card__label-row">
+          <div className="pg-pfin-metric-card__label">{label}</div>
+          {info ? <FieldInfoTip label={label} text={info} /> : null}
+        </div>
         <div className="pg-pfin-metric-card__value" style={valueStyle}>
           {value}
         </div>

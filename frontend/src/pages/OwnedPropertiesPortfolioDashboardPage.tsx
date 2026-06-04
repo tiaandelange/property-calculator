@@ -20,6 +20,10 @@ import {
   useWorkspaceId
 } from "../features/queries";
 import { WorkspaceMetricCard, WorkspaceMetricsRow } from "../components/workspace/WorkspaceMetricCard";
+import {
+  PORTFOLIO_DASHBOARD_METRIC_INFO,
+  parsePortfolioDashboardKpis
+} from "../features/portfolio-dashboard/portfolioDashboardKpis";
 import { PortfolioOverviewChart } from "../features/portfolio-dashboard/PortfolioOverviewChart";
 import { RecentActivityPanel } from "../features/portfolio-dashboard/RecentActivityPanel";
 import {
@@ -112,30 +116,16 @@ export function OwnedPropertiesPortfolioDashboardPage() {
   const k = (data?.kpis ?? {}) as Record<string, unknown>;
   const hasProperties = Number((k.totalProperties as { value?: number })?.value ?? data?.totalProperties ?? 0) > 0;
 
-  const monthlyIncomeFromLeases = Number(
-    data?.contractualMonthlyRentFromLeases ??
-      (k.monthlyNOI as { contractualMonthlyRentFromLeases?: number })?.contractualMonthlyRentFromLeases ??
-      0
+  const dashboardKpis = useMemo(
+    () => parsePortfolioDashboardKpis(data as Record<string, unknown> | null | undefined),
+    [data]
   );
-  const monthlyExpensesAllIn = Number(
-    (k.monthlyExpenses as { value?: number })?.value ??
-      Number(data?.totalMonthlyOperatingExpenses ?? 0) + Number(data?.totalMonthlyDebtService ?? 0)
-  );
-  const monthlyLeaseBasisCashFlow = monthlyIncomeFromLeases - monthlyExpensesAllIn;
-  const investedRaw = (k.trueCashOnCashROI as { totalCashInvested?: number })?.totalCashInvested;
-  const totalCashInvestedForCoc =
-    investedRaw != null && Number(investedRaw) > 0 ? Number(investedRaw) : null;
-  const cashOnCashAnnualPercent =
-    totalCashInvestedForCoc != null ? ((monthlyLeaseBasisCashFlow * 12) / totalCashInvestedForCoc) * 100 : null;
 
   const portfolioEquity = Number(data?.portfolioEquity ?? 0);
   const totalPropertyCount = Number((k.totalProperties as { value?: number })?.value ?? data?.totalProperties ?? 0);
   const occupancyRatePct = Number(data?.occupancyRate ?? 0) * 100;
   const occupiedCount = Number(data?.occupiedProperties ?? 0);
   const tenantRequired = Number(data?.tenantRequiredProperties ?? 0);
-  const rentOverdue = Number((data?.rentDue as { overdue?: number })?.overdue ?? 0);
-  const rentDueSoon = Number((data?.rentDue as { dueSoon?: number })?.dueSoon ?? 0);
-  const rentAttention = rentOverdue + rentDueSoon;
   const userName = displayUserName(session?.user?.email, profile?.full_name ?? null);
 
   const charts = (data?.charts ?? {}) as Record<string, unknown>;
@@ -208,6 +198,7 @@ export function OwnedPropertiesPortfolioDashboardPage() {
           label="Total Portfolio Value (Net Worth)"
           value={loading && !data ? "…" : fmtZar(portfolioEquity)}
           helper={equityChange.text}
+          info={PORTFOLIO_DASHBOARD_METRIC_INFO.netWorth}
           icon="portfolio"
           accent="primary"
           to="/owned-properties/metrics/equity"
@@ -215,8 +206,9 @@ export function OwnedPropertiesPortfolioDashboardPage() {
         <WorkspaceMetricCard
           className="pg-pdash-metric--income"
           label="Monthly Income"
-          value={loading && !data ? "…" : fmtZar(monthlyIncomeFromLeases)}
+          value={loading && !data ? "…" : fmtZar(dashboardKpis.monthlyIncome)}
           helper={incomeChange.text}
+          info={PORTFOLIO_DASHBOARD_METRIC_INFO.monthlyIncome}
           icon="rent"
           accent="success"
           to="/owned-properties/metrics/cash-flow"
@@ -226,6 +218,7 @@ export function OwnedPropertiesPortfolioDashboardPage() {
           label="Total Properties"
           value={loading && !data ? "…" : totalPropertyCount.toLocaleString()}
           helper="In your portfolio"
+          info={PORTFOLIO_DASHBOARD_METRIC_INFO.totalProperties}
           icon="properties"
           accent="info"
           to="/owned-properties/my-properties"
@@ -238,11 +231,12 @@ export function OwnedPropertiesPortfolioDashboardPage() {
               ? "…"
               : !showAdvancedReturns
                 ? "—"
-                : cashOnCashAnnualPercent == null
+                : dashboardKpis.cashOnCashAnnualPercent == null
                   ? "—"
-                  : `${cashOnCashAnnualPercent.toFixed(1)}%`
+                  : `${dashboardKpis.cashOnCashAnnualPercent.toFixed(1)}%`
           }
           helper={!showAdvancedReturns ? "Unlock with Investor plan" : cashFlowChange.text}
+          info={PORTFOLIO_DASHBOARD_METRIC_INFO.cashOnCashRoi}
           icon="percent"
           accent="warning"
           to="/owned-properties/metrics/returns"
@@ -252,6 +246,7 @@ export function OwnedPropertiesPortfolioDashboardPage() {
           label="Tenants"
           value={propertiesLoading ? "…" : tenantCount.toLocaleString()}
           helper="Active tenants"
+          info={PORTFOLIO_DASHBOARD_METRIC_INFO.tenants}
           icon="tenants"
           accent="primary"
           to="/tenants"
@@ -271,39 +266,47 @@ export function OwnedPropertiesPortfolioDashboardPage() {
             helper={
               tenantRequired > 0 ? `${occupiedCount} of ${tenantRequired} occupied` : "No rental units in filter"
             }
+            info={PORTFOLIO_DASHBOARD_METRIC_INFO.occupancy}
             icon="activity"
             accent="success"
             to="/owned-properties/metrics/leases"
           />
           <WorkspaceMetricCard
             label="Monthly Cash Flow"
-            value={loading && !data ? "…" : fmtZar(monthlyLeaseBasisCashFlow)}
+            value={loading && !data ? "…" : fmtZar(dashboardKpis.monthlyCashFlow)}
             helper={cashFlowChange.text}
+            info={PORTFOLIO_DASHBOARD_METRIC_INFO.monthlyCashFlow}
             icon="income"
-            accent={monthlyLeaseBasisCashFlow >= 0 ? "success" : "danger"}
+            accent={dashboardKpis.monthlyCashFlow >= 0 ? "success" : "danger"}
             to="/owned-properties/metrics/cash-flow"
           />
           <WorkspaceMetricCard
             label="Monthly Expenses"
-            value={loading && !data ? "…" : fmtZar(monthlyExpensesAllIn)}
-            helper="Operating + bond payments"
+            value={loading && !data ? "…" : fmtZar(dashboardKpis.monthlyExpenses)}
+            helper="Recurring expenses + bond payments"
+            info={PORTFOLIO_DASHBOARD_METRIC_INFO.monthlyExpenses}
             icon="expense"
             accent="info"
             to="/owned-properties/metrics/expenses"
           />
           <WorkspaceMetricCard
-            label="Rent Attention"
-            value={loading && !data ? "…" : rentAttention.toLocaleString()}
-            helper={
-              rentOverdue > 0
-                ? `${rentOverdue} overdue`
-                : rentDueSoon > 0
-                  ? `${rentDueSoon} due soon`
-                  : "All clear"
+            label="Cap Rate"
+            value={
+              loading && !data
+                ? "…"
+                : dashboardKpis.capRatePercent == null
+                  ? "—"
+                  : `${dashboardKpis.capRatePercent.toFixed(2)}%`
             }
-            icon="rent"
-            accent={rentOverdue > 0 ? "danger" : "warning"}
-            to="/financials"
+            helper={
+              dashboardKpis.totalMarketValue > 0
+                ? `NOI ${fmtZar(dashboardKpis.monthlyNoi)} / ${fmtZar(dashboardKpis.totalMarketValue)} value`
+                : "Add current market values"
+            }
+            info={PORTFOLIO_DASHBOARD_METRIC_INFO.capRate}
+            icon="cap-rate"
+            accent="primary"
+            to="/owned-properties/metrics/returns"
           />
         </WorkspaceMetricsRow>
       ) : null}
