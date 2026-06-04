@@ -60,6 +60,11 @@
   width: 100%;
 }
 
+.pg-btn:hover,
+.pg-btn:focus-visible {
+  text-decoration: none;
+}
+
 .pg-btn:focus-visible {
   outline: 2px solid var(--primary-border);
   outline-offset: 2px;

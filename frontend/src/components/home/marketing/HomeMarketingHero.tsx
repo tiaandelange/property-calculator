@@ -8,8 +8,8 @@ import { HomeMarketingHeroCubeCarousel } from "./HomeMarketingHeroCubeCarousel";
 export function HomeMarketingHero() {
   return (
     <header className="hm-hero" aria-labelledby="hm-hero-heading">
-      <HomeMarketingHeroBackdrop />
       <div className="hm-hero-glow" aria-hidden />
+      <HomeMarketingHeroBackdrop />
       <Container className="pg-container--marketing-wide hm-hero__container">
         <div className="hm-hero-grid">
           <div className="hm-hero-copy">

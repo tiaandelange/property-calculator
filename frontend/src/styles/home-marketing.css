@@ -61,14 +61,14 @@ body:has(.pg-main-marketing-home) .pg-home-site-header-inner.pg-container {
   isolation: isolate;
 }
 
-/* Animated dots / % behind hero copy and cube */
+/* Animated dots / % behind hero copy and cube (above glow layer) */
 .hm-hero-backdrop {
   position: absolute;
   top: var(--home-site-header-h, 72px);
   left: 0;
   right: 0;
   bottom: 0;
-  z-index: 0;
+  z-index: 1;
   pointer-events: none;
   overflow: hidden;
 }
@@ -76,13 +76,16 @@ body:has(.pg-main-marketing-home) .pg-home-site-header-inner.pg-container {
 .hm-hero-backdrop__particle {
   position: absolute;
   animation: hm-hero-backdrop-float linear infinite;
-  opacity: 0;
+  animation-fill-mode: both;
+  will-change: transform, opacity;
 }
 
 .hm-hero-backdrop__particle--dot {
   border-radius: 50%;
-  background: color-mix(in srgb, var(--primary) 55%, white);
-  box-shadow: 0 0 12px color-mix(in srgb, var(--primary) 35%, transparent);
+  background: color-mix(in srgb, var(--primary) 72%, white);
+  box-shadow:
+    0 0 14px color-mix(in srgb, var(--primary) 55%, transparent),
+    0 0 4px color-mix(in srgb, white 40%, transparent);
 }
 
 .hm-hero-backdrop__particle--pct {
@@ -93,36 +96,38 @@ body:has(.pg-main-marketing-home) .pg-home-site-header-inner.pg-container {
   height: auto !important;
   font-weight: 800;
   line-height: 1;
-  color: color-mix(in srgb, var(--primary) 70%, white);
-  text-shadow: 0 0 18px color-mix(in srgb, var(--primary) 40%, transparent);
+  color: color-mix(in srgb, var(--primary) 55%, white);
+  text-shadow:
+    0 0 20px color-mix(in srgb, var(--primary) 65%, transparent),
+    0 0 6px color-mix(in srgb, white 35%, transparent);
   user-select: none;
 }
 
 @keyframes hm-hero-backdrop-float {
   0% {
-    opacity: 0;
-    transform: translate(0, 8px) scale(0.85);
+    opacity: 0.12;
+    transform: translate(0, 6px) scale(0.9);
   }
-  12% {
-    opacity: 0.55;
+  15% {
+    opacity: 0.72;
   }
   50% {
-    opacity: 0.35;
-    transform: translate(10px, -22px) scale(1);
-  }
-  88% {
     opacity: 0.5;
+    transform: translate(12px, -28px) scale(1.05);
+  }
+  85% {
+    opacity: 0.65;
   }
   100% {
-    opacity: 0;
-    transform: translate(-6px, -40px) scale(0.9);
+    opacity: 0.15;
+    transform: translate(-8px, -48px) scale(0.95);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .hm-hero-backdrop__particle {
     animation: none;
-    opacity: 0.2;
+    opacity: 0.45;
   }
 }
 
@@ -364,57 +369,50 @@ body:has(.pg-main-marketing-home) .pg-home-site-header-inner.pg-container {
   margin-top: 4px;
 }
 
-.hm-hero-cube__bond-chart-bars {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 6px;
-  height: 120px;
-  padding: 4px 2px 0;
-}
-
-.hm-hero-cube__bond-chart-group {
-  flex: 1;
-  min-width: 0;
+.hm-hero-cube__bond-chart-plot {
   display: flex;
   flex-direction: column;
-  align-items: center;
   gap: 6px;
+  min-width: 0;
 }
 
-.hm-hero-cube__bond-chart-pair {
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  gap: 4px;
+.hm-hero-cube__bond-chart-svg {
+  display: block;
   width: 100%;
-  height: 100px;
+  height: 96px;
 }
 
-.hm-hero-cube__bond-chart-bar {
-  flex: 1;
-  max-width: 18px;
-  min-height: 10px;
-  border-radius: 4px 4px 2px 2px;
+.hm-hero-cube__bond-chart-grid {
+  stroke: color-mix(in srgb, var(--border-soft) 85%, transparent);
+  stroke-width: 1;
+  stroke-dasharray: 3 4;
 }
 
-.hm-hero-cube__bond-chart-bar--bond {
-  background: linear-gradient(
-    180deg,
-    var(--warning) 0%,
-    color-mix(in srgb, var(--warning) 45%, #ffffff) 100%
-  );
+.hm-hero-cube__bond-chart-line {
+  fill: none;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
-.hm-hero-cube__bond-chart-bar--income {
-  background: linear-gradient(
-    180deg,
-    var(--primary) 0%,
-    color-mix(in srgb, var(--primary) 50%, #ffffff) 100%
-  );
+.hm-hero-cube__bond-chart-line--bond {
+  stroke: var(--warning);
+}
+
+.hm-hero-cube__bond-chart-line--income {
+  stroke: var(--primary);
+}
+
+.hm-hero-cube__bond-chart-months {
+  display: flex;
+  justify-content: space-between;
+  gap: 4px;
+  padding: 0 6px;
 }
 
 .hm-hero-cube__bond-chart-month {
+  flex: 1;
+  text-align: center;
   font-size: 9px;
   font-weight: 700;
   color: var(--text-muted);
@@ -439,9 +437,9 @@ body:has(.pg-main-marketing-home) .pg-home-site-header-inner.pg-container {
 
 .hm-hero-cube__bond-chart-legend-item::before {
   content: "";
-  width: 8px;
-  height: 8px;
-  border-radius: 2px;
+  width: 14px;
+  height: 2px;
+  border-radius: 999px;
   flex-shrink: 0;
 }
 
