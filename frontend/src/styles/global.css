@@ -4957,6 +4957,9 @@ html[data-theme="light"] .pg-color-scheme-switch[data-on="false"] .pg-color-sche
   border-bottom: 1px solid var(--shell-sticky-header-border);
   background: var(--shell-sticky-header-bg);
   backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  will-change: transform, opacity;
+  transform: translate3d(0, 0, 0);
   transition:
     transform 0.3s ease-in,
     opacity 0.26s ease-in,
@@ -4966,21 +4969,31 @@ html[data-theme="light"] .pg-color-scheme-switch[data-on="false"] .pg-color-sche
 }
 
 .pg-app--marketing-public .pg-home-site-header[data-revealed="true"] {
-  transform: translateY(0);
+  transform: translate3d(0, 0, 0);
   opacity: 1;
+  visibility: visible;
   pointer-events: auto;
   transition:
     transform 0.55s cubic-bezier(0.22, 1, 0.36, 1),
     opacity 0.48s ease,
+    visibility 0s linear 0s,
     background 0.28s ease,
     border-color 0.28s ease,
     backdrop-filter 0.28s ease;
 }
 
 .pg-app--marketing-public .pg-home-site-header[data-revealed="false"] {
-  transform: translateY(-100%);
+  transform: translate3d(0, calc(-1 * var(--home-site-header-h, 72px) - 8px), 0);
   opacity: 0;
+  visibility: hidden;
   pointer-events: none;
+  transition:
+    transform 0.32s ease-in,
+    opacity 0.28s ease-in,
+    visibility 0s linear 0.32s,
+    background 0.28s ease,
+    border-color 0.28s ease,
+    backdrop-filter 0.28s ease;
 }
 
 .pg-home-site-header[data-scrolled="true"] {

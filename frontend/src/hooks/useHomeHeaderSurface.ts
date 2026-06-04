@@ -4,15 +4,23 @@ export type HomeHeaderSurface = "hero" | "light";
 
 const HERO_BOTTOM_BUFFER = 28;
 const LIGHT_TOP_OFFSET = 48;
-const SCROLL_DELTA_THRESHOLD = 6;
 const TOP_REVEAL_SCROLL_Y = 20;
+
+function getScrollTop(): number {
+  return window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
+}
+
+function getScrollDeltaThreshold(): number {
+  if (typeof window.matchMedia !== "function") return 6;
+  return window.matchMedia("(pointer: coarse)").matches ? 2 : 6;
+}
 
 function resolveHomepageSurface(): HomeHeaderSurface {
   const hero = document.querySelector<HTMLElement>(".hm-hero");
   const lightSection = document.querySelector<HTMLElement>(".hm-trust");
 
   if (!hero || !lightSection) {
-    return window.scrollY > 80 ? "light" : "hero";
+    return getScrollTop() > 80 ? "light" : "hero";
   }
 
   const headerH =
@@ -44,16 +52,18 @@ export function useHomeHeaderSurface(isMarketingHome: boolean): HomeHeaderScroll
   const [revealed, setRevealed] = useState(true);
   const lastScrollY = useRef(0);
   const revealedRef = useRef(true);
+  const rafId = useRef<number | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    lastScrollY.current = window.scrollY;
+    lastScrollY.current = getScrollTop();
     revealedRef.current = true;
 
     const update = () => {
-      const scrollY = window.scrollY;
+      const scrollY = getScrollTop();
       const delta = scrollY - lastScrollY.current;
+      const threshold = getScrollDeltaThreshold();
 
       const nextSurface = isMarketingHome ? resolveHomepageSurface() : "light";
       setSurface(nextSurface);
@@ -61,9 +71,9 @@ export function useHomeHeaderSurface(isMarketingHome: boolean): HomeHeaderScroll
       let nextRevealed = revealedRef.current;
       if (scrollY <= TOP_REVEAL_SCROLL_Y) {
         nextRevealed = true;
-      } else if (delta > SCROLL_DELTA_THRESHOLD) {
+      } else if (delta > threshold) {
         nextRevealed = false;
-      } else if (delta < -SCROLL_DELTA_THRESHOLD) {
+      } else if (delta < -threshold) {
         nextRevealed = true;
       }
 
@@ -75,12 +85,34 @@ export function useHomeHeaderSurface(isMarketingHome: boolean): HomeHeaderScroll
       lastScrollY.current = scrollY;
     };
 
+    const scheduleUpdate = () => {
+      if (rafId.current != null) return;
+      rafId.current = window.requestAnimationFrame(() => {
+        rafId.current = null;
+        update();
+      });
+    };
+
     update();
-    window.addEventListener("scroll", update, { passive: true });
-    window.addEventListener("resize", update);
+    window.addEventListener("scroll", scheduleUpdate, { passive: true });
+    document.addEventListener("scroll", scheduleUpdate, { passive: true, capture: true });
+    window.addEventListener("resize", scheduleUpdate, { passive: true });
+    window.addEventListener("touchmove", scheduleUpdate, { passive: true });
+    window.addEventListener("touchend", scheduleUpdate, { passive: true });
+    window.visualViewport?.addEventListener("scroll", scheduleUpdate);
+    window.visualViewport?.addEventListener("resize", scheduleUpdate);
+
     return () => {
-      window.removeEventListener("scroll", update);
-      window.removeEventListener("resize", update);
+      if (rafId.current != null) {
+        window.cancelAnimationFrame(rafId.current);
+      }
+      window.removeEventListener("scroll", scheduleUpdate);
+      document.removeEventListener("scroll", scheduleUpdate, true);
+      window.removeEventListener("resize", scheduleUpdate);
+      window.removeEventListener("touchmove", scheduleUpdate);
+      window.removeEventListener("touchend", scheduleUpdate);
+      window.visualViewport?.removeEventListener("scroll", scheduleUpdate);
+      window.visualViewport?.removeEventListener("resize", scheduleUpdate);
     };
   }, [isMarketingHome]);
 
