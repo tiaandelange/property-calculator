@@ -28,12 +28,14 @@ type NavDef =
   | { key: "calculators"; label: string; kind: "calculators-mega" };
 
 const PUBLIC_REPORTS_HREF = "/reports";
+const PUBLIC_CONTACT_HREF = "/contact";
 
 const NAV: NavDef[] = [
   { key: "features", label: "Features", kind: "hash", hash: "features" },
   { key: "reports", label: "Reports", kind: "route", to: PUBLIC_REPORTS_HREF },
   { key: "calculators", label: "Calculators", kind: "calculators-mega" },
   { key: "pricing", label: "Pricing", kind: "route", to: MARKETING_PRICING_HREF },
+  { key: "contact", label: "Contact", kind: "route", to: PUBLIC_CONTACT_HREF },
   { key: "faq", label: "FAQ", kind: "hash", hash: "faq" }
 ];
 
@@ -387,7 +389,8 @@ export function HomePublicHeader() {
             {NAV.map((item) => {
               if (item.kind === "calculators-mega") {
                 return (
-                  <div key={item.key} className="pg-home-site-drawer-calculators">
+                  <div key={item.key} className="pg-home-site-drawer-row pg-home-site-drawer-row--calculators">
+                    <div className="pg-home-site-drawer-calculators">
                     <div className="pg-home-site-drawer-calc-head">
                       <button
                         type="button"
@@ -421,6 +424,7 @@ export function HomePublicHeader() {
                       panelId={mobileCalculatorsPanelId}
                       onNavigate={closeDrawer}
                     />
+                    </div>
                   </div>
                 );
               }
