@@ -2,7 +2,7 @@ import { IconContainer } from "../../icons/IconContainer";
 import {
   getDashboardStatIconConfig,
   inferDashboardStatIconPreset
-} from "../../icons/dashboardStatIcons";
+} from "../../../icons/dashboardStatIcons";
 import type { IconName } from "../../icons/iconRegistry";
 
 /** Colored stat icon (theme accents) for homepage dashboard previews. */
