@@ -53,6 +53,103 @@ export const homepageHero = {
   tertiaryCta: { label: "View Demo", href: MARKETING_HERO_DEMO_HREF }
 } as const;
 
+export type HomepageMarketingStatFormat = "currency" | "number" | "percent";
+
+export type HomepageMarketingStat = {
+  id: string;
+  label: string;
+  value: number;
+  format: HomepageMarketingStatFormat;
+  prefix?: string;
+  suffix?: string;
+};
+
+/** Illustrative portfolio metrics — animated counters between homepage sections. */
+export const homepageMarketingStatsBands = [
+  {
+    id: "after-hero",
+    tone: "dark" as const,
+    stats: [
+      {
+        id: "portfolio-value",
+        label: "Illustrative portfolio value",
+        value: 2_418_342,
+        format: "currency" as const,
+        prefix: "R"
+      },
+      {
+        id: "properties",
+        label: "Properties in one workspace",
+        value: 12,
+        format: "number" as const
+      },
+      {
+        id: "occupancy",
+        label: "Occupancy on active leases",
+        value: 94,
+        format: "percent" as const
+      }
+    ]
+  },
+  {
+    id: "after-problem",
+    tone: "light" as const,
+    stats: [
+      {
+        id: "monthly-income",
+        label: "Monthly rental income tracked",
+        value: 186_400,
+        format: "currency" as const,
+        prefix: "R"
+      },
+      {
+        id: "net-cash-flow",
+        label: "Net cash flow after bond & costs",
+        value: 48_260,
+        format: "currency" as const,
+        prefix: "R"
+      },
+      {
+        id: "reports",
+        label: "Investor PDFs generated",
+        value: 128,
+        format: "number" as const,
+        suffix: "+"
+      }
+    ]
+  },
+  {
+    id: "after-features",
+    tone: "dark" as const,
+    stats: [
+      {
+        id: "equity",
+        label: "Equity uplift modelled (5 yr)",
+        value: 612_000,
+        format: "currency" as const,
+        prefix: "R"
+      },
+      {
+        id: "yield",
+        label: "Blended gross yield",
+        value: 8.4,
+        format: "percent" as const
+      },
+      {
+        id: "hours-saved",
+        label: "Month-end hours saved vs spreadsheets",
+        value: 6,
+        format: "number" as const,
+        suffix: " hrs"
+      }
+    ]
+  }
+] as const satisfies ReadonlyArray<{
+  id: string;
+  tone: "dark" | "light";
+  stats: readonly HomepageMarketingStat[];
+}>;
+
 /** Credibility strip — factual product positioning only (no fake logos or testimonials). */
 export const homepageTrustProof = {
   headline: "Built for property owners who manage their own rentals",
