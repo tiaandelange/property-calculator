@@ -7,8 +7,6 @@ type CalculatorToolFormActionsProps = {
   loading: boolean;
   calcSlug: string;
   onReset: () => void;
-  autoUpdate: boolean;
-  onAutoUpdateChange: (v: boolean) => void;
   savedId?: string | number | null;
   pdfBusy?: boolean;
   onPdf?: () => void;
@@ -20,8 +18,6 @@ export function CalculatorToolFormActions({
   loading,
   calcSlug,
   onReset,
-  autoUpdate,
-  onAutoUpdateChange,
   savedId,
   pdfBusy,
   onPdf,
@@ -38,25 +34,17 @@ export function CalculatorToolFormActions({
           Reset
         </Button>
       </div>
-      <div className="pg-calc-tool-form-actions__utility-row">
-        <label className="pg-calc-tool-form-actions__live">
-          <input
-            type="checkbox"
-            checked={autoUpdate}
-            onChange={(e) => onAutoUpdateChange(e.target.checked)}
-          />
-          <span>Live update</span>
-        </label>
-        {savedId ? (
-          !subscriptionLimits.canGenerateReport && subscriptionLimits.limitsActive ? (
+      {savedId ? (
+        <div className="pg-calc-tool-form-actions__utility-row">
+          {!subscriptionLimits.canGenerateReport && subscriptionLimits.limitsActive ? (
             <PlanLimitUpgradePrompt context="report" limits={subscriptionLimits} compact />
           ) : (
             <Button type="button" variant="ghost" className="pg-calc-tool-form-actions__pdf" onClick={onPdf} loading={pdfBusy}>
               PDF
             </Button>
-          )
-        ) : null}
-      </div>
+          )}
+        </div>
+      ) : null}
       {subscriptionLimits.limitsActive && savedId ? (
         <p className="pg-plan-limit-hint pg-calc-tool-form-actions__limit-hint">
           {formatReportLimitUsage(

@@ -7,7 +7,7 @@ export type FieldSliderConfig = {
 };
 
 const ADVANCED_SUBTITLES: Partial<Record<string, string>> = {
-  "cash-flow": "Insurance, levies, growth and other expenses",
+  "cash-flow": "Bond rate & term, insurance, levies, growth and other expenses",
   "monthly-payment": "Extra payments and optional scenario name",
   "buy-vs-rent": "Rent escalation and optional assumptions"
 };
@@ -63,6 +63,16 @@ export function parseCalculatorNumericInput(raw: string): number | "" {
   if (t === "" || t === "-") return "";
   const n = Number(t);
   return Number.isFinite(n) ? n : "";
+}
+
+export function partitionFieldKeysBySlider(slug: string, keys: string[]): { plain: string[]; sliders: string[] } {
+  const plain: string[] = [];
+  const sliders: string[] = [];
+  for (const key of keys) {
+    if (getCalculatorFieldSlider(slug, key)) sliders.push(key);
+    else plain.push(key);
+  }
+  return { plain, sliders };
 }
 
 export function formatCalculatorNumericDisplay(value: unknown): string {

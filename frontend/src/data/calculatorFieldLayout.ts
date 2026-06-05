@@ -43,13 +43,15 @@ const FIELD_LAYOUT: Partial<Record<string, { core: string[]; advanced: string[] 
   "cash-flow": {
     core: [
       "monthlyRent",
-      "vacancyRatePercent",
-      "monthlyBondPayment",
-      "propertyManagementPercent",
+      "bondAmount",
       "maintenance",
-      "ratesAndTaxes"
+      "ratesAndTaxes",
+      "vacancyRatePercent",
+      "propertyManagementPercent"
     ],
     advanced: [
+      "annualInterestRate",
+      "loanTermYears",
       "levies",
       "insurance",
       "otherMonthlyIncome",

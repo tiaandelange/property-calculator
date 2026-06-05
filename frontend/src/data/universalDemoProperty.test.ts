@@ -30,8 +30,21 @@ describe("universalDemoProperty", () => {
     expect(d.noi.noiAnnual).toBeGreaterThan(0);
     expect(buildUniversalCalculatorDefaults("cash-flow")).toMatchObject({
       monthlyRent: UNIVERSAL_DEMO_PROPERTY.monthlyRent,
-      monthlyBondPayment: d.monthlyBondPayment
+      bondAmount: UNIVERSAL_DEMO_PROPERTY.loanAmount,
+      annualInterestRate: UNIVERSAL_DEMO_PROPERTY.annualInterestRatePercent,
+      loanTermYears: UNIVERSAL_DEMO_PROPERTY.loanTermYears
     });
+  });
+
+  it("keeps operating costs near R3,200/mo and pre-tax cash flow positive", () => {
+    const d = deriveUniversalDemoMetrics();
+    expect(d.monthlyOperatingExpenses).toBeGreaterThanOrEqual(3_100);
+    expect(d.monthlyOperatingExpenses).toBeLessThanOrEqual(3_300);
+    expect(d.annualPreTaxCashFlow).toBeGreaterThan(0);
+
+    const cf = calculate("cash-flow", buildUniversalCalculatorDefaults("cash-flow"));
+    const monthlyCashFlow = cf.summary.find((m) => m.key === "monthlyCashFlow");
+    expect(monthlyCashFlow?.value).toBeGreaterThan(0);
   });
 
   it("provides defaults for every public calculator slug", () => {

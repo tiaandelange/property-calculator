@@ -1,6 +1,9 @@
 /**
  * Canonical demo property for public calculator pre-fill.
  * One consistent scenario: R2.3M purchase, 10.5% interest, 80% LTV, aligned income/expense/debt.
+ *
+ * Operating costs (~R3,200/mo excl. debt, self-managed): municipal rates ~R1,150 (typical metro band
+ * on R2.3M valuation), insurance ~R500, maintenance reserve ~R450, modest levies ~R350, misc ~R750.
  */
 
 import { calculateMonthlyBondPayment, calculateNOI } from "./calculatorHelpers.js";
@@ -17,18 +20,18 @@ export const UNIVERSAL_DEMO_PROPERTY = {
   vatRatePercent: 15,
   sellerVatRegistered: false,
 
-  monthlyRent: 18_500,
+  monthlyRent: 25_300,
   otherMonthlyIncome: 0,
   vacancyRatePercent: 6,
 
-  ratesAndTaxesMonthly: 2_200,
-  leviesMonthly: 1_800,
-  insuranceMonthly: 650,
-  maintenanceMonthly: 950,
-  propertyManagementPercent: 8,
+  ratesAndTaxesMonthly: 1_150,
+  leviesMonthly: 350,
+  insuranceMonthly: 500,
+  maintenanceMonthly: 450,
+  propertyManagementPercent: 0,
   utilitiesPaidByOwnerMonthly: 0,
   accountingAdminMonthly: 0,
-  otherExpensesMonthly: 0,
+  otherExpensesMonthly: 750,
 
   annualRentGrowthPercent: 4,
   holdPeriodYears: 7,
@@ -209,7 +212,9 @@ export function buildUniversalCalculatorDefaults(slug: string): Record<string, u
         utilitiesPaidByOwner: p.utilitiesPaidByOwnerMonthly,
         accountingAdmin: p.accountingAdminMonthly,
         otherExpenses: p.otherExpensesMonthly,
-        monthlyBondPayment: round2(d.monthlyBondPayment)
+        bondAmount: p.loanAmount,
+        annualInterestRate: p.annualInterestRatePercent,
+        loanTermYears: p.loanTermYears
       };
     case "cash-on-cash-return":
       return {

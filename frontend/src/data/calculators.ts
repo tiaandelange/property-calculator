@@ -276,7 +276,11 @@ export const calculators: CalculatorDef[] = [
           { key: "otherExpenses", label: "Other expenses (R)", type: "money" }
         ]
       },
-      { title: "Debt service", fields: [{ key: "monthlyBondPayment", label: "Monthly bond payment (R)", type: "money" }] }
+      { title: "Debt service", fields: [
+          { key: "bondAmount", label: "Bond amount (R)", type: "money", required: true, help: "Outstanding loan balance used to estimate monthly repayments." },
+          { key: "annualInterestRate", label: "Interest rate (% p.a.)", type: "percent" },
+          { key: "loanTermYears", label: "Loan term (years)", type: "number" }
+        ] }
     ]
   },
   {

@@ -759,7 +759,7 @@ textarea {
 }
 
 .pg-main-marketing-site:has(.pg-calc-tool-page) {
-  padding: calc(var(--home-site-header-h, 72px) + 24px) 0 40px;
+  padding: var(--home-site-header-h, 72px) 0 40px;
 }
 
 /* Calculators hub + /calculators/:slug tools: themed shell under fixed header (hero band supplies image/gradient). */
@@ -7137,10 +7137,10 @@ html[data-theme="light"] .pg-statement-table th {
 .pg-calc-tool-page__container {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
   max-width: 1440px;
   margin: 0 auto;
-  padding: 0 32px;
+  padding: 16px 32px 0;
   box-sizing: border-box;
 }
 
@@ -7153,6 +7153,14 @@ html[data-theme="light"] .pg-statement-table th {
   grid-template-columns: minmax(0, 1fr) minmax(240px, 320px);
   gap: 12px 20px;
   align-items: start;
+  position: sticky;
+  top: calc(var(--home-site-header-h, 72px) + 4px);
+  z-index: 25;
+  margin: 0 -8px;
+  padding: 8px 8px 10px;
+  background: color-mix(in srgb, #f8fafc 92%, transparent);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(15, 23, 42, 0.05);
 }
 
 .pg-calc-tool-page-top .pg-calc-tool-header {
@@ -7521,7 +7529,7 @@ html[data-theme="light"] .pg-statement-table th {
 .pg-calc-tool-results-hero__value {
   margin: 0 0 6px;
   font-family: var(--font-display);
-  font-size: clamp(42px, 4vw, 58px);
+  font-size: clamp(34px, 3.2vw, 46px);
   font-weight: 800;
   letter-spacing: -0.03em;
   line-height: 1;
@@ -7718,6 +7726,12 @@ html[data-theme="light"] .pg-statement-table th {
   display: flex;
   flex-direction: column;
   gap: 14px;
+}
+
+.pg-calc-tool-input-fields--sliders {
+  margin-top: 4px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(15, 23, 42, 0.06);
 }
 
 .pg-calc-tool-field .pg-field {
@@ -8233,6 +8247,19 @@ html[data-theme="light"] .pg-statement-table th {
 @media (max-width: 768px) {
   .pg-calc-tool-page--mobile {
     padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .pg-calc-tool-page__container {
+    padding: 12px 16px 0;
+  }
+
+  .pg-calc-tool-page-top {
+    position: static;
+    margin: 0;
+    padding: 0 0 8px;
+    border-bottom: none;
+    backdrop-filter: none;
+    background: transparent;
   }
 
   .pg-calc-tool-page--mobile .pg-calc-tool-header {

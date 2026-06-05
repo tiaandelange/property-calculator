@@ -7,7 +7,8 @@ import { CalculatorToolFormActions } from "../components/calculators/tool/Calcul
 import { renderCalculatorFieldsByKeys } from "../components/calculators/tool/CalculatorToolFieldRenderer";
 import { CalculatorToolSummaryCards } from "../components/calculators/tool/CalculatorToolSummaryCards";
 import { getCalculatorFieldLayout } from "../data/calculatorFieldLayout";
-import { getCalculatorAdvancedSubtitle } from "../data/calculatorFieldPresentation";
+import { getCalculatorAdvancedSubtitle, partitionFieldKeysBySlider } from "../data/calculatorFieldPresentation";
+import { applyCashFlowBondPaymentPayload, computeCashFlowMonthlyBondPayment } from "../utils/calculatorCashFlowPayload";
 import { applyProplyticChartTheme } from "../utils/calculatorChartTheme";
 import { calculators } from "../data/calculators";
 import { getCalculatorDefaultValues } from "../data/calculatorDefaultValues";
@@ -193,6 +194,11 @@ function toPayload(slug: string, values: Record<string, any>) {
   }
 
   coerceEngineNumericPayload(payload);
+
+  if (slug === "cash-flow") {
+    applyCashFlowBondPaymentPayload(payload);
+  }
+
   return payload;
 }
 
@@ -307,7 +313,6 @@ export function CalculatorPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState<any>(null);
-  const [autoUpdate, setAutoUpdate] = useState(true);
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const lastRunRef = useRef<string>("");
   const [savedId, setSavedId] = useState<string | number | null>(null);
@@ -377,7 +382,6 @@ export function CalculatorPage() {
     setError("");
     setSavedId(null);
     lastRunRef.current = "";
-    if (calcDef.slug === "monthly-payment") return;
     let cancelled = false;
     void (async () => {
       setError("");
@@ -482,15 +486,13 @@ export function CalculatorPage() {
   }, [calc.slug, requiredKeys, values]);
 
   useEffect(() => {
-    if (!autoUpdate) return;
     if (!hasAllRequired) return;
-    if (!result) return;
     const current = JSON.stringify(values);
     if (current === lastRunRef.current) return;
     const t = window.setTimeout(() => void runWithValues(calc.slug, values), 450);
     return () => window.clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoUpdate, hasAllRequired, values]);
+  }, [hasAllRequired, values]);
 
   const summary = result?.summary ?? [];
   const chartData = result?.chartData ?? [];
@@ -520,9 +522,7 @@ export function CalculatorPage() {
     setError("");
     setSavedId(null);
     lastRunRef.current = "";
-    if (calc.slug !== "monthly-payment") {
-      void runWithValues(calc.slug, defaults);
-    }
+    void runWithValues(calc.slug, defaults);
   };
 
   const generateAndDownloadPdf = async () => {
@@ -597,22 +597,53 @@ export function CalculatorPage() {
 
   const allFields = useMemo(() => calc.groups.flatMap((g) => g.fields), [calc.groups]);
   const fieldLayout = useMemo(() => getCalculatorFieldLayout(calc.slug, calc), [calc.slug, calc]);
+  const coreFieldGroups = useMemo(
+    () => partitionFieldKeysBySlider(calc.slug, fieldLayout.core),
+    [calc.slug, fieldLayout.core]
+  );
+  const advancedFieldGroups = useMemo(
+    () => partitionFieldKeysBySlider(calc.slug, fieldLayout.advanced),
+    [calc.slug, fieldLayout.advanced]
+  );
   const onFieldChange = useCallback((key: string, value: unknown) => {
     setValues((v) => ({ ...v, [key]: value }));
   }, []);
+
+  const heroSupportingNote = useMemo(() => {
+    const base = pageMeta.primaryResultSupporting;
+    if (calc.slug !== "cash-flow") return base;
+    const fromResult = result?.breakdown?.monthlyDebtService;
+    const payment =
+      typeof fromResult === "number" && Number.isFinite(fromResult)
+        ? fromResult
+        : computeCashFlowMonthlyBondPayment(values);
+    if (payment == null) return base;
+    return `${base ?? "Based on the inputs provided"} Monthly bond payment: ${formatCalculatorZar(payment)}.`;
+  }, [calc.slug, pageMeta.primaryResultSupporting, result, values]);
 
   const formActions = (
     <CalculatorToolFormActions
       loading={loading}
       calcSlug={calc.slug}
       onReset={reset}
-      autoUpdate={autoUpdate}
-      onAutoUpdateChange={setAutoUpdate}
       savedId={savedId}
       pdfBusy={pdfBusy}
       onPdf={() => void generateAndDownloadPdf()}
       subscriptionLimits={subscriptionLimits}
     />
+  );
+
+  const renderCoreInputFields = () => (
+    <>
+      <div className="pg-calc-tool-input-fields">
+        {renderCalculatorFieldsByKeys(calc.slug, allFields, coreFieldGroups.plain, values, onFieldChange)}
+      </div>
+      {coreFieldGroups.sliders.length > 0 ? (
+        <div className="pg-calc-tool-input-fields pg-calc-tool-input-fields--sliders">
+          {renderCalculatorFieldsByKeys(calc.slug, allFields, coreFieldGroups.sliders, values, onFieldChange)}
+        </div>
+      ) : null}
+    </>
   );
 
   const noiAdvancedCount = 3;
@@ -629,9 +660,7 @@ export function CalculatorPage() {
           <form id={CALCULATOR_TOOL_FORM_ID} onSubmit={submit}>
             {calc.slug !== "noi" ? (
               <>
-                <div className="pg-calc-tool-input-fields">
-                  {renderCalculatorFieldsByKeys(calc.slug, allFields, fieldLayout.core, values, onFieldChange)}
-                </div>
+                {renderCoreInputFields()}
                 {!advancedOpen ? formActions : null}
                 <CalculatorToolAdvancedAssumptions
                   open={advancedOpen}
@@ -640,8 +669,13 @@ export function CalculatorPage() {
                   subtitle={getCalculatorAdvancedSubtitle(calc.slug)}
                 >
                   <div className="pg-calc-tool-input-fields">
-                    {renderCalculatorFieldsByKeys(calc.slug, allFields, fieldLayout.advanced, values, onFieldChange)}
+                    {renderCalculatorFieldsByKeys(calc.slug, allFields, advancedFieldGroups.plain, values, onFieldChange)}
                   </div>
+                  {advancedFieldGroups.sliders.length > 0 ? (
+                    <div className="pg-calc-tool-input-fields pg-calc-tool-input-fields--sliders">
+                      {renderCalculatorFieldsByKeys(calc.slug, allFields, advancedFieldGroups.sliders, values, onFieldChange)}
+                    </div>
+                  ) : null}
                 </CalculatorToolAdvancedAssumptions>
                 {advancedOpen ? formActions : null}
                 <CalculatorToolProTip text={pageMeta.proTip} />
@@ -849,7 +883,7 @@ export function CalculatorPage() {
                 title={pageMeta.primaryResultTitle}
                 primaryValue={primaryValue}
                 primarySuffix={primarySuffix}
-                supportingNote={pageMeta.primaryResultSupporting}
+                supportingNote={heroSupportingNote}
                 tone={primaryPresentation.tone}
                 badge={primaryPresentation.badge}
                 loading={loading && !result}
