@@ -1,7 +1,8 @@
 import type { FieldDef } from "../../../data/calculators";
 import { getCalculatedFieldHint, isCalculatedFieldDisplay } from "../../../data/calculatorFieldLayout";
-import { Field, Input } from "../../ui/Input";
-import { selectFieldCoerceValue } from "../../../pages/calculatorFieldHelpers";
+import { cleanCalculatorFieldLabel } from "../../../data/calculatorFieldPresentation";
+import { Field } from "../../ui/Input";
+import { CalculatorToolInputControl } from "./CalculatorToolInputControl";
 
 type CalculatorToolFieldRendererProps = {
   slug: string;
@@ -10,65 +11,22 @@ type CalculatorToolFieldRendererProps = {
   onChange: (key: string, value: unknown) => void;
 };
 
-function numberInputValue(raw: unknown): string | number {
-  if (raw === null || raw === undefined || raw === "") return "";
-  if (typeof raw === "number" || typeof raw === "string") return raw;
-  return "";
-}
-
 export function CalculatorToolFieldRenderer({ slug, field, values, onChange }: CalculatorToolFieldRendererProps) {
   const calculated = isCalculatedFieldDisplay(slug, field.key, values);
   const calcHint = getCalculatedFieldHint(slug, field.key, values);
-  const help = calcHint ?? field.help ?? "Use realistic, conservative assumptions.";
+  const help = calcHint ?? field.help;
+  const label = cleanCalculatorFieldLabel(field.label);
 
   return (
-    <div className={calculated ? "pg-calc-tool-field--calculated" : undefined}>
-      <Field label={field.label} help={help}>
-      {field.type === "select" ? (
-        <select
-          className={`pg-input${calculated ? " pg-input--calculated" : ""}`}
-          value={String(values[field.key] ?? "")}
-          required={Boolean(field.required)}
-          onChange={(e) => onChange(field.key, selectFieldCoerceValue(field, e.target.value))}
-        >
-          <option value="" disabled>
-            Select…
-          </option>
-          {(field.options ?? []).map((o) => (
-            <option key={String(o.value)} value={String(o.value)}>
-              {o.label}
-            </option>
-          ))}
-        </select>
-      ) : field.type === "checkbox" ? (
-        <label className="pg-pill pg-calc-tool-checkbox" style={{ cursor: "pointer", justifyContent: "flex-start" }}>
-          <input
-            type="checkbox"
-            checked={Boolean(values[field.key])}
-            onChange={(e) => onChange(field.key, e.target.checked)}
-            style={{ margin: 0 }}
-          />
-          {values[field.key] ? "Yes" : "No"}
-        </label>
-      ) : field.type === "text" ? (
-        <Input
-          type="text"
-          className={calculated ? "pg-input pg-input--calculated" : undefined}
-          placeholder={field.placeholder}
-          value={String(values[field.key] ?? "")}
-          required={Boolean(field.required)}
-          onChange={(e) => onChange(field.key, e.target.value)}
+    <div className={`pg-calc-tool-field${calculated ? " pg-calc-tool-field--calculated" : ""}`}>
+      <Field label={label} help={help}>
+        <CalculatorToolInputControl
+          slug={slug}
+          field={field}
+          value={values[field.key]}
+          calculated={calculated}
+          onChange={(v) => onChange(field.key, v)}
         />
-      ) : (
-        <Input
-          type="number"
-          className={calculated ? "pg-input pg-input--calculated" : undefined}
-          placeholder={field.placeholder}
-          required={Boolean(field.required)}
-          value={numberInputValue(values[field.key])}
-          onChange={(e) => onChange(field.key, Number(e.target.value))}
-        />
-      )}
       </Field>
     </div>
   );

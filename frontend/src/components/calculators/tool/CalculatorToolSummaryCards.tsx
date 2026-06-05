@@ -1,5 +1,6 @@
 import { IconContainerByName } from "../../icons";
 import type { IconName } from "../../icons/iconRegistry";
+import type { ResultTone } from "../../../utils/calculatorResultsPresentation";
 
 export type CalculatorSummaryCard = {
   key: string;
@@ -7,6 +8,7 @@ export type CalculatorSummaryCard = {
   value: string;
   helper?: string;
   icon?: IconName;
+  tone?: ResultTone;
 };
 
 const METRIC_ICONS: Record<string, IconName> = {
@@ -21,6 +23,10 @@ const METRIC_ICONS: Record<string, IconName> = {
   noi: "income",
   dscr: "calculators",
   irr: "calculators",
+  effectiveIncome: "income",
+  monthlyNOI: "wallet",
+  debtService: "calculators",
+  cashFlowMargin: "percent",
   default: "info"
 };
 
@@ -33,18 +39,21 @@ export function CalculatorToolSummaryCards({ cards }: { cards: CalculatorSummary
 
   return (
     <div className="pg-calc-tool-summary-cards pg-pfin-metrics" role="list">
-      {cards.map((card) => (
-        <article key={card.key} className="pg-pfin-metric-card pg-calc-tool-summary-card" role="listitem">
-          <IconContainerByName icon={card.icon ?? iconForKey(card.key)} accent="purple" size="sm" />
-          <div className="pg-calc-tool-summary-card__body">
-            <div className="pg-pfin-metric-card__label-row">
-              <span className="pg-pfin-metric-card__label">{card.label}</span>
+      {cards.map((card) => {
+        const tone = card.tone ?? "neutral";
+        return (
+          <article key={card.key} className="pg-pfin-metric-card pg-calc-tool-summary-card" role="listitem">
+            <IconContainerByName icon={card.icon ?? iconForKey(card.key)} accent="purple" size="sm" />
+            <div className="pg-calc-tool-summary-card__body">
+              <div className="pg-pfin-metric-card__label-row">
+                <span className="pg-pfin-metric-card__label">{card.label}</span>
+              </div>
+              <div className={`pg-pfin-metric-card__value pg-calc-tool-summary-card__value--${tone}`}>{card.value}</div>
+              {card.helper ? <div className="pg-pfin-metric-card__helper">{card.helper}</div> : null}
             </div>
-            <div className="pg-pfin-metric-card__value">{card.value}</div>
-            {card.helper ? <div className="pg-pfin-metric-card__helper">{card.helper}</div> : null}
-          </div>
-        </article>
-      ))}
+          </article>
+        );
+      })}
     </div>
   );
 }

@@ -7,6 +7,7 @@ import { CalculatorToolFormActions } from "../components/calculators/tool/Calcul
 import { renderCalculatorFieldsByKeys } from "../components/calculators/tool/CalculatorToolFieldRenderer";
 import { CalculatorToolSummaryCards } from "../components/calculators/tool/CalculatorToolSummaryCards";
 import { getCalculatorFieldLayout } from "../data/calculatorFieldLayout";
+import { getCalculatorAdvancedSubtitle } from "../data/calculatorFieldPresentation";
 import { applyProplyticChartTheme } from "../utils/calculatorChartTheme";
 import { calculators } from "../data/calculators";
 import { getCalculatorDefaultValues } from "../data/calculatorDefaultValues";
@@ -19,6 +20,18 @@ import { generateReportViaVercel } from "../services/reportsVercel";
 import { CalculatorToolPageLayout } from "../components/calculators/tool/CalculatorToolPageLayout";
 import { CalculatorToolProTip } from "../components/calculators/tool/CalculatorToolProTip";
 import { CalculatorToolResultsHero } from "../components/calculators/tool/CalculatorToolResultsHero";
+import { CalculatorToolResultsChartSection } from "../components/calculators/tool/CalculatorToolResultsChartSection";
+import { CalculatorToolResultsInterpretation } from "../components/calculators/tool/CalculatorToolResultsInterpretation";
+import {
+  buildCalculatorSummaryCards,
+  buildCashFlowInterpretation,
+  formatCalculatorZar,
+  formatResultsMetricDisplay,
+  getCalculatorChartTitle,
+  getPrimaryResultPresentation,
+  isCashFlowNegative,
+  type SummaryMetricLike
+} from "../utils/calculatorResultsPresentation";
 import { getCalculatorToolPageMeta } from "../data/calculatorToolPageMeta";
 import { BuyVsRentSimpleResults } from "../components/calculators/BuyVsRentSimpleResults";
 import type { SimpleBuyVsRentCoreResult } from "@calculatorShared/buyVsRentSimple/simpleBuyVsRentTypes";
@@ -282,51 +295,6 @@ function buildIllustrativeFiveYearLineChart(metric: { label: string; value: numb
     },
     options: {} as Record<string, unknown>
   };
-}
-
-type SummaryMetricLike = {
-  key?: string;
-  label?: string;
-  unit?: string;
-  value?: unknown;
-  formatted?: string;
-};
-
-/** Results pane: ZAR without cents; percentages keep backend decimal formatting. */
-function formatResultsMetricDisplay(m: SummaryMetricLike): string {
-  const unit = m.unit ?? "";
-  const formatted = m.formatted ?? "—";
-  const raw = m.value;
-  if (raw == null || typeof raw !== "number" || !Number.isFinite(raw)) {
-    return formatted;
-  }
-  if (unit === "currency") {
-    return Math.round(raw).toLocaleString("en-ZA", {
-      style: "currency",
-      currency: "ZAR",
-      maximumFractionDigits: 0,
-      minimumFractionDigits: 0
-    });
-  }
-  if (unit === "percent") {
-    return formatted;
-  }
-  if (unit === "number") {
-    return Math.round(raw).toLocaleString("en-ZA", {
-      maximumFractionDigits: 0,
-      minimumFractionDigits: 0
-    });
-  }
-  return formatted;
-}
-
-function formatZarResultsAmount(n: number): string {
-  return Math.round(n).toLocaleString("en-ZA", {
-    style: "currency",
-    currency: "ZAR",
-    maximumFractionDigits: 0,
-    minimumFractionDigits: 0
-  });
 }
 
 const MONTHLY_PAYMENT_RELATED = ["transfer-bond-costs", "ltv", "cash-flow", "dscr"] as const;
@@ -621,14 +589,11 @@ export function CalculatorPage() {
   };
 
   const primarySummaryMetric = summary[0] as SummaryMetricLike | undefined;
-  const summaryCards = summary.slice(1, 5).map((m: SummaryMetricLike) => ({
-    key: String(m.key ?? m.label ?? ""),
-    label: String(m.label ?? ""),
-    value: formatResultsMetricDisplay(m)
-  }));
+  const primaryPresentation = getPrimaryResultPresentation(calc.slug, primarySummaryMetric);
+  const summaryCards = buildCalculatorSummaryCards(calc.slug, result);
   const extraSummaryMetrics = summary.slice(5);
-  const primarySuffix =
-    calc.slug === "monthly-payment" && primarySummaryMetric?.unit === "currency" ? " / month" : undefined;
+  const primarySuffix = primaryPresentation.suffix;
+  const primaryValue = primaryPresentation.formattedValue ?? (primarySummaryMetric ? formatResultsMetricDisplay(primarySummaryMetric) : undefined);
 
   const allFields = useMemo(() => calc.groups.flatMap((g) => g.fields), [calc.groups]);
   const fieldLayout = useMemo(() => getCalculatorFieldLayout(calc.slug, calc), [calc.slug, calc]);
@@ -654,7 +619,7 @@ export function CalculatorPage() {
 
   const calculatorWorkspace = (
     <div className={workspaceLayoutClass}>
-        <div id="calculator-inputs-pane" className="pg-calculator-pane pg-calc-tool-col pg-calc-tool-col--inputs">
+        <div className="pg-calc-tool-col pg-calc-tool-col--inputs">
         <CalculatorToolInputsAccordion
           summaryRows={inputSummaryRows}
           expanded={inputsExpanded}
@@ -664,7 +629,7 @@ export function CalculatorPage() {
           <form id={CALCULATOR_TOOL_FORM_ID} onSubmit={submit}>
             {calc.slug !== "noi" ? (
               <>
-                <div className="pg-calculator-input-grid pg-calc-tool-input-fields">
+                <div className="pg-calc-tool-input-fields">
                   {renderCalculatorFieldsByKeys(calc.slug, allFields, fieldLayout.core, values, onFieldChange)}
                 </div>
                 {!advancedOpen ? formActions : null}
@@ -672,12 +637,14 @@ export function CalculatorPage() {
                   open={advancedOpen}
                   onToggle={() => setAdvancedOpen((v) => !v)}
                   count={fieldLayout.advanced.length}
+                  subtitle={getCalculatorAdvancedSubtitle(calc.slug)}
                 >
-                  <div className="pg-calculator-input-grid pg-calc-tool-input-fields">
+                  <div className="pg-calc-tool-input-fields">
                     {renderCalculatorFieldsByKeys(calc.slug, allFields, fieldLayout.advanced, values, onFieldChange)}
                   </div>
                 </CalculatorToolAdvancedAssumptions>
                 {advancedOpen ? formActions : null}
+                <CalculatorToolProTip text={pageMeta.proTip} />
               </>
             ) : (
               <>
@@ -827,6 +794,7 @@ export function CalculatorPage() {
                   open={advancedOpen}
                   onToggle={() => setAdvancedOpen((v) => !v)}
                   count={noiAdvancedCount}
+                  subtitle="Growth assumptions and optional scenario name"
                 >
                   <LockedFeaturePreview
                     feature="forecasting"
@@ -865,28 +833,32 @@ export function CalculatorPage() {
                   </div>
                 </CalculatorToolAdvancedAssumptions>
                 {advancedOpen ? formActions : null}
+                <CalculatorToolProTip text={pageMeta.proTip} />
               </>
             )}
           </form>
         </CalculatorToolInputsAccordion>
-        <CalculatorToolProTip text={pageMeta.proTip} />
         </div>
 
-        <div className="pg-calculator-pane pg-calc-tool-col pg-calc-tool-col--results">
-          {calc.slug !== "buy-vs-rent" ? (
-            <CalculatorToolResultsHero
-              title={pageMeta.primaryResultTitle}
-              primaryValue={primarySummaryMetric ? formatResultsMetricDisplay(primarySummaryMetric) : undefined}
-              primarySuffix={primarySuffix}
-              supportingNote={pageMeta.primaryResultSupporting}
-              loading={loading && !result}
-            />
-          ) : null}
-          {result && summaryCards.length > 0 && calc.slug !== "buy-vs-rent" ? (
-            <CalculatorToolSummaryCards cards={summaryCards} />
-          ) : null}
-          <div className="pg-calc-tool-panel pg-calc-tool-panel--results-body">
-          <div className="pg-calculator-results-stack pg-calc-tool-results-stack">
+        <div className="pg-calc-tool-col pg-calc-tool-col--results">
+          <div className="pg-calc-tool-panel pg-calc-tool-panel--results">
+            <h2 className="pg-calc-tool-panel__title">Results</h2>
+            {calc.slug !== "buy-vs-rent" ? (
+              <CalculatorToolResultsHero
+                embedded
+                title={pageMeta.primaryResultTitle}
+                primaryValue={primaryValue}
+                primarySuffix={primarySuffix}
+                supportingNote={pageMeta.primaryResultSupporting}
+                tone={primaryPresentation.tone}
+                badge={primaryPresentation.badge}
+                loading={loading && !result}
+              />
+            ) : null}
+            {result && summaryCards.length > 0 && calc.slug !== "buy-vs-rent" ? (
+              <CalculatorToolSummaryCards cards={summaryCards} />
+            ) : null}
+            <div className="pg-calculator-results-stack pg-calc-tool-results-stack">
             {!result && !error ? (
               <div className="pg-muted">Run the calculator to see key metrics and charts.</div>
             ) : null}
@@ -903,7 +875,7 @@ export function CalculatorPage() {
             ) : null}
 
             {result ? (
-              <div style={{ display: "grid", gap: 16 }}>
+              <div className="pg-calc-tool-results-inner">
                 {calc.slug === "buy-vs-rent" && result.breakdown?.simple ? (
                   <BuyVsRentSimpleResults
                     core={result.breakdown.simple as SimpleBuyVsRentCoreResult}
@@ -953,7 +925,7 @@ export function CalculatorPage() {
                       ] as [string, number][]
                     ).map(([label, val]) => ({
                       label,
-                      value: typeof val === "number" ? formatZarResultsAmount(val) : "—",
+                      value: typeof val === "number" ? formatCalculatorZar(val) : "—",
                       variant: label.includes("subtotal") ? ("subtotal" as const) : ("detail" as const)
                     }))}
                   />
@@ -979,14 +951,14 @@ export function CalculatorPage() {
                           <tr key={label} className="pg-transfer-cost-breakdown-row pg-transfer-cost-breakdown-row--detail">
                             <td>{label}</td>
                             <td className="pg-transfer-cost-breakdown-amount">
-                              {typeof val === "number" ? formatZarResultsAmount(val) : "—"}
+                              {typeof val === "number" ? formatCalculatorZar(val) : "—"}
                             </td>
                           </tr>
                         ))}
                         <tr className="pg-transfer-cost-breakdown-row pg-transfer-cost-breakdown-row--subtotal">
                           <td>Transfer subtotal</td>
                           <td className="pg-transfer-cost-breakdown-amount">
-                            {formatZarResultsAmount(result.breakdown.transferCosts.transferSubtotal)}
+                            {formatCalculatorZar(result.breakdown.transferCosts.transferSubtotal)}
                           </td>
                         </tr>
                         {(
@@ -999,14 +971,14 @@ export function CalculatorPage() {
                           <tr key={label} className="pg-transfer-cost-breakdown-row pg-transfer-cost-breakdown-row--detail">
                             <td>{label}</td>
                             <td className="pg-transfer-cost-breakdown-amount">
-                              {typeof val === "number" ? formatZarResultsAmount(val) : "—"}
+                              {typeof val === "number" ? formatCalculatorZar(val) : "—"}
                             </td>
                           </tr>
                         ))}
                         <tr className="pg-transfer-cost-breakdown-row pg-transfer-cost-breakdown-row--subtotal">
                           <td>Bond subtotal</td>
                           <td className="pg-transfer-cost-breakdown-amount">
-                            {formatZarResultsAmount(result.breakdown.bondCosts.bondSubtotal)}
+                            {formatCalculatorZar(result.breakdown.bondCosts.bondSubtotal)}
                           </td>
                         </tr>
                       </tbody>
@@ -1025,8 +997,8 @@ export function CalculatorPage() {
                   </Card>
                 ) : null}
 
-                {calc.slug !== "buy-vs-rent" ? (
-                  <LockedFeaturePreview feature="graphs" title="Unlock charts with Investor.">
+                {calc.slug !== "buy-vs-rent" && chartsToRender.length > 0 ? (
+                  <CalculatorToolResultsChartSection title={getCalculatorChartTitle(calc.slug, pageMeta.graphTitle)}>
                     {chartsToRender.map((ch, idx) => {
                       const themed = applyProplyticChartTheme(
                         ch as Parameters<typeof applyProplyticChartTheme>[0],
@@ -1037,19 +1009,19 @@ export function CalculatorPage() {
                       const displayTitle = themed.title ?? "Chart";
                       const ChartComponent =
                         themed.chartType === "line" ? Line : themed.chartType === "doughnut" ? Doughnut : Bar;
+                      const showInlineTitle = chartsToRender.length > 1;
                       return (
-                        <Card
-                          key={`${displayTitle}-${idx}`}
-                          title={displayTitle}
-                          className="pg-calc-tool-panel pg-calc-tool-panel--chart"
-                        >
+                        <div key={`${displayTitle}-${idx}`} className="pg-calc-tool-chart-item">
+                          {showInlineTitle ? (
+                            <h4 className="pg-calc-tool-chart-item__title">{displayTitle}</h4>
+                          ) : null}
                           <div className="pg-calculator-chart-host">
                             <ChartComponent data={themed.data as any} options={opts} />
                           </div>
-                        </Card>
+                        </div>
                       );
                     })}
-                  </LockedFeaturePreview>
+                  </CalculatorToolResultsChartSection>
                 ) : null}
 
                 {calc.slug === "monthly-payment" &&
@@ -1063,14 +1035,15 @@ export function CalculatorPage() {
                 ) : null}
 
                 {calc.slug !== "buy-vs-rent" && result?.interpretation?.text ? (
-                  <Card title="Interpretation">
-                    <div className="pg-muted">{result.interpretation.text}</div>
-                    {result.interpretation.warnings?.length ? (
-                      <div className="pg-alert pg-alert-error" style={{ marginTop: 12 }}>
-                        {result.interpretation.warnings.join(" · ")}
-                      </div>
-                    ) : null}
-                  </Card>
+                  <CalculatorToolResultsInterpretation
+                    text={
+                      calc.slug === "cash-flow" && result.breakdown
+                        ? buildCashFlowInterpretation(result.breakdown as Record<string, unknown>)
+                        : result.interpretation.text
+                    }
+                    warnings={result.interpretation.warnings ?? []}
+                    showNegativeFundingNote={calc.slug === "cash-flow" && isCashFlowNegative(result)}
+                  />
                 ) : null}
 
                 {calc.slug === "transfer-bond-costs" && result?.assumptionsUsed?.disclaimer ? (
@@ -1080,7 +1053,7 @@ export function CalculatorPage() {
                 ) : null}
               </div>
             ) : null}
-          </div>
+            </div>
           </div>
         </div>
     </div>

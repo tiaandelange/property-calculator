@@ -47,13 +47,13 @@ const FIELD_LAYOUT: Partial<Record<string, { core: string[]; advanced: string[] 
       "monthlyBondPayment",
       "propertyManagementPercent",
       "maintenance",
-      "ratesAndTaxes",
-      "levies"
+      "ratesAndTaxes"
     ],
     advanced: [
+      "levies",
+      "insurance",
       "otherMonthlyIncome",
       "annualRentGrowthPercent",
-      "insurance",
       "utilitiesPaidByOwner",
       "accountingAdmin",
       "otherExpenses",

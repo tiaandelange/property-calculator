@@ -23,6 +23,18 @@ function isPrincipalInterestChart(chart: ChartLike): boolean {
   return labels.some((l) => l.includes("principal")) && labels.some((l) => l.includes("interest"));
 }
 
+function isCashFlowBridgeChart(chart: ChartLike): boolean {
+  const labels = chart.data?.labels ?? [];
+  return labels.includes("Cash flow") && labels.includes("Income");
+}
+
+function cashFlowBridgeBarColors(chart: ChartLike): string[] {
+  const datasets = chart.data?.datasets ?? [];
+  const data = (datasets[0]?.data as number[]) ?? [];
+  const net = data[data.length - 1] ?? 0;
+  return ["#7C3AED", "#FB923C", "#F97316", "#6366F1", net >= 0 ? "#16A34A" : "#DC2626"];
+}
+
 function themedDataset(label: string, data: unknown[], index: number) {
   const lower = label.toLowerCase();
   if (lower.includes("principal")) {
@@ -101,6 +113,30 @@ export function applyProplyticChartTheme(chart: ChartLike, slug: string, graphTi
       themedDataset(String(ds.label ?? `Series ${idx + 1}`), (ds.data as unknown[]) ?? [], idx)
     )
   };
+
+  if (slug === "cash-flow" && chart.chartType === "bar" && isCashFlowBridgeChart(chart)) {
+    const bridgeColors = cashFlowBridgeBarColors(chart);
+    return {
+      ...chart,
+      title: graphTitle ?? "Cash flow breakdown",
+      data: {
+        labels: chart.data?.labels ?? [],
+        datasets: datasets.map((ds) => ({
+          ...ds,
+          backgroundColor: bridgeColors,
+          borderRadius: 6,
+          borderSkipped: false
+        }))
+      },
+      options: mergeChartScales({
+        ...chart.options,
+        scales: {
+          x: { grid: { display: false } },
+          y: { beginAtZero: false }
+        }
+      })
+    };
+  }
 
   if (slug === "monthly-payment" && chart.chartType === "bar" && isPrincipalInterestChart(chart)) {
     return {

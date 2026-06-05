@@ -1,10 +1,11 @@
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, SlidersHorizontal } from "lucide-react";
 import type { ReactNode } from "react";
 
 type CalculatorToolAdvancedAssumptionsProps = {
   open: boolean;
   onToggle: () => void;
   count: number;
+  subtitle: string;
   children: ReactNode;
 };
 
@@ -12,6 +13,7 @@ export function CalculatorToolAdvancedAssumptions({
   open,
   onToggle,
   count,
+  subtitle,
   children
 }: CalculatorToolAdvancedAssumptionsProps) {
   if (count <= 0) return null;
@@ -24,9 +26,12 @@ export function CalculatorToolAdvancedAssumptions({
         onClick={onToggle}
         aria-expanded={open}
       >
+        <span className="pg-calc-tool-advanced__icon" aria-hidden>
+          <SlidersHorizontal size={16} strokeWidth={2} />
+        </span>
         <div className="pg-calc-tool-advanced__trigger-copy">
           <span className="pg-calc-tool-advanced__title">Advanced assumptions</span>
-          <span className="pg-calc-tool-advanced__subtitle">Taxes, fees, inflation, insurance and extra payments</span>
+          <span className="pg-calc-tool-advanced__subtitle">{subtitle}</span>
           {!open ? (
             <span className="pg-calc-tool-advanced__count">
               {count} optional assumption{count === 1 ? "" : "s"}
@@ -34,7 +39,7 @@ export function CalculatorToolAdvancedAssumptions({
           ) : null}
         </div>
         <ChevronDown
-          size={20}
+          size={18}
           aria-hidden
           className={`pg-calc-tool-advanced__chevron${open ? " pg-calc-tool-advanced__chevron--open" : ""}`}
         />
