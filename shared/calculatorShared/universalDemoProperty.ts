@@ -170,7 +170,6 @@ export function buildUniversalCalculatorDefaults(slug: string): Record<string, u
         includeDepositInCashRequired: false,
         sellerVatRegistered: p.sellerVatRegistered,
         isFirstTimeBuyer: false,
-        feeYear: p.transferBondDisbursements.feeYear,
         attorneyFeeMode: "ESTIMATE",
         vatRate: p.vatRatePercent,
         ...p.transferBondDisbursements,

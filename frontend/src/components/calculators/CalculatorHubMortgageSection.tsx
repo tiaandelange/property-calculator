@@ -105,10 +105,10 @@ function HubMortgageChart({
 }
 
 export function CalculatorHubMortgageSection() {
-  const [propertyPrice, setPropertyPrice] = useState(DEFAULT_PRICE);
-  const [depositPercent, setDepositPercent] = useState(DEFAULT_DEPOSIT_PERCENT);
-  const [annualRate, setAnnualRate] = useState(DEFAULT_RATE);
-  const [loanTermYears, setLoanTermYears] = useState(DEFAULT_TERM);
+  const [propertyPrice, setPropertyPrice] = useState<number>(DEFAULT_PRICE);
+  const [depositPercent, setDepositPercent] = useState<number>(DEFAULT_DEPOSIT_PERCENT);
+  const [annualRate, setAnnualRate] = useState<number>(DEFAULT_RATE);
+  const [loanTermYears, setLoanTermYears] = useState<number>(DEFAULT_TERM);
   const [priceDraft, setPriceDraft] = useState(() => formatRand(DEFAULT_PRICE).replace(/\s/g, " "));
   const [depositDraft, setDepositDraft] = useState("");
 
