@@ -2,12 +2,12 @@ import { Link } from "react-router-dom";
 import { homepageHero } from "../../../data/homepageMarketingContent";
 import { ButtonLink } from "../../ui/Button";
 import { Container } from "../../ui/Container";
+import { HomeHeroVisual } from "./hero/HomeHeroVisual";
 import { HomeMarketingHeroBackdrop } from "./HomeMarketingHeroBackdrop";
-import { HomeMarketingHeroCubeCarousel } from "./HomeMarketingHeroCubeCarousel";
 
 export function HomeMarketingHero() {
   return (
-    <header className="hm-hero" aria-labelledby="hm-hero-heading">
+    <header className="hm-hero hm-hero--premium" aria-labelledby="hm-hero-heading">
       <div className="hm-hero-glow" aria-hidden />
       <HomeMarketingHeroBackdrop />
       <Container className="pg-container--marketing-wide hm-hero__container">
@@ -39,7 +39,7 @@ export function HomeMarketingHero() {
                   href={homepageHero.secondaryCta.href}
                   variant="secondary"
                   size="lg"
-                  className="hm-hero-cta-btn"
+                  className="hm-hero-cta-btn hm-hero-cta-btn--glass"
                 >
                   {homepageHero.secondaryCta.label}
                 </ButtonLink>
@@ -47,16 +47,26 @@ export function HomeMarketingHero() {
                   {homepageHero.tertiaryCta.label}
                 </Link>
               </div>
+              <ul className="hm-hero-feature-chips" aria-label="Key capabilities">
+                {homepageHero.featureChips.map((chip) => (
+                  <li key={chip} className="hm-hero-feature-chip">
+                    {chip}
+                  </li>
+                ))}
+              </ul>
             </div>
           </div>
-          <div className="hm-hero-visual">
-            <div className="hm-hero-visual__float">
-              <HomeMarketingHeroCubeCarousel />
-            </div>
-          </div>
+          <HomeHeroVisual />
         </div>
       </Container>
+      <div className="hm-hero-wave" aria-hidden>
+        <svg viewBox="0 0 1440 80" preserveAspectRatio="none" focusable="false">
+          <path
+            d="M0,48 C360,88 720,0 1080,40 C1260,56 1380,64 1440,52 L1440,80 L0,80 Z"
+            fill="var(--hm-stats-band-bg, #0f1420)"
+          />
+        </svg>
+      </div>
     </header>
   );
 }
-

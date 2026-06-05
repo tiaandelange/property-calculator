@@ -22,8 +22,15 @@ const MARKETING_JSON = JSON.stringify({
 describe("homepageMarketingContent", () => {
   it("provides shorter mobile hero copy variants", () => {
     expect(homepageHero.eyebrowMobile).toBe("FOR OWNER-MANAGERS");
+    expect(homepageHero.eyebrow).toBe("FOR OWNER-MANAGERS");
     expect(homepageHero.headlineMobile).toContain("Stop spreadsheet chaos");
     expect(homepageHero.headlineMobile).not.toContain("actually");
+    expect(homepageHero.headline).not.toContain("actually");
+    expect(homepageHero.featureChips).toEqual([
+      "Portfolio analytics",
+      "Rental admin",
+      "Investor-ready reports"
+    ]);
   });
 
   it("uses Join Free and starter signup for free-plan CTAs", () => {
