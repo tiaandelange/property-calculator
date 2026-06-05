@@ -45,6 +45,7 @@ export const homepageHero = {
   eyebrow: "FOR OWNER-MANAGERS",
   eyebrowMobile: "FOR OWNER-MANAGERS",
   headline: "Stop spreadsheet chaos. See which properties are winning.",
+  headlineDesktopLines: ["Stop spreadsheet chaos.", "See which properties are winning."] as const,
   headlineMobile: "Stop spreadsheet chaos. See which properties are winning.",
   subheadline:
     "One workspace for portfolio analytics, rental admin and investor reports — connected data, cleaner decisions, less month-end reconciliation.",

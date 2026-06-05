@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import { Link } from "react-router-dom";
 import { homepageHero } from "../../../data/homepageMarketingContent";
 import { ButtonLink } from "../../ui/Button";
@@ -21,7 +22,14 @@ export function HomeMarketingHero() {
               <div className="hm-hero-title-wrap">
                 <div className="hm-hero-headline-glow" aria-hidden />
                 <h1 id="hm-hero-heading" className="hm-hero-title">
-                  <span className="hm-hero-title__text hm-hero-title__text--desktop">{homepageHero.headline}</span>
+                  <span className="hm-hero-title__text hm-hero-title__text--desktop">
+                    {homepageHero.headlineDesktopLines.map((line, index) => (
+                      <Fragment key={line}>
+                        {index > 0 ? <br /> : null}
+                        {line}
+                      </Fragment>
+                    ))}
+                  </span>
                   <span className="hm-hero-title__text hm-hero-title__text--mobile">{homepageHero.headlineMobile}</span>
                 </h1>
               </div>

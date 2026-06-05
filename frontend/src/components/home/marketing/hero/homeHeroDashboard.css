@@ -58,8 +58,8 @@
 
 .hm-hero-visual__stage {
   position: relative;
-  width: min(100%, 980px);
-  max-width: 58vw;
+  width: min(100%, clamp(700px, 52vw, 940px));
+  max-width: 52vw;
   min-height: clamp(380px, 34vw, 520px);
   z-index: 2;
 }
@@ -141,12 +141,12 @@
 
 .hm-hero-float-card--upper-left {
   top: 4%;
-  left: -2%;
+  left: 6%;
 }
 
 .hm-hero-float-card--mid-left {
   top: 42%;
-  left: -6%;
+  left: 2%;
 }
 
 .hm-hero-float-card--upper-right {
@@ -669,9 +669,24 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+@media (max-width: 1280px) {
+  .hm-hero-visual__stage {
+    width: min(100%, clamp(620px, 48vw, 820px));
+    max-width: 48vw;
+  }
+
+  .hm-hero-float-card--upper-left,
+  .hm-hero-float-card--mid-left,
+  .hm-hero-float-icon--icon-a,
+  .hm-hero-float-icon--icon-c,
+  .hm-hero-float-icon--icon-e {
+    display: none;
+  }
+}
+
 @media (max-width: 1200px) {
   .hm-hero-visual__stage {
-    max-width: 68vw;
+    max-width: 46vw;
   }
 
   .hm-hero-dash__kpis--5 {

@@ -26,6 +26,10 @@ describe("homepageMarketingContent", () => {
     expect(homepageHero.headlineMobile).toContain("Stop spreadsheet chaos");
     expect(homepageHero.headlineMobile).not.toContain("actually");
     expect(homepageHero.headline).not.toContain("actually");
+    expect(homepageHero.headlineDesktopLines).toEqual([
+      "Stop spreadsheet chaos.",
+      "See which properties are winning."
+    ]);
     expect(homepageHero.featureChips).toEqual([
       "Portfolio analytics",
       "Rental admin",
