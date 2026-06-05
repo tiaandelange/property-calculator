@@ -7153,14 +7153,6 @@ html[data-theme="light"] .pg-statement-table th {
   grid-template-columns: minmax(0, 1fr) minmax(240px, 320px);
   gap: 12px 20px;
   align-items: start;
-  position: sticky;
-  top: calc(var(--home-site-header-h, 72px) + 4px);
-  z-index: 25;
-  margin: 0 -8px;
-  padding: 8px 8px 10px;
-  background: color-mix(in srgb, #f8fafc 92%, transparent);
-  backdrop-filter: blur(10px);
-  border-bottom: 1px solid rgba(15, 23, 42, 0.05);
 }
 
 .pg-calc-tool-page-top .pg-calc-tool-header {
@@ -8251,15 +8243,6 @@ html[data-theme="light"] .pg-statement-table th {
 
   .pg-calc-tool-page__container {
     padding: 12px 16px 0;
-  }
-
-  .pg-calc-tool-page-top {
-    position: static;
-    margin: 0;
-    padding: 0 0 8px;
-    border-bottom: none;
-    backdrop-filter: none;
-    background: transparent;
   }
 
   .pg-calc-tool-page--mobile .pg-calc-tool-header {
