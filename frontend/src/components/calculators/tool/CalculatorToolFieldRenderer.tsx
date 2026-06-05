@@ -10,6 +10,12 @@ type CalculatorToolFieldRendererProps = {
   onChange: (key: string, value: unknown) => void;
 };
 
+function numberInputValue(raw: unknown): string | number {
+  if (raw === null || raw === undefined || raw === "") return "";
+  if (typeof raw === "number" || typeof raw === "string") return raw;
+  return "";
+}
+
 export function CalculatorToolFieldRenderer({ slug, field, values, onChange }: CalculatorToolFieldRendererProps) {
   const calculated = isCalculatedFieldDisplay(slug, field.key, values);
   const calcHint = getCalculatedFieldHint(slug, field.key, values);
@@ -59,7 +65,7 @@ export function CalculatorToolFieldRenderer({ slug, field, values, onChange }: C
           className={calculated ? "pg-input pg-input--calculated" : undefined}
           placeholder={field.placeholder}
           required={Boolean(field.required)}
-          value={values[field.key] ?? ""}
+          value={numberInputValue(values[field.key])}
           onChange={(e) => onChange(field.key, Number(e.target.value))}
         />
       )}
