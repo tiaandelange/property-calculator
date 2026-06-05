@@ -3,11 +3,16 @@ import type { CalculatorResult, SummaryMetric } from "./calculatorTypes.js";
 import {
   calculateAmortisationSchedule,
   calculateAnnualDebtService,
+  calculateBreakEvenOccupancy,
   calculateCashFlow,
+  calculateDebtYield,
+  calculateGrossYield,
   calculateIRR,
+  calculateLoanConstant,
   calculateMonthlyBondPayment,
   calculateNOI,
   calculateNPV,
+  calculateYieldOnCost,
   clamp,
   formatCurrency,
   formatPercent,
@@ -1925,6 +1930,135 @@ const areaSchema = scenarioSchema.extend({
   length: z.number().finite().nonnegative(),
   width: z.number().finite().nonnegative()
 });
+
+const grossYieldSchema = scenarioSchema.extend({
+  purchasePrice: money.positive(),
+  monthlyGrossRent: money.nonnegative(),
+  otherMonthlyIncome: money.nonnegative().default(0)
+});
+
+function calcGrossYield(input: z.infer<typeof grossYieldSchema>): CalculatorResult {
+  const annualGrossRent = (input.monthlyGrossRent + input.otherMonthlyIncome) * 12;
+  const grossYield = calculateGrossYield({ annualGrossRent, price: input.purchasePrice });
+  const grm = annualGrossRent > 0 ? input.purchasePrice / annualGrossRent : 0;
+  const interpretationText = `Gross yield is ${formatPercent(grossYield)} on a price of ${formatCurrency(input.purchasePrice)}.`;
+  return {
+    ...baseResult("gross-yield", input.scenarioName),
+    summary: [
+      metric("grossYield", "Gross yield", "percent", grossYield),
+      metric("annualGrossRent", "Annual gross rent", "currency", annualGrossRent),
+      metric("grm", "GRM (from gross rent)", "number", grm)
+    ],
+    breakdown: { grossYield, annualGrossRent, grm, purchasePrice: input.purchasePrice },
+    interpretation: { text: interpretationText, warnings: [] },
+    chartData: [],
+    assumptionsUsed: { excludesVacancyAndOpex: true }
+  };
+}
+
+const yieldOnCostSchema = scenarioSchema.extend({
+  stabilisedNOI: money.nonnegative(),
+  totalProjectCost: money.positive()
+});
+
+function calcYieldOnCost(input: z.infer<typeof yieldOnCostSchema>): CalculatorResult {
+  const yoc = calculateYieldOnCost({
+    stabilisedNOI: input.stabilisedNOI,
+    totalProjectCost: input.totalProjectCost
+  });
+  const interpretationText = `Yield on cost is ${formatPercent(yoc)} — stabilised NOI relative to total project cost.`;
+  return {
+    ...baseResult("yield-on-cost", input.scenarioName),
+    summary: [
+      metric("yieldOnCost", "Yield on cost", "percent", yoc),
+      metric("stabilisedNOI", "Stabilised NOI", "currency", input.stabilisedNOI),
+      metric("totalProjectCost", "Total project cost", "currency", input.totalProjectCost)
+    ],
+    breakdown: { yieldOnCost: yoc },
+    interpretation: { text: interpretationText, warnings: [] },
+    chartData: [],
+    assumptionsUsed: { capRateOnCostBasis: true }
+  };
+}
+
+const debtYieldSchema = scenarioSchema.extend({
+  annualNOI: money.nonnegative(),
+  loanAmount: money.positive()
+});
+
+function calcDebtYield(input: z.infer<typeof debtYieldSchema>): CalculatorResult {
+  const debtYield = calculateDebtYield({ annualNOI: input.annualNOI, loanAmount: input.loanAmount });
+  const interpretationText = `Debt yield is ${formatPercent(debtYield)} — NOI relative to loan amount (lender screen).`;
+  return {
+    ...baseResult("debt-yield", input.scenarioName),
+    summary: [
+      metric("debtYield", "Debt yield", "percent", debtYield),
+      metric("annualNOI", "Annual NOI", "currency", input.annualNOI),
+      metric("loanAmount", "Loan amount", "currency", input.loanAmount)
+    ],
+    breakdown: { debtYield },
+    interpretation: { text: interpretationText, warnings: [] },
+    chartData: [],
+    assumptionsUsed: { usesNOIBeforeDebt: true }
+  };
+}
+
+const breakEvenOccupancySchema = scenarioSchema.extend({
+  grossPotentialIncomeAnnual: money.nonnegative(),
+  annualOperatingExpenses: money.nonnegative(),
+  annualDebtService: money.nonnegative()
+});
+
+function calcBreakEvenOccupancy(input: z.infer<typeof breakEvenOccupancySchema>): CalculatorResult {
+  const breakEven = calculateBreakEvenOccupancy({
+    grossPotentialIncome: input.grossPotentialIncomeAnnual,
+    annualOperatingExpenses: input.annualOperatingExpenses,
+    annualDebtService: input.annualDebtService
+  });
+  const warnings: string[] = [];
+  if (breakEven > 100) warnings.push("Break-even occupancy exceeds 100% — costs exceed gross potential income at full occupancy.");
+  const interpretationText = `Break-even occupancy is ${formatPercent(breakEven)} — the occupancy needed for pre-tax cash flow to reach zero (all inputs annual).`;
+  return {
+    ...baseResult("break-even-occupancy", input.scenarioName),
+    summary: [
+      metric("breakEvenOccupancy", "Break-even occupancy", "percent", breakEven),
+      metric("grossPotentialIncomeAnnual", "Gross potential income (annual)", "currency", input.grossPotentialIncomeAnnual),
+      metric("totalCosts", "Opex + debt service (annual)", "currency", input.annualOperatingExpenses + input.annualDebtService)
+    ],
+    breakdown: { breakEvenOccupancy: breakEven },
+    interpretation: { text: interpretationText, warnings },
+    chartData: [],
+    assumptionsUsed: { timeBase: "Annual GPI, opex and debt service." }
+  };
+}
+
+const loanConstantSchema = scenarioSchema.extend({
+  loanAmount: money.positive(),
+  monthlyBondPayment: money.nonnegative().optional(),
+  annualDebtService: money.nonnegative().optional()
+});
+
+function calcLoanConstant(input: z.infer<typeof loanConstantSchema>): CalculatorResult {
+  const lc = calculateLoanConstant({
+    loanAmount: input.loanAmount,
+    monthlyBondPayment: input.monthlyBondPayment,
+    annualDebtService: input.annualDebtService
+  });
+  const interpretationText = `Loan constant is ${formatPercent(lc.loanConstantPercent)} — annual debt service as a percentage of loan amount.`;
+  return {
+    ...baseResult("loan-constant", input.scenarioName),
+    summary: [
+      metric("loanConstant", "Loan constant", "percent", lc.loanConstantPercent),
+      metric("annualDebtService", "Annual debt service", "currency", lc.annualDebtService),
+      metric("loanAmount", "Loan amount", "currency", input.loanAmount)
+    ],
+    breakdown: { loanConstantPercent: lc.loanConstantPercent, annualDebtService: lc.annualDebtService },
+    interpretation: { text: interpretationText, warnings: [] },
+    chartData: [],
+    assumptionsUsed: { derivedFromMonthlyWhenNeeded: input.annualDebtService === undefined }
+  };
+}
+
 function calcArea(input: z.infer<typeof areaSchema>): CalculatorResult {
   const warnings: string[] = [];
   const areaSqm = input.length * input.width;
@@ -1995,6 +2129,16 @@ export function calculate(type: string, input: AnyInput): CalculatorResult {
       return calcArea(areaSchema.parse(input));
     case "buy-vs-rent":
       return calcBuyVsRent(buyVsRentSchema.parse(input));
+    case "gross-yield":
+      return calcGrossYield(grossYieldSchema.parse(input));
+    case "yield-on-cost":
+      return calcYieldOnCost(yieldOnCostSchema.parse(input));
+    case "debt-yield":
+      return calcDebtYield(debtYieldSchema.parse(input));
+    case "break-even-occupancy":
+      return calcBreakEvenOccupancy(breakEvenOccupancySchema.parse(input));
+    case "loan-constant":
+      return calcLoanConstant(loanConstantSchema.parse(input));
     default:
       throw new Error(`Unsupported calculator type: ${type}`);
   }

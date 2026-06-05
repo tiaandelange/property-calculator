@@ -15,10 +15,14 @@ import {
 } from "../../utils/mortgageRepayment";
 import { estimatePurchaseOnceOffCosts } from "../../utils/saOnceOffEstimates";
 
-const DEFAULT_PRICE = 2_300_000;
-const DEFAULT_DEPOSIT_PERCENT = 10;
-const DEFAULT_RATE = 11.25;
-const DEFAULT_TERM = 30;
+import { UNIVERSAL_DEMO_PROPERTY } from "@calculatorShared/universalDemoProperty";
+
+const DEFAULT_PRICE = UNIVERSAL_DEMO_PROPERTY.purchasePrice;
+const DEFAULT_DEPOSIT_PERCENT = Math.round(
+  (UNIVERSAL_DEMO_PROPERTY.depositAmount / UNIVERSAL_DEMO_PROPERTY.purchasePrice) * 100
+);
+const DEFAULT_RATE = UNIVERSAL_DEMO_PROPERTY.annualInterestRatePercent;
+const DEFAULT_TERM = UNIVERSAL_DEMO_PROPERTY.loanTermYears;
 
 function parseMoneyInput(raw: string): number | null {
   const digits = raw.replace(/\D/g, "");

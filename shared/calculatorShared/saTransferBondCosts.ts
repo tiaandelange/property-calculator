@@ -132,26 +132,46 @@ export function calculateDeedsOfficeBondFeeSA(bondAmount: number, feeYear: Deeds
 }
 
 /**
- * LSSA-style recommended conveyancing fee (professional fee ex VAT), 2026 projected scale
- * (Cape Town Lawyer / industry guideline summary — estimate only).
+ * LSSA guideline conveyancing fee (professional fee ex VAT).
+ * ≤100,000: 6,640
+ * 100,000–500,000: 6,640 + 1,060 × ceil((PP − 100,000)/50,000)
+ * 500,000–1,000,000: 15,120 + 2,050 × ceil((PP − 500,000)/100,000)
+ * 1,000,000–5,000,000: 25,370 + 2,050 × ceil((PP − 1,000,000)/200,000)
+ * >5,000,000: 66,370 + 5,160 × ceil((PP − 5,000,000)/1,000,000)
  */
-export function estimateConveyancingProfessionalFee2026Projected(consideration: number): number {
+export function estimateLssaConveyancingFeeExVat(consideration: number): number {
   const v = Math.max(0, consideration);
-  if (v <= 100_000) return 6906;
+  if (v <= 100_000) return 6_640;
   if (v <= 500_000) {
     const steps = Math.ceil((v - 100_000) / 50_000);
-    return Math.round(6906 + steps * 1102);
+    return 6_640 + 1_060 * steps;
   }
   if (v <= 1_000_000) {
     const steps = Math.ceil((v - 500_000) / 100_000);
-    return Math.round(15_725 + steps * 2132);
+    return 15_120 + 2_050 * steps;
   }
   if (v <= 5_000_000) {
     const steps = Math.ceil((v - 1_000_000) / 200_000);
-    return Math.round(26_385 + steps * 2132);
+    return 25_370 + 2_050 * steps;
   }
   const steps = Math.ceil((v - 5_000_000) / 1_000_000);
-  return Math.round(69_025 + steps * 5366);
+  return 66_370 + 5_160 * steps;
+}
+
+/** @deprecated Alias — use `estimateLssaConveyancingFeeExVat`. */
+export function estimateConveyancingProfessionalFee2026Projected(consideration: number): number {
+  return estimateLssaConveyancingFeeExVat(consideration);
+}
+
+/** National Credit Regulations mortgage initiation fee (ex VAT), capped. */
+export function calculateBondInitiationFeeExVat(loanAmount: number): number {
+  const lv = Math.max(0, loanAmount);
+  return roundZar(Math.min(1_100 + 0.1 * Math.max(lv - 10_000, 0), 5_250));
+}
+
+export function calculateBondInitiationFeeInclVat(loanAmount: number, vatRatePercent = 15): number {
+  const vat = Math.max(0, Math.min(100, vatRatePercent)) / 100;
+  return roundZar(calculateBondInitiationFeeExVat(loanAmount) * (1 + vat));
 }
 
 export function estimateTransferAttorneyFeeSA(params: {
@@ -183,7 +203,8 @@ export function calculateSouthAfricanTransferAndBondCosts(raw: SaTransferBondInp
   const assumptions: string[] = [
     TRANSFER_DUTY_ASSUMPTION,
     "Deeds Office registration fees use the configured gazette schedule for the selected fee year (estimate).",
-    "Estimated conveyancer professional fees follow published 2026 projected LSSA-style guideline scales (exclusive of VAT); firms may differ.",
+    "Estimated conveyancer professional fees follow LSSA guideline ad valorem scales (exclusive of VAT); firms may differ.",
+    "Bond initiation fee follows National Credit Regulations mortgage agreement caps (incl. VAT in bond subtotal).",
     "VAT at 15% is applied to estimated conveyancer professional fees only (not to transfer duty or Deeds Office fees in this model).",
     "Postages, petties, FICA, deeds search and electronic instruction figures are illustrative disbursement allowances — confirm with your conveyancer.",
     "First-time buyer status does not change SARS transfer duty in this calculator (no ad‑hoc discounts applied)."
@@ -256,7 +277,7 @@ export function calculateSouthAfricanTransferAndBondCosts(raw: SaTransferBondInp
   let bondAttorneyFee = 0;
   let bondAttorneyFeeVat = 0;
   let deedsOfficeBondFee = 0;
-  const bondAdminFees = 0;
+  let bondAdminFees = 0;
 
   if (raw.includeBondRegistration && bondAmount > 0) {
     bondAttorneyFee = estimateBondAttorneyFeeSA({
@@ -270,6 +291,7 @@ export function calculateSouthAfricanTransferAndBondCosts(raw: SaTransferBondInp
     if (deedsB.exceededConfiguredMax) {
       warnings.push("Amount exceeds current configured Deeds Office bond bracket range. Update fee table.");
     }
+    bondAdminFees = calculateBondInitiationFeeInclVat(bondAmount, raw.vatRate);
   }
 
   const bondSubtotal = roundZar(bondAttorneyFee + bondAttorneyFeeVat + deedsOfficeBondFee + bondAdminFees);
@@ -294,6 +316,7 @@ export function calculateSouthAfricanTransferAndBondCosts(raw: SaTransferBondInp
       { label: "Transfer attorney fee + VAT", value: roundZar(transferAttorneyFee + transferAttorneyFeeVat) },
       { label: "Bond attorney fee + VAT", value: roundZar(bondAttorneyFee + bondAttorneyFeeVat) },
       { label: "Deeds office fees", value: deedsOfficeFeesCombined },
+      { label: "Bond initiation fee (incl. VAT)", value: bondAdminFees },
       { label: "Municipal provision", value: municipalRatesClearanceProvision },
       { label: "Admin/disbursements", value: adminDisbursements }
     ]

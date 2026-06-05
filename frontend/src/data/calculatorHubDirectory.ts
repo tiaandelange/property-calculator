@@ -110,9 +110,14 @@ export const calculatorHubDirectoryGroups: CalculatorHubDirectoryGroup[] = [
     title: "Investment Analysis",
     items: [
       tool("rental-yield", "cap-rate", "Rental Yield", "Net operating income versus property value."),
+      tool("gross-yield", "gross-yield", "Gross Yield", "Annual gross rent divided by purchase price."),
+      tool("debt-yield", "debt-yield", "Debt Yield", "NOI relative to loan amount."),
+      tool("loan-constant", "loan-constant", "Loan Constant", "Annual debt service as a percentage of loan."),
+      tool("yield-on-cost", "yield-on-cost", "Yield on Cost", "Stabilised NOI on total project cost."),
       soon("capital-growth", "Capital Growth", "Model expected appreciation over your hold period."),
       tool("total-return", "irr", "Total Return", "Internal rate of return over your investment horizon."),
-      soon(
+      tool(
+        "break-even-occupancy",
         "break-even-occupancy",
         "Break-even Occupancy",
         "Find the occupancy rate needed to cover costs."

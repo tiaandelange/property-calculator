@@ -634,5 +634,83 @@ export const calculators: CalculatorDef[] = [
       scenarioGroup,
       { title: "Inputs", fields: [{ key: "length", label: "Length (m)", type: "number" }, { key: "width", label: "Width (m)", type: "number" }] }
     ]
+  },
+  {
+    slug: "gross-yield",
+    name: "Gross Yield",
+    description: "Annual gross rent divided by purchase price (quick income screen).",
+    groups: [
+      scenarioGroup,
+      {
+        title: "Inputs",
+        fields: [
+          { key: "purchasePrice", label: "Purchase price (R)", type: "money" },
+          { key: "monthlyGrossRent", label: "Monthly gross rent (R)", type: "money" },
+          { key: "otherMonthlyIncome", label: "Other monthly income (R)", type: "money" }
+        ]
+      }
+    ]
+  },
+  {
+    slug: "yield-on-cost",
+    name: "Yield on Cost",
+    description: "Stabilised NOI divided by total project cost.",
+    groups: [
+      scenarioGroup,
+      {
+        title: "Inputs",
+        fields: [
+          { key: "stabilisedNOI", label: "Stabilised annual NOI (R)", type: "money" },
+          { key: "totalProjectCost", label: "Total project cost (R)", type: "money" }
+        ]
+      }
+    ]
+  },
+  {
+    slug: "debt-yield",
+    name: "Debt Yield",
+    description: "Annual NOI divided by loan amount (lender leverage screen).",
+    groups: [
+      scenarioGroup,
+      {
+        title: "Inputs",
+        fields: [
+          { key: "annualNOI", label: "Annual NOI (R)", type: "money" },
+          { key: "loanAmount", label: "Loan amount (R)", type: "money" }
+        ]
+      }
+    ]
+  },
+  {
+    slug: "break-even-occupancy",
+    name: "Break-even Occupancy",
+    description: "Occupancy rate needed to cover operating expenses and debt service (annual basis).",
+    groups: [
+      scenarioGroup,
+      {
+        title: "Inputs (annual)",
+        fields: [
+          { key: "grossPotentialIncomeAnnual", label: "Gross potential income (R)", type: "money" },
+          { key: "annualOperatingExpenses", label: "Operating expenses (R)", type: "money" },
+          { key: "annualDebtService", label: "Debt service (R)", type: "money" }
+        ]
+      }
+    ]
+  },
+  {
+    slug: "loan-constant",
+    name: "Loan Constant",
+    description: "Annual debt service as a percentage of loan amount.",
+    groups: [
+      scenarioGroup,
+      {
+        title: "Inputs",
+        fields: [
+          { key: "loanAmount", label: "Loan amount (R)", type: "money" },
+          { key: "monthlyBondPayment", label: "Monthly bond payment (R)", type: "money", help: "Optional if annual debt service is provided." },
+          { key: "annualDebtService", label: "Annual debt service (R)", type: "money" }
+        ]
+      }
+    ]
   }
 ];

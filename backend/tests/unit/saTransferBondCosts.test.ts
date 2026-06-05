@@ -72,6 +72,7 @@ describe("calculateSouthAfricanTransferAndBondCosts full scenario", () => {
     const r = calculateSouthAfricanTransferAndBondCosts(baseInput);
 
     expect(r.transferCosts.transferDuty).toBe(33786);
+    expect(r.bondCosts.bondAdminFees).toBe(6037.5);
     expect(r.totals.totalTransferCosts).toBeGreaterThan(33786);
     expect(r.totals.totalBondRegistrationCosts).toBeGreaterThan(0);
     expect(r.totals.totalCashRequiredIncludingDeposit).toBe(r.totals.totalTransferAndBondCosts);

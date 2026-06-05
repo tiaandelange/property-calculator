@@ -196,6 +196,48 @@ export function calculateFutureValue(params: { presentValue: Money; annualRatePe
   return params.presentValue * (1 + r) ** params.years;
 }
 
+export function calculateLoanConstant(params: { loanAmount: Money; annualDebtService?: Money; monthlyBondPayment?: Money }) {
+  assertNonNegative("Loan amount", params.loanAmount);
+  const annualDebtService =
+    params.annualDebtService ?? calculateAnnualDebtService(params.monthlyBondPayment ?? 0);
+  assertNonNegative("Annual debt service", annualDebtService);
+  if (params.loanAmount <= 0) return { loanConstantPercent: 0, annualDebtService };
+  return {
+    loanConstantPercent: (annualDebtService / params.loanAmount) * 100,
+    annualDebtService
+  };
+}
+
+export function calculateGrossYield(params: { annualGrossRent: Money; price: Money }) {
+  assertNonNegative("Annual gross rent", params.annualGrossRent);
+  assertPositive("Price", params.price);
+  return (params.annualGrossRent / params.price) * 100;
+}
+
+export function calculateYieldOnCost(params: { stabilisedNOI: Money; totalProjectCost: Money }) {
+  assertNonNegative("Stabilised NOI", params.stabilisedNOI);
+  assertPositive("Total project cost", params.totalProjectCost);
+  return (params.stabilisedNOI / params.totalProjectCost) * 100;
+}
+
+export function calculateDebtYield(params: { annualNOI: Money; loanAmount: Money }) {
+  assertNonNegative("Annual NOI", params.annualNOI);
+  assertPositive("Loan amount", params.loanAmount);
+  return (params.annualNOI / params.loanAmount) * 100;
+}
+
+export function calculateBreakEvenOccupancy(params: {
+  grossPotentialIncome: Money;
+  annualOperatingExpenses: Money;
+  annualDebtService: Money;
+}) {
+  assertNonNegative("Gross potential income", params.grossPotentialIncome);
+  assertNonNegative("Operating expenses", params.annualOperatingExpenses);
+  assertNonNegative("Debt service", params.annualDebtService);
+  if (params.grossPotentialIncome <= 0) return 0;
+  return ((params.annualOperatingExpenses + params.annualDebtService) / params.grossPotentialIncome) * 100;
+}
+
 export function calculateEquityGrowth(params: {
   propertyValue: Money;
   annualAppreciationPercent: Percent;

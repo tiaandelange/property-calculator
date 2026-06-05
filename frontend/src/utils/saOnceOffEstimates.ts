@@ -1,16 +1,14 @@
 /**
- * Hub once-off totals — aligned with `calculateSouthAfricanTransferAndBondCosts` (same engine as backend API).
- * Keep `frontend/src/data/saPropertyCostTables.ts` and `frontend/src/utils/saTransferBondCosts.ts`
- * in sync with `backend/src/calculatorShared/saPropertyCostTables.ts` / `saTransferBondCosts.ts` (canonical for the calculator engine).
+ * Hub once-off totals — uses `@calculatorShared/saTransferBondCosts` (same engine as public calculators).
  */
 
-import { calculateSouthAfricanTransferAndBondCosts } from "./saTransferBondCosts";
+import { calculateSouthAfricanTransferAndBondCosts } from "@calculatorShared/saTransferBondCosts";
 
 export function roundMoney(n: number): number {
   return Math.round((n + Number.EPSILON) * 100) / 100;
 }
 
-export { calculateTransferDutySA as calculateTransferDutySouthAfrica } from "./saTransferBondCosts";
+export { calculateTransferDutySA as calculateTransferDutySouthAfrica } from "@calculatorShared/saTransferBondCosts";
 
 export type HubOnceOffEstimate = {
   bondRegistrationCost: number;
