@@ -1,5 +1,5 @@
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { Bar, Doughnut, Line } from "react-chartjs-2";
 import { Chart as ChartJS, ArcElement, BarElement, CategoryScale, Legend, LinearScale, LineElement, PointElement, Tooltip } from "chart.js";
 import { CalculatorToolAdvancedAssumptions } from "../components/calculators/tool/CalculatorToolAdvancedAssumptions";
@@ -38,7 +38,6 @@ import { BuyVsRentSimpleResults } from "../components/calculators/BuyVsRentSimpl
 import type { SimpleBuyVsRentCoreResult } from "@calculatorShared/buyVsRentSimple/simpleBuyVsRentTypes";
 import { useCalculatorMobileLayout } from "../hooks/useCalculatorMobileLayout";
 import { CalculatorToolInputsAccordion } from "../components/calculators/tool/CalculatorToolInputsAccordion";
-import { CalculatorToolAmortisationTable } from "../components/calculators/tool/CalculatorToolAmortisationTable";
 import { CalculatorToolBreakdownList } from "../components/calculators/tool/CalculatorToolBreakdownList";
 import { CalculatorToolStickyBar } from "../components/calculators/tool/CalculatorToolStickyBar";
 import { buildCalculatorInputSummary } from "../utils/formatCalculatorInputSummary";
@@ -308,6 +307,8 @@ const CALCULATOR_TOOL_FORM_ID = "calculator-tool-form";
 
 export function CalculatorPage() {
   const { slug } = useParams();
+  const navigate = useNavigate();
+  const location = useLocation();
   const calc = useMemo(() => calculators.find((c) => c.slug === slug), [slug]);
   const [values, setValues] = useState<Record<string, any>>(() => getCalculatorDefaultValues(slug ?? ""));
   const [loading, setLoading] = useState(false);
@@ -571,6 +572,16 @@ export function CalculatorPage() {
       /* clipboard unavailable */
     }
   }, [pageMeta.seoHeading]);
+
+  const handleSaveCalculation = useCallback(async () => {
+    const { data: sessionData } = await getSupabase().auth.getSession();
+    if (!sessionData.session) {
+      const returnTo = `${location.pathname}${location.search}`;
+      navigate(`/login?redirectTo=${encodeURIComponent(returnTo)}`);
+      return;
+    }
+    await run(true);
+  }, [location.pathname, location.search, navigate, run]);
 
   const relatedLinks = relatedSlugs
     .map((s) => calculators.find((c) => c.slug === s))
@@ -1058,16 +1069,6 @@ export function CalculatorPage() {
                   </CalculatorToolResultsChartSection>
                 ) : null}
 
-                {calc.slug === "monthly-payment" &&
-                Array.isArray(result?.breakdown?.amortisationScheduleMonthly) &&
-                Array.isArray(result?.breakdown?.amortisationScheduleYearly) ? (
-                  <CalculatorToolAmortisationTable
-                    monthly={result.breakdown.amortisationScheduleMonthly}
-                    yearly={result.breakdown.amortisationScheduleYearly}
-                    title={pageMeta.tableTitle}
-                  />
-                ) : null}
-
                 {calc.slug !== "buy-vs-rent" && result?.interpretation?.text ? (
                   <CalculatorToolResultsInterpretation
                     text={
@@ -1200,7 +1201,7 @@ export function CalculatorPage() {
     <CalculatorToolPageLayout
       slug={calc.slug}
       meta={pageMeta}
-      onSave={() => void run(true)}
+      onSave={() => void handleSaveCalculation()}
       onShare={() => void handleShare()}
       saveLoading={loading}
       isMobile={isMobile}

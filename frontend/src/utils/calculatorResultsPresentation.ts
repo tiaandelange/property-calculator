@@ -1,5 +1,6 @@
 import type { IconName } from "../components/icons/iconRegistry";
 import type { CalculatorSummaryCard } from "../components/calculators/tool/CalculatorToolSummaryCards";
+import { getCalculatorSummaryMetricInfo } from "../data/calculatorSummaryMetricInfo";
 
 export type SummaryMetricLike = {
   key?: string;
@@ -129,7 +130,7 @@ export function buildCalculatorSummaryCards(
         key: "effectiveIncome",
         label: "Effective rental income",
         value: formatCalculatorZar(Number(b.effectiveMonthlyIncome) || 0),
-        helper: "After vacancy",
+        info: getCalculatorSummaryMetricInfo("effectiveIncome"),
         icon: "income" as IconName,
         tone: "neutral"
       },
@@ -137,6 +138,7 @@ export function buildCalculatorSummaryCards(
         key: "monthlyNOI",
         label: "Monthly NOI",
         value: formatCalculatorZar(Number(b.monthlyNOI) || 0),
+        info: getCalculatorSummaryMetricInfo("monthlyNOI"),
         icon: "wallet" as IconName,
         tone: Number(b.monthlyNOI) < 0 ? "negative" : "neutral"
       },
@@ -144,6 +146,7 @@ export function buildCalculatorSummaryCards(
         key: "debtService",
         label: "Debt service",
         value: formatCalculatorZar(Number(b.monthlyDebtService) || 0),
+        info: getCalculatorSummaryMetricInfo("debtService"),
         icon: "calculators" as IconName,
         tone: "neutral"
       },
@@ -151,6 +154,7 @@ export function buildCalculatorSummaryCards(
         key: "cashFlowMargin",
         label: "Cash flow margin",
         value: formatCalculatorPercent(margin),
+        info: getCalculatorSummaryMetricInfo("cashFlowMargin"),
         icon: "percent" as IconName,
         tone: margin < 0 ? "negative" : margin > 0 ? "positive" : "neutral"
       }
@@ -158,12 +162,17 @@ export function buildCalculatorSummaryCards(
   }
 
   const summary = result.summary ?? [];
-  return summary.slice(1, 5).map((m) => ({
-    key: String(m.key ?? m.label ?? ""),
-    label: String(m.label ?? ""),
-    value: formatResultsMetricDisplay(m),
-    tone: metricTone(m)
-  }));
+  return summary.slice(1, 5).map((m) => {
+    const key = String(m.key ?? m.label ?? "");
+    const label = String(m.label ?? "");
+    return {
+      key,
+      label,
+      value: formatResultsMetricDisplay(m),
+      tone: metricTone(m),
+      info: getCalculatorSummaryMetricInfo(key, label)
+    };
+  });
 }
 
 export function getCalculatorChartTitle(slug: string, fallback?: string): string {

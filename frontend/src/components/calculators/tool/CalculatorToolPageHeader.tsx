@@ -29,16 +29,17 @@ export function CalculatorToolPageHeader({
             <Button
               type="button"
               variant="secondary"
+              size="sm"
               className="pg-calc-tool-header__btn"
               onClick={onSave}
               loading={saveLoading}
             >
               <Bookmark size={15} strokeWidth={2} aria-hidden />
-              <span className="pg-calc-tool-header__btn-label">Save Calculation</span>
+              Save Calculation
             </Button>
-            <Button type="button" variant="secondary" className="pg-calc-tool-header__btn" onClick={onShare}>
+            <Button type="button" variant="secondary" size="sm" className="pg-calc-tool-header__btn" onClick={onShare}>
               <Share2 size={15} strokeWidth={2} aria-hidden />
-              <span className="pg-calc-tool-header__btn-label">Share</span>
+              Share
             </Button>
           </div>
         </div>

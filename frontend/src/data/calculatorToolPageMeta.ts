@@ -17,7 +17,6 @@ export type CalculatorToolPageMeta = {
   primaryResultTitle: string;
   primaryResultSupporting?: string;
   graphTitle?: string;
-  tableTitle?: string;
   proTip: string;
   understanding: CalculatorUnderstandingBlock[];
   categoryId?: Exclude<CalculatorHubCategoryId, "all">;
@@ -35,7 +34,6 @@ const META: Partial<Record<string, CalculatorToolPageMeta>> = {
     primaryResultTitle: "Your estimated monthly payment",
     primaryResultSupporting: "Based on the inputs provided",
     graphTitle: "Repayment breakdown over time",
-    tableTitle: "Payment schedule preview",
     proTip:
       "A larger deposit or lower interest rate can significantly reduce your monthly repayment and total interest paid.",
     categoryId: "purchase-financing",

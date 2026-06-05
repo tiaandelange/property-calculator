@@ -1,12 +1,14 @@
 import { IconContainerByName } from "../../icons";
 import type { IconName } from "../../icons/iconRegistry";
+import { FieldInfoTip } from "../../ui/FieldInfoTip";
 import type { ResultTone } from "../../../utils/calculatorResultsPresentation";
 
 export type CalculatorSummaryCard = {
   key: string;
   label: string;
   value: string;
-  helper?: string;
+  /** Shown in the label info tooltip on hover. */
+  info?: string;
   icon?: IconName;
   tone?: ResultTone;
 };
@@ -47,9 +49,9 @@ export function CalculatorToolSummaryCards({ cards }: { cards: CalculatorSummary
             <div className="pg-calc-tool-summary-card__body">
               <div className="pg-pfin-metric-card__label-row">
                 <span className="pg-pfin-metric-card__label">{card.label}</span>
+                {card.info ? <FieldInfoTip label={card.label} text={card.info} /> : null}
               </div>
               <div className={`pg-pfin-metric-card__value pg-calc-tool-summary-card__value--${tone}`}>{card.value}</div>
-              {card.helper ? <div className="pg-pfin-metric-card__helper">{card.helper}</div> : null}
             </div>
           </article>
         );
