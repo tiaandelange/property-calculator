@@ -1,6 +1,16 @@
+/**
+ * Deprecated. Do not use for new billing.
+ *
+ * Legacy Stripe checkout (hardcoded R99) and webhook handlers that wrote
+ * `profiles.subscription_status` and `public.subscriptions`. Retained until Paystack
+ * checkout/webhooks are confirmed live; new billing uses `frontend/api/lib/billing/*`
+ * and writes only `user_subscriptions`, `webhook_events`, and `checkout_attempts`.
+ */
 import type { VercelRequest } from "@vercel/node";
 import Stripe from "stripe";
-import { createServiceRoleSupabase } from "./supabaseServiceRole";
+
+const STRIPE_BILLING_DEPRECATED =
+  "Stripe billing is deprecated. Use POST /api/subscription/checkout with BILLING_PROVIDER=paystack or mock.";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -24,125 +34,25 @@ export function frontendOrigin(): string {
   return "http://localhost:5173";
 }
 
-export async function createCheckoutSession(userId: string): Promise<{
-  provider: string;
-  sessionId?: string;
-  checkoutUrl: string;
-}> {
-  const origin = frontendOrigin();
-  const stripe = stripeClient();
-  if (!stripe) {
-    return { provider: "mock", checkoutUrl: `${origin}/subscription/success?mock=true` };
-  }
-
-  const session = await stripe.checkout.sessions.create({
-    mode: "subscription",
-    payment_method_types: ["card"],
-    line_items: [
-      {
-        price_data: {
-          currency: "zar",
-          recurring: { interval: "month" },
-          product_data: { name: "The Property Guy Monthly Subscription" },
-          unit_amount: 9900
-        },
-        quantity: 1
-      }
-    ],
-    success_url: `${origin}/subscription/success`,
-    cancel_url: `${origin}/subscription/cancel`,
-    metadata: { userId },
-    subscription_data: { metadata: { userId } }
-  });
-
-  if (!session.url) {
-    throw new Error("Stripe did not return a checkout URL.");
-  }
-
-  return { provider: "stripe", sessionId: session.id, checkoutUrl: session.url };
+/** @deprecated Use `getBillingProvider().createCheckoutSession` instead. */
+export async function createCheckoutSession(_userId: string): Promise<never> {
+  throw new Error(STRIPE_BILLING_DEPRECATED);
 }
 
+/** @deprecated Use `getBillingProvider().cancelSubscription` instead. */
 export async function cancelSubscriptionForUser(userId: string): Promise<void> {
-  const sb = createServiceRoleSupabase();
-  if (!sb) throw new Error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY.");
-  const { error } = await sb
-    .from("profiles")
-    .update({
-      subscription_status: "FREE",
-      free_uses_remaining: 0,
-      subscription_start: null,
-      subscription_end: null,
-      updated_at: new Date().toISOString()
-    })
-    .eq("id", userId);
-  if (error) throw new Error(error.message);
+  console.warn("[stripe-deprecated] cancelSubscriptionForUser ignored", { userId });
 }
 
+/** @deprecated Legacy handler; no longer writes profiles or public.subscriptions. */
 export async function handleStripeWebhookEvent(event: Stripe.Event): Promise<void> {
-  const sb = createServiceRoleSupabase();
-  if (!sb) throw new Error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY.");
-
-  switch (event.type) {
-    case "checkout.session.completed": {
-      const session = event.data.object as Stripe.Checkout.Session;
-      if (session.mode !== "subscription") return;
-      const userId = parseUuidUserId(session.metadata?.userId);
-      if (!userId) {
-        console.warn("[stripe-webhook] checkout.session.completed missing userId UUID", { id: session.id });
-        return;
-      }
-      const start = new Date();
-      const end = new Date();
-      end.setMonth(end.getMonth() + 1);
-      const { error: subErr } = await sb.from("subscriptions").insert({
-        user_id: userId,
-        start_date: start.toISOString(),
-        end_date: end.toISOString(),
-        status: "ACTIVE",
-        payment_provider_id: typeof session.subscription === "string" ? session.subscription : null
-      });
-      if (subErr) throw new Error(subErr.message);
-      const { error: profErr } = await sb
-        .from("profiles")
-        .update({
-          subscription_status: "SUBSCRIBED",
-          subscription_start: start.toISOString(),
-          subscription_end: end.toISOString(),
-          free_uses_remaining: null,
-          updated_at: new Date().toISOString()
-        })
-        .eq("id", userId);
-      if (profErr) throw new Error(profErr.message);
-      return;
-    }
-    case "customer.subscription.deleted": {
-      const subscription = event.data.object as Stripe.Subscription;
-      const userId = parseUuidUserId(subscription.metadata?.userId);
-      if (!userId) {
-        console.warn("[stripe-webhook] customer.subscription.deleted missing userId UUID", {
-          id: subscription.id
-        });
-        return;
-      }
-      const { error } = await sb
-        .from("profiles")
-        .update({
-          subscription_status: "FREE",
-          free_uses_remaining: 0,
-          subscription_start: null,
-          subscription_end: null,
-          updated_at: new Date().toISOString()
-        })
-        .eq("id", userId);
-      if (error) throw new Error(error.message);
-      return;
-    }
-    default:
-      return;
-  }
+  console.warn("[stripe-deprecated] webhook event acknowledged without legacy writes", {
+    type: event.type,
+    id: event.id
+  });
 }
 
-/** Read raw body for Stripe signature verification (webhook must disable body parser). */
+/** @deprecated Import from `frontend/api/lib/billing/readRawBody.ts` instead. */
 export function readRawBody(req: VercelRequest): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];

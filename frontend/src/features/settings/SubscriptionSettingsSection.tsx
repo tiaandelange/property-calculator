@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { AppIcon } from "../../components/icons";
 import { Button, ButtonLink } from "../../components/ui/Button";
 import { useAuth } from "../../contexts/AuthContext";
@@ -8,7 +9,13 @@ import { formatPlanPrice } from "../pricing/pricingPlanDisplay";
 import { useSubscriptionDashboardQuery, useWorkspaceId } from "../queries";
 import { queryKeys } from "../../lib/queryKeys";
 import { updateUserSubscriptionPlanCode } from "../../services/userSubscriptionsSupabase";
-import type { SubscriptionPlanRecord } from "../../services/subscriptionPlansSupabase";
+import { usePlanPermissions } from "../../lib/subscription/usePlanPermissions";
+import { PENDING_PAYMENT_BANNER_MESSAGE } from "../../lib/subscription/planFeatures";
+import {
+  isPaidCheckoutPlanCode,
+  redirectToPlanCheckout,
+  type PlanCheckoutCode
+} from "../../lib/billing/planCheckout";
 import {
   formatSubscriptionStatus,
   formatSubscriptionStatusBadgeClass,
@@ -85,24 +92,78 @@ export function SubscriptionSettingsSection({ freeUsesRemaining }: SubscriptionS
   const isAdmin = profile?.role === "ADMIN";
   const workspaceId = useWorkspaceId();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { data, isLoading, error, refetch } = useSubscriptionDashboardQuery();
+  const permissions = usePlanPermissions();
   const [changingCode, setChangingCode] = useState<string | null>(null);
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [planMessage, setPlanMessage] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
+  const autoCheckoutStarted = useRef(false);
 
   const subscription = data?.subscription ?? null;
   const plans = data?.plans ?? [];
   const usage = data?.usage;
-  const currentPlan =
+  const selectedPlan =
     subscription != null ? plans.find((p) => p.code === subscription.planCode) : null;
+  const effectivePlan = permissions.currentPlan;
+  const isPendingPayment = permissions.isPendingPayment;
 
-  const propertyLimit = currentPlan?.maxProperties ?? currentPlan?.propertyLimit ?? null;
-  const reportLimit =
-    currentPlan?.hasUnlimitedReports || currentPlan?.includesUnlimitedReports
-      ? null
-      : (currentPlan?.maxReportsPerMonth ?? currentPlan?.reportLimit ?? null);
-  const applicationLinkLimit = currentPlan?.maxApplicationLinks ?? null;
+  const propertyLimit = permissions.limits.maxProperties;
+  const reportLimit = permissions.limits.maxReportsPerMonth;
+  const applicationLinkLimit = permissions.limits.maxApplicationLinks;
 
-  const featureRows = subscriptionDashboardFeatureRows(currentPlan ?? null, { isAdmin });
+  const featureRows = subscriptionDashboardFeatureRows(effectivePlan ?? null, { isAdmin });
+
+  const startCheckout = useCallback(
+    async (planCode: string) => {
+      const plan = plans.find((p) => p.code === planCode);
+      if (!plan || !isPaidCheckoutPlanCode(plan.code, plan.monthlyPrice)) {
+        setPlanMessage({ kind: "error", text: "This plan does not require checkout." });
+        return;
+      }
+
+      setCheckoutLoading(true);
+      setPlanMessage(null);
+      try {
+        await redirectToPlanCheckout(plan.code as PlanCheckoutCode, "monthly");
+      } catch (e) {
+        setPlanMessage({
+          kind: "error",
+          text: e instanceof Error ? e.message : "Checkout failed. Make sure you are signed in."
+        });
+        setCheckoutLoading(false);
+      }
+    },
+    [plans]
+  );
+
+  useEffect(() => {
+    if (searchParams.get("checkout") !== "1") return;
+    if (autoCheckoutStarted.current || !subscription || checkoutLoading) return;
+
+    const planCodeParam = searchParams.get("plan")?.trim();
+    const targetPlan = planCodeParam
+      ? plans.find((p) => p.code === planCodeParam)
+      : plans.find((p) => p.code === subscription.planCode);
+
+    navigate("/settings?section=subscription", { replace: true });
+
+    if (!targetPlan || !isPaidCheckoutPlanCode(targetPlan.code, targetPlan.monthlyPrice)) {
+      return;
+    }
+
+    autoCheckoutStarted.current = true;
+    void startCheckout(targetPlan.code);
+  }, [searchParams, subscription, plans, checkoutLoading, navigate, startCheckout]);
+
+  const showCompletePayment =
+    isPendingPayment &&
+    selectedPlan != null &&
+    isPaidCheckoutPlanCode(selectedPlan.code, selectedPlan.monthlyPrice);
+  const showUpgrade = subscription?.planCode === "starter" && !isPendingPayment;
+  const showChangePlan =
+    subscription != null && subscription.planCode !== "starter" && !isPendingPayment;
 
   const handleAdminSwitchPlan = async (planCode: string) => {
     const target = plans.find((p) => p.code === planCode);
@@ -157,8 +218,18 @@ export function SubscriptionSettingsSection({ freeUsesRemaining }: SubscriptionS
   return (
     <div className="pg-settings-subscription">
       <div className="pg-settings-subscription-notice" role="status">
-        <strong>Payment processing coming soon.</strong> Your plan controls feature access and usage
-        limits. No card is stored and no charges are made from this screen.
+        {isPendingPayment ? (
+          <>
+            <strong>{PENDING_PAYMENT_BANNER_MESSAGE}</strong> You have Starter access until payment
+            is confirmed
+            {permissions.selectedPlanName ? ` for ${permissions.selectedPlanName}` : ""}.
+          </>
+        ) : (
+          <>
+            <strong>Billing checkout is available.</strong> Paid plans use secure checkout — no card is
+            stored on this screen. Starter remains free with no payment step.
+          </>
+        )}
       </div>
 
       {isAdmin ? (
@@ -195,15 +266,28 @@ export function SubscriptionSettingsSection({ freeUsesRemaining }: SubscriptionS
           <div className="pg-settings-subscription-current">
             <div className="pg-settings-row">
               <div>
-                <div className="pg-settings-row-label">Current plan</div>
+                <div className="pg-settings-row-label">Selected plan</div>
                 <div className="pg-settings-row-desc">
-                  {currentPlan?.description ?? subscription.planCode}
+                  {isPendingPayment
+                    ? "Starter access until payment is confirmed"
+                    : selectedPlan?.description ?? subscription.planCode}
                 </div>
               </div>
               <span className="pg-settings-subscription-current__plan-name">
-                {currentPlan?.name ?? subscription.planCode}
+                {selectedPlan?.name ?? subscription.planCode}
               </span>
             </div>
+            {isPendingPayment ? (
+              <div className="pg-settings-row">
+                <div>
+                  <div className="pg-settings-row-label">Current access</div>
+                  <div className="pg-settings-row-desc">
+                    Starter limits apply until your payment is confirmed
+                  </div>
+                </div>
+                <span>{effectivePlan?.name ?? "Starter"}</span>
+              </div>
+            ) : null}
             <div className="pg-settings-row">
               <div>
                 <div className="pg-settings-row-label">Status</div>
@@ -226,11 +310,11 @@ export function SubscriptionSettingsSection({ freeUsesRemaining }: SubscriptionS
                 <span>{trialEndLabel}</span>
               </div>
             ) : null}
-            {currentPlan ? (
+            {selectedPlan && !isPendingPayment ? (
               <>
                 <div className="pg-settings-row">
                   <div className="pg-settings-row-label">Monthly price</div>
-                  <span>{formatPlanPrice(currentPlan.monthlyPrice, currentPlan.currency)}</span>
+                  <span>{formatPlanPrice(selectedPlan.monthlyPrice, selectedPlan.currency)}</span>
                 </div>
                 <div className="pg-settings-row">
                   <div className="pg-settings-row-label">Property limit</div>
@@ -248,7 +332,26 @@ export function SubscriptionSettingsSection({ freeUsesRemaining }: SubscriptionS
                 </div>
                 <div className="pg-settings-row">
                   <div className="pg-settings-row-label">Application link limit</div>
-                  <span>{planApplicationLinksLimitLabel(currentPlan)}</span>
+                  <span>{planApplicationLinksLimitLabel(selectedPlan)}</span>
+                </div>
+              </>
+            ) : isPendingPayment && effectivePlan ? (
+              <>
+                <div className="pg-settings-row">
+                  <div className="pg-settings-row-label">Monthly price (selected)</div>
+                  <span>{formatPlanPrice(selectedPlan!.monthlyPrice, selectedPlan!.currency)}</span>
+                </div>
+                <div className="pg-settings-row">
+                  <div className="pg-settings-row-label">Current property limit</div>
+                  <span>
+                    {propertyLimit == null
+                      ? "Unlimited"
+                      : `Up to ${propertyLimit} ${propertyLimit === 1 ? "property" : "properties"}`}
+                  </span>
+                </div>
+                <div className="pg-settings-row">
+                  <div className="pg-settings-row-label">Current report limit (per month)</div>
+                  <span>{reportLimit == null ? "Unlimited" : `${reportLimit} reports`}</span>
                 </div>
               </>
             ) : null}
@@ -269,17 +372,15 @@ export function SubscriptionSettingsSection({ freeUsesRemaining }: SubscriptionS
               <UsageMeter
                 label="Active applicant links"
                 used={usage.applicationLinksActive}
-                limit={
-                  currentPlan?.hasApplicationLinks && applicationLinkLimit == null
-                    ? null
-                    : applicationLinkLimit
-                }
+                limit={applicationLinkLimit}
               />
             </div>
           ) : null}
 
           <div className="pg-settings-subscription-features-panel">
-            <h3 className="pg-settings-subscription-features-panel__title">Features on your plan</h3>
+            <h3 className="pg-settings-subscription-features-panel__title">
+              {isPendingPayment ? "Current access (Starter)" : "Features on your plan"}
+            </h3>
             <FeatureChecklist rows={featureRows} />
           </div>
         </>
@@ -322,12 +423,37 @@ export function SubscriptionSettingsSection({ freeUsesRemaining }: SubscriptionS
         </div>
       ) : !isAdmin ? (
         <div className="pg-settings-subscription-cta">
-          <ButtonLink href="/pricing" variant="primary" size="sm">
-            View plans
-          </ButtonLink>
+          {showCompletePayment ? (
+            <Button
+              type="button"
+              variant="primary"
+              size="sm"
+              loading={checkoutLoading}
+              disabled={checkoutLoading}
+              onClick={() => void startCheckout(subscription!.planCode)}
+            >
+              Complete payment
+            </Button>
+          ) : null}
+          {showUpgrade ? (
+            <ButtonLink href="/pricing" variant={showCompletePayment ? "secondary" : "primary"} size="sm">
+              Upgrade
+            </ButtonLink>
+          ) : null}
+          {showChangePlan ? (
+            <ButtonLink href="/pricing" variant="secondary" size="sm">
+              Change plan
+            </ButtonLink>
+          ) : null}
+          {!subscription ? (
+            <ButtonLink href="/pricing" variant="primary" size="sm">
+              View plans
+            </ButtonLink>
+          ) : null}
           <p className="pg-settings-subscription-cta__hint">
-            Compare tiers and upgrade when billing launches. Plan changes are managed by support until
-            then.
+            {showCompletePayment
+              ? "Finish checkout to activate your paid plan. You can compare tiers on the pricing page."
+              : "Compare tiers on the pricing page or complete checkout when you are ready to upgrade."}
           </p>
         </div>
       ) : null}

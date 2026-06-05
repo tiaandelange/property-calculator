@@ -13,24 +13,33 @@ describe("subscriptionVercel", () => {
     global.fetch = vi.fn();
   });
 
-  it("POSTs checkout with Bearer token", async () => {
+  it("POSTs checkout with Bearer token and plan body", async () => {
     getSession.mockResolvedValue({
       data: { session: { access_token: "sub-tok" } },
       error: null
     });
     (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
       ok: true,
-      json: async () => ({ checkoutUrl: "https://checkout.stripe.com/test" })
+      json: async () => ({
+        checkoutUrl: "https://www.proplytic.co.za/subscription/success?mock=true",
+        reference: "mock_1_user",
+        provider: "mock"
+      })
     });
 
     const { startSubscriptionCheckout } = await import("./subscriptionVercel");
-    const out = await startSubscriptionCheckout();
-    expect(out.checkoutUrl).toContain("stripe.com");
+    const out = await startSubscriptionCheckout({ planCode: "investor", billingPeriod: "monthly" });
+    expect(out.checkoutUrl).toContain("mock=true");
+    expect(out.provider).toBe("mock");
     expect(global.fetch).toHaveBeenCalledWith(
       "/api/subscription/checkout",
       expect.objectContaining({
         method: "POST",
-        headers: { Authorization: "Bearer sub-tok" }
+        headers: expect.objectContaining({
+          Authorization: "Bearer sub-tok",
+          "Content-Type": "application/json"
+        }),
+        body: JSON.stringify({ planCode: "investor", billingPeriod: "monthly" })
       })
     );
   });

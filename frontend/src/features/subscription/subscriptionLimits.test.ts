@@ -60,7 +60,7 @@ describe("computeSubscriptionLimits", () => {
     expect(limits.upgradeMessage).toBe(PLAN_LIMIT_UPGRADE_MESSAGE);
   });
 
-  it("blocks report generation at investor limit", () => {
+  it("pending_payment investor gets starter report limits", () => {
     const limits = computeSubscriptionLimits({
       plans: FALLBACK_SUBSCRIPTION_PLANS,
       subscription: {
@@ -76,10 +76,10 @@ describe("computeSubscriptionLimits", () => {
         paymentSubscriptionId: null
       },
       usage: { propertyCount: 1, applicationLinksActive: 0,
-        investmentReportCount: 10, period: { label: "Month", start: new Date(), end: new Date() } }
+        investmentReportCount: 3, period: { label: "Month", start: new Date(), end: new Date() } }
     });
     expect(limits.canGenerateReport).toBe(false);
-    expect(limits.reportLimit).toBe(10);
+    expect(limits.reportLimit).toBe(3);
   });
 
   it("allows unlimited reports on portfolio", () => {

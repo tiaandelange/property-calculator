@@ -100,3 +100,58 @@
   font-size: 12px;
   color: var(--text-muted);
 }
+
+.pg-pending-payment-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin: 0 0 16px;
+  padding: 12px 16px;
+}
+
+.pg-pending-payment-banner__body {
+  flex: 1 1 240px;
+}
+
+.pg-pending-payment-banner__message {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.pg-pending-payment-banner__plan {
+  color: var(--text-secondary);
+}
+
+.pg-subscription-result__loading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 16px;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.pg-subscription-result__spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--border-soft);
+  border-top-color: var(--accent, #2563eb);
+  border-radius: 50%;
+  animation: pg-subscription-result-spin 0.8s linear infinite;
+}
+
+@keyframes pg-subscription-result-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.pg-subscription-result__actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}

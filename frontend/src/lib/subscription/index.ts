@@ -26,12 +26,15 @@ export {
   formatReportLimitUsage,
   PLAN_LIMIT_UPGRADE_MESSAGE,
   DEFAULT_UPGRADE_MESSAGE,
+  PENDING_PAYMENT_BANNER_MESSAGE,
   PlanPermissionError
 } from "./planFeatures";
 
 export {
   useSubscriptionQuery,
   useSubscriptionDashboardQuery,
+  useSubscriptionEntitlements,
+  computeSubscriptionEntitlements,
   type SubscriptionQueryData,
   type SubscriptionDashboardData
 } from "./useSubscriptionQuery";
@@ -41,6 +44,8 @@ export { usePlanPermissions, type PlanPermissions } from "./usePlanPermissions";
 export { PlanGate, type PlanGateProps } from "./PlanGate";
 
 export { UpgradePrompt, type UpgradePromptProps, type UpgradePromptContext } from "./UpgradePrompt";
+
+export { PendingPaymentBanner } from "./PendingPaymentBanner";
 
 export { LockedFeaturePreview, type LockedFeaturePreviewProps } from "./LockedFeaturePreview";
 export {

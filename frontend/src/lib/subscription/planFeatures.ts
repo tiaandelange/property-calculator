@@ -21,6 +21,9 @@ export const PLAN_LIMIT_UPGRADE_MESSAGE =
 export const DEFAULT_UPGRADE_MESSAGE =
   "Upgrade your plan to unlock this feature.";
 
+export const PENDING_PAYMENT_BANNER_MESSAGE =
+  "Complete payment to unlock your selected plan.";
+
 const FEATURE_UPGRADE_MESSAGES: Record<FeatureKey, string> = {
   basicManagement: "Rental management is not included on your current plan.",
   basicCalculators: "Investment calculators are not included on your current plan.",
@@ -79,8 +82,18 @@ function unlimitedLimits(): PlanLimits {
   return emptyLimits();
 }
 
-function isEntitledSubscriptionStatus(status: string | null | undefined): boolean {
+function hasSubscriptionRow(status: string | null | undefined): boolean {
   return status === "active" || status === "trialing" || status === "pending_payment";
+}
+
+function emptyEntitlementMeta() {
+  return {
+    isPendingPayment: false,
+    selectedPlanCode: null as PlanCode | null,
+    selectedPlanName: null as string | null,
+    selectedPlan: null as SubscriptionPlanRecord | null,
+    subscriptionStatus: null as string | null
+  };
 }
 
 function featuresFromPlan(plan: SubscriptionPlanRecord | null): PlanFeatures {
@@ -150,13 +163,14 @@ export function computePlanPermissions(input: PlanPermissionsInput): PlanPermiss
       features: unlimitedFeatures(),
       limitsActive: false,
       isLegacyProfile: false,
+      ...emptyEntitlementMeta(),
       reportPeriodLabel: usage.period.label,
       usage: usageSnapshot,
       currentPlan: null
     };
   }
 
-  if (!input.subscription || !isEntitledSubscriptionStatus(input.subscription.status)) {
+  if (!input.subscription || !hasSubscriptionRow(input.subscription.status)) {
     const legacyReportCap =
       input.freeUsesRemaining != null && Number.isFinite(input.freeUsesRemaining)
         ? Math.max(0, input.freeUsesRemaining)
@@ -183,6 +197,7 @@ export function computePlanPermissions(input: PlanPermissionsInput): PlanPermiss
       features: legacyFeatures,
       limitsActive: legacyReportCap != null,
       isLegacyProfile: true,
+      ...emptyEntitlementMeta(),
       reportPeriodLabel:
         legacyReportCap != null ? "Free calculator reports remaining" : usage.period.label,
       usage: usageSnapshot,
@@ -190,9 +205,40 @@ export function computePlanPermissions(input: PlanPermissionsInput): PlanPermiss
     };
   }
 
-  const plan =
+  const selectedPlan =
     input.plans.find((p) => p.code === input.subscription!.planCode) ?? null;
-  const planCode = normalizePlanCode(input.subscription.planCode);
+  const selectedPlanCode = normalizePlanCode(input.subscription.planCode);
+  const subscriptionStatus = input.subscription.status;
+
+  if (subscriptionStatus === "pending_payment") {
+    const starterPlan = input.plans.find((p) => p.code === PLAN_CODES.starter) ?? null;
+    const effectiveCode = PLAN_CODES.starter;
+
+    return {
+      planCode: effectiveCode,
+      planName: starterPlan?.name ?? "Starter",
+      isAdmin: false,
+      isStarter: true,
+      isInvestor: false,
+      isPortfolio: false,
+      isPro: false,
+      limits: limitsFromPlan(starterPlan),
+      features: featuresFromPlan(starterPlan),
+      limitsActive: true,
+      isLegacyProfile: false,
+      isPendingPayment: true,
+      selectedPlanCode,
+      selectedPlanName: selectedPlan?.name ?? input.subscription.planCode,
+      selectedPlan,
+      subscriptionStatus,
+      reportPeriodLabel: usage.period.label,
+      usage: usageSnapshot,
+      currentPlan: starterPlan
+    };
+  }
+
+  const plan = selectedPlan;
+  const planCode = selectedPlanCode;
 
   return {
     planCode,
@@ -206,6 +252,11 @@ export function computePlanPermissions(input: PlanPermissionsInput): PlanPermiss
     features: featuresFromPlan(plan),
     limitsActive: true,
     isLegacyProfile: false,
+    isPendingPayment: false,
+    selectedPlanCode: planCode,
+    selectedPlanName: plan?.name ?? input.subscription.planCode,
+    selectedPlan: plan,
+    subscriptionStatus,
     reportPeriodLabel: usage.period.label,
     usage: usageSnapshot,
     currentPlan: plan
@@ -262,6 +313,16 @@ export function upgradeMessageFor(
   limitKey?: LimitKey
 ): string {
   if (snapshot.isAdmin) return "";
+  if (snapshot.isPendingPayment) {
+    const planLabel = snapshot.selectedPlanName ?? "your selected plan";
+    if (limitKey) {
+      return `${PENDING_PAYMENT_BANNER_MESSAGE} You currently have Starter access until ${planLabel} is paid.`;
+    }
+    if (featureKey) {
+      return `${PENDING_PAYMENT_BANNER_MESSAGE} This feature unlocks on ${planLabel} after payment.`;
+    }
+    return `${PENDING_PAYMENT_BANNER_MESSAGE} (${planLabel})`;
+  }
   if (limitKey) return upgradeMessageForLimit(limitKey);
   if (featureKey) return upgradeMessageForFeature(featureKey);
   return snapshot.planName

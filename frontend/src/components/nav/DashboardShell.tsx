@@ -5,6 +5,7 @@ import { DashboardSidebar } from "./DashboardSidebar";
 import { MobileBottomNav } from "./MobileBottomNav";
 import { MobileWorkspaceMenu } from "./MobileWorkspaceMenu";
 import { WorkspaceShellHeader } from "./WorkspaceShellHeader";
+import { PendingPaymentBanner } from "../../lib/subscription/PendingPaymentBanner";
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -33,6 +34,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           <WorkspaceShellHeader />
         </div>
         <div className="pg-dashboard-shell-content">
+          <PendingPaymentBanner />
           <main className="pg-main pg-main-workspace">{children}</main>
         </div>
       </div>

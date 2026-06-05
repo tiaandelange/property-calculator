@@ -9,7 +9,6 @@ import { PrivacyPolicyPage } from "../pages/PrivacyPolicyPage";
 import { TermsOfUsePage } from "../pages/TermsOfUsePage";
 import { CookieNoticePage } from "../pages/CookieNoticePage";
 import { ContactPage } from "../pages/ContactPage";
-import { SubscriptionPage } from "../pages/SubscriptionPage";
 import { SubscriptionResultPage } from "../pages/SubscriptionResultPage";
 import { RequireAuth } from "../components/auth/RequireAuth";
 import { RouteBoundary } from "../components/ui/RouteBoundary";
@@ -342,7 +341,7 @@ export function App() {
         <Route path="/tenants/:id" element={<Auth label="Tenant Workspace"><TenantWorkspacePage /></Auth>} />
         <Route path="/tenants/:id/edit" element={<Auth label="Tenant Form"><TenantFormPage /></Auth>} />
         <Route path="/account" element={<Navigate to="/settings?invoiceBanking=1" replace />} />
-        <Route path="/subscription" element={<SubscriptionPage />} />
+        <Route path="/subscription" element={<Navigate to="/settings?section=subscription" replace />} />
         <Route path="/subscription/success" element={<SubscriptionResultPage mode="success" />} />
         <Route path="/subscription/cancel" element={<SubscriptionResultPage mode="cancel" />} />
       </Route>

@@ -9,8 +9,10 @@ secret lives, how often to rotate it, and what to do when one leaks.
 | ------------------------- | ------------------- | --------------- | ------------------------------------------------------- | -------------- | ------------------------------------------------------------------------------ |
 | `DATABASE_URL`            | backend (Render)    | high            | Render env-var UI · Supabase Settings → Database        | quarterly      | Supabase → Settings → Database → Reset password → update Render                |
 | `JWT_SECRET`              | backend (Render)    | high            | Render env-var UI (auto-generated)                      | quarterly      | Render → Environment → regenerate. **Logs out every user immediately.**        |
-| `STRIPE_SECRET_KEY`       | backend (Render)    | high            | Render env-var UI · Stripe Dashboard → Developers       | yearly         | Stripe → Developers → API keys → Roll → update Render                          |
-| `STRIPE_WEBHOOK_SECRET`   | backend (Render)    | medium          | Render env-var UI · Stripe Dashboard → Webhooks         | yearly         | Stripe → Webhooks → endpoint → Roll signing secret → update Render             |
+| `PAYSTACK_SECRET_KEY`     | Vercel (server)     | high            | Vercel env-var UI · Paystack Dashboard → Settings → API | yearly         | Paystack → Roll key → update Vercel (**never** `VITE_`)                        |
+| `SUPABASE_SERVICE_ROLE_KEY` | Vercel (server)   | high            | Vercel env-var UI · Supabase Settings → API             | yearly         | Supabase → regenerate → update Vercel                                          |
+| `STRIPE_SECRET_KEY`       | Vercel (legacy)     | high            | Vercel env-var UI · Stripe Dashboard → Developers       | yearly         | **Deprecated** — rotate off after Paystack live                                |
+| `STRIPE_WEBHOOK_SECRET`   | Vercel (legacy)     | medium          | Vercel env-var UI · Stripe Dashboard → Webhooks         | yearly         | **Deprecated** — disable Stripe webhook after Paystack live                    |
 | `SMTP_PASS`               | backend (Render)    | medium          | Render env-var UI · SMTP provider                       | quarterly      | SMTP provider → generate new credentials → update Render                       |
 | Supabase database password | backend (Render)   | high            | Render env-var UI (encoded inside `DATABASE_URL`)       | quarterly      | See `DATABASE_URL`                                                             |
 | Cloudflare API token       | ops                | high            | password manager · Cloudflare → My Profile → API Tokens | yearly         | Cloudflare → revoke token → mint new one                                       |
@@ -23,9 +25,29 @@ secret lives, how often to rotate it, and what to do when one leaks.
 `JWT_EXPIRES_IN`, `FRONTEND_URL`, `FRONTEND_URLS`, `EMAIL_FROM`, `SMTP_HOST`,
 `SMTP_PORT`, `SMTP_USER`, `SMTP_FROM`, `REPORTS_ROOT_OVERRIDE`.
 
+> `FRONTEND_URL` is not a secret (public site origin) but is **required** for billing checkout redirects on Vercel serverless.
+
 > "high" = compromise gives an attacker full read/write access to user data
 > or money. "medium" = compromise enables specific abuse (forge webhooks,
 > send phishing mail). Treat both as private; the cadence differs.
+
+## Billing environment (Vercel server)
+
+Paid checkout uses `POST /api/subscription/checkout`. Config is validated in `frontend/api/lib/billing/billingEnv.ts`.
+
+| Environment | `BILLING_PROVIDER` | `FRONTEND_URL` | `PAYSTACK_SECRET_KEY` |
+| ----------- | ------------------ | -------------- | --------------------- |
+| Local dev   | `mock`             | `http://localhost:5173` | Omit (mock) |
+| Vercel preview (Paystack test) | `paystack` | Preview host URL | `sk_test_…` |
+| Production  | `paystack`         | `https://www.proplytic.co.za` | `sk_live_…` |
+
+Also required: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`.
+
+- No payment secret may use a `VITE_` prefix.
+- `BILLING_PROVIDER=mock` is rejected in production (HTTP 503 on paid checkout).
+- Missing `FRONTEND_URL` or `PAYSTACK_SECRET_KEY` (when provider is paystack) → HTTP 503.
+
+See [`docs/billing/paystack-setup.md`](billing/paystack-setup.md).
 
 ## Where each secret is allowed to exist
 
@@ -74,6 +96,10 @@ Not safe: anything with `_SECRET`, `_KEY` (if it isn't a publishable key),
 `PASSWORD`, `TOKEN`, or service-role keys. Service-role keys
 (`SUPABASE_SERVICE_ROLE_KEY`, etc.) are **server-only** by definition — if
 you're tempted to expose one to the browser, you're doing something wrong.
+
+**Billing-specific:** never define `VITE_PAYSTACK_*`, `VITE_BILLING_*`, or
+`VITE_STRIPE_SECRET_*`. The SPA calls same-origin `/api/subscription/*`; Paystack
+and Supabase service-role keys stay in Vercel **server** env only.
 
 ## Rotation cadence
 

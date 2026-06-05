@@ -71,6 +71,7 @@ export const LIMIT_KEYS = [
 ] as const satisfies readonly LimitKey[];
 
 export type PlanPermissionsSnapshot = {
+  /** Effective plan used for feature gates and limits. */
   planCode: PlanCode | null;
   planName: string | null;
   isAdmin: boolean;
@@ -82,6 +83,12 @@ export type PlanPermissionsSnapshot = {
   features: PlanFeatures;
   limitsActive: boolean;
   isLegacyProfile: boolean;
+  /** Paid plan chosen at signup; entitlements stay on Starter until payment confirms. */
+  isPendingPayment: boolean;
+  selectedPlanCode: PlanCode | null;
+  selectedPlanName: string | null;
+  selectedPlan: SubscriptionPlanRecord | null;
+  subscriptionStatus: string | null;
   reportPeriodLabel: string;
   usage: {
     propertyCount: number;
@@ -89,5 +96,6 @@ export type PlanPermissionsSnapshot = {
     applicationLinksActive: number;
     unitCount: number;
   };
+  /** Effective plan record (Starter when pending_payment). */
   currentPlan: SubscriptionPlanRecord | null;
 };

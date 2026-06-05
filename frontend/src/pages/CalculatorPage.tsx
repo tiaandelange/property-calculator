@@ -912,8 +912,8 @@ export function CalculatorPage() {
               <div className="pg-alert pg-alert-error">
                 {error}{" "}
                 {error.includes("Subscribe") ? (
-                  <ButtonLink href="/subscription" variant="soft">
-                    View subscription
+                  <ButtonLink href="/settings?section=subscription" variant="soft">
+                    Manage subscription
                   </ButtonLink>
                 ) : null}
               </div>

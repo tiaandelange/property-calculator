@@ -96,6 +96,40 @@ describe("computePlanPermissions", () => {
     expect(snapshot.features.unlimitedReports).toBe(false);
   });
 
+  it("pending_payment uses starter entitlements while preserving selected plan", () => {
+    const snapshot = computePlanPermissions({
+      plans: FALLBACK_SUBSCRIPTION_PLANS,
+      subscription: {
+        id: "4",
+        userId: "u",
+        planCode: "investor",
+        status: "pending_payment",
+        trialStart: null,
+        trialEnd: null,
+        currentPeriodStart: null,
+        currentPeriodEnd: null,
+        paymentProvider: null,
+        paymentSubscriptionId: null
+      },
+      usage: {
+        propertyCount: 2,
+        investmentReportCount: 2,
+        applicationLinksActive: 0,
+        period: { label: "Month", start: new Date(), end: new Date() }
+      }
+    });
+
+    expect(snapshot.isPendingPayment).toBe(true);
+    expect(snapshot.selectedPlanCode).toBe("investor");
+    expect(snapshot.selectedPlanName).toBe("Investor");
+    expect(snapshot.isStarter).toBe(true);
+    expect(snapshot.isInvestor).toBe(false);
+    expect(snapshot.features.irr).toBe(false);
+    expect(snapshot.limits.maxProperties).toBe(3);
+    expect(snapshot.limits.maxReportsPerMonth).toBe(3);
+    expect(canUseFeatureFromSnapshot(snapshot, "irr")).toBe(false);
+  });
+
   it("portfolio tier has unlimited reports", () => {
     const snapshot = computePlanPermissions({
       plans: FALLBACK_SUBSCRIPTION_PLANS,

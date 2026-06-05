@@ -20,8 +20,7 @@ export type UserSubscriptionRecord = {
   paymentSubscriptionId: string | null;
 };
 
-// TODO(payments): When Stripe (or other provider) is integrated, transition
-// pending_payment → active and populate payment_* fields via service role only.
+// Payment activation and provider fields are updated via service role only (billing API + webhooks).
 
 /** Initial row fields for a newly registered user (no payment provider). */
 export function buildInitialUserSubscriptionFields(plan: SubscriptionPlanRecord): {

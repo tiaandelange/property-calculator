@@ -2,10 +2,12 @@ import { ButtonLink } from "../../components/ui/Button";
 import {
   formatPropertyLimitUsage,
   formatReportLimitUsage,
+  PENDING_PAYMENT_BANNER_MESSAGE,
   PLAN_LIMIT_UPGRADE_MESSAGE
 } from "./planFeatures";
 import type { FeatureKey, LimitKey } from "./planTypes";
 import { usePlanPermissions } from "./usePlanPermissions";
+import { settingsSubscriptionPath } from "../../features/signup/signupBillingFlow";
 
 export type UpgradePromptContext = "property" | "report" | "feature" | "general";
 
@@ -36,13 +38,20 @@ export function UpgradePrompt({
 }: UpgradePromptProps) {
   const permissions = usePlanPermissions();
 
+  const pendingCheckoutHref = settingsSubscriptionPath({
+    checkout: true,
+    planCode: permissions.selectedPlanCode ?? undefined
+  });
+
   const resolvedMessage =
     message ??
-    (feature
-      ? permissions.upgradeMessage(feature)
-      : limit
-        ? permissions.upgradeMessage(undefined, limit)
-        : PLAN_LIMIT_UPGRADE_MESSAGE);
+    (permissions.isPendingPayment
+      ? PENDING_PAYMENT_BANNER_MESSAGE
+      : feature
+        ? permissions.upgradeMessage(feature)
+        : limit
+          ? permissions.upgradeMessage(undefined, limit)
+          : PLAN_LIMIT_UPGRADE_MESSAGE);
 
   const usageLine =
     context === "property" || limit === "maxProperties"
@@ -75,17 +84,28 @@ export function UpgradePrompt({
           <p className="pg-plan-limit-prompt__usage">{usageLine}</p>
         ) : null}
         {permissions.planName && !permissions.isAdmin ? (
-          <p className="pg-plan-limit-prompt__plan">Current plan: {permissions.planName}</p>
+          <p className="pg-plan-limit-prompt__plan">
+            {permissions.isPendingPayment && permissions.selectedPlanName
+              ? `Selected plan: ${permissions.selectedPlanName} · Current access: ${permissions.planName}`
+              : `Current plan: ${permissions.planName}`}
+          </p>
         ) : null}
         <p className="pg-plan-limit-prompt__note">
-          Payment processing is not live yet — limits are informational and may change when billing
-          launches.
+          {permissions.isPendingPayment
+            ? "Complete payment in Settings → Subscription to unlock your selected plan."
+            : "Upgrade from Settings → Subscription or compare plans on the pricing page."}
         </p>
       </div>
       <div className="pg-plan-limit-prompt__actions">
-        <ButtonLink href={pricingHref} variant="primary" size="sm">
-          {primaryCtaLabel}
-        </ButtonLink>
+        {permissions.isPendingPayment ? (
+          <ButtonLink href={pendingCheckoutHref} variant="primary" size="sm">
+            Complete payment
+          </ButtonLink>
+        ) : (
+          <ButtonLink href={pricingHref} variant="primary" size="sm">
+            {primaryCtaLabel}
+          </ButtonLink>
+        )}
         <ButtonLink href={subscriptionHref} variant="outline" size="sm">
           Manage plan
         </ButtonLink>

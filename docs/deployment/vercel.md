@@ -89,17 +89,17 @@ Local dev may leave it unset and use `vercel dev` for serverless routes, or set
 | -------- | ------- |
 | `SUPABASE_URL` / `VITE_SUPABASE_URL` | Auth + data (handlers accept either) |
 | `SUPABASE_ANON_KEY` / `VITE_SUPABASE_ANON_KEY` | User JWT verification in API routes |
-| `SUPABASE_SERVICE_ROLE_KEY` | Stripe webhook, cron, privileged writes |
-| `STRIPE_SECRET_KEY` | Checkout session creation |
-| `STRIPE_WEBHOOK_SECRET` | `POST /api/subscription/webhook` |
-| `FRONTEND_URL` | e.g. `https://app.yourdomain.com` for Stripe success/cancel URLs |
+| `SUPABASE_SERVICE_ROLE_KEY` | Billing webhooks, cron, privileged writes |
+| `BILLING_PROVIDER` | `mock` (dev/preview) or `paystack` (production) |
+| `PAYSTACK_SECRET_KEY` | Paystack API + webhook verification (**never** `VITE_`) |
+| `FRONTEND_URL` | e.g. `https://www.proplytic.co.za` for checkout success/cancel URLs (**required**) |
 | `CRON_SECRET` | `GET/POST /api/cron/run-due` |
 | `RESEND_API_KEY` | Invoice email + contact form notifications (**never** `VITE_*`) |
 | `CONTACT_FROM_EMAIL` | Optional for `POST /api/contact` — falls back to `INVOICE_EMAIL_FROM` / default invoice sender |
 
-**Contact form delivery:** notifications go to `delangetiaanoffice@gmail.com` by default. Set optional `CONTACT_TO_EMAIL` to override. Apply migration `20260612120000_contact_submissions.sql` before enabling the form in production.
+Legacy (remove after Paystack live): `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`.
 
-**Stripe webhook URL in Dashboard:** `https://<your-domain>/api/subscription/webhook`
+**Paystack webhook URL in Dashboard:** `https://<your-domain>/api/subscription/webhook`
 
 ### Hobby plan: 12 serverless function limit
 

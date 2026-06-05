@@ -1,8 +1,8 @@
 # Security checklist (post-migration)
 
-Last audited: **2026-05-29** (Supabase + Vercel architecture; Express retired).
+Last audited: **2026-06-04** (Paystack billing + env validation; Stripe deprecated).
 
-Use this as a release gate before production deploys and after any auth, RLS, Storage, or Stripe change.
+Use this as a release gate before production deploys and after any auth, RLS, Storage, or **billing** change.
 
 ---
 
@@ -13,7 +13,9 @@ Use this as a release gate before production deploys and after any auth, RLS, St
 | No committed `.env` files | **Pass** | Only `*.example` templates in repo |
 | No hardcoded `sk_live` / `sk_test` / `whsec_*` | **Pass** | Grep clean in source |
 | `SUPABASE_SERVICE_ROLE_KEY` not in `frontend/src` | **Pass** | `npm run verify:public-env` |
-| `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` not in SPA | **Pass** | Server env + `frontend/api/*` only |
+| `PAYSTACK_SECRET_KEY` not in SPA | **Pass** | `verify-public-frontend-env.mjs` |
+| No `VITE_PAYSTACK_*` / `VITE_BILLING_*` in SPA | **Pass** | Same script |
+| `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` not in SPA | **Pass** | Server env + `frontend/api/*` only (legacy) |
 | `DATABASE_URL` / `JWT_SECRET` not in SPA | **Pass** | Legacy scripts/docs only |
 | `localhost:4000` / Render URLs in **runtime** code | **Pass** | Removed from SPA; **docs only** still mention Render (update when convenient) |
 
@@ -33,7 +35,8 @@ npm run verify:public-env
 |----------|---------|----------|
 | `frontend/api/lib/supabaseServiceRole.ts` | Yes | Vercel serverless only |
 | `frontend/api/cron/run-due.ts` | Yes | Requires `CRON_SECRET` |
-| `frontend/api/lib/stripeSubscriptionServer.ts` (webhook, cancel DB writes) | Yes | Not exposed to browser |
+| `frontend/api/lib/stripeSubscriptionServer.ts` (legacy Stripe — deprecated) | Yes | Ack-only webhooks; no legacy DB writes |
+| `frontend/api/lib/billing/billingSubscriptionSync.ts` | Yes | Paystack webhook + checkout sync |
 | `frontend/src/**` | **No** | **Pass** |
 | `backend/scripts/legacy-prisma-migration/*` | Yes (local ops) | Not deployed to Vercel |
 
@@ -78,7 +81,7 @@ Grants: `GRANT … TO authenticated` only on user-facing tables (`20260515180000
 | `update_invoice_payment_details()` RPC with `SECURITY DEFINER` + guard bypass | **Pass** (`20260529130000_profile_invoice_payment_rpc.sql`) |
 | SPA `updateProfile` does not send billing fields | **Pass** (`profileSupabase.ts`) |
 
-Subscription state changes: **Stripe webhook** or **service role** (`stripeSubscriptionServer.ts`) only.
+Subscription state changes: **Paystack webhook** (via `billingSubscriptionSync.ts`) or **service role** billing APIs only. Legacy `profiles.subscription_status` is not updated by new checkout flows.
 
 ---
 
@@ -96,23 +99,28 @@ Cross-user access: blocked by Storage RLS + table RLS; object keys include owner
 
 ---
 
-## 7. Stripe
+## 7. Paystack billing
 
 | Check | Status | Location |
 |-------|--------|----------|
-| Webhook signature verification | **Pass** | `stripe.webhooks.constructEvent` in `frontend/api/subscription/webhook.ts`; 503 if secret missing |
-| Checkout metadata `userId` = Supabase UUID | **Pass** | `parseUuidUserId` in `stripeSubscriptionServer.ts` |
-| User-initiated checkout/cancel require Bearer session | **Pass** | `authenticateSupabaseRequest` on checkout/cancel routes |
+| Checkout via provider-agnostic API | **Pass** | `POST /api/subscription/checkout` → `handleSubscriptionCheckout.ts` |
+| Webhook HMAC verification (Paystack) | **Pass** | `paystackProvider.ts` + `x-paystack-signature` |
+| Webhook idempotency | **Pass** | `webhook_events` in `billingSubscriptionSync.ts` |
+| User-initiated checkout/cancel require Bearer session | **Pass** | `authenticateSupabaseRequest` |
 | Client cannot set `subscription_status` | **Pass** | DB trigger + no SPA patch |
+| `assertBillingCheckoutConfig()` before checkout | **Pass** | `billingEnv.ts` |
+| Mock provider blocked in production | **Pass** | `BILLING_PROVIDER=mock` → HTTP 503 |
+| Missing `FRONTEND_URL` / `PAYSTACK_SECRET_KEY` fail closed | **Pass** | HTTP 503 on checkout |
 
-### Gap — webhook idempotency
+### Legacy Stripe (deprecated)
 
 | Check | Status |
 |-------|--------|
-| `public.webhook_events` table + unique `(provider, external_event_id)` | **Schema exists** |
-| Handler inserts/logs events before processing | **Not implemented** |
+| Stripe webhook signature still verified if `Stripe-Signature` present | **Pass** |
+| Legacy handler does not write `profiles` / `subscriptions` | **Pass** |
+| `createCheckoutSession` in `stripeSubscriptionServer.ts` throws | **Pass** |
 
-**Risk:** Stripe retries can duplicate `subscriptions` rows or re-apply profile updates. **Recommended fix:** in `handleStripeWebhookEvent`, `INSERT INTO webhook_events … ON CONFLICT DO NOTHING RETURNING id`; skip processing if conflict.
+Remove Stripe env vars and module after Paystack is confirmed live in production.
 
 ---
 
@@ -134,7 +142,7 @@ Cross-user access: blocked by Storage RLS + table RLS; object keys include owner
 | Route | Auth |
 |-------|------|
 | `/api/subscription/checkout`, `/cancel` | Supabase Bearer |
-| `/api/subscription/webhook` | Stripe signature (no user JWT) |
+| `/api/subscription/webhook` | Paystack HMAC (`x-paystack-signature`) or legacy Stripe sig (deprecated, ack-only) |
 | `/api/reports/generate`, `/api/invoices/*/generate-pdf`, `/send-email` | Supabase Bearer + RLS |
 | `/api/properties/*/bond/*`, `/api/recurring-expenses/run-due` | Supabase Bearer + RLS |
 | `/api/cron/run-due` | `CRON_SECRET` Bearer + service role |
@@ -169,12 +177,19 @@ cd backend && npm run verify:public-env && npm test
 **Vercel production env (required):**
 
 - `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`
-- `SUPABASE_SERVICE_ROLE_KEY`
-- `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` (if billing live)
-- `FRONTEND_URL`
+- `BILLING_PROVIDER=paystack`
+- `PAYSTACK_SECRET_KEY` (`sk_live_…`)
+- `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
+- `FRONTEND_URL` (`https://www.proplytic.co.za`)
 - `CRON_SECRET`
 
-**Do not set:** `VITE_API_BASE_URL`, any `VITE_*` secret, service role in client env.
+**Vercel development / local:**
+
+- `BILLING_PROVIDER=mock`
+- `FRONTEND_URL=http://localhost:5173` (or your Vite port)
+- `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
+
+**Do not set:** `VITE_API_BASE_URL`, any `VITE_*` payment secret, service role in client env, `BILLING_PROVIDER=mock` in production.
 
 **Supabase:** apply all migrations through `20260529140000_special_operations_rpcs.sql` on hosted project.
 
@@ -184,9 +199,7 @@ cd backend && npm run verify:public-env && npm test
 
 | Priority | Issue | Recommendation |
 |----------|-------|----------------|
-| **High** | Stripe webhook does not write to `webhook_events` / dedupe by `event.id` | Implement idempotent handler before relying on billing in production |
-| **Medium** | `cancel` API updates profile to FREE via service role without cancelling Stripe subscription object | Call `stripe.subscriptions.cancel` when `STRIPE_SECRET_KEY` is set |
-| **Medium** | Mock Stripe checkout when `STRIPE_SECRET_KEY` unset | Ensure production Vercel env always has live/test key; fail closed in production |
+| **Low** | Legacy Stripe module still in repo | Remove after Paystack confirmed live in production |
 | **Low** | `CRON_SECRET` compared with `===` (not timing-safe) | Use `crypto.timingSafeEqual` for defense in depth |
 | **Low** | `verify-public-env` does not scan `frontend/api/` | Optional: add separate rule “no `VITE_` secrets in api/” or document as server-only |
 | **Low** | Docs (`DEPLOYMENT.md`, `ARCHITECTURE.md`) still describe Render/JWT/Express | Update docs to avoid misconfiguration |
@@ -200,14 +213,15 @@ cd backend && npm run verify:public-env && npm test
 |------|------|------|-------|
 | Engineering | | | Migrations applied on hosted Supabase |
 | Engineering | | | Vercel env reviewed; no `VITE_API_BASE_URL` in prod |
-| Engineering | | | Stripe webhook URL → `https://<domain>/api/subscription/webhook` |
-| Product | | | Accept idempotency gap or track fix in backlog |
+| Engineering | | | Paystack webhook URL → `https://<domain>/api/subscription/webhook` |
+| Product | | | `BILLING_PROVIDER=paystack` + `PAYSTACK_SECRET_KEY` set in production |
 
 ---
 
 ## Related docs
 
 - [`docs/SECRETS.md`](SECRETS.md) — rotation cadence
+- [`docs/billing/paystack-setup.md`](billing/paystack-setup.md) — Paystack dashboard + env
 - [`docs/MIGRATION_STATUS.md`](MIGRATION_STATUS.md) — architecture state
 - [`docs/deployment/vercel.md`](deployment/vercel.md) — Vercel env contract
 - [`supabase/TEST_RLS_MANUAL.sql`](../supabase/TEST_RLS_MANUAL.sql) — manual RLS smoke tests

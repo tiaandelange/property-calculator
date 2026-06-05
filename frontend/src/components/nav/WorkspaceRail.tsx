@@ -130,7 +130,6 @@ export function WorkspaceRail({ userRole }: WorkspaceRailProps) {
     location.pathname === INVESTMENT_CALCULATOR_PATH || /^\/calculators\/[^/]+/.test(location.pathname);
   const settingsActive =
     location.pathname.startsWith("/account") ||
-    location.pathname.startsWith("/subscription") ||
     location.pathname.startsWith("/settings") ||
     (isAdmin && location.pathname === "/admin");
   const helpActive =
@@ -410,9 +409,15 @@ export function WorkspaceRail({ userRole }: WorkspaceRailProps) {
                 <li role="none">
                   <Link
                     role="menuitem"
-                    to="/subscription"
+                    to="/settings?section=subscription"
                     className="pg-workspace-flyout-link"
-                    data-active={location.pathname.startsWith("/subscription") ? "true" : "false"}
+                    data-active={
+                      location.pathname.startsWith("/settings") &&
+                      (location.search.includes("section=subscription") ||
+                        location.hash === "#subscription")
+                        ? "true"
+                        : "false"
+                    }
                     onClick={onFlyoutLinkNavigate}
                   >
                     Subscription

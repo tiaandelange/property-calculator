@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useMemo } from "react";
 import { queryKeys } from "../queryKeys";
 import {
   FALLBACK_SUBSCRIPTION_PLANS,
@@ -8,6 +9,8 @@ import {
 import { fetchSubscriptionUsageCounts } from "../../services/subscriptionUsageSupabase";
 import { getUserSubscriptionForCurrentUser } from "../../services/userSubscriptionsSupabase";
 import { useWorkspaceId } from "../../features/queries/useWorkspaceId";
+import { computePlanPermissions } from "./planFeatures";
+import type { PlanPermissionsSnapshot } from "./planTypes";
 
 export type SubscriptionQueryData = {
   plans: SubscriptionPlanRecord[];
@@ -24,6 +27,20 @@ async function loadSubscriptionData(): Promise<SubscriptionQueryData> {
   return { plans, subscription, usage };
 }
 
+/** Derive effective entitlements from subscription query data (Starter access when pending_payment). */
+export function computeSubscriptionEntitlements(
+  data: SubscriptionQueryData | undefined,
+  opts?: { freeUsesRemaining?: number | null; role?: string | null }
+): PlanPermissionsSnapshot {
+  return computePlanPermissions({
+    plans: data?.plans ?? FALLBACK_SUBSCRIPTION_PLANS,
+    subscription: data?.subscription ?? null,
+    usage: data?.usage ?? null,
+    freeUsesRemaining: opts?.freeUsesRemaining,
+    role: opts?.role
+  });
+}
+
 /** Loads plan catalog, user_subscriptions row, and usage counts for the signed-in workspace. */
 export function useSubscriptionQuery() {
   const workspaceId = useWorkspaceId();
@@ -32,6 +49,19 @@ export function useSubscriptionQuery() {
     queryFn: loadSubscriptionData,
     staleTime: 30_000
   });
+}
+
+/** Subscription query plus derived entitlement snapshot (requires profile context). */
+export function useSubscriptionEntitlements(opts?: {
+  freeUsesRemaining?: number | null;
+  role?: string | null;
+}) {
+  const query = useSubscriptionQuery();
+  const entitlements = useMemo(
+    () => computeSubscriptionEntitlements(query.data, opts),
+    [query.data, opts?.freeUsesRemaining, opts?.role]
+  );
+  return { ...query, entitlements };
 }
 
 /** @deprecated Prefer useSubscriptionQuery */

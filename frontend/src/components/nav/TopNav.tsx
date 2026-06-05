@@ -124,7 +124,7 @@ export function TopNav({
                       </NavLink>
                     ) : null}
                     <NavLink
-                      to="/subscription"
+                      to="/settings?section=subscription"
                       end
                       className={({ isActive }) => `pg-profile-item${isActive ? " pg-main-nav-link-active" : ""}`}
                       onClick={() => setOpen(false)}

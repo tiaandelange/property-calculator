@@ -25,7 +25,15 @@ const FORBIDDEN = [
   "SUPABASE_SERVICE_ROLE_KEY",
   "STRIPE_SECRET_KEY",
   "STRIPE_WEBHOOK_SECRET",
+  "PAYSTACK_SECRET_KEY",
   "SUPABASE_JWT_SECRET"
+];
+
+/** VITE_ payment/billing secrets must never be defined for the SPA bundle. */
+const FORBIDDEN_VITE_PAYMENT_PREFIXES = [
+  "VITE_PAYSTACK",
+  "VITE_BILLING",
+  "VITE_STRIPE_SECRET"
 ];
 
 function walk(dir) {
@@ -45,6 +53,12 @@ for (const file of walk(frontendSrc)) {
   for (const token of FORBIDDEN) {
     if (text.includes(token)) {
       console.error(`[verify-public-frontend-env] Forbidden token "${token}" appears in: ${file}`);
+      failed = true;
+    }
+  }
+  for (const prefix of FORBIDDEN_VITE_PAYMENT_PREFIXES) {
+    if (text.includes(prefix)) {
+      console.error(`[verify-public-frontend-env] Forbidden payment secret prefix "${prefix}" appears in: ${file}`);
       failed = true;
     }
   }

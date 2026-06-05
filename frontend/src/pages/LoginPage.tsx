@@ -22,6 +22,13 @@ import { logSignInFlow } from "../lib/authDebug";
 import { useAuth } from "../contexts/AuthContext";
 import { ensureUserSubscriptionForPlanCode } from "../services/userSubscriptionsSupabase";
 import { resolvePublicPageUrl } from "../lib/publicPageSeo";
+import {
+  buildSignupBillingRedirect,
+  consumeSignupBillingRedirect,
+  settingsSubscriptionPath,
+  storeSignupBillingRedirect
+} from "../features/signup/signupBillingFlow";
+import { isPaidPlan } from "../features/pricing/pricingPlanDisplay";
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -67,6 +74,18 @@ export function LoginPage() {
       !redirectTo.startsWith("/login?")
     ) {
       navigate(redirectTo, { replace: true });
+      return;
+    }
+
+    const billingRedirect = consumeSignupBillingRedirect();
+    if (billingRedirect) {
+      navigate(
+        settingsSubscriptionPath({
+          checkout: billingRedirect.autoCheckout,
+          planCode: billingRedirect.planCode
+        }),
+        { replace: true }
+      );
       return;
     }
 
@@ -145,6 +164,10 @@ export function LoginPage() {
       const selectedPlanCode = isSignupEntry ? signupPlan.plan.code : null;
       if (selectedPlanCode) {
         sessionStorage.setItem(PENDING_SIGNUP_PLAN_STORAGE_KEY, selectedPlanCode);
+        const billingRedirect = buildSignupBillingRedirect(signupPlan.plan);
+        if (billingRedirect) {
+          storeSignupBillingRedirect(billingRedirect);
+        }
       }
 
       const { data, error } = await sb.auth.signUp({
@@ -177,9 +200,15 @@ export function LoginPage() {
               subErr instanceof Error ? subErr.message : subErr
             );
           }
+          const paidPlan = isPaidPlan(signupPlan.plan);
+          const needsPayment = paidPlan && signupPlan.plan.trialDays === 0;
           setMessage({
             kind: "ok",
-            text: `Account created on the ${signupPlan.plan.name} plan. You are signed in. No payment was charged.`
+            text: needsPayment
+              ? `Account created on the ${signupPlan.plan.name} plan. Complete payment in Settings to activate billing.`
+              : paidPlan && signupPlan.plan.trialDays > 0
+                ? `Account created on the ${signupPlan.plan.name} plan. Your trial is active — no payment was charged yet.`
+                : `Account created on the ${signupPlan.plan.name} plan. You are signed in.`
           });
         } else {
           setMessage({
