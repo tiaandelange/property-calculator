@@ -31,7 +31,7 @@ export function HomeHeroDashboardMockup({ compact = false }: Props) {
             {HOME_HERO_SIDEBAR_NAV.map((item) => (
               <span
                 key={item.label}
-                className={`hm-hero-dash__nav-item${item.active ? " hm-hero-dash__nav-item--active" : ""}`}
+                className={`hm-hero-dash__nav-item${"active" in item && item.active ? " hm-hero-dash__nav-item--active" : ""}`}
               >
                 <AppIcon name={item.icon} size="sm" />
                 <span className="hm-hero-dash__nav-label">{item.label}</span>
