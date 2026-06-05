@@ -37,9 +37,9 @@ export function getPublicPageSeoForPath(pathname) {
 }
 
 export function listPrerenderPaths() {
-  const paths = Object.keys(seoData.staticPages).filter((p) => p !== "/");
-  for (const slug of Object.keys(seoData.calculatorSlugs)) {
-    paths.push(`/calculators/${slug}`);
+  const paths = Object.keys(seoData.staticPages);
+  for (const entry of Object.values(seoData.calculatorSlugs)) {
+    paths.push(entry.path);
   }
   return [...new Set(paths)];
 }

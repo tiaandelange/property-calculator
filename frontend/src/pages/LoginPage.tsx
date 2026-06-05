@@ -21,6 +21,7 @@ import { formatAuthError } from "../utils/authErrors";
 import { logSignInFlow } from "../lib/authDebug";
 import { useAuth } from "../contexts/AuthContext";
 import { ensureUserSubscriptionForPlanCode } from "../services/userSubscriptionsSupabase";
+import { resolvePublicPageUrl } from "../lib/publicPageSeo";
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -214,11 +215,16 @@ export function LoginPage() {
   return (
     <div className="pg-login-page">
       <Helmet>
-        <title>{isSignupEntry ? "Create Account" : "Sign In"} | Proplytic</title>
+        <title>{isSignupEntry ? "Create Account | Proplytic" : "Sign In | Proplytic"}</title>
         <meta
           name="description"
-          content="Sign in or create an account to save calculations and generate reports."
+          content={
+            isSignupEntry
+              ? "Create a Proplytic account to save calculations, generate property reports, and manage your South African rental portfolio."
+              : "Sign in to Proplytic to save property calculations, generate reports, and manage your rental portfolio."
+          }
         />
+        <link rel="canonical" href={resolvePublicPageUrl(isSignupEntry ? "/signup" : "/login")} />
       </Helmet>
 
       <Link to="/" className="pg-login-page__mobile-logo" aria-label="Proplytic — Home">

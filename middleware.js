@@ -11,8 +11,11 @@ export const config = {
     "/calculators/:path*",
     "/reports",
     "/pricing",
-    "/features",
-    "/resources"
+    "/contact",
+    "/login",
+    "/signup",
+    "/privacy",
+    "/terms"
   ]
 };
 

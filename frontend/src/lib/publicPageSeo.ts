@@ -2,7 +2,10 @@
 
 import seoData from "../../seo/public-pages.json";
 
+/** Production canonical origin (Next.js metadataBase equivalent). */
 export const PUBLIC_SITE_ORIGIN = seoData.siteOrigin;
+
+export const SITE_METADATA_BASE = new URL(PUBLIC_SITE_ORIGIN);
 
 export const DEFAULT_OG_IMAGE = {
   path: seoData.ogImage.path,
@@ -26,9 +29,11 @@ export const REPORTS_PAGE_SEO: PublicPageSeoConfig = seoData.staticPages["/repor
 
 export const PRICING_PAGE_SEO: PublicPageSeoConfig = seoData.staticPages["/pricing"];
 
-export const FEATURES_PAGE_SEO: PublicPageSeoConfig = seoData.staticPages["/features"];
+export const CONTACT_PAGE_SEO_CONFIG: PublicPageSeoConfig = seoData.staticPages["/contact"];
 
-export const RESOURCES_PAGE_SEO: PublicPageSeoConfig = seoData.staticPages["/resources"];
+export const LOGIN_PAGE_SEO: PublicPageSeoConfig = seoData.staticPages["/login"];
+
+export const SIGNUP_PAGE_SEO: PublicPageSeoConfig = seoData.staticPages["/signup"];
 
 /**
  * Resolve SEO config for a public pathname (no query string).

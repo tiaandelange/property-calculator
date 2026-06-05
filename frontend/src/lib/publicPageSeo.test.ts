@@ -13,23 +13,28 @@ describe("publicPageSeo", () => {
     expect(isSocialPreviewCrawler("Mozilla/5.0 Chrome/120")).toBe(false);
   });
 
+  it("detects Googlebot for edge middleware previews", () => {
+    expect(isSocialPreviewCrawler("Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)")).toBe(
+      true
+    );
+  });
+
   it("resolves known public paths", () => {
     expect(getPublicPageSeoForPath("/")?.title).toContain("Property Portfolio Software");
     expect(getPublicPageSeoForPath("/calculators")?.title).toContain("Calculators");
-    expect(getPublicPageSeoForPath("/calculators/monthly-bond-payment")?.path).toBe(
-      "/calculators/monthly-bond-payment"
-    );
-    expect(getPublicPageSeoForPath("/calculators/rental-cash-flow")?.title).toContain("Cash Flow");
+    expect(getPublicPageSeoForPath("/calculators/monthly-payment")?.path).toBe("/calculators/monthly-payment");
+    expect(getPublicPageSeoForPath("/calculators/cash-flow")?.title).toContain("Cash Flow");
+    expect(getPublicPageSeoForPath("/pricing")?.title).toContain("Pricing");
   });
 
   it("builds OG HTML with absolute image URL", () => {
     const html = buildSocialPreviewHtml(getPublicPageSeoForPath("/")!);
-    expect(html).toContain("https://proplytic.co.za/social/proplytic-og-home.png");
+    expect(html).toContain("https://www.proplytic.co.za/social/proplytic-og-home.png");
     expect(html).toContain('property="og:image:width" content="1200"');
     expect(html).toContain("summary_large_image");
   });
 
   it("uses production origin when env and window are unavailable", () => {
-    expect(resolvePublicPageUrl("/reports")).toBe("https://proplytic.co.za/reports");
+    expect(resolvePublicPageUrl("/reports")).toBe("https://www.proplytic.co.za/reports");
   });
 });

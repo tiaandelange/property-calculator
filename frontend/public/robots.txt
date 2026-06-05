@@ -1,5 +1,25 @@
 User-agent: *
 Allow: /
-Allow: /social/
+Disallow: /api/
+Disallow: /dashboard/
+Disallow: /properties/
+Disallow: /owned-properties/
+Disallow: /tenants/
+Disallow: /leases/
+Disallow: /financials/
+Disallow: /statements/
+Disallow: /invoices/
+Disallow: /settings/
+Disallow: /auth/
+Disallow: /reset-password/
+Disallow: /update-password/
+Disallow: /admin/
+Disallow: /investment-calculator/
+Disallow: /calculators/report/
+Disallow: /apply/
+Disallow: /confirm-email/
+Disallow: /account/
+Disallow: /subscription/
+Disallow: /documents/
 
-Sitemap: https://proplytic.co.za/sitemap.xml
+Sitemap: https://www.proplytic.co.za/sitemap.xml
