@@ -1,8 +1,8 @@
 import { authFetch } from "../lib/authFetch";
-import type { BillingPeriod } from "./subscriptionVercel";
+import type { BillingPeriod, PlanCheckoutCode } from "./subscriptionVercel";
 
 export type CompleteMockSubscriptionInput = {
-  planCode: "investor" | "portfolio" | "portfolio_pro";
+  planCode: PlanCheckoutCode;
   reference?: string;
   billingPeriod?: BillingPeriod;
 };

@@ -1,10 +1,10 @@
 import {
   startSubscriptionCheckout,
   type BillingPeriod,
-  type StartSubscriptionCheckoutInput
+  type PlanCheckoutCode
 } from "../../services/subscriptionVercel";
 
-export type PlanCheckoutCode = StartSubscriptionCheckoutInput["planCode"];
+export type { PlanCheckoutCode };
 
 export async function redirectToPlanCheckout(
   planCode: PlanCheckoutCode,

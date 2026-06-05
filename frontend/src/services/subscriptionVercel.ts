@@ -2,8 +2,11 @@ import { authFetch } from "../lib/authFetch";
 
 export type BillingPeriod = "monthly" | "annual";
 
+/** Paid tiers only — Starter is free and never uses checkout. */
+export type PlanCheckoutCode = "investor" | "portfolio" | "portfolio_pro";
+
 export type StartSubscriptionCheckoutInput = {
-  planCode: "starter" | "investor" | "portfolio" | "portfolio_pro";
+  planCode: PlanCheckoutCode;
   billingPeriod: BillingPeriod;
 };
 
