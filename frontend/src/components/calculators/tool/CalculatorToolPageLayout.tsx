@@ -48,15 +48,17 @@ export function CalculatorToolPageLayout({
     >
       <PublicPageSeo seo={pageSeo} />
       <Container className="pg-container pg-container--marketing-wide pg-calc-tool-page__container">
-        <CalculatorToolPageHeader
-          slug={slug}
-          heading={meta.seoHeading}
-          description={meta.pageDescription}
-          onSave={onSave}
-          onShare={onShare}
-          saveLoading={saveLoading}
-        />
-        <CalculatorToolNoticeBar />
+        <div className="pg-calc-tool-page-top">
+          <CalculatorToolPageHeader
+            slug={slug}
+            heading={meta.seoHeading}
+            description={meta.pageDescription}
+            onSave={onSave}
+            onShare={onShare}
+            saveLoading={saveLoading}
+          />
+          <CalculatorToolNoticeBar />
+        </div>
         <div className="pg-calc-tool-workspace">{workspace}</div>
         <CalculatorToolUnderstanding blocks={meta.understanding} />
         {supplementary}

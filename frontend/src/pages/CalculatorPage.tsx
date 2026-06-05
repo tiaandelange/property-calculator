@@ -2,7 +2,13 @@ import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "re
 import { useParams } from "react-router-dom";
 import { Bar, Doughnut, Line } from "react-chartjs-2";
 import { Chart as ChartJS, ArcElement, BarElement, CategoryScale, Legend, LinearScale, LineElement, PointElement, Tooltip } from "chart.js";
-import { calculators, type FieldDef } from "../data/calculators";
+import { CalculatorToolAdvancedAssumptions } from "../components/calculators/tool/CalculatorToolAdvancedAssumptions";
+import { CalculatorToolFormActions } from "../components/calculators/tool/CalculatorToolFormActions";
+import { renderCalculatorFieldsByKeys } from "../components/calculators/tool/CalculatorToolFieldRenderer";
+import { CalculatorToolSummaryCards } from "../components/calculators/tool/CalculatorToolSummaryCards";
+import { getCalculatorFieldLayout } from "../data/calculatorFieldLayout";
+import { applyProplyticChartTheme } from "../utils/calculatorChartTheme";
+import { calculators } from "../data/calculators";
 import { getCalculatorDefaultValues } from "../data/calculatorDefaultValues";
 import { getCalculatorToolPage } from "../data/calculatorToolPageContent";
 import { getToolExplainer } from "../data/calculatorToolExplainerContent";
@@ -28,8 +34,6 @@ import { Grid } from "../components/ui/Grid";
 import { Card } from "../components/ui/Card";
 import { Field, Input } from "../components/ui/Input";
 import { Button, ButtonLink } from "../components/ui/Button";
-import { PlanLimitUpgradePrompt } from "../features/subscription/PlanLimitUpgradePrompt";
-import { formatReportLimitUsage } from "../features/subscription/subscriptionLimits";
 import { useSubscriptionLimits } from "../features/subscription/useSubscriptionLimits";
 import { LockedFeaturePreview } from "../lib/subscription/LockedFeaturePreview";
 import { getCalculatorPlanGateFeature } from "../lib/subscription/planGatingHelpers";
@@ -44,20 +48,6 @@ function parseNumberList(text: string) {
     .filter(Boolean)
     .map((s) => Number(s))
     .filter((n) => Number.isFinite(n));
-}
-
-function selectFieldCoerceValue(field: FieldDef, raw: string): string | number {
-  if (raw === "") return "";
-  if (field.type !== "select") return Number(raw);
-  const stringSelectKeys = new Set([
-    "transactionType",
-    "buyerType",
-    "feeYear",
-    "attorneyFeeMode",
-    "propertyUse"
-  ]);
-  if (stringSelectKeys.has(field.key)) return raw;
-  return Number(raw);
 }
 
 /** HTML inputs often yield strings; shared Zod schemas expect real numbers. */
@@ -350,6 +340,7 @@ export function CalculatorPage() {
   const [error, setError] = useState("");
   const [result, setResult] = useState<any>(null);
   const [autoUpdate, setAutoUpdate] = useState(true);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
   const lastRunRef = useRef<string>("");
   const [savedId, setSavedId] = useState<string | number | null>(null);
   const [pdfBusy, setPdfBusy] = useState(false);
@@ -542,8 +533,17 @@ export function CalculatorPage() {
       | { label: string; value: number }
       | undefined;
     const illustration = !hasLine && cur ? [buildIllustrativeFiveYearLineChart(cur)] : [];
-    return [...illustration, ...raw];
-  }, [chartData, summary]);
+    const combined = [...illustration, ...raw];
+    if (calc.slug === "monthly-payment") {
+      const repaymentChart = combined.find((c) => {
+        const datasets = (c.data as { datasets?: Array<{ label?: string }> })?.datasets ?? [];
+        const labels = datasets.map((d) => String(d.label ?? "").toLowerCase());
+        return labels.some((l) => l.includes("principal")) && labels.some((l) => l.includes("interest"));
+      });
+      return repaymentChart ? [repaymentChart] : combined.slice(0, 1);
+    }
+    return combined;
+  }, [chartData, summary, calc.slug]);
 
   const reset = () => {
     const defaults = getCalculatorDefaultValues(calc.slug);
@@ -617,18 +617,40 @@ export function CalculatorPage() {
 
   const chartOptionsForViewport = (base: Record<string, unknown> | null | undefined, slug: string) => {
     if (isMobile) return mergeMobileChartOptions(base) as Record<string, unknown>;
-    if (slug === "monthly-payment") return (base ?? {}) as Record<string, unknown>;
     return mergeThemedChartOptions(base) as Record<string, unknown>;
   };
 
   const primarySummaryMetric = summary[0] as SummaryMetricLike | undefined;
-  const heroMetricBlocks = summary.slice(1, 5).map((m: SummaryMetricLike) => ({
+  const summaryCards = summary.slice(1, 5).map((m: SummaryMetricLike) => ({
+    key: String(m.key ?? m.label ?? ""),
     label: String(m.label ?? ""),
     value: formatResultsMetricDisplay(m)
   }));
   const extraSummaryMetrics = summary.slice(5);
   const primarySuffix =
     calc.slug === "monthly-payment" && primarySummaryMetric?.unit === "currency" ? " / month" : undefined;
+
+  const allFields = useMemo(() => calc.groups.flatMap((g) => g.fields), [calc.groups]);
+  const fieldLayout = useMemo(() => getCalculatorFieldLayout(calc.slug, calc), [calc.slug, calc]);
+  const onFieldChange = useCallback((key: string, value: unknown) => {
+    setValues((v) => ({ ...v, [key]: value }));
+  }, []);
+
+  const formActions = (
+    <CalculatorToolFormActions
+      loading={loading}
+      calcSlug={calc.slug}
+      onReset={reset}
+      autoUpdate={autoUpdate}
+      onAutoUpdateChange={setAutoUpdate}
+      savedId={savedId}
+      pdfBusy={pdfBusy}
+      onPdf={() => void generateAndDownloadPdf()}
+      subscriptionLimits={subscriptionLimits}
+    />
+  );
+
+  const noiAdvancedCount = 3;
 
   const calculatorWorkspace = (
     <div className={workspaceLayoutClass}>
@@ -640,66 +662,24 @@ export function CalculatorPage() {
           isMobile={isMobile}
         >
           <form id={CALCULATOR_TOOL_FORM_ID} onSubmit={submit}>
-            {calc.groups.map((group) => (
-              <div key={group.title} style={{ marginBottom: 18 }}>
-                <div className="pg-card-title" style={{ marginBottom: 10 }}>
-                  {group.title}
+            {calc.slug !== "noi" ? (
+              <>
+                <div className="pg-calculator-input-grid pg-calc-tool-input-fields">
+                  {renderCalculatorFieldsByKeys(calc.slug, allFields, fieldLayout.core, values, onFieldChange)}
                 </div>
-                <div className="pg-calculator-input-grid">
-                  {group.fields.map((f) => (
-                    <Field key={f.key} label={f.label} help={f.help ?? "Use realistic, conservative assumptions."}>
-                      {f.type === "select" ? (
-                        <select
-                          className="pg-input"
-                          value={values[f.key] ?? ""}
-                          required={Boolean(f.required)}
-                          onChange={(e) =>
-                            setValues((v) => ({ ...v, [f.key]: selectFieldCoerceValue(f, e.target.value) }))
-                          }
-                        >
-                          <option value="" disabled>
-                            Select…
-                          </option>
-                          {(f.options ?? []).map((o) => (
-                            <option key={String(o.value)} value={String(o.value)}>
-                              {o.label}
-                            </option>
-                          ))}
-                        </select>
-                      ) : f.type === "checkbox" ? (
-                        <label className="pg-pill" style={{ cursor: "pointer", justifyContent: "flex-start" }}>
-                          <input
-                            type="checkbox"
-                            checked={Boolean(values[f.key])}
-                            onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.checked }))}
-                            style={{ margin: 0 }}
-                          />
-                          {values[f.key] ? "Yes" : "No"}
-                        </label>
-                      ) : f.type === "text" ? (
-                        <Input
-                          type="text"
-                          placeholder={f.placeholder}
-                          value={values[f.key] ?? ""}
-                          required={Boolean(f.required)}
-                          onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))}
-                        />
-                      ) : (
-                        <Input
-                          type="number"
-                          placeholder={f.placeholder}
-                          required={Boolean(f.required)}
-                          value={values[f.key] ?? ""}
-                          onChange={(e) => setValues((v) => ({ ...v, [f.key]: Number(e.target.value) }))}
-                        />
-                      )}
-                    </Field>
-                  ))}
-                </div>
-              </div>
-            ))}
-
-            {calc.slug === "noi" ? (
+                {!advancedOpen ? formActions : null}
+                <CalculatorToolAdvancedAssumptions
+                  open={advancedOpen}
+                  onToggle={() => setAdvancedOpen((v) => !v)}
+                  count={fieldLayout.advanced.length}
+                >
+                  <div className="pg-calculator-input-grid pg-calc-tool-input-fields">
+                    {renderCalculatorFieldsByKeys(calc.slug, allFields, fieldLayout.advanced, values, onFieldChange)}
+                  </div>
+                </CalculatorToolAdvancedAssumptions>
+                {advancedOpen ? formActions : null}
+              </>
+            ) : (
               <>
                 <div style={{ marginBottom: 22 }}>
                   <div className="pg-card-title" style={{ marginBottom: 12 }}>
@@ -840,101 +820,72 @@ export function CalculatorPage() {
                       />
                     </Field>
                   </div>
+                </div>
+
+                {!advancedOpen ? formActions : null}
+                <CalculatorToolAdvancedAssumptions
+                  open={advancedOpen}
+                  onToggle={() => setAdvancedOpen((v) => !v)}
+                  count={noiAdvancedCount}
+                >
                   <LockedFeaturePreview
                     feature="forecasting"
                     title="Unlock growth assumptions and projections with Investor."
                     showPreview={showForecasting}
                   >
-                  <div className="pg-calculator-input-grid" style={{ marginTop: 14 }}>
-                    <Field label="Rent growth (% p.a.)" help="Drives the 5-year NOI projection.">
-                      <Input
-                        type="number"
-                        value={values.rentGrowthPercentAnnual ?? ""}
-                        onChange={(e) =>
-                          setValues((v) => ({
-                            ...v,
-                            rentGrowthPercentAnnual: e.target.value === "" ? 3 : Number(e.target.value)
-                          }))
-                        }
-                      />
-                    </Field>
-                    <Field label="Operating expense growth (% p.a.)">
-                      <Input
-                        type="number"
-                        value={values.expenseGrowthPercentAnnual ?? ""}
-                        onChange={(e) =>
-                          setValues((v) => ({
-                            ...v,
-                            expenseGrowthPercentAnnual: e.target.value === "" ? 3 : Number(e.target.value)
-                          }))
-                        }
-                      />
-                    </Field>
-                  </div>
+                    <div className="pg-calculator-input-grid">
+                      <Field label="Rent growth (% p.a.)" help="Drives the 5-year NOI projection.">
+                        <Input
+                          type="number"
+                          value={values.rentGrowthPercentAnnual ?? ""}
+                          onChange={(e) =>
+                            setValues((v) => ({
+                              ...v,
+                              rentGrowthPercentAnnual: e.target.value === "" ? 3 : Number(e.target.value)
+                            }))
+                          }
+                        />
+                      </Field>
+                      <Field label="Operating expense growth (% p.a.)">
+                        <Input
+                          type="number"
+                          value={values.expenseGrowthPercentAnnual ?? ""}
+                          onChange={(e) =>
+                            setValues((v) => ({
+                              ...v,
+                              expenseGrowthPercentAnnual: e.target.value === "" ? 3 : Number(e.target.value)
+                            }))
+                          }
+                        />
+                      </Field>
+                    </div>
                   </LockedFeaturePreview>
-                </div>
+                  <div className="pg-calculator-input-grid pg-calc-tool-input-fields" style={{ marginTop: 14 }}>
+                    {renderCalculatorFieldsByKeys(calc.slug, allFields, ["scenarioName"], values, onFieldChange)}
+                  </div>
+                </CalculatorToolAdvancedAssumptions>
+                {advancedOpen ? formActions : null}
               </>
-            ) : null}
-
-            <div className="pg-calc-tool-form-actions pg-calc-tool-form-actions--inline">
-              <Button type="submit" loading={loading}>
-                {calc.slug === "noi" ? "Calculate NOI" : "Calculate"}
-              </Button>
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={reset}
-                className={calc.slug !== "monthly-payment" ? "pg-calculator-reset-btn" : undefined}
-              >
-                Reset
-              </Button>
-              <label className="pg-pill pg-calculator-live-update" style={{ cursor: "pointer" }}>
-                <input
-                  type="checkbox"
-                  checked={autoUpdate}
-                  onChange={(e) => setAutoUpdate(e.target.checked)}
-                  style={{ margin: 0 }}
-                />
-                Live update
-              </label>
-              <ButtonLink href="/dashboard" variant="ghost">
-                My Reports
-              </ButtonLink>
-              {savedId ? (
-                !subscriptionLimits.canGenerateReport && subscriptionLimits.limitsActive ? (
-                  <PlanLimitUpgradePrompt context="report" limits={subscriptionLimits} compact />
-                ) : (
-                  <Button type="button" variant="ghost" onClick={generateAndDownloadPdf} loading={pdfBusy}>
-                    PDF
-                  </Button>
-                )
-              ) : null}
-            </div>
-            {subscriptionLimits.limitsActive && savedId ? (
-              <p className="pg-plan-limit-hint" style={{ marginTop: 8 }}>
-                {formatReportLimitUsage(
-                  subscriptionLimits.currentReportCount,
-                  subscriptionLimits.reportLimit,
-                  subscriptionLimits.reportPeriodLabel
-                )}
-              </p>
-            ) : null}
+            )}
           </form>
         </CalculatorToolInputsAccordion>
         <CalculatorToolProTip text={pageMeta.proTip} />
         </div>
 
         <div className="pg-calculator-pane pg-calc-tool-col pg-calc-tool-col--results">
-        <div className="pg-calc-tool-panel pg-calc-tool-panel--results">
           {calc.slug !== "buy-vs-rent" ? (
             <CalculatorToolResultsHero
               title={pageMeta.primaryResultTitle}
               primaryValue={primarySummaryMetric ? formatResultsMetricDisplay(primarySummaryMetric) : undefined}
               primarySuffix={primarySuffix}
-              metrics={result ? heroMetricBlocks : []}
+              supportingNote={pageMeta.primaryResultSupporting}
               loading={loading && !result}
             />
           ) : null}
+          {result && summaryCards.length > 0 && calc.slug !== "buy-vs-rent" ? (
+            <CalculatorToolSummaryCards cards={summaryCards} />
+          ) : null}
+          <div className="pg-calc-tool-panel pg-calc-tool-panel--results-body">
           <div className="pg-calculator-results-stack pg-calc-tool-results-stack">
             {!result && !error ? (
               <div className="pg-muted">Run the calculator to see key metrics and charts.</div>
@@ -1077,25 +1028,23 @@ export function CalculatorPage() {
                 {calc.slug !== "buy-vs-rent" ? (
                   <LockedFeaturePreview feature="graphs" title="Unlock charts with Investor.">
                     {chartsToRender.map((ch, idx) => {
-                      const opts = chartOptionsForViewport(ch.options as Record<string, unknown>, calc.slug) as any;
-                      const displayTitle =
-                        calc.slug === "monthly-payment" && ch.chartType === "bar"
-                          ? "Repayment Breakdown"
-                          : (ch.title ?? "Chart");
+                      const themed = applyProplyticChartTheme(
+                        ch as Parameters<typeof applyProplyticChartTheme>[0],
+                        calc.slug,
+                        pageMeta.graphTitle
+                      );
+                      const opts = chartOptionsForViewport(themed.options as Record<string, unknown>, calc.slug) as any;
+                      const displayTitle = themed.title ?? "Chart";
+                      const ChartComponent =
+                        themed.chartType === "line" ? Line : themed.chartType === "doughnut" ? Doughnut : Bar;
                       return (
                         <Card
-                          key={`${ch.title ?? "chart"}-${idx}`}
+                          key={`${displayTitle}-${idx}`}
                           title={displayTitle}
                           className="pg-calc-tool-panel pg-calc-tool-panel--chart"
                         >
                           <div className="pg-calculator-chart-host">
-                            {ch.chartType === "line" ? (
-                              <Line data={ch.data as any} options={opts} />
-                            ) : ch.chartType === "doughnut" ? (
-                              <Doughnut data={ch.data as any} options={opts} />
-                            ) : (
-                              <Bar data={ch.data as any} options={opts} />
-                            )}
+                            <ChartComponent data={themed.data as any} options={opts} />
                           </div>
                         </Card>
                       );
@@ -1109,6 +1058,7 @@ export function CalculatorPage() {
                   <CalculatorToolAmortisationTable
                     monthly={result.breakdown.amortisationScheduleMonthly}
                     yearly={result.breakdown.amortisationScheduleYearly}
+                    title={pageMeta.tableTitle}
                   />
                 ) : null}
 
@@ -1131,7 +1081,7 @@ export function CalculatorPage() {
               </div>
             ) : null}
           </div>
-        </div>
+          </div>
         </div>
     </div>
   );

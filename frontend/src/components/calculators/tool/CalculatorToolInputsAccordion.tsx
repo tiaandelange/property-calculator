@@ -21,7 +21,7 @@ export function CalculatorToolInputsAccordion({
   if (!isMobile) {
     return (
       <div className="pg-calc-tool-panel pg-calc-tool-panel--inputs">
-        <h2 className="pg-calc-tool-panel__title">Input your details</h2>
+        <h2 className="pg-calc-tool-panel__title">Your inputs</h2>
         {children}
       </div>
     );
@@ -30,7 +30,7 @@ export function CalculatorToolInputsAccordion({
   return (
     <div className="pg-calc-tool-panel pg-calc-tool-panel--inputs pg-calc-tool-panel--inputs-mobile">
       <div className="pg-calc-tool-inputs-accordion__head">
-        <h2 className="pg-calc-tool-panel__title">Input your details</h2>
+        <h2 className="pg-calc-tool-panel__title">Your inputs</h2>
         {expanded ? (
           <button
             type="button"

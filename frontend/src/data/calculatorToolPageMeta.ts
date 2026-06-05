@@ -15,6 +15,9 @@ export type CalculatorToolPageMeta = {
   seoHeading: string;
   pageDescription: string;
   primaryResultTitle: string;
+  primaryResultSupporting?: string;
+  graphTitle?: string;
+  tableTitle?: string;
   proTip: string;
   understanding: CalculatorUnderstandingBlock[];
   categoryId?: Exclude<CalculatorHubCategoryId, "all">;
@@ -25,13 +28,16 @@ const META: Partial<Record<string, CalculatorToolPageMeta>> = {
   "monthly-payment": {
     seoTitle: "Monthly Bond Payment Calculator | Proplytic",
     seoDescription:
-      "Calculate your estimated monthly home loan repayment, total interest, total repayment and amortisation breakdown.",
+      "Estimate your monthly home loan repayment, total interest and repayment schedule for a South African property purchase.",
     seoHeading: "Monthly Bond Payment Calculator",
     pageDescription:
-      "Calculate your estimated monthly home loan repayment, total interest, total repayment and amortisation breakdown.",
-    primaryResultTitle: "Your Estimated Monthly Payment",
+      "Estimate your monthly home loan repayment, total interest and repayment schedule for a South African property purchase.",
+    primaryResultTitle: "Your estimated monthly payment",
+    primaryResultSupporting: "Based on the inputs provided",
+    graphTitle: "Repayment breakdown over time",
+    tableTitle: "Payment schedule preview",
     proTip:
-      "A larger deposit or longer term can lower your monthly payment, but it may increase or reduce total interest depending on the loan structure.",
+      "A larger deposit or lower interest rate can significantly reduce your monthly repayment and total interest paid.",
     categoryId: "purchase-financing",
     understanding: [
       { title: "Monthly Payment", body: "This is the amount you'll pay each month over the loan term.", icon: "wallet" },
@@ -45,7 +51,9 @@ const META: Partial<Record<string, CalculatorToolPageMeta>> = {
     seoDescription: "Compare the long-term financial outcome of buying a property versus renting over time.",
     seoHeading: "Buy vs Rent Calculator",
     pageDescription: "Compare the long-term financial outcome of buying a property versus renting over time.",
-    primaryResultTitle: "Your Buy vs Rent Comparison",
+    primaryResultTitle: "Your buy vs rent comparison",
+    primaryResultSupporting: "Based on the inputs provided",
+    graphTitle: "Buying vs renting over time",
     proTip:
       "Small changes in how long you stay, rent growth, or property appreciation can flip the verdict — stress-test a few scenarios.",
     categoryId: "purchase-financing",
@@ -63,7 +71,9 @@ const META: Partial<Record<string, CalculatorToolPageMeta>> = {
     seoHeading: "Rental Cash Flow Calculator",
     pageDescription:
       "Estimate your monthly rental income, operating expenses, debt service and net property cash flow.",
-    primaryResultTitle: "Your Estimated Net Cash Flow",
+    primaryResultTitle: "Your estimated net cash flow",
+    primaryResultSupporting: "Based on the inputs provided",
+    graphTitle: "Monthly cash flow breakdown",
     proTip: "Model vacancy and maintenance conservatively — small percentage changes can erase thin margins.",
     categoryId: "income-operations",
     understanding: [
@@ -365,6 +375,7 @@ function defaultMeta(slug: string): CalculatorToolPageMeta {
     seoHeading: `${name}${name.toLowerCase().includes("calculator") ? "" : " Calculator"}`,
     pageDescription: desc,
     primaryResultTitle: "Your Primary Result",
+    primaryResultSupporting: "Based on the inputs provided",
     proTip: "Stress-test assumptions and confirm quotes with your lender, attorney or advisor before deciding.",
     understanding: [
       { title: "Inputs", body: "Use realistic, conservative assumptions for your market and asset." },

@@ -30,10 +30,12 @@ const PREVIEW_ROWS = 5;
 
 export function CalculatorToolAmortisationTable({
   monthly,
-  yearly
+  yearly,
+  title
 }: {
   monthly: AmortMonthRow[];
   yearly: AmortYearRow[];
+  title?: string;
 }) {
   const [view, setView] = useState<"yearly" | "monthly">("yearly");
   const [showFull, setShowFull] = useState(false);
@@ -81,7 +83,7 @@ export function CalculatorToolAmortisationTable({
   return (
     <div className="pg-calc-tool-panel pg-calc-tool-panel--table pg-calc-tool-amort-table">
       <div className="pg-calc-tool-amort-table__head">
-        <h3 className="pg-calc-tool-amort-table__title">Repayment Breakdown Table</h3>
+        <h3 className="pg-calc-tool-amort-table__title">{title ?? "Payment schedule preview"}</h3>
         <div className="pg-calc-tool-toggle" role="group" aria-label="View schedule by">
           <span className="pg-calc-tool-toggle__label">View by:</span>
           <button
