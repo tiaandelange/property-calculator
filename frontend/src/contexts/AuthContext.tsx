@@ -141,16 +141,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const recoverSessionAfterSignedOut = useCallback(
     async (client: NonNullable<typeof supabase>, reason: string): Promise<boolean> => {
-      const { data: refreshed, error: refreshError } = await client.auth.refreshSession();
-      if (!refreshError && refreshed.session) {
-        applySession(refreshed.session, `${reason}:refreshSession`);
-        return true;
-      }
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        if (attempt > 0) {
+          await new Promise((resolve) => window.setTimeout(resolve, 250 * attempt));
+        }
 
-      const { data, error } = await client.auth.getSession();
-      if (!error && data.session) {
-        applySession(data.session, `${reason}:getSession`);
-        return true;
+        const { data: refreshed, error: refreshError } = await client.auth.refreshSession();
+        if (!refreshError && refreshed.session) {
+          applySession(refreshed.session, `${reason}:refreshSession`);
+          return true;
+        }
+
+        const { data, error } = await client.auth.getSession();
+        if (!error && data.session) {
+          applySession(data.session, `${reason}:getSession`);
+          return true;
+        }
       }
 
       return false;

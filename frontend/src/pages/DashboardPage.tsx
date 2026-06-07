@@ -1,5 +1,6 @@
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Helmet } from "react-helmet-async";
+import { useQueryClient } from "@tanstack/react-query";
 import { fetchPdfBlob, triggerPdfFileDownload } from "../api/pdfBlob";
 import { deleteUserReport, listUserReports } from "../services/profileSupabase";
 import { generateReportViaVercel } from "../services/reportsVercel";
@@ -8,6 +9,8 @@ import { AppListPage, AppPageActions, AppPageHeader, AppPageSubtitle, AppPageTit
 import { Grid } from "../components/ui/Grid";
 import { Button, ButtonLink } from "../components/ui/Button";
 import { AppModal } from "../components/ui/AppModal";
+import { useWorkspaceId } from "../features/queries";
+import { queryKeys } from "../lib/queryKeys";
 import { formatReportLimitUsage } from "../lib/subscription/planFeatures";
 import { UpgradePrompt } from "../lib/subscription/UpgradePrompt";
 import { usePlanPermissions } from "../lib/subscription/usePlanPermissions";
@@ -34,24 +37,40 @@ function getKeyMetric(result: Record<string, unknown>) {
 
 export function DashboardPage() {
   const permissions = usePlanPermissions();
+  const queryClient = useQueryClient();
+  const workspaceId = useWorkspaceId();
   const [showReportUpgrade, setShowReportUpgrade] = useState(false);
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>("");
   const [pdfBusyCalcId, setPdfBusyCalcId] = useState<string | number | null>(null);
   const [pdfDownloadBusyKey, setPdfDownloadBusyKey] = useState<string | null>(null);
+  const loadSeq = useRef(0);
 
-  const load = async () => {
+  const invalidateUsage = useCallback(async () => {
+    if (!workspaceId) return;
+    await queryClient.invalidateQueries({ queryKey: queryKeys.subscription(workspaceId) });
+  }, [queryClient, workspaceId]);
+
+  const load = useCallback(async () => {
+    const seq = ++loadSeq.current;
     setLoading(true);
     setError("");
     try {
-      setReports(await listUserReports());
+      const rows = await listUserReports();
+      if (seq !== loadSeq.current) return;
+      setReports(rows);
     } catch (e: any) {
+      if (seq !== loadSeq.current) return;
       setError(e?.response?.data?.message ?? e?.message ?? "Failed to load reports. Are you logged in?");
     } finally {
-      setLoading(false);
+      if (seq === loadSeq.current) setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   const generate = async (calculationId: string | number) => {
     if (!permissions.canGenerateReport && permissions.limitsActive) {
@@ -62,7 +81,7 @@ export function DashboardPage() {
     setPdfBusyCalcId(calculationId);
     try {
       await generateReportViaVercel({ reportType: "CALCULATION", calculationId: String(calculationId) });
-      await load();
+      await Promise.all([load(), invalidateUsage()]);
     } catch (e: any) {
       setError(e?.response?.data?.message ?? e?.message ?? "Failed to generate report.");
     } finally {
@@ -89,7 +108,7 @@ export function DashboardPage() {
     setError("");
     try {
       await deleteUserReport(String(id));
-      await load();
+      await Promise.all([load(), invalidateUsage()]);
     } catch (e: any) {
       setError(e?.response?.data?.message ?? e?.message ?? "Failed to delete report.");
     }
