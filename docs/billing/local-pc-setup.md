@@ -2,7 +2,7 @@
 
 Step-by-step checklist to run Proplytic billing on your **home / local Windows PC** after pulling the latest code from Git.
 
-Related: [`paystack-setup.md`](paystack-setup.md) (Paystack dashboard + production), [`../SECRETS.md`](../SECRETS.md), [`../dev/SUBSCRIPTION_TEST_USERS.md`](../dev/SUBSCRIPTION_TEST_USERS.md).
+Related: [`paystack-setup.md`](paystack-setup.md) (Paystack dashboard + production), [`paystack-test-connect.md`](paystack-test-connect.md) (link test plans to Complete Payment), [`../SECRETS.md`](../SECRETS.md), [`../dev/SUBSCRIPTION_TEST_USERS.md`](../dev/SUBSCRIPTION_TEST_USERS.md).
 
 ---
 
