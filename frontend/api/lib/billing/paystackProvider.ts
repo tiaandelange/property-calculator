@@ -76,17 +76,19 @@ async function paystackRequest<T>(
   return payload.data;
 }
 
-async function resolvePaystackPlanCode(
+async function resolvePaystackCheckoutPlan(
   planCode: string,
   billingPeriod: BillingPeriod
-): Promise<string> {
+): Promise<{ paystackPlanCode: string; amountSubunit: number; currency: string }> {
   const sb = requireServiceRoleClient();
   const column =
     billingPeriod === "annual" ? "paystack_plan_code_annual" : "paystack_plan_code_monthly";
 
   const { data, error } = await sb
     .from("subscription_plans")
-    .select(`code, name, paystack_plan_code_monthly, paystack_plan_code_annual`)
+    .select(
+      `code, name, monthly_price, currency, paystack_plan_code_monthly, paystack_plan_code_annual`
+    )
     .eq("code", planCode)
     .maybeSingle();
 
@@ -105,7 +107,21 @@ async function resolvePaystackPlanCode(
     );
   }
 
-  return paystackPlanCode;
+  const monthlyPrice = Number(data.monthly_price ?? 0);
+  const currency = String(data.currency ?? "ZAR").trim().toUpperCase() || "ZAR";
+  const amountSubunit = checkoutAmountSubunit(monthlyPrice, billingPeriod);
+
+  return { paystackPlanCode, amountSubunit, currency };
+}
+
+/** ZAR total in Paystack subunits (cents). Annual bills 10 months per Proplytic pricing. */
+export function checkoutAmountSubunit(monthlyPrice: number, billingPeriod: BillingPeriod): number {
+  const price = Number(monthlyPrice);
+  if (!Number.isFinite(price) || price <= 0) {
+    throw new BillingConfigError("Plan price must be greater than zero for Paystack checkout.");
+  }
+  const zarTotal = billingPeriod === "annual" ? Math.round(price * 10) : price;
+  return Math.round(zarTotal * 100);
 }
 
 function buildCheckoutReference(userId: string): string {
@@ -291,20 +307,23 @@ export const paystackBillingProvider: PaymentBillingProvider = {
   name: "paystack",
 
   async createCheckoutSession(input) {
-    const paystackPlanCode = await resolvePaystackPlanCode(input.planCode, input.billingPeriod);
+    const checkoutPlan = await resolvePaystackCheckoutPlan(input.planCode, input.billingPeriod);
     const reference = buildCheckoutReference(input.userId);
     const callbackUrl = `${publicSiteOrigin()}/subscription/success`;
 
     /**
      * Paystack subscriptions are started by initializing a transaction with a plan code.
-     * The plan amount/interval on Paystack overrides `amount`. After the customer pays,
-     * Paystack creates the subscription and sends charge.success + subscription.create webhooks.
+     * Amount + currency are required by the Initialize API even when plan overrides the charge.
+     * Amount is in subunits (cents for ZAR). After payment, Paystack creates the subscription
+     * and sends charge.success + subscription.create webhooks.
      * @see https://paystack.com/docs/payments/subscriptions/
      * @see https://paystack.com/docs/api/transaction/#initialize
      */
     const data = await paystackRequest<PaystackInitializeData>("POST", "/transaction/initialize", {
       email: input.email,
-      plan: paystackPlanCode,
+      amount: checkoutPlan.amountSubunit,
+      currency: checkoutPlan.currency,
+      plan: checkoutPlan.paystackPlanCode,
       reference,
       callback_url: callbackUrl,
       metadata: {

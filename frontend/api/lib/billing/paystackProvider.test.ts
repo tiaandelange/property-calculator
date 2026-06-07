@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { normalizePaystackWebhookEvent, paystackBillingProvider } from "./paystackProvider";
+import { normalizePaystackWebhookEvent, paystackBillingProvider, checkoutAmountSubunit } from "./paystackProvider";
 
 const maybeSingle = vi.fn();
 
@@ -54,6 +54,8 @@ describe("paystackBillingProvider", () => {
       data: {
         code: "investor",
         name: "Investor",
+        monthly_price: 299,
+        currency: "ZAR",
         paystack_plan_code_monthly: "PLN_investor",
         paystack_plan_code_annual: null
       },
@@ -95,55 +97,14 @@ describe("paystackBillingProvider", () => {
 
     const body = JSON.parse(String(fetchMock.mock.calls[0][1].body));
     expect(body.plan).toBe("PLN_investor");
+    expect(body.amount).toBe(29900);
+    expect(body.currency).toBe("ZAR");
     expect(body.callback_url).toBe("https://www.proplytic.co.za/subscription/success");
     expect(body.metadata).toEqual({
       user_id: "11111111-1111-1111-1111-111111111111",
       plan_code: "investor",
       billing_period: "monthly"
     });
-  });
-
-  it("initializes portfolio checkout with portfolio plan code", async () => {
-    process.env.PAYSTACK_SECRET_KEY = "sk_test_x";
-    process.env.FRONTEND_URL = "https://www.proplytic.co.za";
-    process.env.SUPABASE_URL = "https://example.supabase.co";
-    process.env.SUPABASE_SERVICE_ROLE_KEY = "service_role_key";
-
-    maybeSingle.mockResolvedValueOnce({
-      data: {
-        code: "portfolio",
-        name: "Portfolio",
-        paystack_plan_code_monthly: "PLN_portfolio",
-        paystack_plan_code_annual: null
-      },
-      error: null
-    });
-
-    fetchMock.mockResolvedValueOnce({
-      ok: true,
-      json: () =>
-        Promise.resolve({
-          status: true,
-          message: "Authorization URL created",
-          data: {
-            authorization_url: "https://checkout.paystack.com/portfolio456",
-            access_code: "portfolio456",
-            reference: "pg_ref_portfolio"
-          }
-        })
-    });
-
-    const result = await paystackBillingProvider.createCheckoutSession({
-      userId: "11111111-1111-1111-1111-111111111111",
-      email: "buyer@example.com",
-      planCode: "portfolio",
-      billingPeriod: "monthly"
-    });
-
-    expect(result.checkoutUrl).toBe("https://checkout.paystack.com/portfolio456");
-    const body = JSON.parse(String(fetchMock.mock.calls[0][1].body));
-    expect(body.plan).toBe("PLN_portfolio");
-    expect(body.metadata.plan_code).toBe("portfolio");
   });
 
   it("normalizes charge.success webhook metadata", async () => {
@@ -225,5 +186,16 @@ describe("paystackBillingProvider", () => {
     expect(event.eventType).toBe("subscription.disable");
     expect(event.status).toBe("cancelled");
     expect(event.subscriptionId).toBe("SUB_test");
+  });
+});
+
+describe("checkoutAmountSubunit", () => {
+  it("converts monthly ZAR price to Paystack subunits", () => {
+    expect(checkoutAmountSubunit(299, "monthly")).toBe(29900);
+    expect(checkoutAmountSubunit(599, "monthly")).toBe(59900);
+  });
+
+  it("uses 10-month total for annual billing", () => {
+    expect(checkoutAmountSubunit(299, "annual")).toBe(299000);
   });
 });

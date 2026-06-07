@@ -142,9 +142,15 @@ try {
       } else {
         const amountKobo = Number(body.data?.amount ?? 0);
         const amountZar = amountKobo / 100;
+        const expectedZar = Number(row.monthly_price ?? 0);
         ok(
           `${row.code}: Paystack plan OK (${body.data?.name ?? pln}, ${amountZar} ZAR/${body.data?.interval ?? "?"})`
         );
+        if (expectedZar > 0 && Math.round(expectedZar * 100) !== amountKobo) {
+          fail(
+            `${row.code}: Paystack plan amount (${amountZar} ZAR) does not match subscription_plans.monthly_price (${expectedZar} ZAR). Update the Paystack plan or Proplytic price.`
+          );
+        }
       }
     }
   }
