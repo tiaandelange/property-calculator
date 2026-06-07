@@ -1,6 +1,6 @@
 import type { VercelRequest } from "@vercel/node";
-import { createServiceRoleSupabase } from "../supabaseServiceRole";
-import type { BillingPeriod } from "./types";
+import { createServiceRoleSupabase } from "../supabaseServiceRole.js";
+import type { BillingPeriod } from "./types.js";
 
 export const CHECKOUT_PLAN_CODES = ["starter", "investor", "portfolio", "portfolio_pro"] as const;
 

@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { materializeDueRecurringExpensesForUser } from "../lib/recurringExpenseMaterializeServer";
-import { authenticateSupabaseRequest } from "../lib/supabaseServerAuth";
+import { materializeDueRecurringExpensesForUser } from "../lib/recurringExpenseMaterializeServer.js";
+import { authenticateSupabaseRequest } from "../lib/supabaseServerAuth.js";
 
 export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
   if (req.method !== "POST") {

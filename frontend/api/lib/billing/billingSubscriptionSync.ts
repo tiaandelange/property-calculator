@@ -1,5 +1,5 @@
-import { createServiceRoleSupabase } from "../supabaseServiceRole";
-import type { BillingProviderName, ProviderWebhookEvent } from "./types";
+import { createServiceRoleSupabase } from "../supabaseServiceRole.js";
+import type { BillingProviderName, ProviderWebhookEvent } from "./types.js";
 
 export class WebhookProcessingError extends Error {
   constructor(message: string) {

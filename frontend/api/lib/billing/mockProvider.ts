@@ -1,7 +1,7 @@
 import type { VercelRequest } from "@vercel/node";
-import type { PaymentBillingProvider } from "./provider";
-import { publicSiteOrigin } from "./siteOrigin";
-import { cancelSubscription as syncCancelSubscription } from "./billingSubscriptionSync";
+import type { PaymentBillingProvider } from "./provider.js";
+import { publicSiteOrigin } from "./siteOrigin.js";
+import { cancelSubscription as syncCancelSubscription } from "./billingSubscriptionSync.js";
 
 function buildMockReference(userId: string): string {
   return `mock_${Date.now()}_${userId}`;

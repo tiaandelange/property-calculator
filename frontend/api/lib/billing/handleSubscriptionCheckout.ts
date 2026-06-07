@@ -1,13 +1,13 @@
 import type { VercelRequest } from "@vercel/node";
-import { assertBillingCheckoutConfig, BillingConfigError } from "./billingEnv";
-import { getBillingProvider } from "./provider";
-import { recordCheckoutAttempt } from "./billingSubscriptionSync";
+import { assertBillingCheckoutConfig, BillingConfigError } from "./billingEnv.js";
+import { getBillingProvider } from "./provider.js";
+import { recordCheckoutAttempt } from "./billingSubscriptionSync.js";
 import {
   assertCheckoutAllowedForPlan,
   fetchSubscriptionPlanByCode,
   parseCheckoutRequest,
   requireCheckoutEmail
-} from "./checkoutValidation";
+} from "./checkoutValidation.js";
 
 export type SubscriptionCheckoutResult = {
   checkoutUrl: string;

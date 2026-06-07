@@ -3,7 +3,7 @@ import {
   createServiceRoleSupabase,
   cronSecretFromRequest,
   verifyCronSecret
-} from "../lib/supabaseServiceRole";
+} from "../lib/supabaseServiceRole.js";
 
 /**
  * Protected cron entry: `Authorization: Bearer <CRON_SECRET>`.

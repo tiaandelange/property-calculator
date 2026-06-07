@@ -1,11 +1,12 @@
 import crypto from "node:crypto";
 import type { VercelRequest } from "@vercel/node";
-import { createServiceRoleSupabase } from "../supabaseServiceRole";
-import { readRawBody } from "./readRawBody";
-import { BillingConfigError, type PaymentBillingProvider } from "./provider";
-import { publicSiteOrigin } from "./siteOrigin";
-import { cancelSubscription as syncCancelSubscription } from "./billingSubscriptionSync";
-import type { BillingPeriod, ProviderWebhookEvent } from "./types";
+import { createServiceRoleSupabase } from "../supabaseServiceRole.js";
+import { readRawBody } from "./readRawBody.js";
+import { BillingConfigError } from "./billingEnv.js";
+import type { PaymentBillingProvider } from "./provider.js";
+import { publicSiteOrigin } from "./siteOrigin.js";
+import { cancelSubscription as syncCancelSubscription } from "./billingSubscriptionSync.js";
+import type { BillingPeriod, ProviderWebhookEvent } from "./types.js";
 
 const PAYSTACK_API_BASE = "https://api.paystack.co";
 

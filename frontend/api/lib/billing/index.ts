@@ -4,13 +4,13 @@ export type {
   CheckoutRequest,
   CheckoutResult,
   ProviderWebhookEvent
-} from "./types";
+} from "./types.js";
 
-export { BillingConfigError, getBillingProvider, hasLegacyStripeWebhookSignature, resolveBillingProviderName, resolveWebhookBillingProvider } from "./provider";
-export type { PaymentBillingProvider } from "./provider";
-export { mockBillingProvider } from "./mockProvider";
-export { paystackBillingProvider } from "./paystackProvider";
-export { payfastBillingProvider } from "./payfastProvider";
+export { BillingConfigError, getBillingProvider, hasLegacyStripeWebhookSignature, resolveBillingProviderName, resolveWebhookBillingProvider } from "./provider.js";
+export type { PaymentBillingProvider } from "./provider.js";
+export { mockBillingProvider } from "./mockProvider.js";
+export { paystackBillingProvider } from "./paystackProvider.js";
+export { payfastBillingProvider } from "./payfastProvider.js";
 export {
   activateSubscription,
   applyProviderSubscriptionEvent,
@@ -26,13 +26,13 @@ export {
   upsertWebhookEvent,
   WebhookProcessingError,
   type WebhookProcessOutcome
-} from "./billingSubscriptionSync";
+} from "./billingSubscriptionSync.js";
 export {
   handleConfiguredProviderSubscriptionWebhook,
   handleProviderSubscriptionWebhook,
   mapWebhookError,
   type SubscriptionWebhookResult
-} from "./handleSubscriptionWebhook";
+} from "./handleSubscriptionWebhook.js";
 export {
   assertCheckoutAllowedForPlan,
   CHECKOUT_PLAN_CODES,
@@ -40,5 +40,5 @@ export {
   fetchSubscriptionPlanByCode,
   parseCheckoutRequest,
   requireCheckoutEmail
-} from "./checkoutValidation";
-export { handleSubscriptionCheckout } from "./handleSubscriptionCheckout";
+} from "./checkoutValidation.js";
+export { handleSubscriptionCheckout } from "./handleSubscriptionCheckout.js";

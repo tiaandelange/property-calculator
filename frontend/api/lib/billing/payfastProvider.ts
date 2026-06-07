@@ -1,5 +1,5 @@
 import type { VercelRequest } from "@vercel/node";
-import type { PaymentBillingProvider } from "./provider";
+import type { PaymentBillingProvider } from "./provider.js";
 
 const NOT_LIVE_MESSAGE = "PayFast billing is not enabled yet. Set BILLING_PROVIDER=mock for development.";
 

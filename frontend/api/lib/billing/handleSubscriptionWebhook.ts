@@ -3,12 +3,12 @@ import {
   BillingConfigError,
   getBillingProvider,
   resolveWebhookBillingProvider
-} from "./provider";
+} from "./provider.js";
 import {
   processProviderSubscriptionWebhookEvent,
   WebhookProcessingError,
   type WebhookProcessOutcome
-} from "./billingSubscriptionSync";
+} from "./billingSubscriptionSync.js";
 
 export class WebhookVerificationError extends Error {
   constructor(message: string) {
