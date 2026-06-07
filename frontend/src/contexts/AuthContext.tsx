@@ -2,7 +2,12 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useR
 import type { Session, User } from "@supabase/supabase-js";
 import { fetchProfileForUserId, type ProfileForApp } from "../api/profileFromSupabase";
 import { logAuthEvent, logAuthSignOut, logAuthState } from "../lib/authDebug";
-import { sessionFromInitialAuthEvent, shouldClearSessionForGetSessionError } from "../lib/authSessionPolicy";
+import { authLoginInProgressRef } from "../lib/authLoginGuard";
+import {
+  sessionFromInitialAuthEvent,
+  shouldClearSessionForGetSessionError,
+  shouldIgnoreSignedOutEvent
+} from "../lib/authSessionPolicy";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 
 export type AuthContextValue = {
@@ -31,6 +36,13 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 const INIT_TIMEOUT_MS = 12_000;
 
+function supabaseAuthStorageKey(): string | null {
+  const url = import.meta.env.VITE_SUPABASE_URL?.trim() ?? "";
+  const match = url.match(/https?:\/\/([^.]+)\.supabase\.co/i);
+  if (!match?.[1]) return null;
+  return `sb-${match[1]}-auth-token`;
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [initializing, setInitializing] = useState(true);
@@ -40,6 +52,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profileLoading, setProfileLoading] = useState(false);
   const sessionRef = useRef<Session | null>(null);
   const initializedRef = useRef(false);
+  const sessionEstablishedAtRef = useRef<number | null>(null);
 
   const markInitialized = useCallback((reason: string) => {
     if (initializedRef.current) return;
@@ -57,6 +70,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const applySession = useCallback((next: Session | null, reason: string) => {
     sessionRef.current = next;
     setSession(next);
+    if (next?.user?.id) {
+      sessionEstablishedAtRef.current = Date.now();
+    } else if (reason.startsWith("signOut") || reason.startsWith("event:SIGNED_OUT")) {
+      sessionEstablishedAtRef.current = null;
+    }
     logAuthEvent("session updated", { reason, hasSession: Boolean(next) });
     logAuthState({
       initialized: initializedRef.current,
@@ -81,7 +99,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { data, error } = await supabase.auth.getSession();
     if (error) {
       console.warn("[auth] getSession", error.message);
-      logAuthEvent("getSession error (keeping existing session)", { message: error.message });
+      logAuthEvent("getSession error (session kept)", { message: error.message });
       if (shouldClearSessionForGetSessionError(error.message, sessionRef.current)) {
         applySession(null, "refreshSession:invalid_refresh_token");
       }
@@ -94,6 +112,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     applySession(next, "refreshSession");
+    setAuthError(null);
   }, [applySession]);
 
   const refreshProfile = useCallback(async () => {
@@ -119,6 +138,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setProfileLoading(false);
     }
   }, []);
+
+  const recoverSessionAfterSignedOut = useCallback(
+    async (client: NonNullable<typeof supabase>, reason: string): Promise<boolean> => {
+      const { data: refreshed, error: refreshError } = await client.auth.refreshSession();
+      if (!refreshError && refreshed.session) {
+        applySession(refreshed.session, `${reason}:refreshSession`);
+        return true;
+      }
+
+      const { data, error } = await client.auth.getSession();
+      if (!error && data.session) {
+        applySession(data.session, `${reason}:getSession`);
+        return true;
+      }
+
+      return false;
+    },
+    [applySession]
+  );
 
   useEffect(() => {
     const client = supabase;
@@ -147,15 +185,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (event === "SIGNED_OUT") {
-        void client.auth.getSession().then(({ data, error }) => {
+        void (async () => {
           if (cancelled) return;
-          if (!error && data.session) {
-            logAuthEvent("SIGNED_OUT ignored — session still in storage");
-            applySession(data.session, "SIGNED_OUT:recovered");
-            return;
+
+          if (
+            shouldIgnoreSignedOutEvent(
+              sessionRef.current,
+              sessionEstablishedAtRef.current,
+              authLoginInProgressRef.current
+            )
+          ) {
+            logAuthEvent("SIGNED_OUT ignored — login or recent session grace");
+            const recovered = await recoverSessionAfterSignedOut(client, "SIGNED_OUT:grace");
+            if (!cancelled && recovered) return;
           }
+
+          const recovered = await recoverSessionAfterSignedOut(client, "SIGNED_OUT");
+          if (cancelled) return;
+          if (recovered) return;
+
           applySession(null, `event:${event}`);
-        });
+        })();
         return;
       }
 
@@ -170,41 +220,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     });
 
-    void client.auth.getSession().then(({ data, error }) => {
-      if (cancelled) return;
-      if (error) {
-        console.warn("[auth] bootstrap getSession", error.message);
-        setAuthError(error);
-        if (shouldClearSessionForGetSessionError(error.message, sessionRef.current)) {
-          applySession(null, "bootstrap:invalid_refresh_token");
-        }
-      } else if (data.session) {
-        applySession(data.session, "bootstrap:getSession");
-      }
-      if (!initializedRef.current) {
-        markInitialized("bootstrap:getSession");
-      }
-    });
-
     const initTimeout = window.setTimeout(() => {
       if (cancelled || initializedRef.current) return;
-      void client.auth.getSession().then(({ data, error }) => {
-        if (cancelled || initializedRef.current) return;
-        if (!error && data.session) {
-          applySession(data.session, "bootstrap:timeout:getSession");
-        } else if (!sessionRef.current) {
-          applySession(null, "bootstrap:timeout:no_session");
-        }
-        markInitialized("timeout");
-      });
+      if (!sessionRef.current) {
+        applySession(null, "bootstrap:timeout:no_session");
+      }
+      markInitialized("timeout");
     }, INIT_TIMEOUT_MS);
+
+    const authStorageKey = supabaseAuthStorageKey();
+    const onStorage = (event: StorageEvent) => {
+      if (cancelled || !authStorageKey || event.key !== authStorageKey) return;
+      void client.auth.getSession().then(({ data, error }) => {
+        if (cancelled || error || !data.session) return;
+        applySession(data.session, "storage:sync");
+      });
+    };
+    window.addEventListener("storage", onStorage);
+
+    const onVisibility = () => {
+      if (cancelled || document.visibilityState !== "visible" || !sessionRef.current) return;
+      void client.auth.getSession().then(({ data, error }) => {
+        if (cancelled || error) return;
+        if (data.session) {
+          applySession(data.session, "visibility:sync");
+        }
+      });
+    };
+    document.addEventListener("visibilitychange", onVisibility);
 
     return () => {
       cancelled = true;
       window.clearTimeout(initTimeout);
+      window.removeEventListener("storage", onStorage);
+      document.removeEventListener("visibilitychange", onVisibility);
       subscription.unsubscribe();
     };
-  }, [applySession, markInitialized]);
+  }, [applySession, markInitialized, recoverSessionAfterSignedOut]);
 
   useEffect(() => {
     const uid = session?.user?.id;

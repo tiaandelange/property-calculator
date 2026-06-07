@@ -16,6 +16,7 @@ import {
   SIGNUP_PLAN_USER_METADATA_KEY
 } from "../features/signup/signupPlan";
 import { getSupabase, isSupabaseConfigured } from "../lib/supabaseClient";
+import { authLoginInProgressRef } from "../lib/authLoginGuard";
 import { getConfirmEmailRedirectUrl } from "../lib/authRedirect";
 import { formatAuthError } from "../utils/authErrors";
 import { logSignInFlow } from "../lib/authDebug";
@@ -141,29 +142,34 @@ export function LoginPage() {
     try {
       if (mode === "login") {
         logSignInFlow("start");
-        // Clear stale refresh tokens so a slow bootstrap getSession cannot sign the user out after login.
+        authLoginInProgressRef.current = true;
         try {
-          await sb.auth.signOut({ scope: "local" });
-        } catch {
-          /* non-fatal */
+          // Clear stale refresh tokens so a slow bootstrap getSession cannot sign the user out after login.
+          try {
+            await sb.auth.signOut({ scope: "local" });
+          } catch {
+            /* non-fatal */
+          }
+          const { data: signInData, error } = await sb.auth.signInWithPassword({
+            email: email.trim(),
+            password
+          });
+          if (error) {
+            logSignInFlow("error", { message: error.message });
+            setMessage({ kind: "error", text: formatAuthError(error) });
+            return;
+          }
+          if (signInData.session) {
+            recognizeSession(signInData.session);
+            logSignInFlow("success", { via: "signInResponse" });
+          } else {
+            await refreshSession();
+            logSignInFlow("success", { via: "refreshSession" });
+          }
+          setMessage({ kind: "ok", text: "Signed in successfully." });
+        } finally {
+          authLoginInProgressRef.current = false;
         }
-        const { data: signInData, error } = await sb.auth.signInWithPassword({
-          email: email.trim(),
-          password
-        });
-        if (error) {
-          logSignInFlow("error", { message: error.message });
-          setMessage({ kind: "error", text: formatAuthError(error) });
-          return;
-        }
-        if (signInData.session) {
-          recognizeSession(signInData.session);
-          logSignInFlow("success", { via: "signInResponse" });
-        } else {
-          await refreshSession();
-          logSignInFlow("success", { via: "refreshSession" });
-        }
-        setMessage({ kind: "ok", text: "Signed in successfully." });
         return;
       }
 

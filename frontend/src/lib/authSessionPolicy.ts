@@ -21,11 +21,28 @@ export function isInvalidRefreshTokenError(message: string): boolean {
   );
 }
 
-/** Avoid clearing a fresh in-memory session when a stale getSession resolves late. */
+/**
+ * getSession errors must not clear React session state — Supabase emits SIGNED_OUT when
+ * the refresh token is truly dead. Clearing here caused login redirect loops when a stale
+ * bootstrap getSession resolved after a successful sign-in.
+ */
 export function shouldClearSessionForGetSessionError(
-  message: string,
-  cached: Session | null
+  _message: string,
+  _cached: Session | null
 ): boolean {
-  if (!isInvalidRefreshTokenError(message)) return false;
-  return !cached?.user?.id;
+  return false;
+}
+
+const RECENT_SESSION_GRACE_MS = 8_000;
+
+/** Ignore SIGNED_OUT immediately after we established a session (token rotation races). */
+export function shouldIgnoreSignedOutEvent(
+  cached: Session | null,
+  sessionEstablishedAtMs: number | null,
+  loginInProgress: boolean
+): boolean {
+  if (loginInProgress) return true;
+  if (!cached?.user?.id) return false;
+  if (sessionEstablishedAtMs == null) return false;
+  return Date.now() - sessionEstablishedAtMs < RECENT_SESSION_GRACE_MS;
 }

@@ -6,6 +6,15 @@
   "framework": "vite",
   "trailingSlash": false,
 
+  "redirects": [
+    {
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "proplytic.co.za" }],
+      "destination": "https://www.proplytic.co.za/:path*",
+      "permanent": true
+    }
+  ],
+
   "crons": [
     {
       "path": "/api/cron/run-due",

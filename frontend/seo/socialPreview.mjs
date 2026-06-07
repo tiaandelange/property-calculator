@@ -99,15 +99,19 @@ export function buildSocialPreviewHtml(seo) {
 </html>`;
 }
 
+function escapeRegex(text) {
+  return String(text).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 function replaceMetaContent(html, attr, key, value) {
-  const re = new RegExp(
-    `<meta[\\s\\S]*?${attr}="${key}"[\\s\\S]*?content="[^"]*"[\\s\\S]*?/?>`,
-    "i"
-  );
-  return html.replace(
-    re,
-    `<meta ${attr}="${key}" content="${escapeHtml(value)}" />`
-  );
+  const attrPattern = escapeRegex(attr);
+  const keyPattern = escapeRegex(key);
+  const attrRe = new RegExp(`${attrPattern}\\s*=\\s*["']${keyPattern}["']`, "i");
+
+  return html.replace(/<meta[\s\S]*?\/?>/gi, (tag) => {
+    if (!attrRe.test(tag)) return tag;
+    return `<meta ${attr}="${key}" content="${escapeHtml(value)}" />`;
+  });
 }
 
 /** Patch Vite index.html template meta for a public page. */
