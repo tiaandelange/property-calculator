@@ -1,201 +1,40 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Link, useSearchParams } from "react-router-dom";
-import { AppIcon, type IconName } from "../../components/icons";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { AppPage, AppPageContent, AppPageHeader, AppPageSubtitle, AppPageTitle } from "../../components/ui/AppPage";
 import { Button } from "../../components/ui/Button";
-import { Field, Input } from "../../components/ui/Input";
-import { AppCard, AppCardDescription, AppCardHeader, AppCardTitle } from "../../components/ui/AppCard";
-import { AppFormModal } from "../../components/ui/AppModal";
 import { useRegisterSettingsUnsavedChanges } from "./settingsUnsavedChanges";
 import { useAuth } from "../../contexts/AuthContext";
 import { useMediaQuery } from "../../hooks/useMediaQuery";
-import { supabase } from "../../lib/supabaseClient";
 import { upsertUserSettings, validateUserSettings } from "../../services/settingsSupabase";
-import {
-  EXPENSE_CATEGORY_OPTIONS,
-  STATEMENT_FILTER_OPTIONS
-} from "./settingsDefaults";
-import { ApplicantFormTemplateSettingsCard } from "../applicants/ApplicantFormTemplateSettingsCard";
 import { EditProfileModal } from "./EditProfileModal";
 import { InvoiceBankingDetailsModal } from "./InvoiceBankingDetailsModal";
-import { SubscriptionSettingsSection } from "./SubscriptionSettingsSection";
-import type { AccentColor, ThemePreference, UserSettings } from "./settingsTypes";
+import { SettingsDetailPanel } from "./SettingsDetailPanel";
+import { SettingsNav } from "./SettingsNav";
+import { SettingsSectionContent } from "./SettingsSectionContent";
+import { ChangePasswordModal } from "./settingsShared";
+import type { UserSettings } from "./settingsTypes";
 import { previewWorkspaceAppearance } from "../../theme/workspaceAppearance";
-import { invalidateSettingsQueries, invalidateWorkspaceNotifications, queryKeys, useProfileQuery, useSettingsQuery, useWorkspaceId } from "../queries";
-
-function initials(name: string | null | undefined, email: string): string {
-  const n = (name ?? "").trim();
-  if (n) {
-    const parts = n.split(/\s+/).filter(Boolean);
-    if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-    return parts[0].slice(0, 2).toUpperCase();
-  }
-  return email.slice(0, 2).toUpperCase();
-}
-
-function SettingsToggle({
-  checked,
-  onChange,
-  label,
-  disabled
-}: {
-  checked: boolean;
-  onChange: (v: boolean) => void;
-  label: string;
-  disabled?: boolean;
-}) {
-  return (
-    <label className="pg-settings-toggle" aria-label={label}>
-      <input
-        type="checkbox"
-        checked={checked}
-        disabled={disabled}
-        onChange={(e) => onChange(e.target.checked)}
-      />
-      <span className="pg-settings-toggle-track" />
-      <span className="pg-settings-toggle-thumb" />
-    </label>
-  );
-}
-
-function SettingsCard({
-  id,
-  icon,
-  title,
-  description,
-  children,
-  fullWidth
-}: {
-  id?: string;
-  icon: IconName;
-  title: string;
-  description?: string;
-  children: React.ReactNode;
-  fullWidth?: boolean;
-}) {
-  return (
-    <AppCard
-      id={id}
-      as="section"
-      variant="elevated"
-      padding="md"
-      className={`pg-settings-card${fullWidth ? " pg-settings-card--full" : ""}`}
-    >
-      <AppCardHeader className="pg-settings-card-head">
-        <div className="pg-settings-card-icon">
-          <AppIcon name={icon} size="md" />
-        </div>
-        <div>
-          <AppCardTitle className="pg-settings-card-title">{title}</AppCardTitle>
-          {description ? <AppCardDescription className="pg-settings-card-desc">{description}</AppCardDescription> : null}
-        </div>
-      </AppCardHeader>
-      {children}
-    </AppCard>
-  );
-}
-
-function ChangePasswordModal({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const [password, setPassword] = useState("");
-  const [confirm, setConfirm] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-  const [done, setDone] = useState(false);
-
-  useEffect(() => {
-    if (!open) {
-      setPassword("");
-      setConfirm("");
-      setError("");
-      setDone(false);
-    }
-  }, [open]);
-
-  const submit = async (e: FormEvent) => {
-    e.preventDefault();
-    if (password.length < 8) {
-      setError("Password must be at least 8 characters.");
-      return;
-    }
-    if (password !== confirm) {
-      setError("Passwords do not match.");
-      return;
-    }
-    setSaving(true);
-    setError("");
-    try {
-      if (!supabase) throw new Error("Auth not configured.");
-      const { error: err } = await supabase.auth.updateUser({ password });
-      if (err) throw err;
-      setDone(true);
-    } catch (ex: unknown) {
-      setError(ex instanceof Error ? ex.message : "Could not update password.");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <AppFormModal
-      open={open}
-      onOpenChange={(next) => {
-        if (!next) onClose();
-      }}
-      title="Change password"
-      size="sm"
-      loading={saving}
-      closeOnOverlayClick={!saving}
-      onSubmit={done ? undefined : (e) => void submit(e)}
-      footer={
-        done ? (
-          <div className="pg-app-modal-actions">
-            <Button type="button" onClick={onClose}>
-              Done
-            </Button>
-          </div>
-        ) : (
-          <div className="pg-app-modal-actions">
-            <Button type="button" variant="soft" onClick={onClose} disabled={saving}>
-              Cancel
-            </Button>
-            <Button type="submit" loading={saving}>
-              Update password
-            </Button>
-          </div>
-        )
-      }
-    >
-      {done ? (
-        <p className="pg-muted">Your password has been updated.</p>
-      ) : (
-        <>
-          <Field label="New password">
-            <Input
-              type="password"
-              autoComplete="new-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-          </Field>
-          <Field label="Confirm password">
-            <Input
-              type="password"
-              autoComplete="new-password"
-              value={confirm}
-              onChange={(e) => setConfirm(e.target.value)}
-            />
-          </Field>
-          {error ? <div className="pg-alert pg-alert-error">{error}</div> : null}
-        </>
-      )}
-    </AppFormModal>
-  );
-}
+import {
+  invalidateSettingsQueries,
+  invalidateWorkspaceNotifications,
+  queryKeys,
+  useProfileQuery,
+  useSettingsQuery,
+  useWorkspaceId
+} from "../queries";
+import {
+  SETTINGS_SECTIONS,
+  getSettingsSection,
+  resolveSettingsSection,
+  settingsSectionPath,
+  type SettingsSectionId
+} from "./settingsSections";
 
 export function SettingsDashboard() {
   const isMobile = useMediaQuery("(max-width: 768px)");
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const { refreshProfile, profile } = useAuth();
   const queryClient = useQueryClient();
   const workspaceId = useWorkspaceId();
@@ -213,6 +52,12 @@ export function SettingsDashboard() {
   const [editProfileOpen, setEditProfileOpen] = useState(false);
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
   const [invoiceBankingOpen, setInvoiceBankingOpen] = useState(false);
+
+  const activeSection = useMemo(
+    () => resolveSettingsSection(searchParams.get("section")),
+    [searchParams]
+  );
+  const activeConfig = getSettingsSection(activeSection);
 
   useEffect(() => {
     if (!settingsQuery.data) return;
@@ -249,28 +94,39 @@ export function SettingsDashboard() {
   }, [settingsQuery.error, profileQuery.error]);
 
   useEffect(() => {
-    if (searchParams.get("invoiceBanking") === "1") {
-      setInvoiceBankingOpen(true);
+    const next = new URLSearchParams(searchParams);
+    let changed = false;
+
+    if (!next.get("section")) {
+      next.set("section", "account");
+      changed = true;
     }
-  }, [searchParams]);
+
+    if (next.get("invoiceBanking") === "1") {
+      setInvoiceBankingOpen(true);
+      if (next.get("section") !== "invoice-banking") {
+        next.set("section", "invoice-banking");
+        changed = true;
+      }
+    }
+
+    if (changed) {
+      setSearchParams(next, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   useEffect(() => {
-    if (loading || !draft) return;
-    const section = searchParams.get("section");
     const hash = window.location.hash.replace(/^#/, "");
-    const targetId = section === "subscription" ? "subscription" : hash;
-    if (!targetId) return;
-    window.requestAnimationFrame(() => {
-      document.getElementById(targetId)?.scrollIntoView({ behavior: "smooth", block: "start" });
-    });
-  }, [loading, draft, searchParams]);
+    if (!hash || searchParams.get("section")) return;
+    navigate(settingsSectionPath(resolveSettingsSection(hash)), { replace: true });
+  }, [navigate, searchParams]);
 
   const dirty = useMemo(() => {
     if (!saved || !draft) return false;
     return JSON.stringify(saved) !== JSON.stringify(draft);
   }, [saved, draft]);
 
-  const patchDraft = (patch: Partial<UserSettings>) => {
+  const patchDraft = useCallback((patch: Partial<UserSettings>) => {
     setDraft((prev) => {
       if (!prev) return prev;
       const next = { ...prev, ...patch };
@@ -281,9 +137,9 @@ export function SettingsDashboard() {
       });
       return next;
     });
-  };
+  }, []);
 
-  const cancel = () => {
+  const cancel = useCallback(() => {
     if (saved) {
       setDraft(saved);
       previewWorkspaceAppearance({
@@ -294,9 +150,9 @@ export function SettingsDashboard() {
     }
     setSuccess(false);
     setError("");
-  };
+  }, [saved]);
 
-  const save = async (): Promise<boolean> => {
+  const save = useCallback(async (): Promise<boolean> => {
     if (!draft || !saved) return false;
     const validationError = validateUserSettings(draft);
     if (validationError) {
@@ -342,9 +198,23 @@ export function SettingsDashboard() {
     } finally {
       setSaving(false);
     }
-  };
+  }, [draft, saved, workspaceId, queryClient, refreshProfile]);
 
   useRegisterSettingsUnsavedChanges(dirty, save, cancel);
+
+  const selectSection = useCallback(
+    (sectionId: SettingsSectionId) => {
+      const next = new URLSearchParams(searchParams);
+      next.set("section", sectionId);
+      next.delete("invoiceBanking");
+      setSearchParams(next, { replace: false });
+    },
+    [searchParams, setSearchParams]
+  );
+
+  const goToSecurity = useCallback(() => {
+    selectSection("security");
+  }, [selectSection]);
 
   if (loading) {
     return (
@@ -353,10 +223,9 @@ export function SettingsDashboard() {
           <AppPageHeader>
             <AppPageTitle>Settings</AppPageTitle>
           </AppPageHeader>
-          <div className="pg-settings-grid">
-            {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="pg-settings-skeleton" />
-            ))}
+          <div className="pg-settings-layout">
+            <div className="pg-settings-nav-skeleton pg-settings-skeleton" />
+            <div className="pg-settings-detail-skeleton pg-settings-skeleton" />
           </div>
         </AppPageContent>
       </AppPage>
@@ -383,7 +252,7 @@ export function SettingsDashboard() {
 
   if (!draft) return null;
 
-  const footer = (
+  const footer = activeConfig.supportsSave ? (
     <>
       <Button variant="soft" onClick={cancel} disabled={!dirty || saving}>
         Cancel
@@ -392,7 +261,7 @@ export function SettingsDashboard() {
         Save changes
       </Button>
     </>
-  );
+  ) : null;
 
   return (
     <AppPage variant="settings" className="pg-settings-page">
@@ -406,457 +275,66 @@ export function SettingsDashboard() {
           </AppPageHeader>
         ) : null}
 
-        {error ? <div className="pg-alert pg-alert-error" style={{ marginBottom: 16 }}>{error}</div> : null}
-        {success ? <div className="pg-alert" style={{ marginBottom: 16 }}>Settings saved.</div> : null}
+        {error ? <div className="pg-alert pg-alert-error pg-settings-page-alert">{error}</div> : null}
+        {success ? <div className="pg-alert pg-settings-page-alert">Settings saved.</div> : null}
 
-        <div className="pg-settings-grid">
-        <SettingsCard icon="profile" title="Account & Profile" description="Your identity and workspace role.">
-          <div className="pg-settings-profile">
-            <div className="pg-settings-avatar" aria-hidden>
-              {avatarUrl ? (
-                <img src={avatarUrl} alt="" className="pg-edit-profile-avatar-img" />
-              ) : (
-                initials(fullName, email)
-              )}
-            </div>
-            <div className="pg-settings-profile-meta">
-              <strong>{fullName || "No name set"}</strong>
-              <span>{email}</span>
-              <span>Proplytic workspace · {role}</span>
-            </div>
-          </div>
-          <div className="pg-settings-actions">
-            <Button variant="secondary" onClick={() => setEditProfileOpen(true)}>
-              Edit profile
-            </Button>
-            <Button variant="outline" onClick={() => setChangePasswordOpen(true)}>
-              Change password
-            </Button>
-            <Button variant="ghost" onClick={() => setInvoiceBankingOpen(true)}>
-              Invoice & banking details
-            </Button>
-          </div>
-        </SettingsCard>
-
-        <SettingsCard icon="palette" title="Appearance" description="Theme, accent colour, and density.">
-          <div className="pg-settings-field">
-            <label className="pg-text-label">Theme</label>
-            <div className="pg-settings-theme-options">
-              {(["light", "dark", "system"] as ThemePreference[]).map((t) => (
-                <button
-                  key={t}
-                  type="button"
-                  className={`pg-settings-theme-btn${draft.themePreference === t ? " pg-settings-theme-btn--active" : ""}`}
-                  onClick={() => patchDraft({ themePreference: t })}
-                >
-                  {t === "light" ? "Light" : t === "dark" ? "Dark" : "System"}
-                </button>
-              ))}
-            </div>
-            <p className="pg-text-helper">System follows your browser or OS colour preference.</p>
-          </div>
-          <div className="pg-settings-field">
-            <label className="pg-text-label">Accent colour</label>
-            <div className="pg-settings-accent-dots">
-              {(["purple", "blue", "green", "orange", "red", "teal"] as AccentColor[]).map((c) => (
-                <button
-                  key={c}
-                  type="button"
-                  className={`pg-settings-accent-dot pg-settings-accent-dot--${c}${draft.accentColor === c ? " pg-settings-accent-dot--active" : ""}`}
-                  aria-label={c}
-                  onClick={() => patchDraft({ accentColor: c })}
-                />
-              ))}
-            </div>
-          </div>
-          <div className="pg-settings-field">
-            <label className="pg-text-label">Density</label>
-            <div className="pg-settings-theme-options">
-              {(["comfortable", "compact"] as const).map((d) => (
-                <button
-                  key={d}
-                  type="button"
-                  className={`pg-settings-theme-btn${draft.density === d ? " pg-settings-theme-btn--active" : ""}`}
-                  onClick={() => patchDraft({ density: d })}
-                >
-                  {d === "comfortable" ? "Comfortable" : "Compact"}
-                </button>
-              ))}
-            </div>
-          </div>
-        </SettingsCard>
-
-        <SettingsCard
-          id="subscription"
-          icon="payments"
-          title="Subscription"
-          description="Your plan, usage limits, and included features. Payments coming soon."
-          fullWidth
-        >
-          <SubscriptionSettingsSection freeUsesRemaining={profile?.free_uses_remaining} />
-        </SettingsCard>
-
-        <SettingsCard icon="sliders" title="Property Defaults" description="Defaults for new properties and leases.">
-          <div className="pg-settings-field">
-            <label htmlFor="settings-currency">Default currency</label>
-            <select
-              id="settings-currency"
-              className="pg-settings-input"
-              value={draft.defaultCurrency}
-              onChange={(e) => patchDraft({ defaultCurrency: e.target.value })}
-            >
-              <option value="ZAR">ZAR — South African Rand</option>
-            </select>
-          </div>
-          <div className="pg-settings-field">
-            <label htmlFor="settings-statement-filter">Statement default filter</label>
-            <select
-              id="settings-statement-filter"
-              className="pg-settings-input"
-              value={draft.statementDefaultFilter}
-              onChange={(e) =>
-                patchDraft({ statementDefaultFilter: e.target.value as UserSettings["statementDefaultFilter"] })
-              }
-            >
-              {STATEMENT_FILTER_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="pg-settings-field">
-            <label htmlFor="settings-lease-term">Lease default term (months)</label>
-            <input
-              id="settings-lease-term"
-              type="number"
-              min={1}
-              className="pg-settings-input"
-              value={draft.leaseDefaultTermMonths}
-              onChange={(e) => patchDraft({ leaseDefaultTermMonths: Number(e.target.value) })}
-            />
-          </div>
-          <div className="pg-settings-field">
-            <label htmlFor="settings-rent-due">Rent due day default (1–28)</label>
-            <input
-              id="settings-rent-due"
-              type="number"
-              min={1}
-              max={28}
-              className="pg-settings-input"
-              value={draft.defaultRentDueDay}
-              onChange={(e) => patchDraft({ defaultRentDueDay: Number(e.target.value) })}
-            />
-          </div>
-          <div className="pg-settings-field">
-            <label htmlFor="settings-expense-cat">Recurring expense default category</label>
-            <select
-              id="settings-expense-cat"
-              className="pg-settings-input"
-              value={draft.recurringExpenseDefaultCategory}
-              onChange={(e) => patchDraft({ recurringExpenseDefaultCategory: e.target.value })}
-            >
-              {EXPENSE_CATEGORY_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-          </div>
-        </SettingsCard>
-
-        <SettingsCard
-          icon="reports"
-          title="Future Projections"
-          description="Used for forward-looking projections in the dashboard, property analyses, and investor reports. These do not change your historical statements."
-        >
-          <div className="pg-settings-field">
-            <label htmlFor="settings-income-growth">Annual income growth (% p.a.)</label>
-            <input
-              id="settings-income-growth"
-              type="number"
-              inputMode="decimal"
-              min={0}
-              max={30}
-              className="pg-settings-input"
-              value={draft.annualIncomeGrowthPercentAnnual}
-              onChange={(e) => patchDraft({ annualIncomeGrowthPercentAnnual: Number(e.target.value) })}
-            />
-            <p className="pg-settings-field-hint">
-              Applied to rental income when projecting future years (e.g. Year n income = Year 1 × (1 + g)^(n − 1)).
-            </p>
-          </div>
-          <div className="pg-settings-field">
-            <label htmlFor="settings-expense-growth">Expense growth / inflation (% p.a.)</label>
-            <input
-              id="settings-expense-growth"
-              type="number"
-              inputMode="decimal"
-              min={0}
-              max={30}
-              className="pg-settings-input"
-              value={draft.expenseGrowthPercentAnnual}
-              onChange={(e) => patchDraft({ expenseGrowthPercentAnnual: Number(e.target.value) })}
-            />
-            <p className="pg-settings-field-hint">Applied to operating expenses and costs when projecting future years.</p>
-          </div>
-          <div className="pg-settings-field">
-            <label htmlFor="settings-appreciation">Property appreciation (% p.a.)</label>
-            <input
-              id="settings-appreciation"
-              type="number"
-              inputMode="decimal"
-              min={0}
-              max={30}
-              className="pg-settings-input"
-              value={draft.propertyAppreciationPercentAnnual}
-              onChange={(e) => patchDraft({ propertyAppreciationPercentAnnual: Number(e.target.value) })}
-            />
-            <p className="pg-settings-field-hint">Used for projected property value growth and equity over time.</p>
-          </div>
-        </SettingsCard>
-
-        <SettingsCard
-          icon="applicants"
-          title="Applicant form template"
-          description="Default fields sent on every applicant share link."
-        >
-          <ApplicantFormTemplateSettingsCard
-            template={draft.applicantFormTemplate}
-            onTemplateChange={(next) => patchDraft({ applicantFormTemplate: next })}
+        {isMobile ? (
+          <SettingsNav
+            sections={SETTINGS_SECTIONS}
+            activeId={activeSection}
+            onSelect={selectSection}
+            mobile
           />
-        </SettingsCard>
+        ) : null}
 
-        <SettingsCard icon="invoices" title="Invoices & Statements" description="Automation and PDF preferences.">
-          <p className="pg-settings-field-hint" style={{ marginTop: 0 }}>
-            Banking lines on invoice PDFs and the CC address used when emailing invoices are configured in invoice &amp;
-            banking details.
-          </p>
-          <div className="pg-settings-actions" style={{ marginBottom: 16 }}>
-            <Button variant="outline" onClick={() => setInvoiceBankingOpen(true)}>
-              Invoice & banking details
-            </Button>
-          </div>
-          <div className="pg-settings-field">
-            <label htmlFor="settings-inv-format">Invoice number format</label>
-            <input
-              id="settings-inv-format"
-              className="pg-settings-input"
-              value={draft.invoiceNumberFormat}
-              onChange={(e) => patchDraft({ invoiceNumberFormat: e.target.value })}
-            />
-            <p className="pg-settings-field-hint">Stored for future use; current generator uses sequential INV numbers.</p>
-          </div>
-          <div className="pg-settings-row">
-            <div>
-              <div className="pg-settings-row-label">Auto-generate invoices</div>
-              <div className="pg-settings-row-desc">Scheduled rent invoices from active leases</div>
-            </div>
-            <SettingsToggle
-              label="Auto-generate invoices"
-              checked={draft.autoGenerateInvoices}
-              onChange={(v) => patchDraft({ autoGenerateInvoices: v })}
-            />
-          </div>
-          <div className="pg-settings-field">
-            <label htmlFor="settings-inv-days">Generate invoices before due date (days)</label>
-            <input
-              id="settings-inv-days"
-              type="number"
-              min={0}
-              max={31}
-              className="pg-settings-input"
-              value={draft.invoiceGenerateDaysBeforeDue}
-              onChange={(e) => patchDraft({ invoiceGenerateDaysBeforeDue: Number(e.target.value) })}
-            />
-          </div>
-          <div className="pg-settings-row">
-            <div>
-              <div className="pg-settings-row-label">PDF branding</div>
-              <div className="pg-settings-row-desc">Show company branding on exported PDFs</div>
-            </div>
-            <SettingsToggle
-              label="PDF branding"
-              checked={draft.pdfBrandingEnabled}
-              onChange={(v) => patchDraft({ pdfBrandingEnabled: v })}
-            />
-          </div>
-          <div className="pg-settings-field">
-            <label htmlFor="settings-reminder-days">Payment reminder timing (days before due)</label>
-            <input
-              id="settings-reminder-days"
-              type="number"
-              min={0}
-              max={31}
-              className="pg-settings-input"
-              value={draft.paymentReminderDaysBeforeDue}
-              onChange={(e) => patchDraft({ paymentReminderDaysBeforeDue: Number(e.target.value) })}
-            />
-          </div>
-          <div className="pg-settings-row">
-            <div>
-              <div className="pg-settings-row-label">Lock editing after sent</div>
-              <div className="pg-settings-row-desc">Sent invoices cannot be edited</div>
-            </div>
-            <SettingsToggle
-              label="Lock editing after sent"
-              checked={draft.lockInvoiceAfterSent}
-              onChange={(v) => patchDraft({ lockInvoiceAfterSent: v })}
-            />
-          </div>
-        </SettingsCard>
+        <div className="pg-settings-layout">
+          {!isMobile ? (
+            <SettingsNav sections={SETTINGS_SECTIONS} activeId={activeSection} onSelect={selectSection} />
+          ) : null}
 
-        <SettingsCard icon="bell" title="Dashboard notifications" description="In-app alerts in the header bell. Email delivery is planned separately.">
-          <div className="pg-settings-row">
-            <div>
-              <div className="pg-settings-row-label">Overdue rent</div>
-              <div className="pg-settings-row-desc">When unpaid rent is past due</div>
-            </div>
-            <SettingsToggle
-              label="Overdue rent"
-              checked={draft.overdueAlertsEnabled}
-              onChange={(v) => patchDraft({ overdueAlertsEnabled: v })}
+          <SettingsDetailPanel
+            icon={activeConfig.icon}
+            title={activeConfig.title}
+            description={activeConfig.description}
+            badge={activeConfig.badge}
+          >
+            <SettingsSectionContent
+              sectionId={activeSection}
+              draft={draft}
+              patchDraft={patchDraft}
+              email={email}
+              fullName={fullName}
+              avatarUrl={avatarUrl}
+              role={role}
+              freeUsesRemaining={profile?.free_uses_remaining}
+              onEditProfile={() => setEditProfileOpen(true)}
+              onOpenInvoiceBanking={() => setInvoiceBankingOpen(true)}
+              onOpenChangePassword={() => setChangePasswordOpen(true)}
+              onGoToSecurity={goToSecurity}
             />
-          </div>
-          <div className="pg-settings-row">
-            <div>
-              <div className="pg-settings-row-label">Rent due soon</div>
-              <div className="pg-settings-row-desc">
-                {draft.paymentReminderDaysBeforeDue > 0
-                  ? `Within ${draft.paymentReminderDaysBeforeDue} day(s) of due date`
-                  : "Off — enable payment reminders below"}
-              </div>
-            </div>
-            <SettingsToggle
-              label="Rent due soon"
-              checked={draft.paymentReminderDaysBeforeDue > 0}
-              onChange={(v) =>
-                patchDraft({ paymentReminderDaysBeforeDue: v ? (draft.paymentReminderDaysBeforeDue || 3) : 0 })
-              }
-            />
-          </div>
-          <div className="pg-settings-row">
-            <div>
-              <div className="pg-settings-row-label">Lease expiring</div>
-              <div className="pg-settings-row-desc">Fixed-term leases ending within 60 days</div>
-            </div>
-            <SettingsToggle
-              label="Lease expiring"
-              checked={draft.leaseExpiringAlertsEnabled}
-              onChange={(v) => patchDraft({ leaseExpiringAlertsEnabled: v })}
-            />
-          </div>
-          <div className="pg-settings-row">
-            <div>
-              <div className="pg-settings-row-label">Monthly summaries</div>
-              <div className="pg-settings-row-desc">Email portfolio summary (not shown in the bell)</div>
-            </div>
-            <SettingsToggle
-              label="Monthly summaries"
-              checked={draft.monthlySummariesEnabled}
-              onChange={(v) => patchDraft({ monthlySummariesEnabled: v })}
-            />
-          </div>
-        </SettingsCard>
+          </SettingsDetailPanel>
+        </div>
 
-        <SettingsCard icon="shield" title="Security" description="Protect your account.">
-          <div className="pg-settings-row">
-            <div>
-              <div className="pg-settings-row-label">Two-factor authentication</div>
-            </div>
-            <span className="pg-settings-coming-soon">Coming soon</span>
-          </div>
-          <div className="pg-settings-row">
-            <div>
-              <div className="pg-settings-row-label">Active sessions</div>
-            </div>
-            <span className="pg-settings-coming-soon">Coming soon</span>
-          </div>
-          <div className="pg-settings-row">
-            <div>
-              <div className="pg-settings-row-label">Change password</div>
-            </div>
-            <Button variant="secondary" onClick={() => setChangePasswordOpen(true)}>
-              Change
-            </Button>
-          </div>
-          <div className="pg-settings-row">
-            <div>
-              <div className="pg-settings-row-label">Sign out all devices</div>
-            </div>
-            <span className="pg-settings-coming-soon">Coming soon</span>
-          </div>
-        </SettingsCard>
+        {footer ? (
+          <>
+            <div className="pg-settings-footer pg-settings-footer-desktop">{footer}</div>
+            <div className="pg-settings-footer-mobile">{footer}</div>
+          </>
+        ) : null}
 
-        <SettingsCard icon="plug" title="Integrations & Data" description="Connections and exports.">
-          <div className="pg-settings-row">
-            <div>
-              <div className="pg-settings-row-label">Supabase connection</div>
-              <div className="pg-settings-row-desc">Database and auth backend</div>
-            </div>
-            <span className="pg-settings-badge">Connected</span>
-          </div>
-          <Link className="pg-settings-link-row" to="/owned-properties/reports">
-            <div>
-              <div className="pg-settings-row-label">Report generation</div>
-              <div className="pg-settings-row-desc">Portfolio reports and PDF exports</div>
-            </div>
-            <AppIcon name="open" size="sm" />
-          </Link>
-          <div className="pg-settings-row">
-            <div>
-              <div className="pg-settings-row-label">Export data</div>
-            </div>
-            <span className="pg-settings-coming-soon">Coming soon</span>
-          </div>
-          <div className="pg-settings-row">
-            <div>
-              <div className="pg-settings-row-label">Backup & restore</div>
-            </div>
-            <span className="pg-settings-coming-soon">Coming soon</span>
-          </div>
-        </SettingsCard>
-
-        <SettingsCard icon="help" title="Support & Legal" description="Help, policies, and privacy." fullWidth>
-          <Link className="pg-settings-link-row" to="/faq">
-            <div className="pg-settings-row-label">Browse guides and FAQs</div>
-            <AppIcon name="open" size="sm" />
-          </Link>
-          <Link className="pg-settings-link-row" to="/help">
-            <div className="pg-settings-row-label">Help & support</div>
-            <AppIcon name="open" size="sm" />
-          </Link>
-          <a className="pg-settings-link-row" href="/terms" rel="noopener noreferrer">
-            <div className="pg-settings-row-label">Terms of service</div>
-            <AppIcon name="open" size="sm" />
-          </a>
-          <a className="pg-settings-link-row" href="/privacy" rel="noopener noreferrer">
-            <div className="pg-settings-row-label">Privacy policy</div>
-            <AppIcon name="open" size="sm" />
-          </a>
-          <Link className="pg-settings-link-row" to="/privacy">
-            <div className="pg-settings-row-label">Learn how we protect your data</div>
-            <AppIcon name="open" size="sm" />
-          </Link>
-        </SettingsCard>
-      </div>
-
-      <div className="pg-settings-footer pg-settings-footer-desktop">{footer}</div>
-      <div className="pg-settings-footer-mobile">{footer}</div>
-
-      <EditProfileModal
-        open={editProfileOpen}
-        onClose={() => setEditProfileOpen(false)}
-        onSaved={(name, avatar) => {
-          setFullName(name);
-          setAvatarUrl(avatar);
-        }}
-      />
-      <ChangePasswordModal open={changePasswordOpen} onClose={() => setChangePasswordOpen(false)} />
-      <InvoiceBankingDetailsModal
-        open={invoiceBankingOpen}
-        onClose={() => setInvoiceBankingOpen(false)}
-      />
+        <EditProfileModal
+          open={editProfileOpen}
+          onClose={() => setEditProfileOpen(false)}
+          onSaved={(name, avatar) => {
+            setFullName(name);
+            setAvatarUrl(avatar);
+          }}
+        />
+        <ChangePasswordModal open={changePasswordOpen} onClose={() => setChangePasswordOpen(false)} />
+        <InvoiceBankingDetailsModal
+          open={invoiceBankingOpen}
+          onClose={() => setInvoiceBankingOpen(false)}
+        />
       </AppPageContent>
     </AppPage>
   );

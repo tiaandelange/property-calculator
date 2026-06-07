@@ -395,9 +395,14 @@ export function WorkspaceRail({ userRole }: WorkspaceRailProps) {
                 <li role="none">
                   <Link
                     role="menuitem"
-                    to="/settings?invoiceBanking=1"
+                    to="/settings?section=invoice-banking&invoiceBanking=1"
                     className="pg-workspace-flyout-link"
-                    data-active={location.pathname.startsWith("/settings") ? "true" : "false"}
+                    data-active={
+                      location.pathname.startsWith("/settings") &&
+                      location.search.includes("section=invoice-banking")
+                        ? "true"
+                        : "false"
+                    }
                     onClick={onFlyoutLinkNavigate}
                   >
                     <span style={{ display: "block", fontWeight: 700 }}>Invoice & banking details</span>
@@ -426,9 +431,14 @@ export function WorkspaceRail({ userRole }: WorkspaceRailProps) {
                 <li role="none">
                   <Link
                     role="menuitem"
-                    to="/settings/security"
+                    to="/settings?section=security"
                     className="pg-workspace-flyout-link"
-                    data-active={location.pathname === "/settings/security" ? "true" : "false"}
+                    data-active={
+                      location.pathname.startsWith("/settings") &&
+                      location.search.includes("section=security")
+                        ? "true"
+                        : "false"
+                    }
                     onClick={onFlyoutLinkNavigate}
                   >
                     Security
@@ -437,9 +447,14 @@ export function WorkspaceRail({ userRole }: WorkspaceRailProps) {
                 <li role="none">
                   <Link
                     role="menuitem"
-                    to="/settings/notifications"
+                    to="/settings?section=notifications"
                     className="pg-workspace-flyout-link"
-                    data-active={location.pathname === "/settings/notifications" ? "true" : "false"}
+                    data-active={
+                      location.pathname.startsWith("/settings") &&
+                      location.search.includes("section=notifications")
+                        ? "true"
+                        : "false"
+                    }
                     onClick={onFlyoutLinkNavigate}
                   >
                     Notifications

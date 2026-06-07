@@ -297,8 +297,8 @@ export function App() {
           }
         />
         <Route path="/settings" element={<Auth label="Settings"><SettingsPage /></Auth>} />
-        <Route path="/settings/security" element={<Auth label="Settings"><Navigate to="/settings" replace /></Auth>} />
-        <Route path="/settings/notifications" element={<Auth label="Settings"><Navigate to="/settings" replace /></Auth>} />
+        <Route path="/settings/security" element={<Auth label="Settings"><Navigate to="/settings?section=security" replace /></Auth>} />
+        <Route path="/settings/notifications" element={<Auth label="Settings"><Navigate to="/settings?section=notifications" replace /></Auth>} />
         <Route path="/owned-properties" element={<Auth label="Portfolio Dashboard"><Navigate to="/owned-properties/dashboard" replace /></Auth>} />
         <Route path="/owned-properties/my-properties" element={<Auth label="Properties"><OwnedPropertiesMyPropertiesPage /></Auth>} />
         <Route path="/owned-properties/dashboard" element={<Auth label="Portfolio Dashboard"><OwnedPropertiesPortfolioDashboardPage /></Auth>} />
@@ -340,7 +340,7 @@ export function App() {
         <Route path="/tenants/:id/invoices/:invoiceId" element={<Auth label="Tenant Invoice Redirect"><LegacyTenantInvoiceRedirect /></Auth>} />
         <Route path="/tenants/:id" element={<Auth label="Tenant Workspace"><TenantWorkspacePage /></Auth>} />
         <Route path="/tenants/:id/edit" element={<Auth label="Tenant Form"><TenantFormPage /></Auth>} />
-        <Route path="/account" element={<Navigate to="/settings?invoiceBanking=1" replace />} />
+        <Route path="/account" element={<Navigate to="/settings?section=invoice-banking&invoiceBanking=1" replace />} />
         <Route path="/subscription" element={<Navigate to="/settings?section=subscription" replace />} />
         <Route path="/subscription/success" element={<SubscriptionResultPage mode="success" />} />
         <Route path="/subscription/cancel" element={<SubscriptionResultPage mode="cancel" />} />
