@@ -20,3 +20,12 @@ export function isInvalidRefreshTokenError(message: string): boolean {
     m.includes("session not found")
   );
 }
+
+/** Avoid clearing a fresh in-memory session when a stale getSession resolves late. */
+export function shouldClearSessionForGetSessionError(
+  message: string,
+  cached: Session | null
+): boolean {
+  if (!isInvalidRefreshTokenError(message)) return false;
+  return !cached?.user?.id;
+}

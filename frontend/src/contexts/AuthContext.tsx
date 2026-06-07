@@ -2,7 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useR
 import type { Session, User } from "@supabase/supabase-js";
 import { fetchProfileForUserId, type ProfileForApp } from "../api/profileFromSupabase";
 import { logAuthEvent, logAuthSignOut, logAuthState } from "../lib/authDebug";
-import { isInvalidRefreshTokenError, sessionFromInitialAuthEvent } from "../lib/authSessionPolicy";
+import { sessionFromInitialAuthEvent, shouldClearSessionForGetSessionError } from "../lib/authSessionPolicy";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 
 export type AuthContextValue = {
@@ -82,10 +82,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (error) {
       console.warn("[auth] getSession", error.message);
       logAuthEvent("getSession error (keeping existing session)", { message: error.message });
-      if (isInvalidRefreshTokenError(error.message)) {
+      if (shouldClearSessionForGetSessionError(error.message, sessionRef.current)) {
         applySession(null, "refreshSession:invalid_refresh_token");
-        setAuthError(error);
       }
+      setAuthError(error);
       return;
     }
     const next = data.session ?? null;
@@ -175,7 +175,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (error) {
         console.warn("[auth] bootstrap getSession", error.message);
         setAuthError(error);
-        if (isInvalidRefreshTokenError(error.message)) {
+        if (shouldClearSessionForGetSessionError(error.message, sessionRef.current)) {
           applySession(null, "bootstrap:invalid_refresh_token");
         }
       } else if (data.session) {

@@ -141,6 +141,12 @@ export function LoginPage() {
     try {
       if (mode === "login") {
         logSignInFlow("start");
+        // Clear stale refresh tokens so a slow bootstrap getSession cannot sign the user out after login.
+        try {
+          await sb.auth.signOut({ scope: "local" });
+        } catch {
+          /* non-fatal */
+        }
         const { data: signInData, error } = await sb.auth.signInWithPassword({
           email: email.trim(),
           password

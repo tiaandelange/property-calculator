@@ -1,6 +1,6 @@
 import type { Session } from "@supabase/supabase-js";
 import { describe, expect, it } from "vitest";
-import { isInvalidRefreshTokenError, sessionFromInitialAuthEvent } from "./authSessionPolicy";
+import { isInvalidRefreshTokenError, sessionFromInitialAuthEvent, shouldClearSessionForGetSessionError } from "./authSessionPolicy";
 
 describe("sessionFromInitialAuthEvent", () => {
   it("keeps cached session when INITIAL_SESSION payload is null", () => {
@@ -25,5 +25,20 @@ describe("isInvalidRefreshTokenError", () => {
 
   it("ignores generic network errors", () => {
     expect(isInvalidRefreshTokenError("Failed to fetch")).toBe(false);
+  });
+});
+
+describe("shouldClearSessionForGetSessionError", () => {
+  it("clears when refresh token is invalid and no cached session", () => {
+    expect(
+      shouldClearSessionForGetSessionError("Invalid Refresh Token: Refresh Token Not Found", null)
+    ).toBe(true);
+  });
+
+  it("keeps cached session when refresh token error arrives after sign-in", () => {
+    const cached = { access_token: "a", user: { id: "u1" } } as Session;
+    expect(
+      shouldClearSessionForGetSessionError("Invalid Refresh Token: Refresh Token Not Found", cached)
+    ).toBe(false);
   });
 });
