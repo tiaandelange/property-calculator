@@ -69,7 +69,13 @@ export function subscriptionSuccessMessage(
   }
 }
 
-/** Mock checkout completion is dev-only; production must rely on webhooks. */
+/** Mock checkout completion is dev-only; production uses Paystack verify + webhooks. */
 export function isDevMockCheckoutAllowed(): boolean {
   return import.meta.env.DEV;
+}
+
+/** Paystack appends `reference` and `trxref` on redirect back from checkout. */
+export function paystackCheckoutReference(params: URLSearchParams): string | null {
+  if (params.get("mock") === "true") return null;
+  return params.get("reference") ?? params.get("trxref");
 }

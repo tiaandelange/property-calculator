@@ -2,12 +2,15 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { authenticateSupabaseRequest } from "../lib/supabaseServerAuth.js";
 import { BillingConfigError, getBillingProvider } from "../lib/billing/provider.js";
 import { getUserSubscriptionPaymentId } from "../lib/billing/billingSubscriptionSync.js";
+import { handleSubscriptionVerify } from "../lib/billing/handleSubscriptionVerify.js";
+import { CheckoutValidationError } from "../lib/billing/checkoutValidation.js";
+import { WebhookProcessingError } from "../lib/billing/billingSubscriptionSync.js";
 
-type SubscriptionAction = "cancel";
+type SubscriptionAction = "cancel" | "verify";
 
 function parseAction(req: VercelRequest): SubscriptionAction | null {
   const raw = String(req.query.action ?? "").trim().toLowerCase();
-  if (raw === "cancel") return raw;
+  if (raw === "cancel" || raw === "verify") return raw;
   return null;
 }
 
@@ -30,6 +33,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   }
 
   try {
+    if (action === "verify") {
+      const outcome = await handleSubscriptionVerify(req, auth.ctx.uid);
+      res.status(200).json({ message: "Payment verified.", outcome });
+      return;
+    }
+
     const provider = getBillingProvider();
     const subscriptionId = await getUserSubscriptionPaymentId(auth.ctx.uid);
     await provider.cancelSubscription({
@@ -42,7 +51,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       res.status(503).json({ error: e.message });
       return;
     }
-    const msg = e instanceof Error ? e.message : "Cancel failed.";
+    if (e instanceof CheckoutValidationError) {
+      res.status(e.status).json({ error: e.message });
+      return;
+    }
+    if (e instanceof WebhookProcessingError) {
+      res.status(422).json({ error: e.message });
+      return;
+    }
+    const msg = e instanceof Error ? e.message : `${action} failed.`;
     console.error(`[subscription/${action}]`, msg);
     res.status(500).json({ error: msg });
   }

@@ -262,6 +262,30 @@ function extractPeriodDates(data: Record<string, unknown>): {
   };
 }
 
+/** Confirm a Paystack checkout by reference after the customer returns from checkout. */
+export async function verifyPaystackTransactionReference(
+  reference: string
+): Promise<ProviderWebhookEvent> {
+  const trimmed = reference.trim();
+  if (!trimmed) {
+    throw new Error("Payment reference is required.");
+  }
+
+  const data = await paystackRequest<Record<string, unknown>>(
+    "GET",
+    `/transaction/verify/${encodeURIComponent(trimmed)}`
+  );
+
+  const status = readString(data.status);
+  if (status !== "success") {
+    throw new Error(
+      `Paystack payment was not successful${status ? ` (status: ${status})` : "."}.`
+    );
+  }
+
+  return normalizePaystackWebhookEvent("charge.success", data);
+}
+
 export async function normalizePaystackWebhookEvent(
   eventType: string,
   data: Record<string, unknown>

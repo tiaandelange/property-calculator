@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Helmet } from "react-helmet-async";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button, ButtonLink } from "../components/ui/Button";
 import { Container } from "../components/ui/Container";
@@ -10,16 +10,24 @@ import { PageBrandMark } from "../components/brand/PageBrandMark";
 import { useSubscriptionQuery } from "../lib/subscription/useSubscriptionQuery";
 import { useWorkspaceId } from "../features/queries";
 import { queryKeys } from "../lib/queryKeys";
-import { completeMockSubscriptionCheckout } from "../services/subscriptionBilling";
+import {
+  completeMockSubscriptionCheckout,
+  verifySubscriptionCheckout
+} from "../services/subscriptionBilling";
 import { planDisplayName } from "../features/pricing/pricingPlanDisplay";
 import { settingsSubscriptionPath } from "../features/signup/signupBillingFlow";
 import type { PlanCheckoutCode } from "../lib/billing/planCheckout";
 import {
   isDevMockCheckoutAllowed,
+  paystackCheckoutReference,
   resolveSubscriptionSuccessViewState,
   subscriptionSuccessHeadline,
   subscriptionSuccessMessage
 } from "../features/subscription/subscriptionSuccessState";
+
+const DASHBOARD_PATH = "/owned-properties/dashboard";
+const PAYSTACK_VERIFY_POLL_MS = 2000;
+const PAYSTACK_VERIFY_POLL_MAX_MS = 30000;
 
 function isPaidPlanCode(code: string | null): code is PlanCheckoutCode {
   return code === "investor" || code === "portfolio" || code === "portfolio_pro";
@@ -27,17 +35,22 @@ function isPaidPlanCode(code: string | null): code is PlanCheckoutCode {
 
 export function SubscriptionResultPage({ mode }: { mode: "success" | "cancel" }) {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const workspaceId = useWorkspaceId();
   const { data, refetch, isLoading, isFetching, isError, error } = useSubscriptionQuery();
   const [mockStatus, setMockStatus] = useState<"idle" | "loading" | "done" | "error" | "skipped">(
     "idle"
   );
+  const [verifyStatus, setVerifyStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
   const [mockError, setMockError] = useState<string | null>(null);
+  const [verifyError, setVerifyError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const verifyStartedRef = useRef(false);
 
   const mock = searchParams.get("mock") === "true";
   const planCodeParam = searchParams.get("planCode");
+  const paystackReference = paystackCheckoutReference(searchParams);
   const reference = searchParams.get("reference") ?? undefined;
   const billingPeriod =
     searchParams.get("billingPeriod") === "annual" ? "annual" : "monthly";
@@ -49,7 +62,12 @@ export function SubscriptionResultPage({ mode }: { mode: "success" | "cancel" })
       ? planDisplayName(subscription.planCode, data?.plans ?? [])
       : null);
 
-  const initialLoading = isLoading || (isFetching && subscription == null && mockStatus !== "done");
+  const awaitingPaystackVerify =
+    mode === "success" && Boolean(paystackReference) && verifyStatus !== "done" && verifyStatus !== "error";
+  const initialLoading =
+    isLoading ||
+    (isFetching && subscription == null && mockStatus !== "done") ||
+    awaitingPaystackVerify;
   const viewState =
     mode === "cancel"
       ? "failed"
@@ -71,6 +89,47 @@ export function SubscriptionResultPage({ mode }: { mode: "success" | "cancel" })
     if (mode !== "success") return;
     void refreshSubscription();
   }, [mode, refreshSubscription]);
+
+  useEffect(() => {
+    if (mode !== "success" || !paystackReference || verifyStartedRef.current) return;
+    verifyStartedRef.current = true;
+    setVerifyStatus("loading");
+
+    void verifySubscriptionCheckout(paystackReference)
+      .then(async () => {
+        await refreshSubscription();
+        setVerifyStatus("done");
+      })
+      .catch((e: unknown) => {
+        setVerifyError(e instanceof Error ? e.message : "Could not verify payment.");
+        setVerifyStatus("error");
+      });
+  }, [mode, paystackReference, refreshSubscription]);
+
+  useEffect(() => {
+    if (mode !== "success" || viewState !== "pending_payment") return;
+
+    const interval = window.setInterval(() => {
+      void refreshSubscription();
+    }, PAYSTACK_VERIFY_POLL_MS);
+
+    const timeout = window.setTimeout(() => {
+      window.clearInterval(interval);
+    }, PAYSTACK_VERIFY_POLL_MAX_MS);
+
+    return () => {
+      window.clearInterval(interval);
+      window.clearTimeout(timeout);
+    };
+  }, [mode, viewState, refreshSubscription]);
+
+  useEffect(() => {
+    if (mode !== "success" || viewState !== "active") return;
+    const timeout = window.setTimeout(() => {
+      navigate(DASHBOARD_PATH, { replace: true });
+    }, 1200);
+    return () => window.clearTimeout(timeout);
+  }, [mode, viewState, navigate]);
 
   useEffect(() => {
     if (mode !== "success" || !mock || mockStatus !== "idle") return;
@@ -109,12 +168,18 @@ export function SubscriptionResultPage({ mode }: { mode: "success" | "cancel" })
   const headline =
     mode === "cancel"
       ? "Checkout cancelled"
-      : subscriptionSuccessHeadline(viewState, planName);
+      : viewState === "active"
+        ? "Payment successful"
+        : subscriptionSuccessHeadline(viewState, planName);
 
   const message =
     mode === "cancel"
       ? "No worries — you can complete payment any time from subscription settings."
-      : subscriptionSuccessMessage(viewState, planName);
+      : viewState === "active"
+        ? planName
+          ? `Your ${planName} plan is active. Opening your dashboard…`
+          : "Your subscription is active. Opening your dashboard…"
+        : subscriptionSuccessMessage(viewState, planName);
 
   const showMockDevNotice =
     mode === "success" && mock && isDevMockCheckoutAllowed() && mockStatus !== "idle";
@@ -129,7 +194,7 @@ export function SubscriptionResultPage({ mode }: { mode: "success" | "cancel" })
       </Helmet>
       <Container>
         <div className="pg-subscription-result" style={{ maxWidth: 820, margin: "0 auto" }}>
-          <PageBrandMark linkToHome />
+          <PageBrandMark />
           <Card>
             <h1 className="pg-h2" style={{ marginTop: 0 }}>
               {headline}
@@ -139,7 +204,9 @@ export function SubscriptionResultPage({ mode }: { mode: "success" | "cancel" })
             {mode === "success" && viewState === "loading" ? (
               <div className="pg-subscription-result__loading" role="status" aria-live="polite">
                 <span className="pg-subscription-result__spinner" aria-hidden />
-                Loading subscription status…
+                {verifyStatus === "loading"
+                  ? "Confirming payment with Paystack…"
+                  : "Loading subscription status…"}
               </div>
             ) : null}
 
@@ -149,10 +216,15 @@ export function SubscriptionResultPage({ mode }: { mode: "success" | "cancel" })
               </div>
             ) : null}
 
+            {mode === "success" && verifyStatus === "error" && verifyError ? (
+              <div className="pg-alert pg-alert-error" role="alert" style={{ marginBottom: 16 }}>
+                {verifyError}
+              </div>
+            ) : null}
+
             {mode === "success" && viewState === "pending_payment" ? (
               <div className="pg-alert" role="status" style={{ marginBottom: 16 }}>
-                Your plan stays on Starter access until payment is confirmed by our billing
-                system. This page does not activate paid plans — confirmation happens server-side.
+                Payment confirmation can take a few seconds. This page will refresh automatically.
               </div>
             ) : null}
 
@@ -165,13 +237,6 @@ export function SubscriptionResultPage({ mode }: { mode: "success" | "cancel" })
                     : mockStatus === "error"
                       ? mockError ?? "Mock activation failed in development."
                       : null}
-              </div>
-            ) : null}
-
-            {mode === "success" && mock && !isDevMockCheckoutAllowed() ? (
-              <div className="pg-alert" role="status" style={{ marginBottom: 16 }}>
-                Payment confirmation is handled by verified webhooks. Refresh below if your plan
-                has not updated yet.
               </div>
             ) : null}
 
@@ -201,9 +266,12 @@ export function SubscriptionResultPage({ mode }: { mode: "success" | "cancel" })
                 </ButtonLink>
               ) : null}
 
-              <ButtonLink href="/owned-properties/dashboard" variant={viewState === "active" ? "primary" : "secondary"} size="sm">
-                Go to dashboard
-              </ButtonLink>
+              {mode === "success" && viewState !== "active" ? (
+                <ButtonLink href={DASHBOARD_PATH} variant="secondary" size="sm">
+                  Go to dashboard
+                </ButtonLink>
+              ) : null}
+
               <ButtonLink href="/settings?section=subscription" variant="ghost" size="sm">
                 Manage subscription
               </ButtonLink>

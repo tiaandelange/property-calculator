@@ -1,6 +1,11 @@
 import crypto from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { normalizePaystackWebhookEvent, paystackBillingProvider, checkoutAmountSubunit } from "./paystackProvider";
+import {
+  normalizePaystackWebhookEvent,
+  paystackBillingProvider,
+  checkoutAmountSubunit,
+  verifyPaystackTransactionReference
+} from "./paystackProvider";
 
 const maybeSingle = vi.fn();
 
@@ -157,6 +162,40 @@ describe("paystackBillingProvider", () => {
 
     await expect(paystackBillingProvider.verifyWebhook(req as never)).rejects.toThrow(
       /invalid paystack webhook signature/i
+    );
+  });
+
+  it("verifies successful transaction references", async () => {
+    process.env.PAYSTACK_SECRET_KEY = "sk_test_x";
+
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          status: true,
+          message: "Verification successful",
+          data: {
+            id: 123,
+            reference: "pg_ref_123",
+            status: "success",
+            metadata: {
+              user_id: "11111111-1111-1111-1111-111111111111",
+              plan_code: "investor",
+              billing_period: "monthly"
+            },
+            customer: { customer_code: "CUS_test" },
+            paid_at: "2026-06-04T10:00:00.000Z"
+          }
+        })
+    });
+
+    const event = await verifyPaystackTransactionReference("pg_ref_123");
+    expect(event.eventType).toBe("charge.success");
+    expect(event.userId).toBe("11111111-1111-1111-1111-111111111111");
+    expect(event.planCode).toBe("investor");
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://api.paystack.co/transaction/verify/pg_ref_123",
+      expect.objectContaining({ method: "GET" })
     );
   });
 

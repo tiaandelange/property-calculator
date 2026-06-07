@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   resolveSubscriptionSuccessViewState,
   subscriptionSuccessHeadline,
-  subscriptionSuccessMessage
+  subscriptionSuccessMessage,
+  paystackCheckoutReference
 } from "./subscriptionSuccessState";
 
 describe("subscriptionSuccessState", () => {
@@ -43,5 +44,11 @@ describe("subscriptionSuccessState", () => {
   it("uses clear copy for pending and active states", () => {
     expect(subscriptionSuccessHeadline("active", "Investor")).toBe("Subscription active");
     expect(subscriptionSuccessMessage("pending_payment", null)).toContain("being verified");
+  });
+
+  it("reads Paystack reference from redirect query params", () => {
+    expect(paystackCheckoutReference(new URLSearchParams("reference=pg_ref"))).toBe("pg_ref");
+    expect(paystackCheckoutReference(new URLSearchParams("trxref=pg_ref"))).toBe("pg_ref");
+    expect(paystackCheckoutReference(new URLSearchParams("mock=true&reference=pg_ref"))).toBe(null);
   });
 });
