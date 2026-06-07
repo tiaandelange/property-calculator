@@ -94,15 +94,6 @@
   min-width: 9.5rem;
 }
 
-.pg-fins-add-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  white-space: nowrap;
-  flex-shrink: 0;
-  margin-left: auto;
-}
-
 .pg-fins-statement-panel {
   padding: 0;
   min-width: 0;
@@ -234,17 +225,14 @@
     display: block;
   }
 
-  .pg-fins-add-btn-label {
-    display: none;
-  }
-
   .pg-fins-controls-row {
     flex-direction: column;
     align-items: stretch;
   }
 
-  .pg-fins-add-btn {
+  .pg-workspace-controls-add-btn {
     margin-left: 0;
+    align-self: stretch;
     justify-content: center;
   }
 }

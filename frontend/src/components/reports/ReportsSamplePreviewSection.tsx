@@ -106,7 +106,7 @@ export function ReportsSamplePreviewSection() {
         </div>
 
         <div className="pg-reports-hub-sample-cta">
-          <Link to={MARKETING_SIGNUP_FREE_HREF} className="pg-btn pg-btn--primary pg-reports-hub-sample-cta__btn">
+          <Link to={MARKETING_SIGNUP_FREE_HREF} className="pg-btn pg-btn-primary pg-reports-hub-sample-cta__btn">
             Start Free to Create Your Own Reports
           </Link>
         </div>

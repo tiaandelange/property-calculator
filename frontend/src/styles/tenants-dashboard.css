@@ -121,15 +121,6 @@
   padding: 0 16px;
 }
 
-.pg-tenants-add-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  white-space: nowrap;
-  flex-shrink: 0;
-  margin-left: auto;
-}
-
 /* Table panel — surface from workspace-cards.css */
 .pg-tenants-list-panel {
   overflow: hidden;
@@ -485,10 +476,6 @@
     flex: 1 1 0;
     min-width: 0;
     max-width: none;
-  }
-
-  .pg-tenants-add-btn {
-    margin-left: auto;
   }
 
   .pg-tenants-pagination {

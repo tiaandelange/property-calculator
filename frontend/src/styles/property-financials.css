@@ -258,12 +258,6 @@
   grid-column: 1 / -1;
 }
 
-.pg-pfin-add-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
 .pg-pfin-table-wrap {
   overflow-x: auto;
 }
@@ -852,13 +846,6 @@
   align-items: center;
   margin-top: 8px;
   font-size: 0.85rem;
-}
-
-@media (max-width: 767px) {
-  .pg-pfin-unit-card__head .pg-pfin-add-btn {
-    width: 100%;
-    justify-content: center;
-  }
 }
 
 @media (max-width: 900px) {

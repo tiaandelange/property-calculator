@@ -76,7 +76,7 @@ export function RecurringExpensesSection({
           <h2 className="pg-pfin-section__title">Recurring Expenses</h2>
           <p className="pg-pfin-section__desc">Monthly schedules posted automatically to your property ledger.</p>
         </div>
-        <Button type="button" variant="primary" className="pg-pfin-add-btn" onClick={onAdd}>
+        <Button type="button" variant="primary" iconLeft="add" onClick={onAdd}>
           Add Expense
         </Button>
       </header>

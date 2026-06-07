@@ -89,6 +89,36 @@
 .pg-btn__icon {
   flex-shrink: 0;
   display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pg-btn__label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  min-height: 0;
+}
+
+/* Primary action in workspace filter toolbars (leases, financials, etc.) */
+.pg-workspace-controls-add-btn {
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+@media (max-width: 900px) {
+  .pg-btn--compact-mobile .pg-btn__label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
 }
 
 /* --- Primary --- */

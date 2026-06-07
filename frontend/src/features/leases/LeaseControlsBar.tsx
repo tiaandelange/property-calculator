@@ -1,4 +1,4 @@
-import { Plus, Search } from "lucide-react";
+import { Search } from "lucide-react";
 import { ButtonLink } from "../../components/ui/Button";
 import type { LeaseFilters } from "./leaseDirectoryTypes";
 
@@ -82,9 +82,14 @@ export function LeaseControlsBar({
         <div className="pg-leases-controls-filters">
           <FilterSelects filters={filters} onChange={onChange} properties={properties} pill />
         </div>
-        <ButtonLink href="/leases/new" variant="primary" className="pg-leases-add-btn">
-          <Plus size={18} aria-hidden />
-          <span className="pg-leases-add-btn-label">Add Lease</span>
+        <ButtonLink
+          href="/leases/new"
+          variant="primary"
+          iconLeft="add"
+          className="pg-workspace-controls-add-btn pg-btn--compact-mobile"
+          aria-label="Add Lease"
+        >
+          Add Lease
         </ButtonLink>
       </div>
     </div>

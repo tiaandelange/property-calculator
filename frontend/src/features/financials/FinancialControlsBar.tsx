@@ -1,4 +1,4 @@
-import { Plus, Search } from "lucide-react";
+import { Search } from "lucide-react";
 import { ButtonLink } from "../../components/ui/Button";
 import type { FinancialFilters } from "./financialDirectoryTypes";
 import { propertyFinancialsStatementUrl } from "./financialDirectoryUtils";
@@ -66,9 +66,14 @@ export function FinancialControlsBar({
             <option value="INVOICE">Invoice</option>
           </select>
         </div>
-        <ButtonLink href={addHref} variant="primary" className="pg-fins-add-btn">
-          <Plus size={18} aria-hidden />
-          <span className="pg-fins-add-btn-label">Manage on property</span>
+        <ButtonLink
+          href={addHref}
+          variant="primary"
+          iconLeft="add"
+          className="pg-workspace-controls-add-btn pg-btn--compact-mobile"
+          aria-label="Manage on property"
+        >
+          Manage on property
         </ButtonLink>
       </div>
     </div>

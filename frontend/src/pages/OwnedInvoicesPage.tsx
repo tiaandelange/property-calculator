@@ -132,7 +132,7 @@ export function OwnedInvoicesPage() {
                     Download PDF
                   </Button>
                   <Button variant="ghost" onClick={() => markPaid(inv.id)}>Mark Paid</Button>
-                  <Link className="pg-btn pg-btn--ghost" to={`/invoices/${inv.id}`}>
+                  <Link className="pg-btn pg-btn-ghost" to={`/invoices/${inv.id}`}>
                     Send email
                   </Link>
                 </div>

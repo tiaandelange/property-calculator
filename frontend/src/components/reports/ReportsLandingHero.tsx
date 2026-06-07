@@ -59,7 +59,7 @@ export function ReportsLandingHero() {
               <Button type="button" variant="primary" onClick={scrollToSamplePreview}>
                 View Sample Report
               </Button>
-              <Link to={MARKETING_SIGNUP_FREE_HREF} className="pg-btn pg-btn--secondary pg-reports-hub-landing-hero__cta-secondary">
+              <Link to={MARKETING_SIGNUP_FREE_HREF} className="pg-btn pg-btn-secondary pg-reports-hub-landing-hero__cta-secondary">
                 Start Free
               </Link>
             </div>
