@@ -327,13 +327,28 @@ export async function listTenantsEligibleForProperty(
 
   const { data: activeLeaseTenants, error: ltErr } = await sb
     .from("lease_tenants")
-    .select("tenant_id, leases!inner ( property_id, status, cancellation_date )")
+    .select("tenant_id, leases!inner ( property_id, status, fixed_term_end_date, cancellation_date )")
     .eq("user_id", uid);
   if (ltErr) throw toError(ltErr);
 
   const tenantsWithActiveLease = new Set<string>();
   for (const row of activeLeaseTenants ?? []) {
-    const r = row as { tenant_id: string; leases?: { property_id?: string; status?: string; cancellation_date?: string | null } | { property_id?: string; status?: string; cancellation_date?: string | null }[] };
+    const r = row as {
+      tenant_id: string;
+      leases?:
+        | {
+            property_id?: string;
+            status?: string;
+            fixed_term_end_date?: string | null;
+            cancellation_date?: string | null;
+          }
+        | {
+            property_id?: string;
+            status?: string;
+            fixed_term_end_date?: string | null;
+            cancellation_date?: string | null;
+          }[];
+    };
     const leaseRaw = r.leases;
     const lease = Array.isArray(leaseRaw) ? leaseRaw[0] : leaseRaw;
     if (!lease) continue;
