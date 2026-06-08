@@ -33,7 +33,7 @@ export function shouldClearSessionForGetSessionError(
   return false;
 }
 
-const RECENT_SESSION_GRACE_MS = 8_000;
+const RECENT_SESSION_GRACE_MS = 30_000;
 
 /** Ignore SIGNED_OUT immediately after we established a session (token rotation races). */
 export function shouldIgnoreSignedOutEvent(

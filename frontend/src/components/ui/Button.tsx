@@ -1,7 +1,9 @@
 import React from "react";
+import { Link } from "react-router-dom";
 import { AppIcon } from "../icons/AppIcon";
 import type { IconName } from "../icons/iconRegistry";
 import type { IconSize } from "../icons/iconSizes";
+import { isInternalAppPath } from "../../lib/routerLinks";
 import { buttonClassName, type ButtonSize, type ButtonVariant } from "./buttonStyles";
 
 export type { ButtonSize, ButtonVariant };
@@ -64,6 +66,9 @@ export function ButtonLink({
   iconRight,
   className,
   disabled,
+  href,
+  onClick,
+  target,
   ...props
 }: React.AnchorHTMLAttributes<HTMLAnchorElement> & {
   variant?: ButtonVariant;
@@ -74,21 +79,9 @@ export function ButtonLink({
   disabled?: boolean;
 }) {
   const iconSize = ICON_SIZE[size];
-
-  return (
-    <a
-      className={buttonClassName({ variant, size, fullWidth, className })}
-      aria-disabled={disabled || undefined}
-      tabIndex={disabled ? -1 : undefined}
-      {...props}
-      onClick={(e) => {
-        if (disabled) {
-          e.preventDefault();
-          return;
-        }
-        props.onClick?.(e);
-      }}
-    >
+  const classes = buttonClassName({ variant, size, fullWidth, className });
+  const content = (
+    <>
       {iconLeft ? (
         <AppIcon name={iconLeft} size={iconSize} className="pg-btn__icon" aria-hidden="true" />
       ) : null}
@@ -96,6 +89,43 @@ export function ButtonLink({
       {iconRight ? (
         <AppIcon name={iconRight} size={iconSize} className="pg-btn__icon" aria-hidden="true" />
       ) : null}
+    </>
+  );
+
+  const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    if (disabled) {
+      e.preventDefault();
+      return;
+    }
+    onClick?.(e);
+  };
+
+  if (href && isInternalAppPath(href) && !target) {
+    return (
+      <Link
+        to={href}
+        className={classes}
+        aria-disabled={disabled || undefined}
+        tabIndex={disabled ? -1 : undefined}
+        onClick={handleClick}
+        {...(props as Omit<React.ComponentProps<typeof Link>, "to" | "className" | "onClick">)}
+      >
+        {content}
+      </Link>
+    );
+  }
+
+  return (
+    <a
+      href={href}
+      target={target}
+      className={classes}
+      aria-disabled={disabled || undefined}
+      tabIndex={disabled ? -1 : undefined}
+      onClick={handleClick}
+      {...props}
+    >
+      {content}
     </a>
   );
 }

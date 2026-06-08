@@ -1,4 +1,6 @@
 import type React from "react";
+import { Link } from "react-router-dom";
+import { isInternalAppPath } from "../../lib/routerLinks";
 
 export type AppSectionTabItem = {
   id: string;
@@ -24,6 +26,72 @@ function buildTabHref(
   if (!basePath) return undefined;
   const suffix = extraQueryForTab?.[item.id] ? `&${extraQueryForTab[item.id]}` : "";
   return `${basePath}?tab=${encodeURIComponent(item.id)}${suffix}`;
+}
+
+function SectionTabLink({
+  href,
+  active,
+  className,
+  item,
+  asTablist
+}: {
+  href: string;
+  active: boolean;
+  className: string;
+  item: AppSectionTabItem;
+  asTablist: boolean;
+}) {
+  const useRouterLink = isInternalAppPath(href) && !item.target;
+
+  if (useRouterLink) {
+    if (asTablist) {
+      return (
+        <Link
+          to={href}
+          role="tab"
+          aria-selected={active}
+          aria-controls={item.controls}
+          className={className}
+        >
+          {item.label}
+        </Link>
+      );
+    }
+
+    return (
+      <Link to={href} className={className} aria-current={active ? "page" : undefined}>
+        {item.label}
+      </Link>
+    );
+  }
+
+  if (asTablist) {
+    return (
+      <a
+        href={href}
+        role="tab"
+        aria-selected={active}
+        aria-controls={item.controls}
+        className={className}
+        target={item.target}
+        rel={item.rel}
+      >
+        {item.label}
+      </a>
+    );
+  }
+
+  return (
+    <a
+      href={href}
+      className={className}
+      aria-current={active ? "page" : undefined}
+      target={item.target}
+      rel={item.rel}
+    >
+      {item.label}
+    </a>
+  );
 }
 
 export function AppSectionTabs({
@@ -57,18 +125,14 @@ export function AppSectionTabs({
           const href = buildTabHref(basePath, item, extraQueryForTab);
           if (href) {
             return (
-              <a
+              <SectionTabLink
                 key={item.id}
                 href={href}
-                role="tab"
-                aria-selected={active}
-                aria-controls={item.controls}
+                active={active}
                 className={tabClassName(active)}
-                target={item.target}
-                rel={item.rel}
-              >
-                {item.label}
-              </a>
+                item={item}
+                asTablist
+              />
             );
           }
           return (
@@ -97,16 +161,14 @@ export function AppSectionTabs({
         const href = buildTabHref(basePath, item, extraQueryForTab);
         if (href) {
           return (
-            <a
+            <SectionTabLink
               key={item.id}
               href={href}
+              active={active}
               className={tabClassName(active)}
-              aria-current={active ? "page" : undefined}
-              target={item.target}
-              rel={item.rel}
-            >
-              {item.label}
-            </a>
+              item={item}
+              asTablist={false}
+            />
           );
         }
         return (

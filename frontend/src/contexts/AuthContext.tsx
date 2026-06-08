@@ -146,15 +146,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           await new Promise((resolve) => window.setTimeout(resolve, 250 * attempt));
         }
 
-        const { data: refreshed, error: refreshError } = await client.auth.refreshSession();
-        if (!refreshError && refreshed.session) {
-          applySession(refreshed.session, `${reason}:refreshSession`);
-          return true;
-        }
-
         const { data, error } = await client.auth.getSession();
         if (!error && data.session) {
           applySession(data.session, `${reason}:getSession`);
+          return true;
+        }
+
+        const { data: refreshed, error: refreshError } = await client.auth.refreshSession();
+        if (!refreshError && refreshed.session) {
+          applySession(refreshed.session, `${reason}:refreshSession`);
           return true;
         }
       }
@@ -209,6 +209,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const recovered = await recoverSessionAfterSignedOut(client, "SIGNED_OUT");
           if (cancelled) return;
           if (recovered) return;
+
+          if (sessionRef.current?.user?.id) {
+            const { data: finalSession } = await client.auth.getSession();
+            if (!cancelled && finalSession.session?.user?.id) {
+              applySession(finalSession.session, `event:${event}:cached-recovery`);
+              return;
+            }
+          }
 
           applySession(null, `event:${event}`);
         })();
