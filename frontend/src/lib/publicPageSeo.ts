@@ -35,6 +35,31 @@ export const LOGIN_PAGE_SEO: PublicPageSeoConfig = seoData.staticPages["/login"]
 
 export const SIGNUP_PAGE_SEO: PublicPageSeoConfig = seoData.staticPages["/signup"];
 
+const APPLICANT_APPLY_LINK_TITLE = "Apply Here | Proplytic";
+const APPLICANT_APPLY_LINK_DESCRIPTION =
+  "Complete your rental application securely. Upload your details and supporting documents.";
+
+/** Link-preview SEO for shared tenant application invite URLs (`/apply/:token`). */
+export function buildApplicantApplyLinkSeo(
+  token: string,
+  opts?: { propertyLocation?: string | null }
+): PublicPageSeoConfig {
+  const path = `/apply/${token}`;
+  const location = opts?.propertyLocation?.trim();
+  if (location) {
+    return {
+      path,
+      title: `Apply Here — ${location} | Proplytic`,
+      description: `Complete your rental application for ${location}.`
+    };
+  }
+  return {
+    path,
+    title: APPLICANT_APPLY_LINK_TITLE,
+    description: APPLICANT_APPLY_LINK_DESCRIPTION
+  };
+}
+
 /**
  * Resolve SEO config for a public pathname (no query string).
  * Returns null for unknown paths (e.g. authenticated app routes).
@@ -45,6 +70,11 @@ export function getPublicPageSeoForPath(pathname: string): PublicPageSeoConfig |
 
   if (seoData.staticPages[normalized as keyof typeof seoData.staticPages]) {
     return seoData.staticPages[normalized as keyof typeof seoData.staticPages];
+  }
+
+  const applyMatch = /^\/apply\/([^/]+)$/.exec(normalized);
+  if (applyMatch?.[1]) {
+    return buildApplicantApplyLinkSeo(applyMatch[1]);
   }
 
   const calcMatch = /^\/calculators\/([^/]+)$/.exec(normalized);

@@ -14,6 +14,8 @@ export const config = {
     "/contact",
     "/login",
     "/signup",
+    "/apply",
+    "/apply/:path*",
     "/privacy",
     "/terms"
   ]

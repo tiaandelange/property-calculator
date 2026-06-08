@@ -27,6 +27,13 @@ describe("publicPageSeo", () => {
     expect(getPublicPageSeoForPath("/pricing")?.title).toContain("Pricing");
   });
 
+  it("resolves applicant invite link previews", () => {
+    const seo = getPublicPageSeoForPath("/apply/abc123token");
+    expect(seo?.title).toBe("Apply Here | Proplytic");
+    expect(seo?.path).toBe("/apply/abc123token");
+    expect(seo?.description).toMatch(/rental application/i);
+  });
+
   it("builds OG HTML with absolute image URL", () => {
     const html = buildSocialPreviewHtml(getPublicPageSeoForPath("/")!);
     expect(html).toContain("https://www.proplytic.co.za/social/proplytic-og-home.png");

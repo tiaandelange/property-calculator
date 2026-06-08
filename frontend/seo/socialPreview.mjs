@@ -17,10 +17,26 @@ export function normalizePathname(pathname) {
   return path.endsWith("/") && path.length > 1 ? path.slice(0, -1) : path || "/";
 }
 
+const APPLICANT_APPLY_LINK_TITLE = "Apply Here | Proplytic";
+const APPLICANT_APPLY_LINK_DESCRIPTION =
+  "Complete your rental application securely. Upload your details and supporting documents.";
+
+export function buildApplicantApplyLinkSeo(token) {
+  return {
+    path: `/apply/${token}`,
+    title: APPLICANT_APPLY_LINK_TITLE,
+    description: APPLICANT_APPLY_LINK_DESCRIPTION
+  };
+}
+
 export function getPublicPageSeoForPath(pathname) {
   const normalized = normalizePathname(pathname);
   if (seoData.staticPages[normalized]) {
     return seoData.staticPages[normalized];
+  }
+  const applyMatch = /^\/apply\/([^/]+)$/.exec(normalized);
+  if (applyMatch?.[1]) {
+    return buildApplicantApplyLinkSeo(applyMatch[1]);
   }
   const calcMatch = /^\/calculators\/([^/]+)$/.exec(normalized);
   if (calcMatch && seoData.calculatorSlugs[calcMatch[1]]) {

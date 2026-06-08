@@ -1,7 +1,9 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { useParams } from "react-router-dom";
+import { PublicPageSeo } from "../components/seo/PublicPageSeo";
 import { Container } from "../components/ui/Container";
+import { buildApplicantApplyLinkSeo } from "../lib/publicPageSeo";
 import { Section } from "../components/ui/Section";
 import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
@@ -110,11 +112,18 @@ export function ApplicantApplyPage() {
   };
 
   const applicationLocation = formatApplicationLocation(propertyAddress, unitName);
+  const linkPreviewSeo = useMemo(
+    () =>
+      buildApplicantApplyLinkSeo(token, {
+        propertyLocation: inviteLoaded && applicationLocation ? applicationLocation : null
+      }),
+    [token, inviteLoaded, applicationLocation]
+  );
 
   return (
     <Section>
+      <PublicPageSeo seo={linkPreviewSeo} />
       <Helmet>
-        <title>Tenant application | The Property Guy</title>
         <meta name="robots" content="noindex,nofollow" />
       </Helmet>
       <Container className="pg-applicant-apply-container">
