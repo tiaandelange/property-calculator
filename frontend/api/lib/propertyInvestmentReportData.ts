@@ -12,6 +12,12 @@ import {
   projectValue
 } from "./propertyCalculatorServer.js";
 import { computePropertyBondFinance, resolveBondRemainingMonths } from "./bondHelpers.js";
+import { formatPdfPercent, formatPdfZar } from "./pdf/pdfFormat.js";
+import {
+  buildExecutiveSummary,
+  derivePdfInvestmentRating,
+  type PdfInvestmentRating
+} from "./reportInvestmentRating.js";
 
 export { projectLoanBalanceAfterYears, projectValue };
 
@@ -54,6 +60,10 @@ export type PropertyInvestmentReportModel = {
     ltv: number | null;
   };
   assumptions: { label: string; value: string }[];
+  /** Key projection assumptions shown in a dedicated Assumptions section. */
+  keyAssumptions: { label: string; value: string }[];
+  executiveSummary: string[];
+  investmentRating: PdfInvestmentRating;
   expenseBreakdown: { label: string; amount: number }[];
   projection: {
     years: number[];
@@ -93,13 +103,22 @@ function dash(v: number | null | undefined, formatter: (x: number) => string = f
 }
 
 export function formatZar(amount: number): string {
-  const v = Math.round((Number(amount) || 0) + Number.EPSILON);
-  return `R ${v.toLocaleString("en-ZA")}`;
+  return formatPdfZar(amount);
 }
 
 export function formatPct(value: number | null): string {
-  if (value == null || !Number.isFinite(value)) return "—";
-  return `${value.toFixed(2)}%`;
+  return formatPdfPercent(value);
+}
+
+export function fiftyPercentRuleResult(
+  monthlyGross: number,
+  monthlyOperating: number,
+  ruleCashFlow: number | null
+): string {
+  if (monthlyGross <= 0) return "Insufficient Data";
+  const meetsOperating = monthlyOperating <= monthlyGross * 0.5 + 0.01;
+  const positiveRuleCf = ruleCashFlow == null || ruleCashFlow >= 0;
+  return meetsOperating && positiveRuleCf ? "Meets 50% Rule" : "Does Not Meet 50% Rule";
 }
 
 function dashText(v: unknown): string {
@@ -283,6 +302,7 @@ export function assemblePropertyInvestmentReportData(input: AssemblePropertyRepo
   const startLoan = loanBalance ?? 0;
   const ratePct = pickNum(p, "bondAnnualInterestRatePercent", "bond_annual_interest_rate_percent");
 
+  const projMonthlyGross = yearCols.map((y) => projectValue(monthlyIncome, incomeGrowth, y));
   const projIncome = yearCols.map((y) => projectValue(baseAnnualIncome, incomeGrowth, y));
   const projExpenses = yearCols.map((y) => projectValue(baseAnnualExpenses, expenseGrowth, y));
   const projNoi = yearCols.map((_, i) => {
@@ -476,7 +496,30 @@ export function assemblePropertyInvestmentReportData(input: AssemblePropertyRepo
 
   const fiftyPctExpenses = monthlyIncome * 0.5;
   const ruleCashFlow =
-    monthlyLoanPayment > 0 ? monthlyIncome - fiftyPctExpenses - monthlyLoanPayment : null;
+    monthlyIncome > 0 ? monthlyIncome - fiftyPctExpenses - monthlyLoanPayment : null;
+  const meetsFiftyOperating = monthlyIncome > 0 ? monthlyOperating <= fiftyPctExpenses + 0.01 : null;
+
+  const investmentRating = derivePdfInvestmentRating({
+    monthlyGrossIncome: monthlyIncome,
+    monthlyCashFlow,
+    monthlyOperatingExpenses: monthlyOperating,
+    monthlyLoanPayment: monthlyLoanPayment > 0 ? monthlyLoanPayment : 0,
+    grossYield: grossRentalYield,
+    twoPercentRule,
+    cashOnCashRoi,
+    internalRateOfReturn: defaultIrr ?? irrByHorizon[0] ?? null,
+    cashInvested,
+    purchasePrice,
+    meetsFiftyPercentOperating: meetsFiftyOperating,
+    ruleCashFlow
+  });
+
+  const keyAssumptions: { label: string; value: string }[] = [
+    { label: "Cash invested / deposit", value: dash(cashInvested) },
+    { label: "Annual rent growth", value: formatPct(incomeGrowth) },
+    { label: "Expense growth", value: formatPct(expenseGrowth) },
+    { label: "Property appreciation", value: formatPct(propertyGrowth) }
+  ];
 
   return {
     generatedAt: now.toISOString(),
@@ -523,6 +566,9 @@ export function assemblePropertyInvestmentReportData(input: AssemblePropertyRepo
       twoPercentRule,
       ltv: ltvPct
     },
+    keyAssumptions,
+    executiveSummary: buildExecutiveSummary(investmentRating),
+    investmentRating,
     assumptions: [
       { label: "Purchase date", value: purchaseDateLabel },
       {
@@ -543,43 +589,16 @@ export function assemblePropertyInvestmentReportData(input: AssemblePropertyRepo
     projection: {
       years: yearCols,
       rows: [
-        {
-          label: "Total annual income",
-          values: projIncome.map((v) => (v == null ? "—" : formatZar(v)))
-        },
-        {
-          label: "Total annual expenses",
-          values: projExpenses.map((v) => (v == null ? "—" : formatZar(v)))
-        },
-        {
-          label: "Net operating income",
-          values: projNoi.map((v) => (v == null ? "—" : formatZar(v)))
-        },
-        {
-          label: "Total annual cash flow",
-          values: projCashFlow.map((v) => (v == null ? "—" : formatZar(v)))
-        },
-        {
-          label: "Property value",
-          values: projValue.map((v) => (v == null ? "—" : formatZar(v)))
-        },
-        {
-          label: "Equity",
-          values: projEquity.map((v) => (v == null ? "—" : formatZar(v)))
-        },
-        {
-          label: "Loan balance",
-          values: projLoan.map((v) => (v == null ? "—" : formatZar(v)))
-        },
-        {
-          label: "Cash on cash ROI",
-          values: projCoC.map((v) => (v == null ? "—" : formatPct(v)))
-        }
-        ,
-        {
-          label: "IRR",
-          values: irrByHorizon.map((v) => (v == null ? "—" : formatPct(v)))
-        }
+        { label: "Monthly gross rent", values: projMonthlyGross },
+        { label: "Total annual income", values: projIncome },
+        { label: "Total annual expenses", values: projExpenses },
+        { label: "Net operating income", values: projNoi },
+        { label: "Total annual cash flow", values: projCashFlow },
+        { label: "Property value", values: projValue },
+        { label: "Equity", values: projEquity },
+        { label: "Loan balance", values: projLoan },
+        { label: "Cash on cash ROI", values: projCoC },
+        { label: "IRR", values: irrByHorizon }
       ]
     },
     actuals: [
@@ -639,24 +658,19 @@ export function assemblePropertyInvestmentReportData(input: AssemblePropertyRepo
     leases,
     fiftyPercentRule: [
       { label: "Monthly Gross Rent", value: formatZar(monthlyIncome) },
-      { label: "50% of Gross Rent", value: formatZar(fiftyPctExpenses) },
-      { label: "Total Monthly Expenses", value: formatZar(monthlyOperating) },
-      { label: "Monthly Loan Payment", value: dash(monthlyLoanPayment > 0 ? monthlyLoanPayment : null) },
+      { label: "50% Operating Allowance", value: formatZar(fiftyPctExpenses) },
+      { label: "Operating Expenses (excl. debt)", value: formatZar(monthlyOperating) },
+      { label: "Debt Service", value: dash(monthlyLoanPayment > 0 ? monthlyLoanPayment : null) },
       { label: "Rule Cash Flow", value: dash(ruleCashFlow) },
       {
         label: "Result",
-        value:
-          monthlyIncome <= 0
-            ? "Insufficient Data"
-            : monthlyOperating <= fiftyPctExpenses
-              ? "Meets 50% Rule"
-              : "Does Not Meet 50% Rule"
+        value: fiftyPercentRuleResult(monthlyIncome, monthlyOperating, ruleCashFlow)
       },
       {
-        label: "Expenses vs gross rent",
+        label: "Operating costs vs gross rent",
         value:
           monthlyIncome > 0
-            ? `Expenses are ${formatPct((monthlyOperating / monthlyIncome) * 100)} of gross rent`
+            ? `Operating costs are ${formatPct((monthlyOperating / monthlyIncome) * 100)} of gross rent (debt service excluded).`
             : "—"
       }
     ]

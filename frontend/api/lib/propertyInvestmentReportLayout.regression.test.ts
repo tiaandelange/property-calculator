@@ -90,13 +90,17 @@ describe("Property Investment Report layout regression", () => {
     const json = definitionJson(definition);
 
     expect(text).toContain("Property Investment Report");
+    expect(text).toContain("Executive Summary");
+    expect(text).toContain("Assumptions");
     expect(text).toContain("Single-family home");
+    expect(text).not.toContain("Excellent");
+    expect(text).not.toContain('"Bad"');
     expect(text).not.toMatch(/No property image|property image available/i);
     expect(text).not.toContain("Fallback");
     expect(text).not.toMatch(/loanTermYears|vacancyAllowancePct/);
     expect(text).not.toMatch(/\bNaN\b|undefined|null/);
-    expect(text).toContain("Expenses are");
-    expect(text).toContain("of gross rent.");
+    expect(text).toContain("Operating costs are");
+    expect(text).toContain("of gross rent");
     expect(text).toContain("50% Rule Projection");
     expect(text).toContain("Income vs Expenses Over Time");
     expect(json).toMatch(/"unbreakable"\s*:\s*true/);
