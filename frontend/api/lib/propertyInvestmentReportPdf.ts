@@ -225,51 +225,38 @@ export function buildPropertyInvestmentReportPdfDefinition(
     };
   };
 
-  const buildMetricCard = (input: { label: string; value: string; helperText?: string; iconText?: string }): Content => {
+  const buildMetricCard = (input: { label: string; value: string; helperText?: string }): Content => {
     const valueText = String(input.value ?? "—");
-    const compactValueFontSize = valueText.length > 14 ? 11 : valueText.length > 11 ? 12 : 13;
+    const compactValueFontSize = valueText.length > 12 ? 11 : valueText.length > 9 ? 12 : 13;
 
     return {
-      table: {
-        widths: ["*"],
-        body: [
-          [
-            {
-              stack: [
-                {
-                  columns: [
-                    ...(input.iconText
-                      ? [{ width: "auto", text: input.iconText, color: theme.primaryColor, bold: true, fontSize: 8, margin: pdfMargin(0, 0, 6, 0) } as any]
-                      : []),
-                    { width: "*", text: input.label, color: theme.primaryColor, bold: true, fontSize: 8 }
-                  ],
-                  columnGap: 4,
-                  margin: pdfMargin(0, 0, 0, 3)
-                },
-                {
-                  text: valueText,
-                  fontSize: compactValueFontSize,
-                  bold: true,
-                  color: theme.textColor,
-                  noWrap: true,
-                  margin: pdfMargin(0, 0, 0, 2)
-                },
-                ...(input.helperText ? [{ text: input.helperText, fontSize: 8, color: theme.mutedTextColor } as any] : [])
-              ]
-            }
-          ]
-        ]
-      },
-      layout: {
-        hLineWidth: () => 0.5,
-        vLineWidth: () => 0.5,
-        hLineColor: () => theme.borderColor,
-        vLineColor: () => theme.borderColor,
-        paddingLeft: () => 8,
-        paddingRight: () => 8,
-        paddingTop: () => 8,
-        paddingBottom: () => 8
-      }
+      stack: [
+        {
+          canvas: [{ type: "rect", x: 0, y: 0, w: 4, h: 14, color: theme.primaryColor }],
+          margin: pdfMargin(0, 0, 0, 4)
+        },
+        {
+          text: input.label,
+          color: theme.primaryColor,
+          bold: true,
+          fontSize: 8,
+          noWrap: true,
+          margin: pdfMargin(0, 0, 0, 3)
+        },
+        {
+          text: valueText,
+          fontSize: compactValueFontSize,
+          bold: true,
+          color: theme.textColor,
+          noWrap: true,
+          margin: pdfMargin(0, 0, 0, 2)
+        },
+        ...(input.helperText
+          ? [{ text: input.helperText, fontSize: 7, color: theme.mutedTextColor, noWrap: true } as Content]
+          : [])
+      ],
+      fillColor: theme.tableHeaderFill,
+      margin: pdfMargin(6, 6, 6, 6)
     };
   };
 
@@ -361,9 +348,7 @@ export function buildPropertyInvestmentReportPdfDefinition(
   };
 
   const cocDisplay =
-    model.metrics.totalCashNeeded != null &&
-    model.metrics.totalCashNeeded > 0 &&
-    model.metrics.cashOnCashRoi != null
+    model.metrics.cashOnCashRoi != null && Number.isFinite(model.metrics.cashOnCashRoi)
       ? formatPct(model.metrics.cashOnCashRoi)
       : "—";
 
@@ -409,35 +394,32 @@ export function buildPropertyInvestmentReportPdfDefinition(
     },
     {
       table: {
-        widths: ["*", "*"],
+        widths: ["*", "*", "*", "*"],
         body: [
           [
-            buildMetricCard({ label: "Monthly Income", value: metricCurrency(model.metrics.monthlyIncome), helperText: "Gross rent" }),
-            buildMetricCard({ label: "Monthly Expenses", value: metricCurrency(model.metrics.monthlyExpenses), helperText: "Total monthly" })
-          ],
-          [
-            buildMetricCard({ label: "Monthly Cash Flow", value: metricCurrency(model.metrics.monthlyCashFlow), helperText: "After debt & expenses" }),
+            buildMetricCard({ label: "Income", value: metricCurrency(model.metrics.monthlyIncome), helperText: "Gross rent" }),
+            buildMetricCard({ label: "Expenses", value: metricCurrency(model.metrics.monthlyExpenses), helperText: "Monthly total" }),
+            buildMetricCard({ label: "Cash Flow", value: metricCurrency(model.metrics.monthlyCashFlow), helperText: "After debt" }),
             buildMetricCard({ label: "Gross Yield", value: formatPct(model.metrics.grossRentalYield), helperText: "Annualized" })
           ],
           [
-            buildMetricCard({ label: "Cash on Cash ROI", value: cocDisplay, helperText: "Annualized" }),
-            buildMetricCard({ label: "LTV", value: formatPct(model.metrics.ltv), helperText: "Loan-to-value" })
-          ],
-          [
+            buildMetricCard({ label: "CoC ROI", value: cocDisplay, helperText: "On total cash in" }),
+            buildMetricCard({ label: "LTV", value: formatPct(model.metrics.ltv), helperText: "Loan-to-value" }),
             buildMetricCard({ label: "IRR", value: formatPct(model.metrics.internalRateOfReturn), helperText: "Projected" }),
             buildMetricCard({ label: "Occupancy", value: model.metrics.occupancyLabel ?? "—", helperText: "Current" })
           ]
         ]
       },
       layout: {
-        hLineWidth: () => 0,
-        vLineWidth: () => 0,
+        hLineWidth: () => 0.5,
+        vLineWidth: () => 0.5,
+        hLineColor: () => theme.borderColor,
+        vLineColor: () => theme.borderColor,
         paddingLeft: () => 0,
         paddingRight: () => 0,
         paddingTop: () => 0,
-        paddingBottom: () => 8
+        paddingBottom: () => 0
       },
-      columnGap: 12,
       margin: pdfMargin(0, 0, 0, PDF_SPACING.section)
     },
 
@@ -446,6 +428,7 @@ export function buildPropertyInvestmentReportPdfDefinition(
         buildKeyValueCard({ title: "Property Information", rows: model.propertyDetails }),
         buildKeyValueCard({ title: "Income & Expenses (Monthly)", rows: model.monthlyIncomeExpense }),
         buildKeyValueCard({ title: "Assumptions", rows: model.keyAssumptions }),
+        buildKeyValueCard({ title: "Cash Investment", rows: model.cashInvestmentRows }),
         buildKeyValueCard({ title: "Loan & Assumptions", rows: model.assumptions })
       ]
     },

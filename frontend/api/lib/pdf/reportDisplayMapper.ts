@@ -83,18 +83,32 @@ export type ReportDisplayRow = { label: string; value: string };
 export function buildCalculatorPropertyInformationRows(
   answers: Record<string, unknown>,
   metrics: Record<string, unknown>,
-  propertyTypeLabel: string
+  propertyTypeLabel: string,
+  cashResolved?: {
+    totalCashInvested: number | null;
+    depositPayment: number;
+    closingCosts: number;
+    transferCosts: number;
+    bondRegistrationCosts: number;
+    repairsRenovation: number;
+  }
 ): ReportDisplayRow[] {
   const pick = (key: string) => formatReportFieldValue(key, answers[key]);
   const purchase = parseNum(answers.purchasePrice);
-  const market = parseNum(answers.marketValue);
   const closing = parseNum(answers.closingCosts) ?? 0;
   const repairs = parseNum(answers.repairsRenovation) ?? 0;
   const totalProject =
     purchase != null ? purchase + closing + repairs : null;
-  const cash = parseNum(answers.cashInvested);
   const loan = parseNum(answers.loanAmount);
   const ltv = metrics.ltv;
+  const deposit = cashResolved?.depositPayment ?? parseNum(answers.cashInvested) ?? 0;
+  const transferClosing =
+    cashResolved != null
+      ? cashResolved.transferCosts + cashResolved.closingCosts
+      : closing;
+  const bondReg = cashResolved?.bondRegistrationCosts ?? 0;
+  const repairsAmt = cashResolved?.repairsRenovation ?? repairs;
+  const totalCash = cashResolved?.totalCashInvested ?? null;
 
   return [
     { label: "Property Type", value: propertyTypeLabel || "—" },
@@ -106,7 +120,26 @@ export function buildCalculatorPropertyInformationRows(
       label: "Total Project Cost",
       value: totalProject != null && totalProject > 0 ? formatPdfZar(totalProject) : "—"
     },
-    { label: "Cash Invested / Deposit", value: pick("cashInvested") },
+    {
+      label: "Deposit / Down Payment",
+      value: deposit > 0 ? formatPdfZar(deposit) : "—"
+    },
+    {
+      label: "Transfer / Closing Costs",
+      value: transferClosing > 0 ? formatPdfZar(transferClosing) : "—"
+    },
+    {
+      label: "Bond Registration Costs",
+      value: bondReg > 0 ? formatPdfZar(bondReg) : "—"
+    },
+    {
+      label: "Repairs / Renovation (cash)",
+      value: repairsAmt > 0 ? formatPdfZar(repairsAmt) : "—"
+    },
+    {
+      label: "Total Cash Invested",
+      value: totalCash != null && totalCash > 0 ? formatPdfZar(totalCash) : "—"
+    },
     { label: "Loan Amount", value: pick("loanAmount") },
     {
       label: "Loan-to-Value",

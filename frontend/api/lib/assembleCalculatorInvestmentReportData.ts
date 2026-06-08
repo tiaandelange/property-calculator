@@ -7,6 +7,7 @@ import {
   buildCalculatorLoanAssumptionRows,
   buildCalculatorPropertyInformationRows
 } from "./pdf/reportDisplayMapper.js";
+import { computeCashOnCashRoiPercent, resolveTotalCashInvested } from "./propertyCalculator/financialMetrics.js";
 import {
   calculateIRRByProjectionYear,
   resolveDefaultIrr,
@@ -19,6 +20,7 @@ import {
   derivePdfInvestmentRating
 } from "./reportInvestmentRating.js";
 import {
+  buildCashInvestmentRows,
   fiftyPercentRuleResult,
   formatPct,
   formatZar,
@@ -92,8 +94,21 @@ export function assembleCalculatorInvestmentReportData(opts: {
 
   const purchasePrice = parseNum(answers.purchasePrice);
   const marketValue = parseNum(answers.marketValue) ?? purchasePrice;
-  const cashInvested = parseNum(answers.cashInvested);
   const loanAmount = parseNum(answers.loanAmount);
+  const cashResolved = resolveTotalCashInvested({
+    depositPayment: parseNum(answers.cashInvested),
+    closingCosts: parseNum(answers.closingCosts),
+    transferCosts: parseNum(answers.transferCosts),
+    bondRegistrationCosts:
+      parseNum(answers.bondRegistrationCosts) ?? parseNum(answers.bondCosts),
+    attorneyFees: parseNum(answers.attorneyFees),
+    repairsRenovation: parseNum(answers.repairsRenovation),
+    otherInitialCashCosts: parseNum(answers.otherInitialCashCosts)
+  });
+  const totalCashInvested = cashResolved.totalCashInvested;
+  const cashInvestmentRows = buildCashInvestmentRows(cashResolved);
+  const annualCashFlow = monthlyCashFlow * 12;
+  const cashOnCashRoi = computeCashOnCashRoiPercent(annualCashFlow, totalCashInvested);
   const ratePct = parseNum(answers.interestRateApr);
   const defaults = opts.projectionAssumptions ?? null;
   const incomeGrowthPct =
@@ -109,7 +124,6 @@ export function assembleCalculatorInvestmentReportData(opts: {
     marketValue != null && loanAmount != null ? marketValue - loanAmount : marketValue ?? null;
   const ltv = parseNum(metrics.ltv);
   const grossYield = parseNum(metrics.grossYield);
-  const cashOnCash = parseNum(metrics.cashOnCashRoi);
   const irrVal = parseNum(metrics.internalRateofReturn ?? metrics.internalRateOfReturn);
   const metricsIrrByYear = Array.isArray(metrics.irrByYear)
     ? (metrics.irrByYear as IrrByYearEntry[])
@@ -123,7 +137,7 @@ export function assembleCalculatorInvestmentReportData(opts: {
         ? `${parseNum(answers.occupancyPct)!.toFixed(0)}%`
         : null;
 
-  const propertyDetails = buildCalculatorPropertyInformationRows(answers, metrics, typeLabel);
+  const propertyDetails = buildCalculatorPropertyInformationRows(answers, metrics, typeLabel, cashResolved);
   const monthlyIncomeExpense = buildCalculatorIncomeExpenseRows(answers, metrics, monthlyGrossIncome);
   const assumptions = buildCalculatorLoanAssumptionRows(answers, metrics, {
     incomeGrowthPct,
@@ -181,8 +195,8 @@ export function assembleCalculatorInvestmentReportData(opts: {
   });
   const projCoC = yearCols.map((_, i) => {
     const cf = projCashFlow[i];
-    if (cf == null || cashInvested == null || cashInvested <= 0) return null;
-    return Number(((cf / cashInvested) * 100).toFixed(2));
+    if (cf == null || totalCashInvested == null || totalCashInvested <= 0) return null;
+    return computeCashOnCashRoiPercent(cf, totalCashInvested);
   });
 
   const sellingCostPct = parseNum(answers.sellingCostsPercent) ?? parseNum(answers.sellingCostPct);
@@ -190,7 +204,7 @@ export function assembleCalculatorInvestmentReportData(opts: {
   const irrByYear =
     metricsIrrByYear ??
     calculateIRRByProjectionYear({
-      initialCashInvested: cashInvested,
+      initialCashInvested: totalCashInvested,
       baseAnnualIncome,
       baseAnnualOperatingExpenses: baseAnnualExpenses,
       annualDebtService: monthlyLoanPayment * 12,
@@ -226,9 +240,9 @@ export function assembleCalculatorInvestmentReportData(opts: {
     monthlyLoanPayment: monthlyLoanPayment > 0 ? monthlyLoanPayment : 0,
     grossYield,
     twoPercentRule,
-    cashOnCashRoi: cashOnCash,
+    cashOnCashRoi,
     internalRateOfReturn: defaultIrr,
-    cashInvested,
+    totalCashInvested,
     purchasePrice,
     meetsFiftyPercentOperating: meetsFiftyOperating,
     ruleCashFlow
@@ -236,8 +250,8 @@ export function assembleCalculatorInvestmentReportData(opts: {
 
   const keyAssumptions: { label: string; value: string }[] = [
     {
-      label: "Cash invested / deposit",
-      value: cashInvested != null && cashInvested > 0 ? formatZar(cashInvested) : "—"
+      label: "Total Cash Invested",
+      value: totalCashInvested != null && totalCashInvested > 0 ? formatZar(totalCashInvested) : "—"
     },
     { label: "Annual rent growth", value: formatPct(incomeGrowthPct) },
     { label: "Expense growth", value: formatPct(expenseGrowthPct) },
@@ -261,18 +275,30 @@ export function assembleCalculatorInvestmentReportData(opts: {
     propertyDetails,
     monthlyIncomeExpense,
     propertyInfo: propertyDetails,
+    cashInvestment: {
+      totalCashInvested,
+      depositPayment: cashResolved.depositPayment > 0 ? cashResolved.depositPayment : null,
+      closingCosts: cashResolved.closingCosts > 0 ? cashResolved.closingCosts : null,
+      transferCosts: cashResolved.transferCosts > 0 ? cashResolved.transferCosts : null,
+      bondRegistrationCosts:
+        cashResolved.bondRegistrationCosts > 0 ? cashResolved.bondRegistrationCosts : null,
+      repairsRenovation: cashResolved.repairsRenovation > 0 ? cashResolved.repairsRenovation : null,
+      attorneyFees: cashResolved.attorneyFees > 0 ? cashResolved.attorneyFees : null
+    },
+    cashInvestmentRows,
     metrics: {
       monthlyIncome,
       monthlyExpenses,
       monthlyCashFlow,
-      totalCashNeeded: cashInvested,
+      totalCashNeeded: totalCashInvested,
+      annualCashFlow,
       marketValue,
       purchasePrice,
       equity,
       occupancyLabel,
       grossRentalYield: grossYield,
       internalRateOfReturn: defaultIrr,
-      cashOnCashRoi: cashInvested != null && cashInvested > 0 ? cashOnCash : null,
+      cashOnCashRoi,
       capRate: parseNum(metrics.netYield),
       twoPercentRule,
       ltv

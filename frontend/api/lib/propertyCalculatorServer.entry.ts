@@ -1,5 +1,10 @@
 /** esbuild entry only — bundled to propertyCalculator.server.mjs on prebuild. */
-export { computeMetricsFromMonthlySnapshot } from "./propertyCalculator/financialMetrics.js";
+export {
+  computeMetricsFromMonthlySnapshot,
+  computeCashOnCashRoiPercent,
+  resolveTotalCashInvested,
+  type ResolvedTotalCashInvested
+} from "./propertyCalculator/financialMetrics.js";
 export {
   calculateIRR,
   calculateIRRByProjectionYear,

@@ -10,6 +10,9 @@ import type * as Entry from "./propertyCalculatorServer.entry.js";
 const api = bundled as typeof Entry;
 
 export const computeMetricsFromMonthlySnapshot = api.computeMetricsFromMonthlySnapshot;
+export const computeCashOnCashRoiPercent = api.computeCashOnCashRoiPercent;
+export const resolveTotalCashInvested = api.resolveTotalCashInvested;
+export type { ResolvedTotalCashInvested } from "./propertyCalculatorServer.entry.js";
 export const calculateIRR = api.calculateIRR;
 export const calculateIRRByProjectionYear = api.calculateIRRByProjectionYear;
 export const irrPercent = api.irrPercent;

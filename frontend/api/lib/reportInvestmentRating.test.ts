@@ -23,7 +23,7 @@ describe("derivePdfInvestmentRating", () => {
       twoPercentRule: 0.83,
       cashOnCashRoi: 6,
       internalRateOfReturn: 11,
-      cashInvested: 400_000,
+      totalCashInvested: 400_000,
       purchasePrice: null,
       meetsFiftyPercentOperating: true,
       ruleCashFlow: 1_000
@@ -41,7 +41,7 @@ describe("derivePdfInvestmentRating", () => {
       twoPercentRule: 0.5,
       cashOnCashRoi: -2,
       internalRateOfReturn: null,
-      cashInvested: 400_000,
+      totalCashInvested: 400_000,
       purchasePrice: 1_500_000,
       meetsFiftyPercentOperating: false,
       ruleCashFlow: -4_250

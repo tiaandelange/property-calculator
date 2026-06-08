@@ -15,6 +15,7 @@ export type PdfInvestmentRating = {
   summary: string;
   advancedMetricsComplete: boolean;
   warnings: string[];
+  totalCashInvestedResolved: boolean;
 };
 
 export function derivePdfInvestmentRating(opts: {
@@ -26,7 +27,7 @@ export function derivePdfInvestmentRating(opts: {
   twoPercentRule: number | null;
   cashOnCashRoi: number | null;
   internalRateOfReturn: number | null;
-  cashInvested: number | null;
+  totalCashInvested: number | null;
   purchasePrice: number | null;
   meetsFiftyPercentOperating: boolean | null;
   ruleCashFlow: number | null;
@@ -35,7 +36,8 @@ export function derivePdfInvestmentRating(opts: {
 
   const income = opts.monthlyGrossIncome;
   const purchase = opts.purchasePrice;
-  const cashInvested = opts.cashInvested;
+  const totalCashInvested = opts.totalCashInvested;
+  const totalCashInvestedResolved = totalCashInvested != null && totalCashInvested > 0;
 
   if (income == null || income <= 0) {
     warnings.push("Monthly gross rent is missing or zero.");
@@ -43,13 +45,15 @@ export function derivePdfInvestmentRating(opts: {
   if (purchase == null || purchase <= 0) {
     warnings.push("Purchase price is not set.");
   }
-  if (cashInvested == null || cashInvested <= 0) {
-    warnings.push("Cash invested / deposit is not recorded — cash-on-cash ROI cannot be calculated.");
+  if (!totalCashInvestedResolved) {
+    warnings.push(
+      "Cash-on-cash ROI requires deposit, transfer/bond costs, closing costs or other upfront cash investment."
+    );
   }
 
   const irrAvailable = opts.internalRateOfReturn != null && Number.isFinite(opts.internalRateOfReturn);
   const cocAvailable = opts.cashOnCashRoi != null && Number.isFinite(opts.cashOnCashRoi);
-  const advancedMetricsComplete = irrAvailable && (cocAvailable || cashInvested == null || cashInvested <= 0);
+  const advancedMetricsComplete = irrAvailable && (cocAvailable || !totalCashInvestedResolved);
 
   if (!irrAvailable) {
     warnings.push("IRR could not be calculated reliably for this scenario.");
@@ -68,7 +72,8 @@ export function derivePdfInvestmentRating(opts: {
       summary:
         "Key property or income inputs are missing. Complete purchase price, rent, and expense assumptions before relying on this rating.",
       advancedMetricsComplete: false,
-      warnings
+      warnings,
+      totalCashInvestedResolved
     };
   }
 
@@ -87,7 +92,8 @@ export function derivePdfInvestmentRating(opts: {
       label,
       summary: buildSummary(label, cf, meets50Overall, twoPct, grossYield, cocAvailable, irrAvailable),
       advancedMetricsComplete,
-      warnings
+      warnings,
+      totalCashInvestedResolved
     };
   }
 
@@ -117,7 +123,7 @@ export function derivePdfInvestmentRating(opts: {
   else if (score >= 0) label = "Needs Review";
   else label = "Weak";
 
-  if (!irrAvailable || (!cocAvailable && cashInvested != null && cashInvested > 0)) {
+  if (!irrAvailable || (!cocAvailable && totalCashInvestedResolved)) {
     if (label === "Weak") label = "Needs Review";
     else if (label === "Strong") label = "Good";
   }
@@ -126,7 +132,8 @@ export function derivePdfInvestmentRating(opts: {
     label,
     summary: buildSummary(label, cf, meets50Overall, twoPct, grossYield, cocAvailable, irrAvailable),
     advancedMetricsComplete,
-    warnings
+    warnings,
+    totalCashInvestedResolved
   };
 }
 
@@ -145,7 +152,11 @@ function buildSummary(
   parts.push(meets50 ? "Operating costs meet the 50% rule after debt service." : "Operating costs or rule cash flow do not fully meet the 50% rule.");
   if (twoPct != null) parts.push(`2% rule: ${twoPct.toFixed(2)}% of purchase price.`);
   if (grossYield != null) parts.push(`Gross yield: ${grossYield.toFixed(2)}%.`);
-  if (!cocAvailable) parts.push("Cash-on-cash ROI requires a recorded cash investment.");
+  if (!cocAvailable) {
+    parts.push(
+      "Cash-on-cash ROI requires deposit, transfer/bond costs, closing costs or other upfront cash investment."
+    );
+  }
   if (!irrAvailable) parts.push("IRR requires review or additional inputs.");
   return parts.join(" ");
 }
@@ -159,7 +170,15 @@ export function buildExecutiveSummary(rating: PdfInvestmentRating): string[] {
       "Advanced metrics (IRR and/or cash-on-cash ROI) are incomplete or require review before making investment decisions."
     );
   }
-  if (rating.warnings.length > 0) {
+  if (rating.totalCashInvestedResolved) {
+    paragraphs.push(
+      "Cash-on-cash ROI is calculated using total upfront cash invested, including recorded transaction costs."
+    );
+  } else if (rating.warnings.some((w) => /cash-on-cash/i.test(w))) {
+    paragraphs.push(
+      "Cash-on-cash ROI requires deposit, transfer/bond costs, closing costs or other upfront cash investment."
+    );
+  } else if (rating.warnings.length > 0) {
     paragraphs.push(`Data note: ${rating.warnings[0]}`);
   }
   return paragraphs;

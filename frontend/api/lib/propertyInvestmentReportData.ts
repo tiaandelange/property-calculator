@@ -4,6 +4,11 @@
  */
 
 import {
+  computeCashOnCashRoiPercent,
+  resolveTotalCashInvested,
+  type ResolvedTotalCashInvested
+} from "./propertyCalculator/financialMetrics.js";
+import {
   computeMetricsFromMonthlySnapshot,
   calculateIRRByProjectionYear,
   irrPercent as calculateIrrPercent,
@@ -48,6 +53,7 @@ export type PropertyInvestmentReportModel = {
     monthlyExpenses: number;
     monthlyCashFlow: number;
     totalCashNeeded: number | null;
+    annualCashFlow: number | null;
     marketValue: number | null;
     purchasePrice: number | null;
     equity: number | null;
@@ -59,6 +65,17 @@ export type PropertyInvestmentReportModel = {
     twoPercentRule: number | null;
     ltv: number | null;
   };
+  cashInvestment: {
+    totalCashInvested: number | null;
+    depositPayment: number | null;
+    closingCosts: number | null;
+    transferCosts: number | null;
+    bondRegistrationCosts: number | null;
+    repairsRenovation: number | null;
+    attorneyFees: number | null;
+  };
+  /** Cash investment breakdown rows for PDF (no raw field names). */
+  cashInvestmentRows: { label: string; value: string }[];
   assumptions: { label: string; value: string }[];
   /** Key projection assumptions shown in a dedicated Assumptions section. */
   keyAssumptions: { label: string; value: string }[];
@@ -108,6 +125,28 @@ export function formatZar(amount: number): string {
 
 export function formatPct(value: number | null): string {
   return formatPdfPercent(value);
+}
+
+export function buildCashInvestmentRows(resolved: ResolvedTotalCashInvested): { label: string; value: string }[] {
+  const row = (label: string, amount: number | null) => ({
+    label,
+    value: amount != null && amount > 0 ? formatZar(amount) : "—"
+  });
+  return [
+    row("Deposit / Down Payment", resolved.depositPayment > 0 ? resolved.depositPayment : null),
+    row(
+      "Transfer / Closing Costs",
+      resolved.transferCosts > 0 || resolved.closingCosts > 0
+        ? resolved.transferCosts + resolved.closingCosts
+        : null
+    ),
+    row(
+      "Bond Registration Costs",
+      resolved.bondRegistrationCosts > 0 ? resolved.bondRegistrationCosts : null
+    ),
+    row("Repairs / Renovation", resolved.repairsRenovation > 0 ? resolved.repairsRenovation : null),
+    row("Total Cash Invested", resolved.totalCashInvested)
+  ];
 }
 
 export function fiftyPercentRuleResult(
@@ -201,9 +240,22 @@ export function assemblePropertyInvestmentReportData(input: AssemblePropertyRepo
   const transferCosts = pickNum(p, "transferCosts", "transfer_costs");
   const bondCosts = pickNum(p, "bondCosts", "bond_costs");
   const rehab = pickNum(p, "rehabBudget", "rehab_budget");
-  const cashInvested = pickNum(p, "totalCashInvested", "total_cash_invested");
+  const depositRecord = pickNum(p, "totalCashInvested", "total_cash_invested");
   const loanBalance = pickNum(p, "outstandingBondBalance", "outstanding_bond_balance");
   const loanAmount = loanBalance ?? purchasePrice;
+  const depositFromPurchase =
+    purchasePrice != null && loanAmount != null && purchasePrice > loanAmount
+      ? purchasePrice - loanAmount
+      : null;
+  const cashResolved = resolveTotalCashInvested({
+    depositPayment: depositRecord ?? depositFromPurchase,
+    transferCosts,
+    bondRegistrationCosts: bondCosts,
+    repairsRenovation: rehab,
+    closingCosts: pickNum(p, "closingCosts", "closing_costs")
+  });
+  const totalCashInvested = cashResolved.totalCashInvested;
+  const cashInvestmentRows = buildCashInvestmentRows(cashResolved);
 
   const totalProjectCost =
     (purchasePrice ?? 0) + (transferCosts ?? 0) + (bondCosts ?? 0) + (rehab ?? 0) || null;
@@ -260,13 +312,14 @@ export function assemblePropertyInvestmentReportData(input: AssemblePropertyRepo
     marketValue,
     loanBalance,
     loanAmount: loanBalance,
-    cashInvested
+    cashInvested: totalCashInvested
   });
   const monthlyCashFlow = sharedMetrics.monthlyCashFlow ?? monthlyIncome - monthlyExpenses;
+  const annualCashFlow = sharedMetrics.annualCashFlow ?? monthlyCashFlow * 12;
   const annualIncome = monthlyIncome * 12;
   const grossRentalYield = sharedMetrics.grossYield;
   const capRate = sharedMetrics.capRate;
-  const cashOnCashRoi = sharedMetrics.cashOnCashRoi;
+  const cashOnCashRoi = computeCashOnCashRoiPercent(annualCashFlow, totalCashInvested);
   const twoPercentRule = sharedMetrics.twoPercentRule;
   const equity = sharedMetrics.equity;
   const ltvPct = sharedMetrics.ltv;
@@ -332,7 +385,7 @@ export function assemblePropertyInvestmentReportData(input: AssemblePropertyRepo
   const sellingCostPct = pickNum(p, "estimatedSellingCostPercent", "estimated_selling_cost_percent");
   const holdingYears = pickNum(p, "holdingPeriodYears", "holding_period_years");
   const irrByYear = calculateIRRByProjectionYear({
-    initialCashInvested: cashInvested,
+    initialCashInvested: totalCashInvested,
     baseAnnualIncome,
     baseAnnualOperatingExpenses: baseAnnualExpenses,
     annualDebtService: monthlyLoanPayment * 12,
@@ -352,8 +405,8 @@ export function assemblePropertyInvestmentReportData(input: AssemblePropertyRepo
   const defaultIrr = resolveDefaultIrr(irrByYear, holdingYears);
   const projCoC = yearCols.map((y, i) => {
     const cf = projCashFlow[i];
-    if (cf == null || cashInvested == null || cashInvested <= 0) return null;
-    return Number(((cf / cashInvested) * 100).toFixed(2));
+    if (cf == null || totalCashInvested == null || totalCashInvested <= 0) return null;
+    return computeCashOnCashRoiPercent(cf, totalCashInvested);
   });
 
   let paymentsReceived = 0;
@@ -508,14 +561,14 @@ export function assemblePropertyInvestmentReportData(input: AssemblePropertyRepo
     twoPercentRule,
     cashOnCashRoi,
     internalRateOfReturn: defaultIrr ?? irrByHorizon[0] ?? null,
-    cashInvested,
+    totalCashInvested,
     purchasePrice,
     meetsFiftyPercentOperating: meetsFiftyOperating,
     ruleCashFlow
   });
 
   const keyAssumptions: { label: string; value: string }[] = [
-    { label: "Cash invested / deposit", value: dash(cashInvested) },
+    { label: "Total Cash Invested", value: dash(totalCashInvested) },
     { label: "Annual rent growth", value: formatPct(incomeGrowth) },
     { label: "Expense growth", value: formatPct(expenseGrowth) },
     { label: "Property appreciation", value: formatPct(propertyGrowth) }
@@ -543,18 +596,30 @@ export function assemblePropertyInvestmentReportData(input: AssemblePropertyRepo
       { label: "Total cost of project", value: dash(totalProjectCost && totalProjectCost > 0 ? totalProjectCost : null) },
       { label: "After repair value / market value", value: dash(arv ?? marketValue) },
       { label: "Equity", value: dash(equity) },
-      { label: "Deposit / cash invested", value: dash(cashInvested) },
+      { label: "Total Cash Invested", value: dash(totalCashInvested) },
       { label: "Loan amount", value: dash(loanAmount) },
       { label: "Loan balance", value: dash(loanBalance) },
       { label: "Amortised over", value: amortYears != null ? `${amortYears} years` : "—" },
       { label: "Loan interest rate", value: formatPct(ratePct) },
       { label: "Monthly loan payment", value: dash(monthlyLoanPayment > 0 ? monthlyLoanPayment : null) }
     ],
+    cashInvestment: {
+      totalCashInvested,
+      depositPayment: cashResolved.depositPayment > 0 ? cashResolved.depositPayment : null,
+      closingCosts: cashResolved.closingCosts > 0 ? cashResolved.closingCosts : null,
+      transferCosts: cashResolved.transferCosts > 0 ? cashResolved.transferCosts : null,
+      bondRegistrationCosts:
+        cashResolved.bondRegistrationCosts > 0 ? cashResolved.bondRegistrationCosts : null,
+      repairsRenovation: cashResolved.repairsRenovation > 0 ? cashResolved.repairsRenovation : null,
+      attorneyFees: cashResolved.attorneyFees > 0 ? cashResolved.attorneyFees : null
+    },
+    cashInvestmentRows,
     metrics: {
       monthlyIncome,
       monthlyExpenses,
       monthlyCashFlow,
-      totalCashNeeded: cashInvested,
+      totalCashNeeded: totalCashInvested,
+      annualCashFlow,
       marketValue: marketValue ?? arv,
       purchasePrice,
       equity,
@@ -581,8 +646,8 @@ export function assemblePropertyInvestmentReportData(input: AssemblePropertyRepo
       { label: "Loan amount", value: dash(loanAmount) },
       { label: "Loan interest rate", value: formatPct(ratePct) },
       { label: "Loan term", value: amortYears != null ? `${amortYears} years` : "—" },
-      { label: "Down payment / cash invested", value: dash(cashInvested) },
-      { label: "Closing costs", value: dash(transferCosts) },
+      { label: "Total Cash Invested", value: dash(totalCashInvested) },
+      { label: "Closing / transfer costs", value: dash(transferCosts) },
       { label: "Income tax rate", value: "—" }
     ],
     expenseBreakdown,

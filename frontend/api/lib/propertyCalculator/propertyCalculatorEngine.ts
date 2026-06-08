@@ -11,20 +11,13 @@ import {
   computeTwoPercentRulePercent,
   deriveInvestmentRating,
   meetsFiftyPercentRule,
+  resolveTotalCashInvested,
   round2,
   sumNullable,
   totalProjectCost
 } from "./financialMetrics";
 import { computeIncomeByPropertyType, isVacantLandType } from "./incomeByPropertyType";
 import { buildAnnualProjectionSeries, DEFAULT_PROJECTION_YEARS } from "./projectionCalculator";
-
-function resolveTotalCashInvested(input: NormalizedPropertyCalculatorInput): number | null {
-  const base = input.cashInvested;
-  const withCosts = sumNullable(base, input.closingCosts, input.repairsRenovation);
-  if (withCosts > 0) return round2(withCosts);
-  if (base != null && base > 0) return round2(base);
-  return null;
-}
 
 function resolveMonthlyLoanPayment(input: NormalizedPropertyCalculatorInput): number | null {
   if (input.monthlyLoanPayment != null && input.monthlyLoanPayment >= 0) {
@@ -109,7 +102,11 @@ export function runPropertyCalculator(input: NormalizedPropertyCalculatorInput):
   const purchasePrice = input.purchasePrice;
   const marketValue = input.marketValue;
   const loanBalance = input.loanBalance ?? input.loanAmount;
-  const totalCashIn = resolveTotalCashInvested(input);
+  const totalCashIn = resolveTotalCashInvested({
+    depositPayment: input.cashInvested,
+    closingCosts: input.closingCosts,
+    repairsRenovation: input.repairsRenovation
+  }).totalCashInvested;
 
   const grossYield = computeGrossYieldPercent(annualIncome, purchasePrice);
   const netYield = computeNetYieldPercent(effectiveMonthlyIncome, monthlyOperating, purchasePrice);
@@ -166,7 +163,9 @@ export function runPropertyCalculator(input: NormalizedPropertyCalculatorInput):
   const irr = resolveDefaultIrr(irrByYear, holdYears);
 
   if (totalCashIn == null || totalCashIn <= 0) {
-    warnings.push("Cash invested is missing — cash-on-cash ROI cannot be calculated.");
+    warnings.push(
+      "Total upfront cash invested is missing — cash-on-cash ROI requires deposit, transfer/bond costs, closing costs or other upfront cash."
+    );
   }
   if (irr == null) {
     warnings.push("IRR requires cash invested and projected exit value.");

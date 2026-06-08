@@ -38,6 +38,75 @@ export function totalProjectCost(input: {
   return total > 0 ? round2(total) : null;
 }
 
+function positiveAmount(value: number | null | undefined): number {
+  if (value == null || !Number.isFinite(value) || value <= 0) return 0;
+  return value;
+}
+
+export type TotalCashInvestedInput = {
+  explicitTotalCashInvested?: number | null;
+  depositPayment?: number | null;
+  cashInvested?: number | null;
+  closingCosts?: number | null;
+  transferCosts?: number | null;
+  bondRegistrationCosts?: number | null;
+  bondCosts?: number | null;
+  attorneyFees?: number | null;
+  repairsRenovation?: number | null;
+  otherInitialCashCosts?: number | null;
+};
+
+export type ResolvedTotalCashInvested = {
+  totalCashInvested: number | null;
+  depositPayment: number;
+  closingCosts: number;
+  transferCosts: number;
+  bondRegistrationCosts: number;
+  attorneyFees: number;
+  repairsRenovation: number;
+  otherInitialCashCosts: number;
+};
+
+export function resolveTotalCashInvested(input: TotalCashInvestedInput): ResolvedTotalCashInvested {
+  const depositPayment = positiveAmount(input.depositPayment ?? input.cashInvested);
+  const closingCosts = positiveAmount(input.closingCosts);
+  const transferCosts = positiveAmount(input.transferCosts);
+  const bondRegistrationCosts = positiveAmount(input.bondRegistrationCosts ?? input.bondCosts);
+  const attorneyFees = positiveAmount(input.attorneyFees);
+  const repairsRenovation = positiveAmount(input.repairsRenovation);
+  const otherInitialCashCosts = positiveAmount(input.otherInitialCashCosts);
+
+  const componentSum = round2(
+    depositPayment +
+      closingCosts +
+      transferCosts +
+      bondRegistrationCosts +
+      attorneyFees +
+      repairsRenovation +
+      otherInitialCashCosts
+  );
+
+  const explicit = positiveAmount(input.explicitTotalCashInvested);
+
+  let totalCashInvested: number | null = null;
+  if (componentSum > 0) {
+    totalCashInvested = explicit > componentSum ? round2(explicit) : componentSum;
+  } else if (explicit > 0) {
+    totalCashInvested = round2(explicit);
+  }
+
+  return {
+    totalCashInvested,
+    depositPayment,
+    closingCosts,
+    transferCosts,
+    bondRegistrationCosts,
+    attorneyFees,
+    repairsRenovation,
+    otherInitialCashCosts
+  };
+}
+
 export function computeEquity(marketValue: number | null, loanBalance: number | null): number | null {
   if (marketValue == null || loanBalance == null) {
     if (marketValue != null && (loanBalance == null || loanBalance === 0)) return round2(marketValue);

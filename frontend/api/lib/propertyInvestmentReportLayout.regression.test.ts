@@ -104,7 +104,7 @@ describe("Property Investment Report layout regression", () => {
     expect(text).toContain("50% Rule Projection");
     expect(text).toContain("Income vs Expenses Over Time");
     expect(json).toMatch(/"unbreakable"\s*:\s*true/);
-    expect(json).toMatch(/"widths":\["\*","\*"\]/);
+    expect(json).toMatch(/"widths":\["\*","\*","\*","\*"\]/);
     expect(json).toMatch(/"widths":\["55%","45%"\]/);
     expect(json).toMatch(/"widths":\[100,/);
   });

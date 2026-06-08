@@ -114,4 +114,31 @@ describe("reportPdfBuilders", () => {
     expect(text).toContain("Loan & Assumptions");
     expect(text).toContain("50% Rule Projection");
   });
+
+  it("calculates CoC ROI from closing costs when deposit is zero", () => {
+    const { definition } = buildInvestmentReportPdfDefinition({
+      propertyType: "single-family",
+      answers: {
+        purchasePrice: 2_000_000,
+        marketValue: 2_000_000,
+        monthlyRent: 20_000,
+        loanAmount: 2_000_000,
+        cashInvested: 0,
+        closingCosts: 80_000
+      },
+      metrics: {
+        monthlyIncome: 20_000,
+        monthlyExpenses: 5_000,
+        projectedCashFlow: 3_842,
+        grossYield: 12,
+        ltv: 100,
+        monthlyBondPayment: 11_158
+      }
+    });
+
+    const text = JSON.stringify(definition.content);
+    expect(text).toContain("Total Cash Invested");
+    expect(text).toContain("57.63%");
+    expect(text).toContain('"text":"CoC ROI"');
+  });
 });
