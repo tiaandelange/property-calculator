@@ -53,7 +53,7 @@ describe("buildAnnualProjectionRows", () => {
     expect(operating?.values[0]).toBe(3_500 * 12);
     expect(cashFlow?.values[0]).toBe(46_104);
     expect(coc?.values[0]).toBeCloseTo(57.63, 1);
-    expect((coc?.values[0] ?? 0) > 0).toBe(true);
+    expect(Number(coc?.values[0] ?? 0)).toBeGreaterThan(0);
   });
 });
 
@@ -93,7 +93,7 @@ describe("assembleCalculatorInvestmentReportData QA scenario", () => {
     expect(model.metrics.cashOnCashRoi).toBeCloseTo(57.63, 1);
 
     const cocRow = model.projection.rows.find((r) => r.label === REPORT_PROJECTION_LABELS.cashOnCashRoi);
-    expect((cocRow?.values[0] ?? 0) > 0).toBe(true);
+    expect(Number(cocRow?.values[0] ?? 0)).toBeGreaterThan(0);
 
     const comparisonOperating = model.comparison.find((c) => c.metric === "Operating Expenses");
     expect(comparisonOperating?.projected).toMatch(/3[\s\u00A0]?500/);
