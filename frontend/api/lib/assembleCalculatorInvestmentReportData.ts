@@ -11,8 +11,6 @@ import { computeCashOnCashRoiPercent, resolveTotalCashInvested } from "./propert
 import {
   calculateIRRByProjectionYear,
   resolveDefaultIrr,
-  projectLoanBalanceAfterYears,
-  projectValue,
   type IrrByYearEntry
 } from "./propertyCalculatorServer.js";
 import {
@@ -20,8 +18,13 @@ import {
   derivePdfInvestmentRating
 } from "./reportInvestmentRating.js";
 import {
+  buildAnnualProjectionRows,
+  buildFiftyPercentBondRuleRows,
+  computeMonthlyFinancials,
+  resolveOperatingExpenses
+} from "./reportFinancialAssembly.js";
+import {
   buildCashInvestmentRows,
-  fiftyPercentRuleResult,
   formatPct,
   formatZar,
   PROJECTION_YEAR_COLUMNS,
@@ -86,11 +89,32 @@ export function assembleCalculatorInvestmentReportData(opts: {
   const monthlyGrossIncome = resolveCalculatorGrossMonthlyIncome(answers, metricsIncome);
   const monthlyIncome = monthlyGrossIncome;
   const monthlyLoanPayment = parseNum(metrics.monthlyBondPayment) ?? 0;
-  const monthlyOperating = parseNum(metrics.monthlyExpenses) ?? 0;
-  const monthlyExpenses = monthlyOperating + monthlyLoanPayment;
-  const monthlyCashFlow =
-    parseNum(metrics.projectedCashFlow ?? metrics.monthlyCashFlow) ??
-    metricsIncome - monthlyExpenses;
+  const rates = parseNum(answers.ratesTaxesMonthly) ?? 0;
+  const insurance = parseNum(answers.insuranceMonthly) ?? 0;
+  const maintenance = parseNum(answers.maintenanceReserveMonthly) ?? 0;
+  const hoa = parseNum(answers.hoaLeviesMonthly) ?? 0;
+  const utilities = parseNum(answers.utilitiesMonthly) ?? 0;
+  const mgmtPct = parseNum(answers.managementFeePct);
+  const mgmtMonthly = mgmtPct != null && monthlyGrossIncome > 0 ? (monthlyGrossIncome * mgmtPct) / 100 : 0;
+  const lineItemOperating = rates + insurance + maintenance + hoa + utilities + mgmtMonthly;
+  const monthlyOperating = resolveOperatingExpenses(
+    parseNum(metrics.monthlyExpenses) ?? 0,
+    monthlyLoanPayment,
+    lineItemOperating
+  );
+  const vacancyPct = parseNum(answers.vacancyAllowancePct) ?? 0;
+  const effectiveMonthlyIncome =
+    monthlyGrossIncome > 0
+      ? monthlyGrossIncome * (1 - Math.min(100, Math.max(0, vacancyPct)) / 100)
+      : metricsIncome;
+  const financials = computeMonthlyFinancials({
+    monthlyGrossIncome,
+    effectiveMonthlyIncome,
+    monthlyOperatingExpenses: monthlyOperating,
+    monthlyDebtService: monthlyLoanPayment,
+    monthlyCashFlowOverride: parseNum(metrics.projectedCashFlow ?? metrics.monthlyCashFlow)
+  });
+  const monthlyCashFlow = financials.monthlyCashFlow;
 
   const purchasePrice = parseNum(answers.purchasePrice);
   const marketValue = parseNum(answers.marketValue) ?? purchasePrice;
@@ -107,7 +131,7 @@ export function assembleCalculatorInvestmentReportData(opts: {
   });
   const totalCashInvested = cashResolved.totalCashInvested;
   const cashInvestmentRows = buildCashInvestmentRows(cashResolved);
-  const annualCashFlow = monthlyCashFlow * 12;
+  const annualCashFlow = financials.annualCashFlow;
   const cashOnCashRoi = computeCashOnCashRoiPercent(annualCashFlow, totalCashInvested);
   const ratePct = parseNum(answers.interestRateApr);
   const defaults = opts.projectionAssumptions ?? null;
@@ -138,20 +162,12 @@ export function assembleCalculatorInvestmentReportData(opts: {
         : null;
 
   const propertyDetails = buildCalculatorPropertyInformationRows(answers, metrics, typeLabel, cashResolved);
-  const monthlyIncomeExpense = buildCalculatorIncomeExpenseRows(answers, metrics, monthlyGrossIncome);
+  const monthlyIncomeExpense = buildCalculatorIncomeExpenseRows(answers, financials, monthlyGrossIncome);
   const assumptions = buildCalculatorLoanAssumptionRows(answers, metrics, {
     incomeGrowthPct,
     expenseGrowthPct,
     appreciationPct
   });
-
-  const rates = parseNum(answers.ratesTaxesMonthly) ?? 0;
-  const insurance = parseNum(answers.insuranceMonthly) ?? 0;
-  const maintenance = parseNum(answers.maintenanceReserveMonthly) ?? 0;
-  const hoa = parseNum(answers.hoaLeviesMonthly) ?? 0;
-  const utilities = parseNum(answers.utilitiesMonthly) ?? 0;
-  const mgmtPct = parseNum(answers.managementFeePct);
-  const mgmtMonthly = mgmtPct != null && monthlyIncome > 0 ? (monthlyIncome * mgmtPct) / 100 : 0;
 
   const expenseBreakdown: { label: string; amount: number }[] = [];
   if (rates > 0) expenseBreakdown.push({ label: "Rates & taxes", amount: rates });
@@ -162,51 +178,20 @@ export function assembleCalculatorInvestmentReportData(opts: {
   if (utilities > 0) expenseBreakdown.push({ label: "Utilities", amount: utilities });
   if (monthlyLoanPayment > 0) expenseBreakdown.push({ label: "Loan payment", amount: monthlyLoanPayment });
 
-  const yearCols = [...PROJECTION_YEAR_COLUMNS];
-  const baseAnnualIncome = metricsIncome * 12;
-  const baseAnnualExpenses = monthlyOperating * 12;
   const baseValue = marketValue ?? purchasePrice ?? 0;
   const startLoan = loanAmount ?? 0;
+  const baseAnnualEffective = financials.effectiveMonthlyIncome * 12;
+  const baseAnnualOperating = monthlyOperating * 12;
 
-  const projMonthlyGross = yearCols.map((y) => projectValue(monthlyGrossIncome, incomeGrowthPct, y));
-  const projIncome = yearCols.map((y) => projectValue(baseAnnualIncome, incomeGrowthPct, y));
-  const projExpenses = yearCols.map((y) => projectValue(baseAnnualExpenses, expenseGrowthPct, y));
-  const projNoi = yearCols.map((_, i) => {
-    const inc = projIncome[i];
-    const exp = projExpenses[i];
-    if (inc == null || exp == null) return null;
-    return inc - exp;
-  });
-  const projCashFlow = yearCols.map((_, i) => {
-    const inc = projIncome[i];
-    const exp = projExpenses[i];
-    if (inc == null || exp == null) return null;
-    return inc - exp - monthlyLoanPayment * 12;
-  });
-  const projValue = yearCols.map((y) => projectValue(baseValue, appreciationPct, y));
-  const projLoan = yearCols.map((y) =>
-    startLoan > 0 ? projectLoanBalanceAfterYears(startLoan, monthlyLoanPayment, ratePct, y) : 0
-  );
-  const projEquity = yearCols.map((_, i) => {
-    const pv = projValue[i];
-    const lb = projLoan[i];
-    if (pv == null || lb == null) return null;
-    return pv - lb;
-  });
-  const projCoC = yearCols.map((_, i) => {
-    const cf = projCashFlow[i];
-    if (cf == null || totalCashInvested == null || totalCashInvested <= 0) return null;
-    return computeCashOnCashRoiPercent(cf, totalCashInvested);
-  });
-
+  const yearCols = [...PROJECTION_YEAR_COLUMNS];
   const sellingCostPct = parseNum(answers.sellingCostsPercent) ?? parseNum(answers.sellingCostPct);
   const holdYears = parseNum(answers.holdYears);
   const irrByYear =
     metricsIrrByYear ??
     calculateIRRByProjectionYear({
       initialCashInvested: totalCashInvested,
-      baseAnnualIncome,
-      baseAnnualOperatingExpenses: baseAnnualExpenses,
+      baseAnnualIncome: baseAnnualEffective,
+      baseAnnualOperatingExpenses: baseAnnualOperating,
       annualDebtService: monthlyLoanPayment * 12,
       basePropertyValue: baseValue,
       startLoanBalance: startLoan,
@@ -222,16 +207,29 @@ export function assembleCalculatorInvestmentReportData(opts: {
     });
   const irrByHorizon = irrByYear.map((row) => row.irr);
   const defaultIrr = irrVal ?? resolveDefaultIrr(irrByYear, holdYears);
+  const projection = buildAnnualProjectionRows({
+    monthlyGrossIncome,
+    effectiveMonthlyIncome: financials.effectiveMonthlyIncome,
+    monthlyOperating,
+    monthlyDebtService: monthlyLoanPayment,
+    incomeGrowthPct,
+    expenseGrowthPct,
+    appreciationPct,
+    basePropertyValue: baseValue,
+    startLoan,
+    monthlyLoanPayment,
+    ratePct,
+    totalCashInvested,
+    irrByHorizon
+  });
 
   const twoPercentRule =
     purchasePrice != null && purchasePrice > 0 && monthlyIncome > 0
       ? Number(((monthlyIncome / purchasePrice) * 100).toFixed(2))
       : null;
 
-  const fiftyPctExpenses = monthlyIncome * 0.5;
-  const ruleCashFlow =
-    monthlyIncome > 0 ? monthlyIncome - fiftyPctExpenses - monthlyLoanPayment : null;
-  const meetsFiftyOperating = monthlyIncome > 0 ? monthlyOperating <= fiftyPctExpenses + 0.01 : null;
+  const meetsFiftyBond =
+    monthlyIncome > 0 && monthlyLoanPayment > 0 ? monthlyIncome * 0.5 > monthlyLoanPayment : null;
 
   const investmentRating = derivePdfInvestmentRating({
     monthlyGrossIncome: monthlyIncome,
@@ -244,8 +242,7 @@ export function assembleCalculatorInvestmentReportData(opts: {
     internalRateOfReturn: defaultIrr,
     totalCashInvested,
     purchasePrice,
-    meetsFiftyPercentOperating: meetsFiftyOperating,
-    ruleCashFlow
+    meetsFiftyPercentBond: meetsFiftyBond
   });
 
   const keyAssumptions: { label: string; value: string }[] = [
@@ -259,8 +256,6 @@ export function assembleCalculatorInvestmentReportData(opts: {
   ];
 
   const monthLabel = now.toLocaleDateString("en-ZA", { month: "long", year: "numeric", timeZone: "UTC" });
-
-  const noiMonthly = monthlyIncome - monthlyOperating;
 
   return {
     generatedAt: now.toISOString(),
@@ -288,7 +283,12 @@ export function assembleCalculatorInvestmentReportData(opts: {
     cashInvestmentRows,
     metrics: {
       monthlyIncome,
-      monthlyExpenses,
+      monthlyExpenses: financials.monthlyOperatingExpenses,
+      monthlyOperatingExpenses: financials.monthlyOperatingExpenses,
+      monthlyDebtService: financials.monthlyDebtService,
+      monthlyTotalOutflows: financials.monthlyTotalOutflows,
+      effectiveMonthlyIncome: financials.effectiveMonthlyIncome,
+      monthlyNoi: financials.monthlyNoi,
       monthlyCashFlow,
       totalCashNeeded: totalCashInvested,
       annualCashFlow,
@@ -308,21 +308,7 @@ export function assembleCalculatorInvestmentReportData(opts: {
     investmentRating,
     assumptions,
     expenseBreakdown,
-    projection: {
-      years: yearCols,
-      rows: [
-        { label: "Monthly gross rent", values: projMonthlyGross },
-        { label: "Total annual income", values: projIncome },
-        { label: "Total annual expenses", values: projExpenses },
-        { label: "Net operating income", values: projNoi },
-        { label: "Total annual cash flow", values: projCashFlow },
-        { label: "Property value", values: projValue },
-        { label: "Equity", values: projEquity },
-        { label: "Loan balance", values: projLoan },
-        { label: "Cash on cash ROI", values: projCoC },
-        { label: "IRR", values: irrByHorizon }
-      ]
-    },
+    projection,
     actuals: [],
     comparison: [
       {
@@ -334,8 +320,16 @@ export function assembleCalculatorInvestmentReportData(opts: {
         status: "—"
       },
       {
-        metric: "Total Expenses",
-        projected: formatZar(monthlyExpenses),
+        metric: "Effective Income",
+        projected: formatZar(financials.effectiveMonthlyIncome),
+        actual: "—",
+        difference: "—",
+        variancePercent: "—",
+        status: "—"
+      },
+      {
+        metric: "Operating Expenses",
+        projected: formatZar(financials.monthlyOperatingExpenses),
         actual: "—",
         difference: "—",
         variancePercent: "—",
@@ -343,7 +337,15 @@ export function assembleCalculatorInvestmentReportData(opts: {
       },
       {
         metric: "Net Operating Income",
-        projected: formatZar(noiMonthly),
+        projected: formatZar(financials.monthlyNoi),
+        actual: "—",
+        difference: "—",
+        variancePercent: "—",
+        status: "—"
+      },
+      {
+        metric: "Debt Service",
+        projected: formatZar(financials.monthlyDebtService),
         actual: "—",
         difference: "—",
         variancePercent: "—",
@@ -367,26 +369,6 @@ export function assembleCalculatorInvestmentReportData(opts: {
       }
     ],
     leases: [],
-    fiftyPercentRule: [
-      { label: "Monthly Gross Rent", value: formatZar(monthlyIncome) },
-      { label: "50% Operating Allowance", value: formatZar(fiftyPctExpenses) },
-      { label: "Operating Expenses (excl. debt)", value: formatZar(monthlyOperating) },
-      { label: "Debt Service", value: monthlyLoanPayment > 0 ? formatZar(monthlyLoanPayment) : "—" },
-      {
-        label: "Rule Cash Flow",
-        value: ruleCashFlow != null && Number.isFinite(ruleCashFlow) ? formatZar(ruleCashFlow) : "—"
-      },
-      {
-        label: "Result",
-        value: fiftyPercentRuleResult(monthlyIncome, monthlyOperating, ruleCashFlow)
-      },
-      {
-        label: "Operating costs vs gross rent",
-        value:
-          monthlyIncome > 0
-            ? `Operating costs are ${formatPct((monthlyOperating / monthlyIncome) * 100)} of gross rent (debt service excluded).`
-            : "—"
-      }
-    ]
+    fiftyPercentRule: buildFiftyPercentBondRuleRows(monthlyIncome, monthlyLoanPayment)
   };
 }

@@ -99,8 +99,10 @@ describe("Property Investment Report layout regression", () => {
     expect(text).not.toContain("Fallback");
     expect(text).not.toMatch(/loanTermYears|vacancyAllowancePct/);
     expect(text).not.toMatch(/\bNaN\b|undefined|null/);
-    expect(text).toContain("Operating costs are");
-    expect(text).toContain("of gross rent");
+    expect(text).toContain("Operating Expenses");
+    expect(text).toContain("below the monthly bond payment");
+    expect(text).toContain("Annual Gross Rent");
+    expect(text).toContain("Annual cash flow (Y1)");
     expect(text).toContain("50% Rule Projection");
     expect(text).toContain("Income vs Expenses Over Time");
     expect(json).toMatch(/"unbreakable"\s*:\s*true/);

@@ -3,6 +3,8 @@
  * Server-side only — not used by dashboard UI.
  */
 
+import { formatPdfZar } from "./pdf/pdfFormat.js";
+
 export type PdfInvestmentRatingLabel =
   | "Strong"
   | "Good"
@@ -13,6 +15,7 @@ export type PdfInvestmentRatingLabel =
 export type PdfInvestmentRating = {
   label: PdfInvestmentRatingLabel;
   summary: string;
+  reasons: string[];
   advancedMetricsComplete: boolean;
   warnings: string[];
   totalCashInvestedResolved: boolean;
@@ -29,8 +32,7 @@ export function derivePdfInvestmentRating(opts: {
   internalRateOfReturn: number | null;
   totalCashInvested: number | null;
   purchasePrice: number | null;
-  meetsFiftyPercentOperating: boolean | null;
-  ruleCashFlow: number | null;
+  meetsFiftyPercentBond: boolean | null;
 }): PdfInvestmentRating {
   const warnings: string[] = [];
 
@@ -71,6 +73,10 @@ export function derivePdfInvestmentRating(opts: {
       label: "Insufficient Data",
       summary:
         "Key property or income inputs are missing. Complete purchase price, rent, and expense assumptions before relying on this rating.",
+      reasons: [
+        "Key property or income inputs are missing.",
+        "Complete purchase price, rent, and expense assumptions before relying on this rating."
+      ],
       advancedMetricsComplete: false,
       warnings,
       totalCashInvestedResolved
@@ -78,19 +84,28 @@ export function derivePdfInvestmentRating(opts: {
   }
 
   const cf = opts.monthlyCashFlow ?? 0;
-  const meets50Operating = opts.meetsFiftyPercentOperating === true;
-  const ruleCf = opts.ruleCashFlow;
-  const meets50Overall =
-    meets50Operating && (ruleCf == null || ruleCf >= 0);
-
+  const meets50Bond = opts.meetsFiftyPercentBond === true;
   const twoPct = opts.twoPercentRule;
   const grossYield = opts.grossYield;
+  const bondPayment = opts.monthlyLoanPayment ?? 0;
+
+  const reasons = buildReasons({
+    cashFlow: cf,
+    grossYield,
+    cashOnCashRoi: opts.cashOnCashRoi,
+    cocAvailable,
+    twoPct,
+    meets50Bond,
+    bondPayment,
+    monthlyIncome: income
+  });
 
   if (!advancedMetricsComplete && warnings.length > 0) {
-    const label: PdfInvestmentRatingLabel = meets50Overall && cf > 0 ? "Needs Review" : "Needs Review";
+    const label: PdfInvestmentRatingLabel = cf > 0 ? "Needs Review" : "Needs Review";
     return {
       label,
-      summary: buildSummary(label, cf, meets50Overall, twoPct, grossYield, cocAvailable, irrAvailable),
+      summary: buildSummaryParagraph(label, cf, grossYield, opts.cashOnCashRoi, cocAvailable, twoPct, meets50Bond),
+      reasons,
       advancedMetricsComplete,
       warnings,
       totalCashInvestedResolved
@@ -102,9 +117,8 @@ export function derivePdfInvestmentRating(opts: {
   if (cf > 0) score += 2;
   else if (cf < 0) score -= 2;
 
-  if (meets50Overall) score += 2;
-  else if (opts.meetsFiftyPercentOperating === false) score -= 2;
-  else if (ruleCf != null && ruleCf < 0) score -= 1;
+  if (meets50Bond) score += 2;
+  else if (opts.meetsFiftyPercentBond === false) score -= 2;
 
   if (twoPct != null && twoPct >= 2) score += 1;
   else if (twoPct != null && twoPct < 1) score -= 1;
@@ -130,41 +144,114 @@ export function derivePdfInvestmentRating(opts: {
 
   return {
     label,
-    summary: buildSummary(label, cf, meets50Overall, twoPct, grossYield, cocAvailable, irrAvailable),
+    summary: buildSummaryParagraph(label, cf, grossYield, opts.cashOnCashRoi, cocAvailable, twoPct, meets50Bond),
+    reasons,
     advancedMetricsComplete,
     warnings,
     totalCashInvestedResolved
   };
 }
 
-function buildSummary(
-  label: PdfInvestmentRatingLabel,
-  cashFlow: number,
-  meets50: boolean,
-  twoPct: number | null,
-  grossYield: number | null,
-  cocAvailable: boolean,
-  irrAvailable: boolean
-): string {
-  const parts: string[] = [];
-  parts.push(`Overall rating: ${label}.`);
-  parts.push(cashFlow > 0 ? "Monthly cash flow is positive." : cashFlow < 0 ? "Monthly cash flow is negative." : "Monthly cash flow is break-even.");
-  parts.push(meets50 ? "Operating costs meet the 50% rule after debt service." : "Operating costs or rule cash flow do not fully meet the 50% rule.");
-  if (twoPct != null) parts.push(`2% rule: ${twoPct.toFixed(2)}% of purchase price.`);
-  if (grossYield != null) parts.push(`Gross yield: ${grossYield.toFixed(2)}%.`);
-  if (!cocAvailable) {
-    parts.push(
-      "Cash-on-cash ROI requires deposit, transfer/bond costs, closing costs or other upfront cash investment."
+function buildReasons(opts: {
+  cashFlow: number;
+  grossYield: number | null;
+  cashOnCashRoi: number | null;
+  cocAvailable: boolean;
+  twoPct: number | null;
+  meets50Bond: boolean;
+  bondPayment: number;
+  monthlyIncome: number;
+}): string[] {
+  const reasons: string[] = [];
+
+  if (opts.cashFlow > 0) {
+    reasons.push(`Monthly cash flow is positive at ${formatPdfZar(opts.cashFlow)}.`);
+  } else if (opts.cashFlow < 0) {
+    reasons.push(`Monthly cash flow is negative at ${formatPdfZar(opts.cashFlow)}.`);
+  } else {
+    reasons.push("Monthly cash flow is break-even.");
+  }
+
+  if (opts.grossYield != null) {
+    reasons.push(`Gross yield is ${opts.grossYield >= 8 ? "strong" : "moderate"} at ${opts.grossYield.toFixed(2)}%.`);
+  }
+
+  if (opts.cocAvailable && opts.cashOnCashRoi != null) {
+    reasons.push(
+      `CoC ROI is ${opts.cashOnCashRoi >= 8 ? "strong" : "moderate"} at ${opts.cashOnCashRoi.toFixed(2)}%.`
     );
   }
-  if (!irrAvailable) parts.push("IRR requires review or additional inputs.");
+
+  if (opts.twoPct != null) {
+    if (opts.twoPct >= 2) {
+      reasons.push(`2% rule is met at ${opts.twoPct.toFixed(2)}%.`);
+    } else {
+      reasons.push(`2% rule is below target at ${opts.twoPct.toFixed(2)}%.`);
+    }
+  }
+
+  if (opts.bondPayment > 0 && opts.monthlyIncome > 0) {
+    if (opts.meets50Bond) {
+      reasons.push("50% rule is achieved because 50% of monthly income exceeds the bond payment.");
+    } else {
+      reasons.push(
+        "50% rule is not achieved because 50% of monthly income is below the bond payment."
+      );
+    }
+  }
+
+  return reasons;
+}
+
+function buildSummaryParagraph(
+  label: PdfInvestmentRatingLabel,
+  cashFlow: number,
+  grossYield: number | null,
+  cashOnCashRoi: number | null,
+  cocAvailable: boolean,
+  twoPct: number | null,
+  meets50Bond: boolean
+): string {
+  const parts: string[] = [`Investment rating: ${label}.`];
+
+  if (cashFlow > 0) {
+    parts.push(`Monthly cash flow is positive at ${formatPdfZar(cashFlow)}.`);
+  } else if (cashFlow < 0) {
+    parts.push(`Monthly cash flow is negative at ${formatPdfZar(cashFlow)}.`);
+  } else {
+    parts.push("Monthly cash flow is break-even.");
+  }
+
+  if (grossYield != null) {
+    parts.push(`Gross yield is ${grossYield.toFixed(2)}%`);
+  }
+  if (cocAvailable && cashOnCashRoi != null) {
+    parts.push(`and CoC ROI is ${cashOnCashRoi.toFixed(2)}%.`);
+  } else if (grossYield != null) {
+    parts.push(".");
+  }
+
+  if (twoPct != null) {
+    if (twoPct >= 2) {
+      parts.push(`The 2% rule is met at ${twoPct.toFixed(2)}%.`);
+    } else {
+      parts.push(`The 2% rule is below target at ${twoPct.toFixed(2)}%.`);
+    }
+  }
+
+  if (meets50Bond) {
+    parts.push("The 50% rule is achieved because 50% of monthly income exceeds the bond payment.");
+  } else {
+    parts.push(
+      "The 50% rule is not achieved because 50% of monthly income is below the bond payment."
+    );
+  }
+
   return parts.join(" ");
 }
 
 export function buildExecutiveSummary(rating: PdfInvestmentRating): string[] {
-  const paragraphs: string[] = [
-    `Investment rating: ${rating.label}. ${rating.summary}`
-  ];
+  const paragraphs: string[] = [rating.summary];
   if (!rating.advancedMetricsComplete) {
     paragraphs.push(
       "Advanced metrics (IRR and/or cash-on-cash ROI) are incomplete or require review before making investment decisions."

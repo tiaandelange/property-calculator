@@ -15,6 +15,7 @@ import { formatPdfDate, formatPdfPercent, formatPdfZar, parsePdfZar } from "./pd
 import { loadProplyticLogoDataUrl } from "./pdf/pdfLogoAsset.js";
 import type { PropertyInvestmentReportModel } from "./propertyInvestmentReportData.js";
 import { formatPct } from "./propertyInvestmentReportData.js";
+import { REPORT_PROJECTION_LABELS } from "./reportFinancialAssembly.js";
 
 function formatZar(amount: number): string {
   return formatPdfZar(amount);
@@ -61,7 +62,13 @@ export function buildPropertyInvestmentReportPdfDefinition(
 
   type KeyValueRow = { label: string; value: string; fullWidth?: boolean };
 
-  const PERCENT_PROJECTION_ROWS = new Set(["IRR", "Cash on cash ROI"]);
+  const PERCENT_PROJECTION_ROWS = new Set([
+    REPORT_PROJECTION_LABELS.irr,
+    REPORT_PROJECTION_LABELS.cashOnCashRoi,
+    "IRR",
+    "Cash on cash ROI",
+    "Cash-on-Cash ROI"
+  ]);
 
   const buildKeyValueCard = (opts: {
     title: string;
@@ -95,9 +102,8 @@ export function buildPropertyInvestmentReportPdfDefinition(
             {
               colSpan: 2,
               text: String(r.value ?? "—"),
-              fontSize: 9,
+              fontSize: 8.5,
               color: theme.textColor,
-              noWrap: true,
               margin: pdfMargin(0, 2, 0, 2)
             } as any
           ];
@@ -142,8 +148,8 @@ export function buildPropertyInvestmentReportPdfDefinition(
     rows: Array<{ label: string; valueLabel: string; valueNumber: number; color: string }>;
   }): Content => {
     const maxBarWidth = 180;
-    const safeRows = opts.rows.filter((r) => Number.isFinite(r.valueNumber) && r.valueNumber > 0);
-    const maxVal = Math.max(...safeRows.map((r) => r.valueNumber), 1);
+    const safeRows = opts.rows.filter((r) => Number.isFinite(r.valueNumber) && r.valueNumber !== 0);
+    const maxVal = Math.max(...safeRows.map((r) => Math.abs(r.valueNumber)), 1);
 
     const legend: Content | null =
       opts.legend && opts.legend.length
@@ -171,7 +177,10 @@ export function buildPropertyInvestmentReportPdfDefinition(
             table: {
               widths: ["35%", "45%", "20%"],
               body: safeRows.slice(0, 10).map((r) => {
-                const w = Math.max(6, Math.min(maxBarWidth, Math.round((r.valueNumber / maxVal) * maxBarWidth)));
+                const w = Math.max(
+                  6,
+                  Math.min(maxBarWidth, Math.round((Math.abs(r.valueNumber) / maxVal) * maxBarWidth))
+                );
                 return [
                   { text: r.label, fontSize: 9, color: theme.mutedTextColor },
                   {
@@ -232,16 +241,22 @@ export function buildPropertyInvestmentReportPdfDefinition(
     return {
       stack: [
         {
-          canvas: [{ type: "rect", x: 0, y: 0, w: 4, h: 14, color: theme.primaryColor }],
-          margin: pdfMargin(0, 0, 0, 4)
-        },
-        {
-          text: input.label,
-          color: theme.primaryColor,
-          bold: true,
-          fontSize: 8,
-          noWrap: true,
-          margin: pdfMargin(0, 0, 0, 3)
+          columns: [
+            {
+              width: 4,
+              canvas: [{ type: "rect", x: 0, y: 0, w: 4, h: 14, color: theme.primaryColor }],
+              margin: pdfMargin(0, 1, 6, 0)
+            },
+            {
+              width: "*",
+              text: input.label,
+              color: theme.primaryColor,
+              bold: true,
+              fontSize: 8,
+              margin: pdfMargin(0, 0, 0, 3)
+            }
+          ],
+          columnGap: 0
         },
         {
           text: valueText,
@@ -252,7 +267,7 @@ export function buildPropertyInvestmentReportPdfDefinition(
           margin: pdfMargin(0, 0, 0, 2)
         },
         ...(input.helperText
-          ? [{ text: input.helperText, fontSize: 7, color: theme.mutedTextColor, noWrap: true } as Content]
+          ? [{ text: input.helperText, fontSize: 7, color: theme.mutedTextColor } as Content]
           : [])
       ],
       fillColor: theme.tableHeaderFill,
@@ -305,22 +320,16 @@ export function buildPropertyInvestmentReportPdfDefinition(
   };
 
   const yearCols = model.projection.years;
-  const yMonthlyGross = projectionRow("Monthly gross rent");
-  const yIncome = projectionRow("Total annual income");
-  const yExpenses = projectionRow("Total annual expenses");
-  const yNoi = projectionRow("Net operating income");
-  const yCash = projectionRow("Total annual cash flow");
-  const yValue = projectionRow("Property value");
-  const yLoan = projectionRow("Loan balance");
-  const yEquity = projectionRow("Equity");
-  const yCoC = projectionRow("Cash on cash ROI");
-  const yIrr = projectionRow("IRR");
+  const L = REPORT_PROJECTION_LABELS;
+  const yIncome = projectionRow(L.effectiveAnnualIncome);
+  const yExpenses = projectionRow(L.annualOperatingExpenses);
+  const yDebt = projectionRow(L.annualDebtService);
+  const yCash = projectionRow(L.cashFlowAfterDebt);
 
-  const chartIncomeExpenseBars = [
-    { label: "Annual income (Y1)", amount: parseProjectionNum(yIncome?.[0]) ?? 0 },
-    { label: "Annual expenses (Y1)", amount: parseProjectionNum(yExpenses?.[0]) ?? 0 },
-    { label: "Annual cash flow (Y1)", amount: parseProjectionNum(yCash?.[0]) ?? 0 }
-  ].filter((i) => i.amount > 0);
+  const chartIncomeY1 = parseProjectionNum(yIncome?.[0]) ?? 0;
+  const chartOperatingY1 = parseProjectionNum(yExpenses?.[0]) ?? 0;
+  const chartDebtY1 = parseProjectionNum(yDebt?.[0]) ?? 0;
+  const chartCashY1 = parseProjectionNum(yCash?.[0]) ?? 0;
 
   const expenseItems = model.expenseBreakdown
     .filter((i) => i.amount > 0)
@@ -331,21 +340,28 @@ export function buildPropertyInvestmentReportPdfDefinition(
 
   const buildFiftyPercentRuleRows = (): KeyValueRow[] => {
     const rows: KeyValueRow[] = [];
-    let expenseNote: string | null = null;
-
     for (const r of model.fiftyPercentRule) {
       const label = String(r.label ?? "").trim();
       const value = String(r.value ?? "—").trim();
-      if (/operating costs vs gross rent/i.test(label) || /^operating costs are/i.test(value)) {
-        expenseNote = value.endsWith(".") ? value : `${value.replace(/\.$/, "")}.`;
+      if (label.toLowerCase() === "note") {
+        rows.push({ label: "", value, fullWidth: true });
         continue;
       }
       rows.push({ label, value });
     }
-
-    if (expenseNote) rows.push({ label: "", value: expenseNote, fullWidth: true });
     return rows;
   };
+
+  const projectionTableRows = model.projection.rows.map((row) => [
+    { text: row.label, style: "tableCell", fontSize: 8 },
+    ...yearCols.map((_, i) => ({
+      text: formatProjectionCell(row.label, row.values[i]),
+      style: "tableCell",
+      fontSize: 8,
+      alignment: "right" as const,
+      noWrap: true
+    }))
+  ]);
 
   const cocDisplay =
     model.metrics.cashOnCashRoi != null && Number.isFinite(model.metrics.cashOnCashRoi)
@@ -398,7 +414,13 @@ export function buildPropertyInvestmentReportPdfDefinition(
         body: [
           [
             buildMetricCard({ label: "Income", value: metricCurrency(model.metrics.monthlyIncome), helperText: "Gross rent" }),
-            buildMetricCard({ label: "Expenses", value: metricCurrency(model.metrics.monthlyExpenses), helperText: "Monthly total" }),
+            buildMetricCard({
+              label: "Operating Expenses",
+              value: metricCurrency(
+                model.metrics.monthlyOperatingExpenses ?? model.metrics.monthlyExpenses
+              ),
+              helperText: "Excl. debt"
+            }),
             buildMetricCard({ label: "Cash Flow", value: metricCurrency(model.metrics.monthlyCashFlow), helperText: "After debt" }),
             buildMetricCard({ label: "Gross Yield", value: formatPct(model.metrics.grossRentalYield), helperText: "Annualized" })
           ],
@@ -447,96 +469,7 @@ export function buildPropertyInvestmentReportPdfDefinition(
             { text: "Metric", style: "tableHeader", fontSize: 8 },
             ...yearCols.map((y) => ({ text: `Y${y}`, style: "tableHeader", alignment: "right" as const, fontSize: 8 }))
           ],
-          [
-            { text: "Gross Rent", style: "tableCell", fontSize: 8 },
-            ...yearCols.map((_, i) => ({
-              text: formatProjectionCell("Monthly gross rent", yMonthlyGross?.[i] ?? yIncome?.[i]),
-              style: "tableCell",
-              fontSize: 8,
-              alignment: "right" as const,
-              noWrap: true
-            }))
-          ],
-          [
-            { text: "Total Expenses", style: "tableCell", fontSize: 8 },
-            ...yearCols.map((_, i) => ({
-              text: formatProjectionCell("Total annual expenses", yExpenses?.[i]),
-              style: "tableCell",
-              fontSize: 8,
-              alignment: "right" as const,
-              noWrap: true
-            }))
-          ],
-          [
-            { text: "Net Operating Income", style: "tableCell", fontSize: 8 },
-            ...yearCols.map((_, i) => ({
-              text: formatProjectionCell("Net operating income", yNoi?.[i]),
-              style: "tableCell",
-              fontSize: 8,
-              alignment: "right" as const,
-              noWrap: true
-            }))
-          ],
-          [
-            { text: "Cash Flow After Debt Service", style: "tableCell", fontSize: 8 },
-            ...yearCols.map((_, i) => ({
-              text: formatProjectionCell("Total annual cash flow", yCash?.[i]),
-              style: "tableCell",
-              fontSize: 8,
-              alignment: "right" as const,
-              noWrap: true
-            }))
-          ],
-          [
-            { text: "Property Value", style: "tableCell", fontSize: 8 },
-            ...yearCols.map((_, i) => ({
-              text: formatProjectionCell("Property value", yValue?.[i]),
-              style: "tableCell",
-              fontSize: 8,
-              alignment: "right" as const,
-              noWrap: true
-            }))
-          ],
-          [
-            { text: "Loan Balance", style: "tableCell", fontSize: 8 },
-            ...yearCols.map((_, i) => ({
-              text: formatProjectionCell("Loan balance", yLoan?.[i]),
-              style: "tableCell",
-              fontSize: 8,
-              alignment: "right" as const,
-              noWrap: true
-            }))
-          ],
-          [
-            { text: "Equity", style: "tableCell", fontSize: 8 },
-            ...yearCols.map((_, i) => ({
-              text: formatProjectionCell("Equity", yEquity?.[i]),
-              style: "tableCell",
-              fontSize: 8,
-              alignment: "right" as const,
-              noWrap: true
-            }))
-          ],
-          [
-            { text: "Cash on Cash ROI", style: "tableCell", fontSize: 8 },
-            ...yearCols.map((_, i) => ({
-              text: formatProjectionCell("Cash on cash ROI", yCoC?.[i]),
-              style: "tableCell",
-              fontSize: 8,
-              alignment: "right" as const,
-              noWrap: true
-            }))
-          ],
-          [
-            { text: "IRR", style: "tableCell", fontSize: 8 },
-            ...yearCols.map((_, i) => ({
-              text: formatProjectionCell("IRR", yIrr?.[i]),
-              style: "tableCell",
-              fontSize: 8,
-              alignment: "right" as const,
-              noWrap: true
-            }))
-          ]
+          ...projectionTableRows
         ]
       },
       layout: {
@@ -559,28 +492,39 @@ export function buildPropertyInvestmentReportPdfDefinition(
         buildBarChartCard({
           title: "Income vs Expenses Over Time",
           legend: [
-            { label: "Income", color: theme.primaryColor },
-            { label: "Expenses", color: theme.dangerColor },
-            { label: "Cash flow", color: theme.successColor }
+            { label: "Annual income", color: theme.primaryColor },
+            { label: "Operating expenses", color: theme.dangerColor },
+            ...(chartDebtY1 !== 0 ? [{ label: "Debt service", color: theme.accentColor }] : []),
+            { label: "Cash flow", color: chartCashY1 >= 0 ? theme.successColor : theme.dangerColor }
           ],
           rows: [
             {
               label: "Annual income (Y1)",
-              valueLabel: formatProjectionCell("Total annual income", yIncome?.[0]),
-              valueNumber: parseProjectionNum(yIncome?.[0]) ?? 0,
+              valueLabel: formatProjectionCell(L.effectiveAnnualIncome, yIncome?.[0]),
+              valueNumber: chartIncomeY1,
               color: theme.primaryColor
             },
             {
-              label: "Annual expenses (Y1)",
-              valueLabel: formatProjectionCell("Total annual expenses", yExpenses?.[0]),
-              valueNumber: parseProjectionNum(yExpenses?.[0]) ?? 0,
+              label: "Annual operating expenses (Y1)",
+              valueLabel: formatProjectionCell(L.annualOperatingExpenses, yExpenses?.[0]),
+              valueNumber: chartOperatingY1,
               color: theme.dangerColor
             },
+            ...(chartDebtY1 !== 0
+              ? [
+                  {
+                    label: "Annual debt service (Y1)",
+                    valueLabel: formatProjectionCell(L.annualDebtService, yDebt?.[0]),
+                    valueNumber: chartDebtY1,
+                    color: theme.accentColor
+                  }
+                ]
+              : []),
             {
               label: "Annual cash flow (Y1)",
-              valueLabel: formatProjectionCell("Total annual cash flow", yCash?.[0]),
-              valueNumber: parseProjectionNum(yCash?.[0]) ?? 0,
-              color: theme.successColor
+              valueLabel: formatProjectionCell(L.cashFlowAfterDebt, yCash?.[0]),
+              valueNumber: chartCashY1,
+              color: chartCashY1 >= 0 ? theme.successColor : theme.dangerColor
             }
           ]
         }),
@@ -672,14 +616,39 @@ export function buildPropertyInvestmentReportPdfDefinition(
       unbreakable: true
     }),
 
-    buildKeyValueCard({
-      title: "Investment Rating",
-      rows: [
-        { label: "Rating", value: ratingLabel },
-        { label: "Summary", value: model.investmentRating.summary, fullWidth: true }
-      ],
-      unbreakable: true
-    })
+    {
+      table: {
+        widths: ["*"],
+        body: [
+          [
+            {
+              stack: [
+                { text: "Investment Rating", fontSize: 11, bold: true, color: theme.primaryColor, margin: pdfMargin(0, 0, 0, 8) },
+                { text: `Rating: ${ratingLabel}`, fontSize: 9, bold: true, color: theme.textColor, margin: pdfMargin(0, 0, 0, 4) },
+                { text: "Reasons:", fontSize: 9, bold: true, color: theme.mutedTextColor, margin: pdfMargin(0, 0, 0, 2) },
+                {
+                  ul: model.investmentRating.reasons.map((reason) => ({
+                    text: reason,
+                    fontSize: 8.5,
+                    color: theme.textColor,
+                    margin: pdfMargin(0, 0, 0, 2)
+                  })),
+                  margin: pdfMargin(0, 0, 0, 0)
+                }
+              ],
+              margin: pdfMargin(10, 10, 10, 10)
+            }
+          ]
+        ]
+      },
+      layout: {
+        hLineWidth: () => 0.5,
+        vLineWidth: () => 0.5,
+        hLineColor: () => theme.borderColor,
+        vLineColor: () => theme.borderColor
+      },
+      margin: pdfMargin(0, 0, 0, 10)
+    }
   ];
 
   return {

@@ -19,6 +19,11 @@ import {
 import { computePropertyBondFinance, resolveBondRemainingMonths } from "./bondHelpers.js";
 import { formatPdfPercent, formatPdfZar } from "./pdf/pdfFormat.js";
 import {
+  buildAnnualProjectionRows,
+  buildFiftyPercentBondRuleRows,
+  computeMonthlyFinancials
+} from "./reportFinancialAssembly.js";
+import {
   buildExecutiveSummary,
   derivePdfInvestmentRating,
   type PdfInvestmentRating
@@ -50,7 +55,13 @@ export type PropertyInvestmentReportModel = {
   monthlyIncomeExpense: { label: string; value: string }[];
   metrics: {
     monthlyIncome: number;
+    /** Operating expenses only (excludes debt service). */
     monthlyExpenses: number;
+    monthlyOperatingExpenses?: number;
+    monthlyDebtService?: number;
+    monthlyTotalOutflows?: number;
+    effectiveMonthlyIncome?: number;
+    monthlyNoi?: number;
     monthlyCashFlow: number;
     totalCashNeeded: number | null;
     annualCashFlow: number | null;
@@ -303,7 +314,12 @@ export function assemblePropertyInvestmentReportData(input: AssemblePropertyRepo
         : propertyFixedMonthly > 0
           ? propertyFixedMonthly
           : 0;
-  const monthlyExpenses = monthlyOperating + (monthlyLoanPayment > 0 ? monthlyLoanPayment : 0);
+  const financials = computeMonthlyFinancials({
+    monthlyGrossIncome: monthlyIncome,
+    effectiveMonthlyIncome: monthlyIncome,
+    monthlyOperatingExpenses: monthlyOperating,
+    monthlyDebtService: monthlyLoanPayment > 0 ? monthlyLoanPayment : 0
+  });
   const sharedMetrics = computeMetricsFromMonthlySnapshot({
     monthlyIncome,
     monthlyOperatingExpenses: monthlyOperating,
@@ -314,8 +330,8 @@ export function assemblePropertyInvestmentReportData(input: AssemblePropertyRepo
     loanAmount: loanBalance,
     cashInvested: totalCashInvested
   });
-  const monthlyCashFlow = sharedMetrics.monthlyCashFlow ?? monthlyIncome - monthlyExpenses;
-  const annualCashFlow = sharedMetrics.annualCashFlow ?? monthlyCashFlow * 12;
+  const monthlyCashFlow = sharedMetrics.monthlyCashFlow ?? financials.monthlyCashFlow;
+  const annualCashFlow = financials.annualCashFlow;
   const annualIncome = monthlyIncome * 12;
   const grossRentalYield = sharedMetrics.grossYield;
   const capRate = sharedMetrics.capRate;
@@ -355,33 +371,6 @@ export function assemblePropertyInvestmentReportData(input: AssemblePropertyRepo
   const startLoan = loanBalance ?? 0;
   const ratePct = pickNum(p, "bondAnnualInterestRatePercent", "bond_annual_interest_rate_percent");
 
-  const projMonthlyGross = yearCols.map((y) => projectValue(monthlyIncome, incomeGrowth, y));
-  const projIncome = yearCols.map((y) => projectValue(baseAnnualIncome, incomeGrowth, y));
-  const projExpenses = yearCols.map((y) => projectValue(baseAnnualExpenses, expenseGrowth, y));
-  const projNoi = yearCols.map((_, i) => {
-    const inc = projIncome[i];
-    const exp = projExpenses[i];
-    if (inc == null || exp == null) return null;
-    return inc - exp;
-  });
-  const projCashFlow = yearCols.map((y, i) => {
-    const inc = projIncome[i];
-    const exp = projExpenses[i];
-    if (inc == null || exp == null) return null;
-    const debt = monthlyLoanPayment * 12;
-    return inc - exp - debt;
-  });
-  const projValue = yearCols.map((y) => projectValue(baseValue, propertyGrowth, y));
-  const projLoan = yearCols.map((y) =>
-    startLoan > 0 ? projectLoanBalanceAfterYears(startLoan, monthlyLoanPayment, ratePct, y) : 0
-  );
-  const projEquity = yearCols.map((y, i) => {
-    const pv = projValue[i];
-    const lb = projLoan[i];
-    if (pv == null || lb == null) return null;
-    return pv - lb;
-  });
-
   const sellingCostPct = pickNum(p, "estimatedSellingCostPercent", "estimated_selling_cost_percent");
   const holdingYears = pickNum(p, "holdingPeriodYears", "holding_period_years");
   const irrByYear = calculateIRRByProjectionYear({
@@ -403,10 +392,21 @@ export function assemblePropertyInvestmentReportData(input: AssemblePropertyRepo
   });
   const irrByHorizon = irrByYear.map((row) => row.irr);
   const defaultIrr = resolveDefaultIrr(irrByYear, holdingYears);
-  const projCoC = yearCols.map((y, i) => {
-    const cf = projCashFlow[i];
-    if (cf == null || totalCashInvested == null || totalCashInvested <= 0) return null;
-    return computeCashOnCashRoiPercent(cf, totalCashInvested);
+  const projection = buildAnnualProjectionRows({
+    monthlyGrossIncome: monthlyIncome,
+    effectiveMonthlyIncome: monthlyIncome,
+    monthlyOperating,
+    monthlyDebtService: monthlyLoanPayment > 0 ? monthlyLoanPayment : 0,
+    incomeGrowthPct: incomeGrowth,
+    expenseGrowthPct: expenseGrowth,
+    appreciationPct: propertyGrowth,
+    basePropertyValue: baseValue,
+    startLoan,
+    monthlyLoanPayment,
+    ratePct,
+    totalCashInvested,
+    irrByHorizon,
+    years: yearCols
   });
 
   let paymentsReceived = 0;
@@ -495,22 +495,21 @@ export function assemblePropertyInvestmentReportData(input: AssemblePropertyRepo
   ];
 
   const monthlyIncomeExpense: { label: string; value: string }[] = [
-    { label: "Gross Rent", value: formatZar(monthlyIncome) },
-    { label: "Other Income", value: "—" },
-    { label: "Total Income", value: formatZar(monthlyIncome) },
-    { label: "Property Tax / Rates", value: ratesMonthly > 0 ? formatZar(ratesMonthly) : "—" },
+    { label: "Gross Rent / Monthly Income", value: formatZar(monthlyIncome) },
+    { label: "Vacancy Allowance", value: "—" },
+    { label: "Effective Monthly Income", value: formatZar(financials.effectiveMonthlyIncome) },
+    { label: "Rates & Taxes", value: ratesMonthly > 0 ? formatZar(ratesMonthly) : "—" },
     { label: "Insurance", value: insuranceMonthly > 0 ? formatZar(insuranceMonthly) : "—" },
+    { label: "Maintenance", value: maintenanceMonthly > 0 ? formatZar(maintenanceMonthly) : "—" },
     { label: "HOA / Levies", value: leviesMonthly > 0 ? formatZar(leviesMonthly) : "—" },
-    { label: "Property Management", value: mgmtMonthly > 0 ? formatZar(mgmtMonthly) : "—" },
-    {
-      label: "Maintenance & Repairs",
-      value: maintenanceMonthly > 0 ? formatZar(maintenanceMonthly) : "—"
-    },
     { label: "Utilities", value: utilitiesMonthly > 0 ? formatZar(utilitiesMonthly) : "—" },
+    { label: "Management Fee", value: mgmtMonthly > 0 ? formatZar(mgmtMonthly) : "—" },
+    { label: "Total Operating Expenses", value: formatZar(financials.monthlyOperatingExpenses) },
     ...(monthlyLoanPayment > 0
       ? [{ label: "Debt Service", value: formatZar(monthlyLoanPayment) }]
       : []),
-    { label: "Total Expenses", value: formatZar(monthlyExpenses) }
+    { label: "Total Monthly Outflows", value: formatZar(financials.monthlyTotalOutflows) },
+    { label: "Net Monthly Cash Flow", value: formatZar(monthlyCashFlow) }
   ];
 
   const monthLabel = now.toLocaleDateString("en-ZA", { month: "long", year: "numeric", timeZone: "UTC" });
@@ -547,10 +546,8 @@ export function assemblePropertyInvestmentReportData(input: AssemblePropertyRepo
     };
   });
 
-  const fiftyPctExpenses = monthlyIncome * 0.5;
-  const ruleCashFlow =
-    monthlyIncome > 0 ? monthlyIncome - fiftyPctExpenses - monthlyLoanPayment : null;
-  const meetsFiftyOperating = monthlyIncome > 0 ? monthlyOperating <= fiftyPctExpenses + 0.01 : null;
+  const meetsFiftyBond =
+    monthlyIncome > 0 && monthlyLoanPayment > 0 ? monthlyIncome * 0.5 > monthlyLoanPayment : null;
 
   const investmentRating = derivePdfInvestmentRating({
     monthlyGrossIncome: monthlyIncome,
@@ -563,8 +560,7 @@ export function assemblePropertyInvestmentReportData(input: AssemblePropertyRepo
     internalRateOfReturn: defaultIrr ?? irrByHorizon[0] ?? null,
     totalCashInvested,
     purchasePrice,
-    meetsFiftyPercentOperating: meetsFiftyOperating,
-    ruleCashFlow
+    meetsFiftyPercentBond: meetsFiftyBond
   });
 
   const keyAssumptions: { label: string; value: string }[] = [
@@ -616,7 +612,12 @@ export function assemblePropertyInvestmentReportData(input: AssemblePropertyRepo
     cashInvestmentRows,
     metrics: {
       monthlyIncome,
-      monthlyExpenses,
+      monthlyExpenses: financials.monthlyOperatingExpenses,
+      monthlyOperatingExpenses: financials.monthlyOperatingExpenses,
+      monthlyDebtService: financials.monthlyDebtService,
+      monthlyTotalOutflows: financials.monthlyTotalOutflows,
+      effectiveMonthlyIncome: financials.effectiveMonthlyIncome,
+      monthlyNoi: financials.monthlyNoi,
       monthlyCashFlow,
       totalCashNeeded: totalCashInvested,
       annualCashFlow,
@@ -651,21 +652,7 @@ export function assemblePropertyInvestmentReportData(input: AssemblePropertyRepo
       { label: "Income tax rate", value: "—" }
     ],
     expenseBreakdown,
-    projection: {
-      years: yearCols,
-      rows: [
-        { label: "Monthly gross rent", values: projMonthlyGross },
-        { label: "Total annual income", values: projIncome },
-        { label: "Total annual expenses", values: projExpenses },
-        { label: "Net operating income", values: projNoi },
-        { label: "Total annual cash flow", values: projCashFlow },
-        { label: "Property value", values: projValue },
-        { label: "Equity", values: projEquity },
-        { label: "Loan balance", values: projLoan },
-        { label: "Cash on cash ROI", values: projCoC },
-        { label: "IRR", values: irrByHorizon }
-      ]
-    },
+    projection,
     actuals: [
       { label: "Total invoices raised", value: formatZar(invoicesRaised) },
       { label: "Total payments received", value: formatZar(paymentsReceived) },
@@ -685,24 +672,41 @@ export function assemblePropertyInvestmentReportData(input: AssemblePropertyRepo
         status: comparisonStatus(receivedMonth - monthlyIncome, "default")
       },
       {
-        metric: "Total Expenses",
-        projected: formatZar(monthlyExpenses),
+        metric: "Effective Income",
+        projected: formatZar(financials.effectiveMonthlyIncome),
+        actual: formatZar(receivedMonth),
+        difference: formatZar(receivedMonth - financials.effectiveMonthlyIncome),
+        variancePercent: variancePercent(financials.effectiveMonthlyIncome, receivedMonth),
+        status: comparisonStatus(receivedMonth - financials.effectiveMonthlyIncome, "default")
+      },
+      {
+        metric: "Operating Expenses",
+        projected: formatZar(financials.monthlyOperatingExpenses),
         actual: formatZar(expensesMonth),
-        difference: formatZar(expensesMonth - monthlyExpenses),
-        variancePercent: variancePercent(monthlyExpenses, expensesMonth),
-        status: comparisonStatus(expensesMonth - monthlyExpenses, "default")
+        difference: formatZar(expensesMonth - financials.monthlyOperatingExpenses),
+        variancePercent: variancePercent(financials.monthlyOperatingExpenses, expensesMonth),
+        status: comparisonStatus(expensesMonth - financials.monthlyOperatingExpenses, "default")
       },
       {
         metric: "Net Operating Income",
-        projected: formatZar(monthlyIncome - monthlyOperating),
+        projected: formatZar(financials.monthlyNoi),
         actual: formatZar(receivedMonth - expensesMonth),
-        difference: formatZar(receivedMonth - expensesMonth - (monthlyIncome - monthlyOperating)),
-        variancePercent: variancePercent(monthlyIncome - monthlyOperating, receivedMonth - expensesMonth),
-        status: comparisonStatus(
-          receivedMonth - expensesMonth - (monthlyIncome - monthlyOperating),
-          "default"
-        )
+        difference: formatZar(receivedMonth - expensesMonth - financials.monthlyNoi),
+        variancePercent: variancePercent(financials.monthlyNoi, receivedMonth - expensesMonth),
+        status: comparisonStatus(receivedMonth - expensesMonth - financials.monthlyNoi, "default")
       },
+      ...(monthlyLoanPayment > 0
+        ? [
+            {
+              metric: "Debt Service",
+              projected: formatZar(financials.monthlyDebtService),
+              actual: "—",
+              difference: "—",
+              variancePercent: "—",
+              status: "—"
+            }
+          ]
+        : []),
       {
         metric: "Cash Flow After Debt Service",
         projected: formatZar(monthlyCashFlow),
@@ -721,23 +725,6 @@ export function assemblePropertyInvestmentReportData(input: AssemblePropertyRepo
       }
     ],
     leases,
-    fiftyPercentRule: [
-      { label: "Monthly Gross Rent", value: formatZar(monthlyIncome) },
-      { label: "50% Operating Allowance", value: formatZar(fiftyPctExpenses) },
-      { label: "Operating Expenses (excl. debt)", value: formatZar(monthlyOperating) },
-      { label: "Debt Service", value: dash(monthlyLoanPayment > 0 ? monthlyLoanPayment : null) },
-      { label: "Rule Cash Flow", value: dash(ruleCashFlow) },
-      {
-        label: "Result",
-        value: fiftyPercentRuleResult(monthlyIncome, monthlyOperating, ruleCashFlow)
-      },
-      {
-        label: "Operating costs vs gross rent",
-        value:
-          monthlyIncome > 0
-            ? `Operating costs are ${formatPct((monthlyOperating / monthlyIncome) * 100)} of gross rent (debt service excluded).`
-            : "—"
-      }
-    ]
+    fiftyPercentRule: buildFiftyPercentBondRuleRows(monthlyIncome, monthlyLoanPayment)
   };
 }

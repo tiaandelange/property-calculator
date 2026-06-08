@@ -4,6 +4,7 @@
  */
 
 import { formatPdfZar } from "./pdfFormat.js";
+import type { MonthlyFinancialSnapshot } from "../reportFinancialAssembly.js";
 
 export type ReportFieldKind = "currency" | "percentage" | "number" | "text" | "boolean";
 
@@ -150,42 +151,32 @@ export function buildCalculatorPropertyInformationRows(
 
 export function buildCalculatorIncomeExpenseRows(
   answers: Record<string, unknown>,
-  metrics: Record<string, unknown>,
-  grossMonthlyIncome?: number
+  financials: MonthlyFinancialSnapshot,
+  grossMonthlyIncome: number
 ): ReportDisplayRow[] {
-  const metricsIncome = parseNum(metrics.monthlyIncome);
-  const monthlyGross =
-    grossMonthlyIncome != null && grossMonthlyIncome > 0 ? grossMonthlyIncome : metricsIncome;
-  const monthlyOperating = parseNum(metrics.monthlyExpenses);
-  const monthlyLoan = parseNum(metrics.monthlyBondPayment) ?? 0;
-  const monthlyExpenses =
-    monthlyOperating != null ? monthlyOperating + monthlyLoan : monthlyLoan > 0 ? monthlyLoan : null;
-  const cashFlow = parseNum(metrics.projectedCashFlow ?? metrics.monthlyCashFlow);
   const vacancyPct = parseNum(answers.vacancyAllowancePct);
-  const effectiveIncome =
-    monthlyGross != null && vacancyPct != null
-      ? monthlyGross * (1 - Math.min(100, Math.max(0, vacancyPct)) / 100)
-      : metricsIncome;
-
   const fmt = (n: number | null) => (n == null ? "—" : formatPdfZar(n));
   const fmtPct = (n: number | null) => (n == null ? "—" : `${n.toFixed(2)}%`);
 
   return [
-    { label: "Gross Rent / Monthly Income", value: fmt(monthlyGross) },
+    { label: "Gross Rent / Monthly Income", value: fmt(grossMonthlyIncome) },
     { label: "Vacancy Allowance", value: fmtPct(vacancyPct) },
-    { label: "Effective Monthly Income", value: fmt(effectiveIncome) },
+    { label: "Effective Monthly Income", value: fmt(financials.effectiveMonthlyIncome) },
     { label: "Rates & Taxes", value: formatReportFieldValue("ratesTaxesMonthly", answers.ratesTaxesMonthly) },
     { label: "Insurance", value: formatReportFieldValue("insuranceMonthly", answers.insuranceMonthly) },
     { label: "Maintenance", value: formatReportFieldValue("maintenanceReserveMonthly", answers.maintenanceReserveMonthly) },
+    { label: "HOA / Levies", value: formatReportFieldValue("hoaLeviesMonthly", answers.hoaLeviesMonthly) },
+    { label: "Utilities", value: formatReportFieldValue("utilitiesMonthly", answers.utilitiesMonthly) },
     {
       label: "Management Fee",
       value: formatReportFieldValue("managementFeePct", answers.managementFeePct)
     },
-    { label: "HOA / Levies", value: formatReportFieldValue("hoaLeviesMonthly", answers.hoaLeviesMonthly) },
-    { label: "Utilities", value: formatReportFieldValue("utilitiesMonthly", answers.utilitiesMonthly) },
-    ...(monthlyLoan > 0 ? [{ label: "Debt Service", value: fmt(monthlyLoan) }] : []),
-    { label: "Total Monthly Expenses", value: fmt(monthlyExpenses) },
-    { label: "Net Monthly Cash Flow", value: fmt(cashFlow) }
+    { label: "Total Operating Expenses", value: fmt(financials.monthlyOperatingExpenses) },
+    ...(financials.monthlyDebtService > 0
+      ? [{ label: "Debt Service", value: fmt(financials.monthlyDebtService) }]
+      : []),
+    { label: "Total Monthly Outflows", value: fmt(financials.monthlyTotalOutflows) },
+    { label: "Net Monthly Cash Flow", value: fmt(financials.monthlyCashFlow) }
   ];
 }
 
