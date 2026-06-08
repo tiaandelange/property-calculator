@@ -22,7 +22,10 @@ function FieldEditorRow({
   onDelete: () => void;
 }) {
   const typeLocked =
-    field.system && ["firstName", "lastName", "email", "monthlyIncome"].includes(field.id);
+    field.system &&
+    ["firstName", "lastName", "email", "monthlyIncome", "additionalOccupants", "animals"].includes(
+      field.id
+    );
 
   return (
     <div className="pg-applicant-template-field-row">
@@ -45,6 +48,8 @@ function FieldEditorRow({
           <option value="email">Email</option>
           <option value="phone">Phone</option>
           <option value="income">Income</option>
+          <option value="select">Select</option>
+          <option value="animals">Pets</option>
         </select>
       </Field>
       <Field label="Width">

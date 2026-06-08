@@ -76,6 +76,56 @@
   cursor: pointer;
 }
 
+.pg-applicant-toggle {
+  display: inline-flex;
+  gap: 8px;
+}
+
+.pg-applicant-toggle__btn {
+  min-width: 72px;
+  height: 40px;
+  padding: 0 16px;
+  border-radius: var(--ui-control-radius, 10px);
+  border: 1px solid var(--border-soft);
+  background: var(--surface);
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.pg-applicant-toggle__btn.is-active {
+  background: var(--primary-soft);
+  border-color: var(--primary-border);
+  color: var(--primary);
+}
+
+.pg-applicant-toggle__btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.pg-applicant-animals-field {
+  display: grid;
+  gap: 12px;
+}
+
+.pg-applicant-animals-field__counts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+@media (max-width: 640px) {
+  .pg-applicant-animals-field__counts {
+    grid-template-columns: 1fr;
+  }
+}
+
 .pg-applicant-co-toggle input {
   width: 16px;
   height: 16px;

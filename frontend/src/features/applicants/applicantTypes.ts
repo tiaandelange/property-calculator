@@ -33,6 +33,10 @@ export type ApplicantApplicationRecord = {
   previousResidency: string | null;
   landlordContact: string | null;
   timeRented: string | null;
+  additionalOccupants: string | null;
+  hasAnimals: boolean;
+  catCount: number;
+  dogCount: number;
 };
 
 export function buildSubmissionPayload(
@@ -74,6 +78,10 @@ export function submissionPayloadFromRecord(
   if (primary.previousResidency !== undefined) primary.previousResidency = record.previousResidency ?? "";
   if (primary.landlordContact !== undefined) primary.landlordContact = record.landlordContact ?? "";
   if (primary.timeRented !== undefined) primary.timeRented = record.timeRented ?? "";
+  primary.additionalOccupants = record.additionalOccupants ?? "";
+  primary.hasAnimals = record.hasAnimals ? "yes" : "no";
+  primary.catCount = String(record.catCount ?? 0);
+  primary.dogCount = String(record.dogCount ?? 0);
   return {
     primary,
     coApplicantEnabled: false,
@@ -90,5 +98,9 @@ export {
   combinedIncomeFromValues,
   personPayloadFromValues,
   isApplicantApplicationComplete,
-  validateApplicantApplicationValues
+  validateApplicantApplicationValues,
+  formatApplicantAnimalsSummary,
+  formatAdditionalOccupants,
+  applicantHasAnimals,
+  parseAnimalCount
 } from "./applicantFormTemplate";

@@ -1,4 +1,8 @@
 import type { ApplicantApplicationRecord } from "../../applicants/applicantTypes";
+import {
+  formatAdditionalOccupants,
+  formatApplicantAnimalsSummary
+} from "../../applicants/applicantFormTemplate";
 import { fmtZar } from "../tenantDirectoryUtils";
 
 function fitClass(score: number): string {
@@ -19,13 +23,22 @@ export function TenantApplicantDetailsCard({
   }
   if (!record) return null;
 
+  const additionalOccupants = formatAdditionalOccupants(record.additionalOccupants);
+  const animalsSummary = formatApplicantAnimalsSummary({
+    hasAnimals: record.hasAnimals ? "yes" : "no",
+    catCount: String(record.catCount),
+    dogCount: String(record.dogCount)
+  });
+
   const rows: Array<{ label: string; value: string }> = [
     { label: "Monthly income", value: fmtZar(record.monthlyIncome) },
+    ...(additionalOccupants ? [{ label: "Additional occupants", value: additionalOccupants }] : []),
     { label: "Target rent", value: fmtZar(record.targetRent) },
     { label: "Fit profile", value: `${Math.round(record.fitScore)}%` },
     ...(record.previousResidency ? [{ label: "Previous residency", value: record.previousResidency }] : []),
     ...(record.landlordContact ? [{ label: "Landlord contact", value: record.landlordContact }] : []),
     ...(record.timeRented ? [{ label: "Time rented", value: record.timeRented }] : []),
+    { label: "Pets", value: animalsSummary },
     ...(record.submittedAt
       ? [{ label: "Application submitted", value: new Date(record.submittedAt).toLocaleDateString("en-ZA") }]
       : [])

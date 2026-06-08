@@ -4,6 +4,7 @@ import { AppFormModal } from "../../components/ui/AppModal";
 import { Button } from "../../components/ui/Button";
 import { ApplicantDocumentUploadSection } from "./ApplicantDocumentUploadSection";
 import { ApplicantTemplateFields } from "./ApplicantTemplateFields";
+import { applicantTemplateForPerson } from "./applicantFormTemplate";
 import {
   buildSubmissionPayload,
   DEFAULT_APPLICANT_FORM_TEMPLATE,
@@ -133,7 +134,7 @@ export function ApplicantDetailModal({
                 <h3 className="pg-applicant-form-grid__title">Applicant 2</h3>
                 <ApplicantTemplateFields
                   prefix="co"
-                  template={template}
+                  template={applicantTemplateForPerson(template, "co")}
                   values={coApplicant}
                   onChange={setCoApplicant}
                   emailRequired={false}

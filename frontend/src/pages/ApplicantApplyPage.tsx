@@ -11,6 +11,7 @@ import {
   allApplicantDocumentGroupsComplete,
   type ApplicantPendingDocuments
 } from "../features/applicants/applicantDocumentSlots";
+import { applicantTemplateForPerson } from "../features/applicants/applicantFormTemplate";
 import {
   buildSubmissionPayload,
   DEFAULT_APPLICANT_FORM_TEMPLATE,
@@ -190,7 +191,7 @@ export function ApplicantApplyPage() {
                       <h2 className="pg-applicant-form-grid__title">Applicant 2</h2>
                       <ApplicantTemplateFields
                         prefix="apply-co"
-                        template={template}
+                        template={applicantTemplateForPerson(template, "co")}
                         values={coApplicant}
                         onChange={setCoApplicant}
                         emailRequired={false}

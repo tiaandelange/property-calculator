@@ -10,7 +10,12 @@ import type {
   ApplicantInvitePublicContext,
   ApplicantSubmissionPayload
 } from "../features/applicants/applicantTypes";
-import { combinedIncomeFromValues, personPayloadFromValues } from "../features/applicants/applicantTypes";
+import {
+  applicantHasAnimals,
+  combinedIncomeFromValues,
+  parseAnimalCount,
+  personPayloadFromValues
+} from "../features/applicants/applicantTypes";
 
 function toError(e: { message?: string } | Error): Error {
   return e instanceof Error ? e : new Error(String(e.message ?? "Request failed."));
@@ -160,7 +165,16 @@ export async function getApplicantApplicationOwner(tenantId: string): Promise<Ap
         ? String(application.timeRented)
         : primaryRaw.timeRented != null
           ? String(primaryRaw.timeRented)
-          : null
+          : null,
+    additionalOccupants:
+      primaryRaw.additionalOccupants != null ? String(primaryRaw.additionalOccupants) : null,
+    hasAnimals: applicantHasAnimals(primaryRaw as Record<string, string>),
+    catCount: parseAnimalCount(
+      primaryRaw.catCount != null ? String(primaryRaw.catCount) : undefined
+    ),
+    dogCount: parseAnimalCount(
+      primaryRaw.dogCount != null ? String(primaryRaw.dogCount) : undefined
+    )
   };
 }
 
