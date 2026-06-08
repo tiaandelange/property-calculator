@@ -18,6 +18,7 @@ import {
 import { AppListPage } from "../components/ui/AppPage";
 import { Card } from "../components/ui/Card";
 import { Button, ButtonLink } from "../components/ui/Button";
+import { QueryErrorCard } from "../components/ui/QueryState";
 import { AppConfirmDialog } from "../components/ui/AppModal";
 import { useMediaQuery } from "../hooks/useMediaQuery";
 import { logReportsQuery } from "../lib/authDebug";
@@ -154,14 +155,7 @@ export function OwnedPropertiesReportsPage() {
           </Card>
 
           {error ? (
-            <div className="pg-alert pg-alert-error" role="alert">
-              {error}
-              <div style={{ marginTop: 10 }}>
-                <Button type="button" variant="soft" size="sm" onClick={() => void load()} disabled={loading}>
-                  Retry
-                </Button>
-              </div>
-            </div>
+            <QueryErrorCard message={error} onRetry={() => void load()} retrying={loading} />
           ) : null}
 
           {actionError ? (

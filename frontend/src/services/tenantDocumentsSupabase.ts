@@ -1,3 +1,4 @@
+import { requireUserIdFromSession } from "../lib/authSession";
 import { getSupabase } from "../lib/supabaseClient";
 import {
   assertAllowedPropertyDocumentFile,
@@ -161,10 +162,7 @@ export async function uploadTenantDocumentOwner(
 ): Promise<TenantDocumentRecord> {
   assertAllowedPropertyDocumentFile(file);
   const sb = getSupabase();
-  const { data: sessionData, error: userErr } = await sb.auth.getSession();
-  if (userErr) throw new Error(userErr.message);
-  const uid = sessionData.session?.user?.id;
-  if (!uid) throw new Error("Not signed in.");
+  const uid = await requireUserIdFromSession();
 
   const { data: existing, error: existingErr } = await sb
     .from("tenant_documents")
@@ -248,10 +246,7 @@ export async function uploadLeaseContractOwner(
 ): Promise<TenantDocumentRecord> {
   assertAllowedPropertyDocumentFile(file);
   const sb = getSupabase();
-  const { data: sessionData, error: userErr } = await sb.auth.getSession();
-  if (userErr) throw new Error(userErr.message);
-  const uid = sessionData.session?.user?.id;
-  if (!uid) throw new Error("Not signed in.");
+  const uid = await requireUserIdFromSession();
 
   const { data: leaseRow, error: leaseErr } = await sb
     .from("leases")

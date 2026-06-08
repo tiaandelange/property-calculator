@@ -41,7 +41,8 @@ export function useSettingsQuery(opts?: { enabled?: boolean }) {
     queryFn: getOrCreateUserSettings,
     enabled: Boolean(workspaceId) && (opts?.enabled ?? true),
     staleTime: STALE_TIME_METADATA_MS,
-    gcTime: GC_TIME_MS
+    gcTime: GC_TIME_MS,
+    refetchOnWindowFocus: false
   });
 }
 

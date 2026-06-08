@@ -1,3 +1,4 @@
+import { getLocalAuthSession, requireUserIdFromSession } from "../lib/authSession";
 import { getSupabase } from "../lib/supabaseClient";
 import type { PropertyTypeId } from "../data/calculatorPropertyTypes";
 
@@ -86,10 +87,7 @@ export async function saveCalculatorInputs(opts: {
   answers: Record<string, string>;
 }): Promise<{ id: string }> {
   const sb = getSupabase();
-  const { data: sessionData, error: sessionErr } = await sb.auth.getSession();
-  if (sessionErr) throw toError(sessionErr);
-  const uid = sessionData.session?.user?.id;
-  if (!uid) throw new Error("Please sign in to save inputs.");
+  const uid = await requireUserIdFromSession();
 
   const { data, error } = await sb
     .from("calculator_saved_inputs")
@@ -123,10 +121,7 @@ export async function saveCalculatorInputs(opts: {
 
 export async function listSavedCalculatorInputs(propertyType?: PropertyTypeId): Promise<SavedCalculatorInput[]> {
   const sb = getSupabase();
-  const { data: sessionData, error: sessionErr } = await sb.auth.getSession();
-  if (sessionErr) throw toError(sessionErr);
-  const uid = sessionData.session?.user?.id;
-  if (!uid) throw new Error("Please sign in to load saved inputs.");
+  const uid = await requireUserIdFromSession();
 
   let q = sb
     .from("calculator_saved_inputs")
@@ -157,8 +152,8 @@ export async function deleteSavedCalculatorInput(id: string): Promise<void> {
   const { error } = await sb.from("calculator_saved_inputs").delete().eq("id", id);
   if (error) {
     if (isMissingTableError(error, "calculator_saved_inputs")) {
-      const { data: sessionData } = await sb.auth.getSession();
-      const uid = sessionData.session?.user?.id;
+      const session = await getLocalAuthSession().catch(() => null);
+      const uid = session?.user?.id;
       if (!uid) return;
       // Best-effort local delete: try all known types.
       const types: PropertyTypeId[] = [

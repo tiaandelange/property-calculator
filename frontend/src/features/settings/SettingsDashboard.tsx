@@ -3,6 +3,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { AppPage, AppPageContent, AppPageHeader, AppPageSubtitle, AppPageTitle } from "../../components/ui/AppPage";
 import { Button } from "../../components/ui/Button";
+import { QueryErrorCard } from "../../components/ui/QueryState";
+import { formatQueryErrorMessage } from "../../lib/queryErrors";
 import { useRegisterSettingsUnsavedChanges } from "./settingsUnsavedChanges";
 import { useAuth } from "../../contexts/AuthContext";
 import { useMediaQuery } from "../../hooks/useMediaQuery";
@@ -87,9 +89,9 @@ export function SettingsDashboard() {
 
   useEffect(() => {
     if (settingsQuery.error) {
-      setError(settingsQuery.error instanceof Error ? settingsQuery.error.message : "Could not load settings.");
+      setError(formatQueryErrorMessage(settingsQuery.error, "Could not load settings."));
     } else if (profileQuery.error) {
-      setError(profileQuery.error instanceof Error ? profileQuery.error.message : "Could not load profile.");
+      setError(formatQueryErrorMessage(profileQuery.error, "Could not load profile."));
     }
   }, [settingsQuery.error, profileQuery.error]);
 
@@ -236,15 +238,14 @@ export function SettingsDashboard() {
     return (
       <AppPage variant="settings" className="pg-settings-page">
         <AppPageContent>
-          <div className="pg-alert pg-alert-error">{error}</div>
-          <Button
-            onClick={() => {
+          <QueryErrorCard
+            message={error}
+            onRetry={() => {
               void settingsQuery.refetch();
               void profileQuery.refetch();
             }}
-          >
-            Retry
-          </Button>
+            retrying={settingsQuery.isFetching || profileQuery.isFetching}
+          />
         </AppPageContent>
       </AppPage>
     );

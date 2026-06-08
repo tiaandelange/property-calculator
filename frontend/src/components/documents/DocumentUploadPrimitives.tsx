@@ -89,9 +89,11 @@ export function DocumentUploadSlotRow({
   replaceLabel,
   multiple,
   disabledHint,
+  showUploadTrigger = true,
   onFiles,
   onRemoveFile,
-  onView
+  onView,
+  onViewFile
 }: {
   title: string;
   description?: string;
@@ -105,11 +107,18 @@ export function DocumentUploadSlotRow({
   replaceLabel?: string;
   multiple?: boolean;
   disabledHint?: string;
+  /** When false, hides the file picker (e.g. all slots in a multi group are filled). */
+  showUploadTrigger?: boolean;
   onFiles: (files: FileList) => void;
   onRemoveFile?: (fileId: string) => void;
+  /** @deprecated Prefer per-file {@link onViewFile}. */
   onView?: () => void;
+  onViewFile?: (fileId: string) => void;
 }) {
   const canRemove = !readOnly && Boolean(onRemoveFile);
+  const triggerLabel = complete
+    ? (replaceLabel ?? "Replace")
+    : (uploadLabel ?? (multiple ? "Choose files" : "Choose file"));
 
   return (
     <li className="pg-doc-upload-slot">
@@ -122,6 +131,12 @@ export function DocumentUploadSlotRow({
             {files.map((file) => (
               <li key={file.id} className="pg-doc-upload-slot__file-item">
                 <span className="pg-doc-upload-slot__file-name">{file.name}</span>
+                {onViewFile ? (
+                  <Button type="button" variant="ghost" size="sm" className="pg-doc-upload-slot__file-view" onClick={() => onViewFile(file.id)}>
+                    <ExternalLink size={14} aria-hidden style={{ marginRight: 4 }} />
+                    View
+                  </Button>
+                ) : null}
                 {canRemove ? (
                   <button
                     type="button"
@@ -140,16 +155,16 @@ export function DocumentUploadSlotRow({
         )}
       </div>
       <div className="pg-doc-upload-slot__actions">
-        {onView && complete ? (
+        {onView && complete && !onViewFile ? (
           <Button type="button" variant="ghost" size="sm" onClick={onView}>
             <ExternalLink size={14} aria-hidden style={{ marginRight: 4 }} />
             View
           </Button>
         ) : null}
-        {!readOnly ? (
+        {!readOnly && showUploadTrigger ? (
           <DocumentUploadFileTrigger
             inputId={inputId}
-            label={complete ? (replaceLabel ?? "Replace") : (uploadLabel ?? (multiple ? "Choose files" : "Choose file"))}
+            label={triggerLabel}
             multiple={multiple}
             disabled={!uploadsEnabled}
             busy={busy}

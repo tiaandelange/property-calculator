@@ -8,6 +8,8 @@ import { Card } from "../components/ui/Card";
 import { AppListPage, AppPageActions, AppPageHeader, AppPageSubtitle, AppPageTitle } from "../components/ui/AppPage";
 import { Grid } from "../components/ui/Grid";
 import { Button, ButtonLink } from "../components/ui/Button";
+import { QueryErrorCard } from "../components/ui/QueryState";
+import { formatQueryErrorMessage } from "../lib/queryErrors";
 import { AppModal } from "../components/ui/AppModal";
 import { useWorkspaceId } from "../features/queries";
 import { queryKeys } from "../lib/queryKeys";
@@ -60,9 +62,9 @@ export function DashboardPage() {
       const rows = await listUserReports();
       if (seq !== loadSeq.current) return;
       setReports(rows);
-    } catch (e: any) {
+    } catch (e: unknown) {
       if (seq !== loadSeq.current) return;
-      setError(e?.response?.data?.message ?? e?.message ?? "Failed to load reports. Are you logged in?");
+      setError(formatQueryErrorMessage(e, "Failed to load reports."));
     } finally {
       if (seq === loadSeq.current) setLoading(false);
     }
@@ -149,7 +151,9 @@ export function DashboardPage() {
         </AppPageActions>
       </AppPageHeader>
 
-        {error ? <div className="pg-alert pg-alert-error" style={{ marginTop: 16 }}>{error}</div> : null}
+        {error ? (
+          <QueryErrorCard message={error} onRetry={() => void load()} retrying={loading} />
+        ) : null}
 
         <div style={{ height: 16 }} />
 

@@ -31,11 +31,12 @@ function readInitialWorkspaceAppearance(): WorkspaceAppearance {
 
 export function AppChrome() {
   const location = useLocation();
-  const { session, initializing, initialized, profile, profileLoading } = useAuth();
-  const settingsQuery = useSettingsQuery();
+  const { session, authLoading, initialized, profile, profileLoading } = useAuth();
+  const authReady = initialized && !authLoading && Boolean(session?.user?.id);
+  const settingsQuery = useSettingsQuery({ enabled: authReady });
   const [me, setMe] = useState<Me>(null);
 
-  const useWorkspaceChrome = initialized && !initializing && Boolean(session) && isWorkspacePath(location.pathname);
+  const useWorkspaceChrome = initialized && !authLoading && Boolean(session) && isWorkspacePath(location.pathname);
   const isMarketingHome = location.pathname === "/";
   const isMarketingDarkHeroHub =
     location.pathname === "/calculators" || location.pathname === "/reports";
@@ -88,7 +89,7 @@ export function AppChrome() {
     });
   }, [useWorkspaceChrome, workspaceAppearance.themePreference]);
 
-  if (!initialized || initializing) {
+  if (!initialized || authLoading) {
     if (isWorkspacePath(location.pathname)) {
       return (
         <div className="pg-app">

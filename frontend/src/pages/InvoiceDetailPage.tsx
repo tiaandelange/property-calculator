@@ -2,9 +2,11 @@ import { useEffect, useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { Link, Navigate, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { getTenant } from "../api/ownedProperties";
+import { meFinancialDisplayName } from "../api/user";
 import { resolveTenantPropertyId } from "../features/tenants/tenantPropertyContext";
+import { useProfileQuery } from "../features/queries";
 import { AppEditorPage } from "../components/ui/AppPage";
-import { fetchMe, meFinancialDisplayName } from "../api/user";
+import { formatQueryErrorMessage } from "../lib/queryErrors";
 import { InvoiceDetailPanel } from "../features/invoices/InvoiceDetailPanel";
 import { invoiceDetailPath } from "../features/invoices/invoiceRoutes";
 
@@ -29,6 +31,7 @@ export function InvoiceDetailPage() {
   const tenantId = search.get("tenantId") ?? "";
   const propertyIdFromUrl = search.get("propertyId") ?? "";
   const leaseIdFromUrl = search.get("leaseId") ?? "";
+  const profileQuery = useProfileQuery({ enabled: isNew && Boolean(tenantId) });
 
   const [bootstrap, setBootstrap] = useState<{
     propertyId: string;
@@ -52,12 +55,21 @@ export function InvoiceDetailPage() {
       setLoading(false);
       return;
     }
+    if (profileQuery.isLoading) return;
+    if (profileQuery.isError) {
+      setError(formatQueryErrorMessage(profileQuery.error, "Failed to load profile."));
+      setLoading(false);
+      return;
+    }
+    const me = profileQuery.data;
+    if (!me) return;
+
     let cancelled = false;
-    (async () => {
+    void (async () => {
       setLoading(true);
       setError("");
       try {
-        const [{ tenant, currentLease }, me] = await Promise.all([getTenant(tenantId), fetchMe()]);
+        const { tenant, currentLease } = await getTenant(tenantId);
         if (cancelled) return;
         const propertyId = propertyIdFromUrl || resolveTenantPropertyId(tenant, currentLease);
         if (!propertyId) {
@@ -65,7 +77,8 @@ export function InvoiceDetailPage() {
           setBootstrap(null);
           return;
         }
-        const tenantName = `${String(tenant.firstName ?? "").trim()} ${String(tenant.lastName ?? "").trim()}`.trim() || "Tenant";
+        const tenantName =
+          `${String(tenant.firstName ?? "").trim()} ${String(tenant.lastName ?? "").trim()}`.trim() || "Tenant";
         setBootstrap({
           propertyId,
           tenantName,
@@ -87,7 +100,16 @@ export function InvoiceDetailPage() {
     return () => {
       cancelled = true;
     };
-  }, [isNew, tenantId, propertyIdFromUrl, leaseIdFromUrl]);
+  }, [
+    isNew,
+    tenantId,
+    propertyIdFromUrl,
+    leaseIdFromUrl,
+    profileQuery.data,
+    profileQuery.isLoading,
+    profileQuery.isError,
+    profileQuery.error
+  ]);
 
   const handleCreated = (newId: string) => {
     navigate(invoiceDetailPath(newId), { replace: true });

@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
+import { GC_TIME_MS } from "../queryClient";
 import { queryKeys } from "../queryKeys";
 import {
   FALLBACK_SUBSCRIPTION_PLANS,
@@ -42,12 +43,15 @@ export function computeSubscriptionEntitlements(
 }
 
 /** Loads plan catalog, user_subscriptions row, and usage counts for the signed-in workspace. */
-export function useSubscriptionQuery() {
+export function useSubscriptionQuery(opts?: { enabled?: boolean }) {
   const workspaceId = useWorkspaceId();
   return useQuery({
     queryKey: workspaceId ? queryKeys.subscription(workspaceId) : ["subscription", "anonymous"],
     queryFn: loadSubscriptionData,
-    staleTime: 30_000
+    enabled: Boolean(workspaceId) && (opts?.enabled ?? true),
+    staleTime: 30_000,
+    gcTime: GC_TIME_MS,
+    refetchOnWindowFocus: false
   });
 }
 

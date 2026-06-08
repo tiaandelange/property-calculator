@@ -14,6 +14,7 @@ import { calculators } from "../data/calculators";
 import { getCalculatorDefaultValues } from "../data/calculatorDefaultValues";
 import { getCalculatorToolPage } from "../data/calculatorToolPageContent";
 import { getToolExplainer } from "../data/calculatorToolExplainerContent";
+import { getLocalAuthSession } from "../lib/authSession";
 import { getSupabase } from "../lib/supabaseClient";
 import { runCalculatorLocally, saveCalculationResult } from "../services/calculationsSupabase";
 import { fetchPdfBlob, isAbsoluteHttpUrl, openPdfBlobInNewTab } from "../api/pdfBlob";
@@ -343,7 +344,7 @@ export function CalculatorPage() {
       }
       setResult(calcResult);
       if (opts?.userInitiated) onCalculateSuccess();
-      const { data: sessionData } = await getSupabase().auth.getSession();
+      const sessionData = { session: await getLocalAuthSession().catch(() => null) };
       if (sessionData.session) {
         try {
           const saved = await saveCalculationResult(targetSlug, payload, calcResult);
@@ -403,7 +404,7 @@ export function CalculatorPage() {
         }
         if (cancelled) return;
         setResult(calcResult);
-        const { data: sessionData } = await getSupabase().auth.getSession();
+        const sessionData = { session: await getLocalAuthSession().catch(() => null) };
         if (sessionData.session) {
           try {
             const saved = await saveCalculationResult(calcDef.slug, payload, calcResult);
@@ -574,7 +575,7 @@ export function CalculatorPage() {
   }, [pageMeta.seoHeading]);
 
   const handleSaveCalculation = useCallback(async () => {
-    const { data: sessionData } = await getSupabase().auth.getSession();
+    const sessionData = { session: await getLocalAuthSession().catch(() => null) };
     if (!sessionData.session) {
       const returnTo = `${location.pathname}${location.search}`;
       navigate(`/login?redirectTo=${encodeURIComponent(returnTo)}`);

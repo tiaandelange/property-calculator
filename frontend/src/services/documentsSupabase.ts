@@ -1,3 +1,4 @@
+import { requireUserIdFromSession } from "../lib/authSession";
 import { getSupabase } from "../lib/supabaseClient";
 
 const BUCKET = "property-documents";
@@ -109,10 +110,7 @@ export async function uploadPropertyDocument(
   assertAllowedPropertyDocumentFile(file);
 
   const sb = getSupabase();
-  const { data: sessionData, error: userErr } = await sb.auth.getSession();
-  if (userErr) throw toError(userErr);
-  const uid = sessionData.session?.user?.id;
-  if (!uid) throw new Error("Not signed in.");
+  const uid = await requireUserIdFromSession();
 
   const docType = opts?.documentType && DOC_TYPES.has(opts.documentType) ? opts.documentType : "OTHER";
   let leaseId: string | null = null;

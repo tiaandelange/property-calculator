@@ -1,4 +1,4 @@
-import { getSupabase } from "../lib/supabaseClient";
+import { readAuthSession } from "../lib/authSession";
 
 /** Normalizes legacy `/api/...` paths to same-origin fetch paths. */
 export function normalizeDownloadPath(downloadUrl: string): string {
@@ -31,10 +31,9 @@ export async function fetchPdfBlob(downloadUrl: string): Promise<Blob> {
     return res.blob();
   }
 
-  const sb = getSupabase();
-  const { data, error } = await sb.auth.getSession();
+  const { session, error } = await readAuthSession();
   if (error) throw error;
-  const token = data.session?.access_token;
+  const token = session?.access_token;
   if (!token) throw new Error("Not signed in.");
 
   const path = normalizeDownloadPath(url);

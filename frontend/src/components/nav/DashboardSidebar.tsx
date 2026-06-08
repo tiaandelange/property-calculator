@@ -107,10 +107,11 @@ export function DashboardSidebar({
   const queryClient = useQueryClient();
   const workspaceId = useWorkspaceId();
   const wordmarkVariant = useWorkspaceWordmarkVariant();
+  const authReady = Boolean(workspaceId);
 
   const warmRoute = (to?: string) => {
     if (!to) return;
-    return navWarmHandlers(to, queryClient, workspaceId ?? null);
+    return navWarmHandlers(to, queryClient, workspaceId ?? null, authReady);
   };
 
   const logout = async () => {

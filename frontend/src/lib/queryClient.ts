@@ -1,4 +1,5 @@
 import { QueryClient } from "@tanstack/react-query";
+import { queryRetry } from "./queryErrors";
 
 /** Stable app metadata: profile, settings — 10 minutes */
 export const STALE_TIME_METADATA_MS = 10 * 60 * 1000;
@@ -27,7 +28,7 @@ export const queryClient = new QueryClient({
       staleTime: STALE_TIME_DIRECTORY_MS,
       gcTime: GC_TIME_MS,
       refetchOnWindowFocus: true,
-      retry: 1
+      retry: queryRetry
     }
   }
 });

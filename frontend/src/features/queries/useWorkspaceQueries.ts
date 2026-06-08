@@ -123,7 +123,8 @@ export function useProfileQuery(opts?: { enabled?: boolean }) {
     queryFn: fetchMe,
     enabled: Boolean(workspaceId) && (opts?.enabled !== false),
     staleTime: STALE_TIME_METADATA_MS,
-    gcTime: GC_TIME_MS
+    gcTime: GC_TIME_MS,
+    refetchOnWindowFocus: false
   });
 }
 

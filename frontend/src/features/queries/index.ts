@@ -41,4 +41,4 @@ export {
   useTenantQuery,
   useWorkspaceNotificationsQuery
 } from "./useWorkspaceQueries";
-export { useWorkspaceId } from "./useWorkspaceId";
+export { useAuthQueryEnabled, useWorkspaceId } from "./useWorkspaceId";

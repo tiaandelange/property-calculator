@@ -24,8 +24,9 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim() ?? "";
 export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
 
 /**
- * Shared Supabase client for the SPA, or `null` if env vars are missing.
- * Later phases should guard before use, or call {@link getSupabase} for a strict API.
+ * **Single browser Supabase client** for the SPA (or `null` if env vars are missing).
+ * Do not call `createClient` elsewhere in frontend app code — use {@link getSupabase}
+ * and {@link readAuthSession} from `authSession.ts` for session reads.
  */
 export const supabase: SupabaseClient | null = isSupabaseConfigured
   ? createClient(supabaseUrl, supabaseAnonKey, {

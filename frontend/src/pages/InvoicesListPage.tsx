@@ -188,7 +188,9 @@ export function InvoicesListPage() {
                 onExportPdf={(row) => void exportPdf(row)}
                 onDelete={(row) => setConfirmDelete(row)}
                 rowWarmProps={(row) =>
-                  listWarmHandlers(() => prefetchInvoiceDetail(row.id, queryClient, workspaceId ?? null))
+                  listWarmHandlers(() =>
+                    prefetchInvoiceDetail(row.id, queryClient, workspaceId ?? null, Boolean(workspaceId))
+                  )
                 }
               />
               <InvoicePagination page={page} totalItems={totalCount} onPageChange={setPage} />

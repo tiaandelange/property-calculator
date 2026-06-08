@@ -105,3 +105,28 @@ export function applicantPendingDocumentsForGroup(
   }
   return next;
 }
+
+/** Slots in a group that do not yet have a pending file. */
+export function emptyApplicantDocumentSlotsForGroup(
+  group: ApplicantDocumentSlotDef["group"],
+  occupiedSlots: Iterable<ApplicantDocumentSlotId>
+): ApplicantDocumentSlotId[] {
+  const occupied = new Set(occupiedSlots);
+  return applicantDocumentSlotIdsForGroup(group).filter((slot) => !occupied.has(slot));
+}
+
+/** Assign new files to the next empty slots in a group without clearing existing uploads. */
+export function appendPendingGroupFiles(
+  group: ApplicantDocumentSlotDef["group"],
+  files: FileList | File[],
+  pendingBySlot: ApplicantPendingDocuments
+): ApplicantPendingDocuments {
+  const occupied = applicantDocumentSlotIdsForGroup(group).filter((slot) => Boolean(pendingBySlot[slot]));
+  const emptySlots = emptyApplicantDocumentSlotsForGroup(group, occupied);
+  const selected = Array.from(files).slice(0, emptySlots.length);
+  const next = { ...pendingBySlot };
+  for (let i = 0; i < selected.length; i++) {
+    next[emptySlots[i]] = selected[i];
+  }
+  return next;
+}

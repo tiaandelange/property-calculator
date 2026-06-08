@@ -143,13 +143,14 @@ export function prefetchRouteChunk(target: RoutePrefetchTarget, path?: string): 
 export function navWarmHandlers(
   path: string,
   queryClient: QueryClient,
-  workspaceId: string | null
+  workspaceId: string | null,
+  authReady = false
 ): {
   onMouseEnter: () => void;
   onFocus: () => void;
   onTouchStart: () => void;
 } {
-  const warm = () => prefetchWorkspaceRoute(path, queryClient, workspaceId);
+  const warm = () => prefetchWorkspaceRoute(path, queryClient, workspaceId, authReady);
   return {
     onMouseEnter: warm,
     onFocus: warm,
@@ -157,11 +158,16 @@ export function navWarmHandlers(
   };
 }
 
-export function prefetchWorkspaceRoute(path: string, queryClient: QueryClient, workspaceId: string | null): void {
+export function prefetchWorkspaceRoute(
+  path: string,
+  queryClient: QueryClient,
+  workspaceId: string | null,
+  authReady = false
+): void {
   const target = routePrefetchTarget(path);
   if (!target) return;
   prefetchRouteChunk(target, path);
-  if (!workspaceId) return;
+  if (!workspaceId || !authReady) return;
 
   switch (target) {
     case "dashboard":
@@ -246,7 +252,12 @@ export function prefetchWorkspaceRoute(path: string, queryClient: QueryClient, w
 }
 
 /** After sign-in: warm settings + profile (respects stale cache; invalidation still refetches). */
-export function prefetchAuthWorkspace(queryClient: QueryClient, workspaceId: string): void {
+export function prefetchAuthWorkspace(
+  queryClient: QueryClient,
+  workspaceId: string,
+  authReady = true
+): void {
+  if (!authReady || !workspaceId) return;
   prefetchQueryDeduped(queryClient, `settings:${workspaceId}`, {
     queryKey: queryKeys.settings(workspaceId),
     queryFn: getOrCreateUserSettings,
@@ -266,10 +277,11 @@ export function prefetchPropertyFromList(
   propertyId: string,
   queryClient: QueryClient,
   workspaceId: string | null,
-  summaryMonth = localCalendarMonth()
+  summaryMonth = localCalendarMonth(),
+  authReady = false
 ): void {
   prefetchRouteChunk("property-detail");
-  if (!workspaceId || !propertyId) return;
+  if (!workspaceId || !propertyId || !authReady) return;
 
   prefetchQueryDeduped(queryClient, `property:core:${propertyId}`, {
     queryKey: queryKeys.property(propertyId, "core"),
@@ -352,11 +364,12 @@ export function prefetchPropertyWorkspaceTabs(opts: {
 export function prefetchInvoiceDetail(
   invoiceId: string,
   queryClient: QueryClient,
-  workspaceId: string | null
+  workspaceId: string | null,
+  authReady = false
 ): void {
   if (!invoiceId || invoiceId === "new") return;
   prefetchRouteChunk("invoice-detail");
-  if (!workspaceId) return;
+  if (!workspaceId || !authReady) return;
   prefetchQueryDeduped(queryClient, `invoice:${invoiceId}`, {
     queryKey: queryKeys.invoiceDetail(invoiceId),
     queryFn: () => getInvoice(invoiceId),

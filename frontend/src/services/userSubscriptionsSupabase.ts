@@ -1,4 +1,5 @@
 import { calendarMonthIsoBounds } from "../lib/subscriptionPeriod";
+import { readAuthSession } from "../lib/authSession";
 import { getSupabase, isSupabaseConfigured } from "../lib/supabaseClient";
 import {
   FALLBACK_SUBSCRIPTION_PLANS,
@@ -88,9 +89,9 @@ function mapUserSubscriptionRow(row: Record<string, unknown>): UserSubscriptionR
 export async function getUserSubscriptionForCurrentUser(): Promise<UserSubscriptionRecord | null> {
   if (!isSupabaseConfigured) return null;
   const sb = getSupabase();
-  const { data: sessionWrap, error: sessionErr } = await sb.auth.getSession();
+  const { session, error: sessionErr } = await readAuthSession();
   if (sessionErr) throw sessionErr;
-  const user = sessionWrap.session?.user ?? null;
+  const user = session?.user ?? null;
   if (!user) return null;
 
   const { data, error } = await sb
@@ -122,9 +123,9 @@ export async function ensureUserSubscriptionForPlanCode(
   }
 
   const sb = getSupabase();
-  const { data: sessionWrap, error: sessionErr } = await sb.auth.getSession();
+  const { session, error: sessionErr } = await readAuthSession();
   if (sessionErr) throw sessionErr;
-  const user = sessionWrap.session?.user ?? null;
+  const user = session?.user ?? null;
   if (!user) {
     return { created: false, skipped: true };
   }
@@ -179,9 +180,9 @@ export async function updateUserSubscriptionPlanCode(
   }
 
   const sb = getSupabase();
-  const { data: sessionWrap, error: sessionErr } = await sb.auth.getSession();
+  const { session, error: sessionErr } = await readAuthSession();
   if (sessionErr) throw sessionErr;
-  const user = sessionWrap.session?.user ?? null;
+  const user = session?.user ?? null;
   if (!user) throw new Error("Not signed in.");
 
   if (opts?.requireAdmin !== false) {

@@ -1,16 +1,48 @@
-import type { Session, User } from "@supabase/supabase-js";
+import type { AuthError, Session, User } from "@supabase/supabase-js";
 import { getSupabase } from "./supabaseClient";
 
+export type AuthSessionReadResult = {
+  session: Session | null;
+  error: AuthError | null;
+};
+
 /**
- * Read the current session from local auth state (no network round-trip).
- * Prefer this over `getUser()` in hot paths — concurrent `getUser()` calls during
- * token refresh can stall and leave pages stuck on loading skeletons.
+ * Coalesces concurrent `getSession()` calls into one in-flight read on the singleton
+ * browser client. Parallel reads during `autoRefreshToken` can race and invalidate tokens.
+ */
+let inflightSessionRead: Promise<AuthSessionReadResult> | null = null;
+
+export async function readAuthSession(): Promise<AuthSessionReadResult> {
+  if (inflightSessionRead) return inflightSessionRead;
+
+  const sb = getSupabase();
+  inflightSessionRead = sb.auth
+    .getSession()
+    .then(({ data, error }) => ({
+      session: data.session ?? null,
+      error: error ?? null
+    }))
+    .finally(() => {
+      inflightSessionRead = null;
+    });
+
+  return inflightSessionRead;
+}
+
+/** Bearer access token from the shared session read (coalesced). */
+export async function readAccessToken(): Promise<string | null> {
+  const { session } = await readAuthSession();
+  return session?.access_token ?? null;
+}
+
+/**
+ * Read the current session from the singleton browser client.
+ * Prefer this over calling `supabase.auth.getSession()` directly in app code.
  */
 export async function getLocalAuthSession(): Promise<Session | null> {
-  const sb = getSupabase();
-  const { data, error } = await sb.auth.getSession();
+  const { session, error } = await readAuthSession();
   if (error) throw new Error(error.message);
-  return data.session ?? null;
+  return session;
 }
 
 export async function getLocalAuthUser(): Promise<User | null> {
@@ -27,4 +59,9 @@ export async function requireUserIdFromSession(): Promise<string> {
 /** @deprecated Prefer {@link requireUserIdFromSession} */
 export async function requireLocalUserId(): Promise<string> {
   return requireUserIdFromSession();
+}
+
+/** Test-only: reset coalescing state between cases. */
+export function resetAuthSessionReadCoalescingForTests(): void {
+  inflightSessionRead = null;
 }

@@ -1,4 +1,5 @@
 import { calendarMonthPeriod } from "../lib/subscriptionPeriod";
+import { readAuthSession } from "../lib/authSession";
 import { getSupabase, isSupabaseConfigured } from "../lib/supabaseClient";
 import type { UserSubscriptionRecord } from "./userSubscriptionsSupabase";
 
@@ -52,12 +53,12 @@ export async function fetchSubscriptionUsageCounts(
   }
 
   const sb = getSupabase();
-  const { data: sessionWrap, error: sessionErr } = await sb.auth.getSession();
+  const { session, error: sessionErr } = await readAuthSession();
   if (sessionErr) {
     console.warn("[usage] getSession", sessionErr.message);
     return { propertyCount: 0, investmentReportCount: 0, applicationLinksActive: 0, period };
   }
-  const user = sessionWrap.session?.user ?? null;
+  const user = session?.user ?? null;
   if (!user) {
     return { propertyCount: 0, investmentReportCount: 0, applicationLinksActive: 0, period };
   }

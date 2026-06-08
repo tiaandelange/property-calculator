@@ -54,7 +54,7 @@ export function classifyReportsError(error: unknown): ReportsPageErrorKind {
 export function reportsErrorMessage(kind: ReportsPageErrorKind, fallback?: string): string {
   switch (kind) {
     case "session":
-      return "Your session could not be verified for this request. Try again or sign in from the menu.";
+      return "Your session could not be verified for this request. Try again or contact support if this persists.";
     case "permission":
       return "You do not have permission to view these reports. Contact support if this persists.";
     case "server":

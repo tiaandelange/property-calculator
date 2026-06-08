@@ -1,4 +1,4 @@
-import { getSupabase } from "../lib/supabaseClient";
+import { readAuthSession } from "../lib/authSession";
 import { readVercelError } from "./vercelResponse";
 
 export type SendInvoiceEmailPayload = {
@@ -12,10 +12,9 @@ export type SendInvoiceEmailPayload = {
 export async function sendInvoiceEmailViaVercel(
   payload: SendInvoiceEmailPayload
 ): Promise<{ message: string; providerEmailId?: string }> {
-  const sb = getSupabase();
-  const { data: sessionData, error: sessionErr } = await sb.auth.getSession();
+  const { session, error: sessionErr } = await readAuthSession();
   if (sessionErr) throw sessionErr;
-  const token = sessionData.session?.access_token;
+  const token = session?.access_token;
   if (!token) throw new Error("Not signed in.");
 
   const res = await fetch(`/api/invoices/${encodeURIComponent(payload.invoiceId)}/send-email`, {

@@ -1,3 +1,4 @@
+import { requireUserIdFromSession } from "../lib/authSession";
 import { getSupabase } from "../lib/supabaseClient";
 import { isUuid } from "../utils/propertyIds";
 
@@ -20,10 +21,7 @@ export type EquityMetricRow = {
 
 export async function listEquityMetrics(): Promise<{ properties: EquityMetricRow[] }> {
   const sb = getSupabase();
-  const { data: sessionData, error: userErr } = await sb.auth.getSession();
-  if (userErr) throw toError(userErr);
-  const uid = sessionData.session?.user?.id;
-  if (!uid) throw new Error("Not signed in.");
+  const uid = await requireUserIdFromSession();
 
   const { data, error } = await sb
     .from("properties")
@@ -59,10 +57,7 @@ export async function updateEquityMetrics(
   updates: Array<{ propertyId: string | number; currentEstimatedValue: number | null; outstandingBondBalance: number | null }>
 ): Promise<{ updatedCount: number }> {
   const sb = getSupabase();
-  const { data: sessionData, error: userErr } = await sb.auth.getSession();
-  if (userErr) throw toError(userErr);
-  const uid = sessionData.session?.user?.id;
-  if (!uid) throw new Error("Not signed in.");
+  const uid = await requireUserIdFromSession();
 
   let updatedCount = 0;
   for (const u of updates) {

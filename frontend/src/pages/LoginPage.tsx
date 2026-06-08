@@ -15,6 +15,7 @@ import {
   resolveSignupPlanSelection,
   SIGNUP_PLAN_USER_METADATA_KEY
 } from "../features/signup/signupPlan";
+import { readAuthSession } from "../lib/authSession";
 import { getSupabase, isSupabaseConfigured } from "../lib/supabaseClient";
 import { authLoginInProgressRef } from "../lib/authLoginGuard";
 import { getConfirmEmailRedirectUrl } from "../lib/authRedirect";
@@ -35,7 +36,7 @@ export function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
-  const { session, initializing, initialized, isAuthenticated, refreshSession, recognizeSession } = useAuth();
+  const { session, authLoading, initialized, isAuthenticated, recognizeSession } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState<null | "login" | "register">(null);
@@ -61,7 +62,7 @@ export function LoginPage() {
   }, []);
 
   useEffect(() => {
-    if (!initialized || initializing || loading) return;
+    if (!initialized || authLoading || loading) return;
     if (!session?.user?.id || !isAuthenticated) return;
 
     logSignInFlow("redirect-after-session", { hasSession: true });
@@ -97,7 +98,7 @@ export function LoginPage() {
     }
 
     navigate("/owned-properties/dashboard", { replace: true });
-  }, [session, initializing, initialized, isAuthenticated, loading, location.state, navigate, searchParams]);
+  }, [session, authLoading, initialized, isAuthenticated, loading, location.state, navigate, searchParams]);
 
   useEffect(() => {
     if (!session?.user?.id) return;
@@ -163,8 +164,9 @@ export function LoginPage() {
             recognizeSession(signInData.session);
             logSignInFlow("success", { via: "signInResponse" });
           } else {
-            await refreshSession();
-            logSignInFlow("success", { via: "refreshSession" });
+            const { session: signedIn } = await readAuthSession();
+            if (signedIn) recognizeSession(signedIn);
+            logSignInFlow("success", { via: "readAuthSession" });
           }
           setMessage({ kind: "ok", text: "Signed in successfully." });
         } finally {

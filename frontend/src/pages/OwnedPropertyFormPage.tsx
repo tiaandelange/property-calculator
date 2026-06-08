@@ -130,7 +130,7 @@ export function OwnedPropertyFormPage() {
         setLoaded(true);
       } catch (e: unknown) {
         // If auth/session expired or RLS blocks, don't blow away the form with defaults.
-        setError(propertyApiErrorMessage(e) || "Failed to load property. Please refresh or sign in again.");
+        setError(propertyApiErrorMessage(e) || "Failed to load property. Please refresh and try again.");
         setLoaded(false);
       }
     }

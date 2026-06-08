@@ -9,12 +9,13 @@ export function MobileBottomNav() {
   const { pathname } = useLocation();
   const queryClient = useQueryClient();
   const workspaceId = useWorkspaceId();
+  const authReady = Boolean(workspaceId);
 
   return (
     <nav className="pg-dashboard-bottom-nav" aria-label="Primary mobile navigation">
       {WORKSPACE_MOBILE_BOTTOM_NAV.map((item) => {
         const active = item.to ? isWorkspaceNavActive(pathname, item) : false;
-        const warm = item.to ? navWarmHandlers(item.to, queryClient, workspaceId ?? null) : null;
+        const warm = item.to ? navWarmHandlers(item.to, queryClient, workspaceId ?? null, authReady) : null;
         return (
           <Link
             key={item.id}

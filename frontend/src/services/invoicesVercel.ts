@@ -1,4 +1,5 @@
-import { getSupabase } from "../lib/supabaseClient";
+import { readAuthSession } from "../lib/authSession";
+import { ApiRequestError } from "../lib/queryErrors";
 import { readVercelError } from "./vercelResponse";
 
 export type GenerateInvoicePdfResponse = {
@@ -29,11 +30,10 @@ export async function generateInvoicePdfViaVercel(
   invoiceId: string,
   opts: GenerateInvoicePdfOptions = {}
 ): Promise<GenerateInvoicePdfResponse> {
-  const sb = getSupabase();
-  const { data: sessionData, error: sessionErr } = await sb.auth.getSession();
-  if (sessionErr) throw sessionErr;
-  const token = sessionData.session?.access_token;
-  if (!token) throw new Error("Not signed in.");
+  const { session, error: sessionErr } = await readAuthSession();
+  if (sessionErr) throw new ApiRequestError(sessionErr.message, { status: 401, code: sessionErr.name });
+  const token = session?.access_token;
+  if (!token) throw new ApiRequestError("Not signed in.", { status: 401 });
 
   const res = await fetch("/api/invoices/generate", {
     method: "POST",
@@ -49,10 +49,10 @@ export async function generateInvoicePdfViaVercel(
 
   if (!res.ok) {
     const msg = await readVercelError(res);
-    throw new Error(`${msg} (HTTP ${res.status})`);
+    throw new ApiRequestError(msg, { status: res.status });
   }
 
   const json = (await res.json().catch(() => ({}))) as GenerateInvoicePdfResponse & { error?: string };
-  if (!json.downloadUrl && json.error) throw new Error(json.error);
+  if (!json.downloadUrl && json.error) throw new ApiRequestError(json.error);
   return json;
 }

@@ -1,4 +1,5 @@
 import type { EmailOtpType, SupabaseClient } from "@supabase/supabase-js";
+import { readAuthSession } from "./authSession";
 import { formatAuthError } from "../utils/authErrors";
 
 export type ConfirmEmailRedirect =
@@ -47,9 +48,9 @@ function delay(ms: number): Promise<void> {
 
 async function sessionAfterConfirmation(sb: SupabaseClient) {
   for (let attempt = 0; attempt < 6; attempt += 1) {
-    const { data, error } = await sb.auth.getSession();
+    const { session, error } = await readAuthSession();
     if (error) return { ok: false as const, message: formatAuthError(error) };
-    if (data.session?.user) return { ok: true as const, session: data.session };
+    if (session?.user) return { ok: true as const, session };
     await delay(attempt === 0 ? 50 : 200);
   }
   return { ok: false as const, message: MISSING_PARAMS_MESSAGE };

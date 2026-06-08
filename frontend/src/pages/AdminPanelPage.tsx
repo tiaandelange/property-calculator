@@ -2,8 +2,10 @@ import { useEffect, useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { Link } from "react-router-dom";
 import { fetchPortfolioProjectionMetrics, patchPortfolioProjectionMetrics } from "../api/admin";
-import { fetchMe, patchProfileUiColorScheme } from "../api/user";
+import { patchProfileUiColorScheme } from "../api/user";
 import { useAuth } from "../contexts/AuthContext";
+import { useProfileQuery } from "../features/queries";
+import { formatQueryErrorMessage } from "../lib/queryErrors";
 import { UiColorSchemeSwitch } from "../components/ui/UiColorSchemeSwitch";
 import { AdminInvoiceAutomationPanel } from "../features/invoices/AdminInvoiceAutomationPanel";
 import { applyUiColorScheme, normalizeUiColorScheme, type UiColorScheme } from "../theme/uiColorScheme";
@@ -15,6 +17,7 @@ import { Section } from "../components/ui/Section";
 
 export function AdminPanelPage() {
   const { refreshProfile } = useAuth();
+  const profileQuery = useProfileQuery();
   const [role, setRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -30,24 +33,38 @@ export function AdminPanelPage() {
   useEffect(() => {
     let cancelled = false;
     void (async () => {
+      if (profileQuery.isLoading) return;
+      if (profileQuery.isError) {
+        if (!cancelled) {
+          setError(formatQueryErrorMessage(profileQuery.error, "Could not load profile."));
+          setLoading(false);
+        }
+        return;
+      }
+      const me = profileQuery.data;
+      if (!me) return;
+
       setLoading(true);
       setError("");
+      setRole(me.role ?? null);
+      setUiColorScheme(normalizeUiColorScheme(me.uiColorScheme));
+      if (me.role !== "ADMIN") {
+        if (!cancelled) setLoading(false);
+        return;
+      }
       try {
-        const me = await fetchMe();
-        if (cancelled) return;
-        setRole(me.role ?? null);
-        setUiColorScheme(normalizeUiColorScheme(me.uiColorScheme));
-        if (me.role !== "ADMIN") {
-          setLoading(false);
-          return;
-        }
         const res = await fetchPortfolioProjectionMetrics();
         if (cancelled) return;
         setDescription(res.description);
         setRentalGrowth(String(res.metrics.rentalIncomeGrowthPercentAnnual));
         setExpenseGrowth(String(res.metrics.totalExpensesGrowthPercentAnnual));
       } catch (e: unknown) {
-        if (!cancelled) setError((e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? "Could not load admin metrics.");
+        if (!cancelled) {
+          setError(
+            (e as { response?: { data?: { message?: string } } })?.response?.data?.message ??
+              "Could not load admin metrics."
+          );
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -55,7 +72,7 @@ export function AdminPanelPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [profileQuery.data, profileQuery.isLoading, profileQuery.isError, profileQuery.error]);
 
   const save = async () => {
     setSaving(true);

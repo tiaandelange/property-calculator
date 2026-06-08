@@ -108,7 +108,7 @@ export function OwnedPropertiesMyPropertiesPage() {
   }, [search]);
 
   const warmProperty = (propertyId: string) => {
-    prefetchPropertyFromList(propertyId, queryClient, workspaceId ?? null);
+    prefetchPropertyFromList(propertyId, queryClient, workspaceId ?? null, undefined, Boolean(workspaceId));
   };
   const propertyWarmProps = (propertyId: string) => listWarmHandlers(() => warmProperty(propertyId));
 

@@ -22,14 +22,17 @@ import * as equityMetricsSupabase from "../services/equityMetricsSupabase";
 import * as bondOperationsVercel from "../services/bondOperationsVercel";
 import { sendInvoiceEmailViaVercel } from "../services/invoicesEmailVercel";
 
-/** Normalizes errors from Axios or Supabase-thrown `Error` for UI copy. */
+import { formatQueryErrorMessage } from "../lib/queryErrors";
+
+/** Normalizes errors from API/query layers for UI copy (never signs the user out). */
 export function propertyApiErrorMessage(e: unknown): string {
   if (e && typeof e === "object" && "response" in e) {
     const msg = (e as { response?: { data?: { message?: string } } }).response?.data?.message;
-    if (typeof msg === "string" && msg.trim()) return msg;
+    if (typeof msg === "string" && msg.trim()) {
+      return formatQueryErrorMessage(new Error(msg));
+    }
   }
-  if (e instanceof Error && e.message.trim()) return e.message;
-  return "Request failed.";
+  return formatQueryErrorMessage(e);
 }
 
 export async function getProperties(params?: { month?: string }) {

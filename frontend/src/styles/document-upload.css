@@ -129,6 +129,13 @@
   color: var(--text-secondary);
 }
 
+.pg-doc-upload-slot__file-view {
+  flex-shrink: 0;
+  min-height: 24px;
+  padding: 0 8px;
+  font-size: 12px;
+}
+
 .pg-doc-upload-slot__file-remove {
   display: inline-flex;
   align-items: center;

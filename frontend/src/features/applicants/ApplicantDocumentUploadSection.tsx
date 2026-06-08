@@ -5,11 +5,13 @@ import {
 } from "../../components/documents/DocumentUploadPrimitives";
 import {
   APPLICANT_DOCUMENT_GROUPS,
+  appendPendingGroupFiles,
   applicantDocumentGroupComplete,
   applicantDocumentGroupCompleteFromPending,
   applicantDocumentGroupsCompleteCount,
   applicantDocumentGroupsCompleteCountFromPending,
   applicantDocumentSlotIdsForGroup,
+  emptyApplicantDocumentSlotsForGroup,
   type ApplicantDocumentSlotDef,
   type ApplicantDocumentSlotId,
   type ApplicantPendingDocuments
@@ -31,23 +33,6 @@ function docsBySlot(docs: TenantDocumentRecord[]): Map<ApplicantDocumentSlotId, 
     }
   }
   return map;
-}
-
-function assignPendingGroupFiles(
-  group: ApplicantDocumentSlotDef["group"],
-  files: FileList,
-  pendingBySlot: ApplicantPendingDocuments
-): ApplicantPendingDocuments {
-  const slots = applicantDocumentSlotIdsForGroup(group);
-  const selected = Array.from(files).slice(0, slots.length);
-  const next = { ...pendingBySlot };
-  for (const slot of slots) {
-    delete next[slot];
-  }
-  for (let i = 0; i < selected.length; i++) {
-    next[slots[i]] = selected[i];
-  }
-  return next;
 }
 
 function pendingFilesForGroup(
@@ -81,6 +66,12 @@ function removePendingSlot(
   const next = { ...pendingBySlot };
   delete next[slot];
   return next;
+}
+
+function multiGroupUploadLabel(uploadedCount: number, slotCount: number): string {
+  if (uploadedCount === 0) return "Choose files";
+  if (uploadedCount < slotCount) return "Add more";
+  return "Replace files";
 }
 
 export function ApplicantDocumentUploadSection({
@@ -162,16 +153,16 @@ export function ApplicantDocumentUploadSection({
   };
 
   const uploadMultiple = async (group: ApplicantDocumentSlotDef["group"], files: FileList) => {
-    const slots = applicantDocumentSlotIdsForGroup(group);
-    const selected = Array.from(files).slice(0, slots.length);
+    const emptySlots = emptyApplicantDocumentSlotsForGroup(group, bySlot.keys());
+    const selected = Array.from(files).slice(0, emptySlots.length);
     if (!selected.length) return;
 
     setBusyGroup(group);
     setError("");
     try {
       for (let i = 0; i < selected.length; i++) {
-        setBusySlot(slots[i]);
-        await uploadFileCore(slots[i], selected[i]);
+        setBusySlot(emptySlots[i]);
+        await uploadFileCore(emptySlots[i], selected[i]);
       }
       await refresh();
     } catch (e: unknown) {
@@ -205,6 +196,7 @@ export function ApplicantDocumentUploadSection({
       {APPLICANT_DOCUMENT_GROUPS.map((group) => {
         const groupBusy = busyGroup === group.id || (group.id === "identity" && busySlot === "ID");
         const isMulti = group.id === "payslips" || group.id === "bank";
+        const slotCount = applicantDocumentSlotIdsForGroup(group.id).length;
         const complete =
           mode === "draft"
             ? applicantDocumentGroupCompleteFromPending(group.id, pendingBySlot ?? {})
@@ -214,6 +206,7 @@ export function ApplicantDocumentUploadSection({
             ? pendingFilesForGroup(group.id, pendingBySlot ?? {})
             : uploadedFilesForGroup(group.id, bySlot);
         const uploadedCount = files.length;
+        const allSlotsFilled = uploadedCount >= slotCount;
         const inputId = `${baseId}-${group.id}`.replace(/:/g, "");
 
         return (
@@ -228,9 +221,18 @@ export function ApplicantDocumentUploadSection({
             uploadsEnabled={uploadsEnabled}
             inputId={inputId}
             multiple={isMulti}
-            uploadLabel={isMulti ? (uploadedCount > 0 ? "Replace files" : "Choose files") : undefined}
-            replaceLabel={isMulti ? "Replace files" : "Replace"}
+            uploadLabel={isMulti ? multiGroupUploadLabel(uploadedCount, slotCount) : undefined}
+            replaceLabel={isMulti ? undefined : "Replace"}
+            showUploadTrigger={!isMulti || !allSlotsFilled}
             disabledHint={mode === "draft" ? undefined : "Complete your application details first"}
+            onViewFile={
+              mode === "owner"
+                ? (slotId) => {
+                    const doc = bySlot.get(slotId as ApplicantDocumentSlotId);
+                    if (doc) void openDocument(doc);
+                  }
+                : undefined
+            }
             onRemoveFile={
               mode === "draft" && onPendingBySlotChange
                 ? (slotId) => onPendingBySlotChange(removePendingSlot(pendingBySlot ?? {}, slotId as ApplicantDocumentSlotId))
@@ -239,7 +241,7 @@ export function ApplicantDocumentUploadSection({
             onFiles={(fileList) => {
               if (mode === "draft") {
                 if (isMulti) {
-                  onPendingBySlotChange?.(assignPendingGroupFiles(group.id, fileList, pendingBySlot ?? {}));
+                  onPendingBySlotChange?.(appendPendingGroupFiles(group.id, fileList, pendingBySlot ?? {}));
                 } else {
                   const file = fileList[0];
                   if (file) onPendingBySlotChange?.({ ...(pendingBySlot ?? {}), ID: file });
@@ -252,11 +254,6 @@ export function ApplicantDocumentUploadSection({
                 if (file) void uploadFile("ID", file);
               }
             }}
-            onView={
-              mode === "owner" && group.id === "identity" && bySlot.get("ID")
-                ? () => void openDocument(bySlot.get("ID")!)
-                : undefined
-            }
           />
         );
       })}

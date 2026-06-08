@@ -1,4 +1,5 @@
-import { getSupabase } from "../lib/supabaseClient";
+import { readAuthSession } from "../lib/authSession";
+import { ApiRequestError } from "../lib/queryErrors";
 import { readVercelError } from "./vercelResponse";
 
 export type VercelReportType = "CALCULATION" | "PROPERTY_SUMMARY" | "INVESTMENT_REPORT";
@@ -23,11 +24,10 @@ export async function generateReportViaVercel(opts: {
   scenarioName?: string | null;
   payload?: Record<string, unknown>;
 }): Promise<GenerateReportResponse> {
-  const sb = getSupabase();
-  const { data: sessionData, error: sessionErr } = await sb.auth.getSession();
-  if (sessionErr) throw sessionErr;
-  const token = sessionData.session?.access_token;
-  if (!token) throw new Error("Not signed in.");
+  const { session, error: sessionErr } = await readAuthSession();
+  if (sessionErr) throw new ApiRequestError(sessionErr.message, { status: 401, code: sessionErr.name });
+  const token = session?.access_token;
+  if (!token) throw new ApiRequestError("Not signed in.", { status: 401 });
 
   const body: Record<string, unknown> = { reportType: opts.reportType };
   if (opts.calculationId) body.calculationId = opts.calculationId;
@@ -46,7 +46,7 @@ export async function generateReportViaVercel(opts: {
 
   if (!res.ok) {
     const msg = await readVercelError(res);
-    throw new Error(`${msg} (HTTP ${res.status})`);
+    throw new ApiRequestError(msg, { status: res.status });
   }
 
   const json = (await res.json().catch(() => ({}))) as GenerateReportResponse & { error?: string };

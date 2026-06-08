@@ -20,6 +20,7 @@ export function MobileWorkspaceMenu({ open, onClose }: Props) {
   const { signOut } = useAuth();
   const queryClient = useQueryClient();
   const workspaceId = useWorkspaceId();
+  const authReady = Boolean(workspaceId);
   const wordmarkVariant = useWorkspaceWordmarkVariant();
 
   useEffect(() => {
@@ -72,7 +73,7 @@ export function MobileWorkspaceMenu({ open, onClose }: Props) {
                   </li>
                 );
               }
-              const warm = navWarmHandlers(item.to, queryClient, workspaceId ?? null);
+              const warm = navWarmHandlers(item.to, queryClient, workspaceId ?? null, authReady);
               return (
                 <li key={item.id}>
                   <Link
