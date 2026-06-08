@@ -59,7 +59,8 @@ export function dbToLease(row: Record<string, unknown>): Record<string, unknown>
   normalizeLeaseTenantsEmbed(c);
   const disp = leaseDisplayStatus({
     status: String(c.status ?? ""),
-    fixedTermEndDate: (c.fixedTermEndDate as string | Date | null | undefined) ?? null
+    fixedTermEndDate: (c.fixedTermEndDate as string | Date | null | undefined) ?? null,
+    cancellationDate: (c.cancellationDate as string | Date | null | undefined) ?? null
   });
   return { ...c, displayStatus: disp };
 }

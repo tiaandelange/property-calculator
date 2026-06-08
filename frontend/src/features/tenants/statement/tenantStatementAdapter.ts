@@ -304,6 +304,8 @@ export function deriveTenantLeaseStatusFromData(
       propertyId: String(currentLease.propertyId ?? ""),
       startDate: currentLease.startDate != null ? String(currentLease.startDate) : null,
       fixedTermEndDate: currentLease.fixedTermEndDate != null ? String(currentLease.fixedTermEndDate) : null,
+      cancellationDate:
+        currentLease.cancellationDate != null ? String(currentLease.cancellationDate) : null,
       status: currentLease.status != null ? String(currentLease.status) : null
     },
     new Date()

@@ -12,6 +12,7 @@ export type StatementRowForMetrics = {
 export type LeaseForVacancyMetrics = {
   startDate?: string | null;
   fixedTermEndDate?: string | null;
+  cancellationDate?: string | null;
   monthlyRent?: number | null;
   status?: string | null;
 };
@@ -92,7 +93,8 @@ function leaseActiveDuringMonth(lease: LeaseForVacancyMetrics, monthKey: string)
 
   const display = leaseDisplayStatus({
     status: String(lease.status ?? ""),
-    fixedTermEndDate: lease.fixedTermEndDate ?? null
+    fixedTermEndDate: lease.fixedTermEndDate ?? null,
+    cancellationDate: lease.cancellationDate ?? null
   });
 
   if (!isCurrentLeaseStatus(display)) {

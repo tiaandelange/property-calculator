@@ -82,7 +82,12 @@ export function occupancyCodeToTenantStatus(code: PropertyOccupancyCode): string
 
 /** Count current (active / month-to-month) leases per property for list enrichment. */
 export function countCurrentLeasesByProperty(
-  leaseRows: { property_id?: unknown; status?: unknown; fixed_term_end_date?: unknown }[]
+  leaseRows: {
+    property_id?: unknown;
+    status?: unknown;
+    fixed_term_end_date?: unknown;
+    cancellation_date?: unknown;
+  }[]
 ): Map<string, number> {
   const out = new Map<string, number>();
   for (const row of leaseRows) {
@@ -90,7 +95,8 @@ export function countCurrentLeasesByProperty(
     if (!pid) continue;
     const display = leaseDisplayStatus({
       status: String(row.status ?? ""),
-      fixedTermEndDate: row.fixed_term_end_date as string | null | undefined
+      fixedTermEndDate: row.fixed_term_end_date as string | null | undefined,
+      cancellationDate: row.cancellation_date as string | null | undefined
     });
     if (!isCurrentLeaseStatus(display)) continue;
     out.set(pid, (out.get(pid) ?? 0) + 1);

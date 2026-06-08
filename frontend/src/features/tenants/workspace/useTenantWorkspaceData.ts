@@ -16,7 +16,11 @@ import { GC_TIME_MS, STALE_TIME_STATEMENT_MS } from "../../../lib/queryClient";
 import { queryKeys } from "../../../lib/queryKeys";
 import { useProfileQuery, useTenantQuery } from "../../queries/useWorkspaceQueries";
 import { useWorkspaceId } from "../../queries/useWorkspaceId";
-import { resolveTenantPropertyId, resolveTenantPropertyName } from "../tenantPropertyContext";
+import {
+  pickTenantContextLease,
+  resolveTenantPropertyId,
+  resolveTenantPropertyName
+} from "../tenantPropertyContext";
 
 export type TenantWorkspaceContext = {
   tenantId: string;
@@ -38,30 +42,31 @@ function tenantContextFromQueries(
   profile: { name?: string | null; email?: string; invoicePaymentDetails?: unknown } | undefined
 ): TenantWorkspaceContext | null {
   const { tenant, currentLease } = tenantPayload;
-  const propertyId = resolveTenantPropertyId(tenant, currentLease);
+  const contextLease = pickTenantContextLease(tenant, currentLease);
+  const propertyId = resolveTenantPropertyId(tenant, contextLease);
   if (!propertyId) return null;
 
   const property = (tenant.property ?? null) as Record<string, unknown> | null;
   const leases = (tenant.leases ?? []) as Record<string, unknown>[];
   const tenantLeaseIds = leases.map((l) => String(l.id)).filter(Boolean);
-  if (currentLease?.id) {
-    const lid = String(currentLease.id);
+  if (contextLease?.id) {
+    const lid = String(contextLease.id);
     if (!tenantLeaseIds.includes(lid)) tenantLeaseIds.push(lid);
   }
 
-  const propertyName = resolveTenantPropertyName(tenant, currentLease);
+  const propertyName = resolveTenantPropertyName(tenant, contextLease);
   const unitRaw = property?.unitLabel ?? property?.unitNumber ?? property?.unit;
   const unitLabel = unitRaw ? `${String(unitRaw)}, ${propertyName}` : propertyName;
 
   const rentDueDay =
-    currentLease?.rentDueDay != null && Number.isFinite(Number(currentLease.rentDueDay))
-      ? Number(currentLease.rentDueDay)
+    contextLease?.rentDueDay != null && Number.isFinite(Number(contextLease.rentDueDay))
+      ? Number(contextLease.rentDueDay)
       : null;
 
   return {
     tenantId,
     tenant,
-    currentLease,
+    currentLease: contextLease,
     propertyId,
     propertyName,
     unitLabel,

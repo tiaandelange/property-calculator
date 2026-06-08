@@ -109,7 +109,8 @@ export function buildFinancialSummaryFromLedger(
     ["ACTIVE", "MONTH_TO_MONTH"].includes(
       leaseDisplayStatus({
         status: String(l.status ?? ""),
-        fixedTermEndDate: (l.fixedTermEndDate as string | Date | null | undefined) ?? null
+        fixedTermEndDate: (l.fixedTermEndDate as string | Date | null | undefined) ?? null,
+        cancellationDate: (l.cancellationDate as string | Date | null | undefined) ?? null
       })
     )
   );

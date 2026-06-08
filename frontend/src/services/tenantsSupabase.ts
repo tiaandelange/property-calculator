@@ -10,7 +10,8 @@ import type {
 } from "../features/tenants/tenantDirectoryTypes";
 import { PAGE_SIZE, sanitizeTenantContactFields } from "../features/tenants/tenantDirectoryUtils";
 import type { TenantsDirectoryParams } from "../lib/queryKeys";
-import { leaseDisplayStatus } from "../utils/leaseDisplay";
+import { isCurrentLeaseStatus, isLeaseCurrentlyActive, leaseDisplayStatus } from "../utils/leaseDisplay";
+import { pickTenantContextLease } from "../features/tenants/tenantPropertyContext";
 import { listTenantDocumentsOwner } from "./tenantDocumentsSupabase";
 
 const ACTIVE_LEASE = ["ACTIVE", "MONTH_TO_MONTH"] as const;
@@ -32,11 +33,6 @@ async function requireUserId(): Promise<string> {
   }
 }
 
-function isCurrentLeaseStatus(status: unknown): boolean {
-  const s = String(status ?? "").toUpperCase();
-  return s === "ACTIVE" || s === "MONTH_TO_MONTH";
-}
-
 const TENANT_LEASE_SELECT = `
   id,
   user_id,
@@ -46,6 +42,7 @@ const TENANT_LEASE_SELECT = `
   status,
   start_date,
   fixed_term_end_date,
+  cancellation_date,
   monthly_rent,
   rent_due_day,
   lease_type,
@@ -68,9 +65,16 @@ function leaseRowToSummary(row: Record<string, unknown>): Record<string, unknown
     if (p && typeof p === "object") property = snakeRowToCamel(p as Record<string, unknown>);
   }
   const propertyId = l.propertyId ?? property?.id ?? null;
+  const cancellationDate = l.cancellationDate ?? row.cancellation_date ?? null;
+  const displayStatus = leaseDisplayStatus({
+    status: st,
+    fixedTermEndDate: (l.fixedTermEndDate as string | null | undefined) ?? null,
+    cancellationDate: cancellationDate as string | null
+  });
   return {
     ...l,
-    displayStatus: st,
+    cancellationDate,
+    displayStatus,
     property,
     propertyId: propertyId != null ? String(propertyId) : null
   };
@@ -259,7 +263,8 @@ export async function listTenantsForProperty(propertyId: string | number): Promi
     const leaseCamel = snakeRowToCamel(lease) as Record<string, unknown>;
     const disp = leaseDisplayStatus({
       status: String(leaseCamel.status ?? ""),
-      fixedTermEndDate: (leaseCamel.fixedTermEndDate as string | null | undefined) ?? null
+      fixedTermEndDate: (leaseCamel.fixedTermEndDate as string | null | undefined) ?? null,
+      cancellationDate: (leaseCamel.cancellationDate as string | null | undefined) ?? null
     });
     const leaseSummary = { ...leaseCamel, displayStatus: disp };
 
@@ -285,10 +290,19 @@ export async function listTenantsForProperty(propertyId: string | number): Promi
 
   return [...byId.values()].map((row) => {
     const leases = leasesByTenant.get(String(row.id)) ?? [];
-    const current = leases.find((lr) => isCurrentLeaseStatus(String((lr as { status: string }).status))) ?? null;
+    const leaseSummaries = leases.map((lr) => leaseRowToSummary(lr));
+    const current =
+      leaseSummaries.find((lr) =>
+        isLeaseCurrentlyActive({
+          status: String(lr.status ?? ""),
+          fixedTermEndDate: (lr.fixedTermEndDate as string | null | undefined) ?? null,
+          cancellationDate: (lr.cancellationDate as string | null | undefined) ?? null
+        })
+      ) ?? null;
+    const contextLease = pickTenantContextLease({ ...row, leases: leaseSummaries }, current);
     return {
       ...row,
-      currentLease: current ? leaseRowToSummary(current) : null
+      currentLease: contextLease
     };
   });
 }
@@ -323,9 +337,12 @@ export async function listTenantsEligibleForProperty(
     const leaseRaw = r.leases;
     const lease = Array.isArray(leaseRaw) ? leaseRaw[0] : leaseRaw;
     if (!lease) continue;
-    const st = String(lease.status ?? "").toUpperCase();
-    if (st !== "ACTIVE" && st !== "MONTH_TO_MONTH") continue;
-    if (lease.cancellation_date != null) continue;
+    const display = leaseDisplayStatus({
+      status: String(lease.status ?? ""),
+      fixedTermEndDate: lease.fixed_term_end_date != null ? String(lease.fixed_term_end_date) : null,
+      cancellationDate: lease.cancellation_date != null ? String(lease.cancellation_date) : null
+    });
+    if (!isCurrentLeaseStatus(display)) continue;
     tenantsWithActiveLease.add(String(r.tenant_id));
   }
 
@@ -359,16 +376,25 @@ export async function getTenant(
   const leasesCamel = leaseRows.map((lr) => leaseRowToSummary(lr));
 
   const current =
-    leaseRows.find((lr) => isCurrentLeaseStatus((lr as { status: string }).status)) ?? null;
+    leaseRows.find((lr) => {
+      const c = snakeRowToCamel(lr) as Record<string, unknown>;
+      return isLeaseCurrentlyActive({
+        status: String(c.status ?? ""),
+        fixedTermEndDate: (c.fixedTermEndDate as string | null | undefined) ?? null,
+        cancellationDate: (c.cancellationDate ?? lr.cancellation_date) as string | null
+      });
+    }) ?? null;
 
   const tenant = sanitizeTenantContactFields({
     ...dbToTenant(row as Record<string, unknown>),
     leases: leasesCamel
   });
 
+  const contextLease = pickTenantContextLease(tenant, current ? leaseRowToSummary(current) : null);
+
   return {
     tenant,
-    currentLease: current ? leaseRowToSummary(current as Record<string, unknown>) : null
+    currentLease: contextLease
   };
 }
 

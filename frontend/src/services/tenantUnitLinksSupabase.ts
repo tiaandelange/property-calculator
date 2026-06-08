@@ -53,7 +53,8 @@ function rowToLink(row: Record<string, unknown>): TenantUnitLinkRecord {
       status: String(l.status ?? ""),
       displayStatus: leaseDisplayStatus({
         status: String(l.status ?? ""),
-        fixedTermEndDate: l.fixedTermEndDate as string | null | undefined
+        fixedTermEndDate: l.fixedTermEndDate as string | null | undefined,
+        cancellationDate: l.cancellationDate as string | null | undefined
       }),
       monthlyRent: l.monthlyRent != null ? Number(l.monthlyRent) : undefined
     };

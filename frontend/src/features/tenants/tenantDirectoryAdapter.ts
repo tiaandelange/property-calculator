@@ -23,6 +23,7 @@ type LeaseRow = {
   propertyId: string;
   startDate?: string | null;
   fixedTermEndDate?: string | null;
+  cancellationDate?: string | null;
   monthlyRent?: number | null;
   status?: string | null;
   property?: Record<string, unknown> | null;
@@ -42,7 +43,8 @@ export function deriveLeaseStatus(lease: LeaseRow | null, today = new Date()): T
   if (!lease) return "inactive";
   const display = leaseDisplayStatus({
     status: String(lease.status ?? ""),
-    fixedTermEndDate: lease.fixedTermEndDate
+    fixedTermEndDate: lease.fixedTermEndDate,
+    cancellationDate: lease.cancellationDate
   });
   if (!isCurrentLeaseStatus(display)) {
     if (["EXPIRED", "TERMINATED", "CANCELLED"].includes(display)) return "expired";
@@ -64,7 +66,11 @@ function pickCurrentLease(leases: LeaseRow[]): LeaseRow | null {
   return (
     sorted.find((l) =>
       isCurrentLeaseStatus(
-        leaseDisplayStatus({ status: String(l.status ?? ""), fixedTermEndDate: l.fixedTermEndDate })
+        leaseDisplayStatus({
+          status: String(l.status ?? ""),
+          fixedTermEndDate: l.fixedTermEndDate,
+          cancellationDate: l.cancellationDate
+        })
       )
     ) ?? sorted[0] ?? null
   );
@@ -167,7 +173,8 @@ export function buildTenantDirectory(
     const display = currentLease
       ? leaseDisplayStatus({
           status: String(currentLease.status ?? ""),
-          fixedTermEndDate: currentLease.fixedTermEndDate
+          fixedTermEndDate: currentLease.fixedTermEndDate,
+          cancellationDate: currentLease.cancellationDate
         })
       : null;
 
