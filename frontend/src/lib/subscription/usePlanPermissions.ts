@@ -33,8 +33,10 @@ export type PlanPermissions = PlanPermissionsSnapshot & {
 };
 
 export function usePlanPermissions(): PlanPermissions {
-  const { profile } = useAuth();
+  const { profile, session, initialized, authLoading } = useAuth();
   const { data, isLoading, isError } = useSubscriptionQuery();
+  const authReady = initialized && !authLoading;
+  const isAuthenticated = Boolean(session?.user?.id);
 
   const snapshot = useMemo(
     () =>
@@ -43,9 +45,18 @@ export function usePlanPermissions(): PlanPermissions {
         subscription: data?.subscription ?? null,
         usage: data?.usage ?? null,
         freeUsesRemaining: profile?.free_uses_remaining,
-        role: profile?.role
+        role: profile?.role,
+        isAuthenticated: authReady ? isAuthenticated : undefined
       }),
-    [data?.plans, data?.subscription, data?.usage, profile?.free_uses_remaining, profile?.role]
+    [
+      data?.plans,
+      data?.subscription,
+      data?.usage,
+      profile?.free_uses_remaining,
+      profile?.role,
+      authReady,
+      isAuthenticated
+    ]
   );
 
   const canUseFeature = useCallback(
@@ -92,7 +103,7 @@ export function usePlanPermissions(): PlanPermissions {
 
   return {
     ...snapshot,
-    isLoading,
+    isLoading: !authReady || isLoading,
     isError,
     canUseFeature,
     hasReachedLimit,

@@ -96,6 +96,52 @@ function emptyEntitlementMeta() {
   };
 }
 
+/** Public /calculators/* tools — free while signed out; gated by plan after sign-in. */
+const PUBLIC_CALCULATOR_FEATURE_KEYS: FeatureKey[] = [
+  "basicCalculators",
+  "irr",
+  "graphs",
+  "forecasting"
+];
+
+function publicGuestCalculatorFeatures(): PlanFeatures {
+  const features = emptyFeatures();
+  for (const key of PUBLIC_CALCULATOR_FEATURE_KEYS) {
+    features[key] = true;
+  }
+  return features;
+}
+
+function publicGuestPermissionsSnapshot(
+  usage: SubscriptionUsageCounts | null
+): PlanPermissionsSnapshot {
+  const usageSnapshot = {
+    propertyCount: usage?.propertyCount ?? 0,
+    investmentReportCount: usage?.investmentReportCount ?? 0,
+    applicationLinksActive: 0,
+    unitCount: 0
+  };
+
+  return {
+    planCode: null,
+    planName: null,
+    isAdmin: false,
+    isStarter: false,
+    isInvestor: false,
+    isPortfolio: false,
+    isPro: false,
+    limits: emptyLimits(),
+    features: publicGuestCalculatorFeatures(),
+    limitsActive: false,
+    isLegacyProfile: false,
+    isPublicGuest: true,
+    ...emptyEntitlementMeta(),
+    reportPeriodLabel: usage?.period.label ?? "This period",
+    usage: usageSnapshot,
+    currentPlan: null
+  };
+}
+
 function featuresFromPlan(plan: SubscriptionPlanRecord | null): PlanFeatures {
   if (!plan) return emptyFeatures();
   return {
@@ -163,11 +209,16 @@ export function computePlanPermissions(input: PlanPermissionsInput): PlanPermiss
       features: unlimitedFeatures(),
       limitsActive: false,
       isLegacyProfile: false,
+      isPublicGuest: false,
       ...emptyEntitlementMeta(),
       reportPeriodLabel: usage.period.label,
       usage: usageSnapshot,
       currentPlan: null
     };
+  }
+
+  if (input.isAuthenticated === false) {
+    return publicGuestPermissionsSnapshot(input.usage);
   }
 
   if (!input.subscription || !hasSubscriptionRow(input.subscription.status)) {
@@ -197,6 +248,7 @@ export function computePlanPermissions(input: PlanPermissionsInput): PlanPermiss
       features: legacyFeatures,
       limitsActive: legacyReportCap != null,
       isLegacyProfile: true,
+      isPublicGuest: false,
       ...emptyEntitlementMeta(),
       reportPeriodLabel:
         legacyReportCap != null ? "Free calculator reports remaining" : usage.period.label,
@@ -226,6 +278,7 @@ export function computePlanPermissions(input: PlanPermissionsInput): PlanPermiss
       features: featuresFromPlan(starterPlan),
       limitsActive: true,
       isLegacyProfile: false,
+      isPublicGuest: false,
       isPendingPayment: true,
       selectedPlanCode,
       selectedPlanName: selectedPlan?.name ?? input.subscription.planCode,
@@ -252,6 +305,7 @@ export function computePlanPermissions(input: PlanPermissionsInput): PlanPermiss
     features: featuresFromPlan(plan),
     limitsActive: true,
     isLegacyProfile: false,
+    isPublicGuest: false,
     isPendingPayment: false,
     selectedPlanCode: planCode,
     selectedPlanName: plan?.name ?? input.subscription.planCode,

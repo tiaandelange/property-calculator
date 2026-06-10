@@ -31,14 +31,19 @@ async function loadSubscriptionData(): Promise<SubscriptionQueryData> {
 /** Derive effective entitlements from subscription query data (Starter access when pending_payment). */
 export function computeSubscriptionEntitlements(
   data: SubscriptionQueryData | undefined,
-  opts?: { freeUsesRemaining?: number | null; role?: string | null }
+  opts?: {
+    freeUsesRemaining?: number | null;
+    role?: string | null;
+    isAuthenticated?: boolean;
+  }
 ): PlanPermissionsSnapshot {
   return computePlanPermissions({
     plans: data?.plans ?? FALLBACK_SUBSCRIPTION_PLANS,
     subscription: data?.subscription ?? null,
     usage: data?.usage ?? null,
     freeUsesRemaining: opts?.freeUsesRemaining,
-    role: opts?.role
+    role: opts?.role,
+    isAuthenticated: opts?.isAuthenticated
   });
 }
 

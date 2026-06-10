@@ -23,12 +23,12 @@ describe("homepageMarketingContent", () => {
   it("provides shorter mobile hero copy variants", () => {
     expect(homepageHero.eyebrowMobile).toBe("FOR OWNER-MANAGERS");
     expect(homepageHero.eyebrow).toBe("FOR OWNER-MANAGERS");
-    expect(homepageHero.headlineMobile).toContain("Stop spreadsheet chaos");
+    expect(homepageHero.headlineMobile).toContain("Track Your Property Portfolio");
     expect(homepageHero.headlineMobile).not.toContain("actually");
     expect(homepageHero.headline).not.toContain("actually");
     expect(homepageHero.headlineDesktopLines).toEqual([
-      "Stop spreadsheet chaos.",
-      "See which properties are winning."
+      "Track Your Property Portfolio",
+      "Net Worth, Cash Flow and Investment Returns"
     ]);
     expect(homepageHero.featureChips).toEqual([
       "Portfolio analytics",

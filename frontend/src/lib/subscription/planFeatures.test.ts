@@ -30,6 +30,23 @@ describe("computePlanPermissions", () => {
     expect(canUseFeatureFromSnapshot(snapshot, "irr")).toBe(true);
   });
 
+  it("signed-out visitors get full public calculator features without plan gates", () => {
+    const snapshot = computePlanPermissions({
+      plans: FALLBACK_SUBSCRIPTION_PLANS,
+      subscription: null,
+      usage: null,
+      isAuthenticated: false
+    });
+
+    expect(snapshot.isPublicGuest).toBe(true);
+    expect(snapshot.limitsActive).toBe(false);
+    expect(canUseFeatureFromSnapshot(snapshot, "irr")).toBe(true);
+    expect(canUseFeatureFromSnapshot(snapshot, "graphs")).toBe(true);
+    expect(canUseFeatureFromSnapshot(snapshot, "forecasting")).toBe(true);
+    expect(canUseFeatureFromSnapshot(snapshot, "portfolioDashboard")).toBe(false);
+    expect(canUseFeatureFromSnapshot(snapshot, "applicationLinks")).toBe(false);
+  });
+
   it("starter plan exposes starter limits and basic features only", () => {
     const snapshot = computePlanPermissions({
       plans: FALLBACK_SUBSCRIPTION_PLANS,
@@ -50,7 +67,8 @@ describe("computePlanPermissions", () => {
         investmentReportCount: 1,
         applicationLinksActive: 0,
         period: { label: "Month", start: new Date(), end: new Date() }
-      }
+      },
+      isAuthenticated: true
     });
 
     expect(snapshot.isStarter).toBe(true);

@@ -44,6 +44,8 @@ export type PlanPermissionsInput = {
   usage: SubscriptionUsageCounts | null;
   freeUsesRemaining?: number | null;
   role?: string | null;
+  /** When false, public marketing calculators are fully usable (IRR, charts, projections). */
+  isAuthenticated?: boolean;
 };
 
 export const FEATURE_KEYS = [
@@ -83,6 +85,8 @@ export type PlanPermissionsSnapshot = {
   features: PlanFeatures;
   limitsActive: boolean;
   isLegacyProfile: boolean;
+  /** Signed-out visitor on public calculator/marketing surfaces — no plan gates. */
+  isPublicGuest: boolean;
   /** Paid plan chosen at signup; entitlements stay on Starter until payment confirms. */
   isPendingPayment: boolean;
   selectedPlanCode: PlanCode | null;
