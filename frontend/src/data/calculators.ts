@@ -308,7 +308,14 @@ export const calculators: CalculatorDef[] = [
           { key: "otherMonthlyIncome", label: "Other monthly income (R)", type: "money" },
           { key: "vacancyRatePercent", label: "Vacancy rate (%)", type: "percent" },
           { key: "monthlyOperatingExpenses", label: "Monthly operating expenses (R)", type: "money" },
-          { key: "monthlyDebtService", label: "Monthly debt service (R)", type: "money" }
+          { key: "monthlyDebtService", label: "Monthly debt service (R)", type: "money" },
+          { key: "holdPeriodYears", label: "Hold period (years)", type: "number", required: true },
+          {
+            key: "cashFlowGrowthPercentAnnual",
+            label: "Annual growth on net cash flow (%)",
+            type: "percent",
+            help: "Optional rent/expense growth applied to projected annual cash flow each year."
+          }
         ]
       }
     ]

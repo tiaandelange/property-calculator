@@ -48,11 +48,20 @@ describe("universalDemoProperty", () => {
   });
 
   it("cash-on-cash-return exposes dual-axis cash flow chart and cash invested pie", () => {
-    const result = calculate("cash-on-cash-return", buildUniversalCalculatorDefaults("cash-on-cash-return"));
+    const defaults = buildUniversalCalculatorDefaults("cash-on-cash-return");
+    const result = calculate("cash-on-cash-return", defaults);
     expect(result.chartData?.[0]?.chartType).toBe("combo");
     expect(result.chartData?.[0]?.data?.datasets).toHaveLength(2);
+    expect(result.chartData?.[0]?.data?.labels).toHaveLength(defaults.holdPeriodYears);
     expect(result.chartData?.[1]?.chartType).toBe("doughnut");
     expect((result.chartData?.[1]?.data?.labels ?? []).length).toBeGreaterThan(0);
+    const cocByYear = (result.breakdown as { cocByYear?: Array<{ year: number; cocPercent: number }> })?.cocByYear;
+    expect(cocByYear).toHaveLength(defaults.holdPeriodYears);
+    expect(cocByYear?.[0]?.cocPercent).toBeGreaterThan(0);
+    if (defaults.holdPeriodYears > 1 && (defaults.cashFlowGrowthPercentAnnual ?? 0) > 0) {
+      const last = cocByYear?.[cocByYear.length - 1]?.cocPercent ?? 0;
+      expect(last).toBeGreaterThan(cocByYear?.[0]?.cocPercent ?? 0);
+    }
   });
 
   it("provides defaults for every public calculator slug", () => {

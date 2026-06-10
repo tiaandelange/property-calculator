@@ -228,7 +228,9 @@ export function buildUniversalCalculatorDefaults(slug: string): Record<string, u
         otherMonthlyIncome: p.otherMonthlyIncome,
         vacancyRatePercent: p.vacancyRatePercent,
         monthlyOperatingExpenses: round2(d.monthlyOperatingExpenses),
-        monthlyDebtService: round2(d.monthlyBondPayment)
+        monthlyDebtService: round2(d.monthlyBondPayment),
+        holdPeriodYears: p.holdPeriodYears,
+        cashFlowGrowthPercentAnnual: 2
       };
     case "noi":
       return {

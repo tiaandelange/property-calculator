@@ -246,17 +246,27 @@ export function applyProplyticChartTheme(chart: ChartLike, slug: string, graphTi
           borderWidth: 0
         }))
       },
-      options: mergeChartScales({
-        ...chart.options,
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
         plugins: {
-          ...((chart.options?.plugins as object) ?? {}),
           legend: {
-            position: "bottom",
-            align: "center",
-            labels: { color: TICK_COLOR, boxWidth: 12, usePointStyle: true, padding: 12 }
+            position: "right",
+            align: "start",
+            labels: { color: TICK_COLOR, boxWidth: 12, usePointStyle: true, padding: 10 }
+          },
+          tooltip: {
+            callbacks: {
+              label: (ctx: { label?: string; parsed?: number; dataset?: { data?: number[] } }) => {
+                const value = typeof ctx.parsed === "number" ? ctx.parsed : 0;
+                const total = (ctx.dataset?.data ?? []).reduce((sum, n) => sum + (Number(n) || 0), 0);
+                const pct = total > 0 ? ((value / total) * 100).toFixed(1) : "0";
+                return `${ctx.label ?? ""}: R ${value.toLocaleString("en-ZA")} (${pct}%)`;
+              }
+            }
           }
         }
-      })
+      }
     };
   }
 

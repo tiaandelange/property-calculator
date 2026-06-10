@@ -1085,8 +1085,13 @@ export function CalculatorPage() {
                             ? Doughnut
                             : Bar;
                       const showInlineTitle = chartsToRender.length > 1;
+                      const isCocPie =
+                        calc.slug === "cash-on-cash-return" && themed.chartType === "doughnut";
                       return (
-                        <div key={`${displayTitle}-${idx}`} className="pg-calc-tool-chart-item">
+                        <div
+                          key={`${displayTitle}-${idx}`}
+                          className={`pg-calc-tool-chart-item${isCocPie ? " pg-calc-tool-chart-item--doughnut" : ""}`}
+                        >
                           {showInlineTitle ? (
                             <h4 className="pg-calc-tool-chart-item__title">{displayTitle}</h4>
                           ) : null}

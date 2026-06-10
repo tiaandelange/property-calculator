@@ -430,11 +430,27 @@ function calcCashFlow(input: z.infer<typeof cashFlowSchema>): CalculatorResult {
   };
 }
 
-const COC_PROJECTION_YEARS = 5;
+function computeCocByYear(params: {
+  holdPeriodYears: number;
+  annualPreTaxCashFlow: number;
+  totalCashInvested: number;
+  cashFlowGrowthPercentAnnual: number;
+}) {
+  const H = params.holdPeriodYears;
+  const labels = Array.from({ length: H }, (_, i) => `Y${i + 1}`);
+  const g = params.cashFlowGrowthPercentAnnual / 100;
+  const annualFlows = labels.map((_, i) => round2(params.annualPreTaxCashFlow * (1 + g) ** i));
+  const cocPercents = annualFlows.map((cf) =>
+    params.totalCashInvested > 0 ? round2((cf / params.totalCashInvested) * 100) : 0
+  );
+  return { labels, annualFlows, cocPercents };
+}
 
 function cashOnCashChartData(params: {
+  holdPeriodYears: number;
   annualPreTaxCashFlow: number;
-  cashOnCashReturnPercent: number;
+  totalCashInvested: number;
+  cashFlowGrowthPercentAnnual: number;
   components: {
     depositAmount: number;
     transferAndBondCosts: number;
@@ -443,9 +459,12 @@ function cashOnCashChartData(params: {
     otherAcquisitionCosts: number;
   };
 }) {
-  const labels = Array.from({ length: COC_PROJECTION_YEARS }, (_, i) => `Y${i + 1}`);
-  const annualFlows = labels.map(() => round2(params.annualPreTaxCashFlow));
-  const cocByYear = labels.map(() => round2(params.cashOnCashReturnPercent));
+  const { labels, annualFlows, cocPercents: cocByYear } = computeCocByYear({
+    holdPeriodYears: params.holdPeriodYears,
+    annualPreTaxCashFlow: params.annualPreTaxCashFlow,
+    totalCashInvested: params.totalCashInvested,
+    cashFlowGrowthPercentAnnual: params.cashFlowGrowthPercentAnnual
+  });
 
   const componentEntries = [
     { label: "Deposit", value: params.components.depositAmount },
@@ -534,7 +553,9 @@ const cocSchema = scenarioSchema.extend({
   otherMonthlyIncome: money.nonnegative().optional(),
   vacancyRatePercent: percent.min(0).max(100).optional(),
   monthlyOperatingExpenses: money.nonnegative().optional(),
-  monthlyDebtService: money.nonnegative().optional()
+  monthlyDebtService: money.nonnegative().optional(),
+  holdPeriodYears: z.number().int().min(1).max(50),
+  cashFlowGrowthPercentAnnual: percent.optional().default(0)
 });
 
 function calcCashOnCash(input: z.infer<typeof cocSchema>): CalculatorResult {
@@ -575,7 +596,16 @@ function calcCashOnCash(input: z.infer<typeof cocSchema>): CalculatorResult {
     monthlyCashFlow = annualPreTaxCashFlow / 12;
   }
 
-  const cashOnCashReturnPercent = totalCashInvested > 0 ? (annualPreTaxCashFlow / totalCashInvested) * 100 : 0;
+  const H = input.holdPeriodYears;
+  const growthPct = input.cashFlowGrowthPercentAnnual ?? 0;
+  const { annualFlows, cocPercents } = computeCocByYear({
+    holdPeriodYears: H,
+    annualPreTaxCashFlow,
+    totalCashInvested,
+    cashFlowGrowthPercentAnnual: growthPct
+  });
+  const cashOnCashReturnPercent = cocPercents[0] ?? 0;
+  const finalYearCocPercent = cocPercents[H - 1] ?? cashOnCashReturnPercent;
   const paybackPeriodYears = annualPreTaxCashFlow > 0 ? totalCashInvested / annualPreTaxCashFlow : null;
 
   let classification: CalculatorResult["interpretation"]["classification"] = "acceptable";
@@ -585,14 +615,23 @@ function calcCashOnCash(input: z.infer<typeof cocSchema>): CalculatorResult {
   else if (cashOnCashReturnPercent < 12) classification = "strong";
   else classification = "very-strong";
 
+  const growthNote =
+    growthPct !== 0
+      ? ` Net cash flow grows at ${formatPercent(growthPct)} per year, so year-${H} cash-on-cash is ${formatPercent(finalYearCocPercent)}.`
+      : H > 1
+        ? ` Year-${H} cash-on-cash remains ${formatPercent(finalYearCocPercent)} with flat cash flow.`
+        : "";
+
   const interpretationText =
     `You invested ${formatCurrency(totalCashInvested)} in cash. With annual pre-tax cash flow of ${formatCurrency(annualPreTaxCashFlow)}, ` +
-    `cash-on-cash return is ${formatPercent(cashOnCashReturnPercent)}.` +
+    `year-1 cash-on-cash return is ${formatPercent(cashOnCashReturnPercent)} over a ${H}-year hold.${growthNote}` +
     (paybackPeriodYears ? ` Payback period is ~${round2(paybackPeriodYears)} years (ignores resale value).` : "");
 
   const chartData = cashOnCashChartData({
+    holdPeriodYears: H,
     annualPreTaxCashFlow,
-    cashOnCashReturnPercent,
+    totalCashInvested,
+    cashFlowGrowthPercentAnnual: growthPct,
     components: {
       depositAmount: input.depositAmount,
       transferAndBondCosts: input.transferAndBondCosts,
@@ -614,6 +653,13 @@ function calcCashOnCash(input: z.infer<typeof cocSchema>): CalculatorResult {
       totalCashInvested,
       annualPreTaxCashFlow,
       cashOnCashReturnPercent,
+      finalYearCocPercent,
+      holdPeriodYears: H,
+      cocByYear: annualFlows.map((annualCashFlow, i) => ({
+        year: i + 1,
+        annualCashFlow,
+        cocPercent: cocPercents[i] ?? 0
+      })),
       paybackPeriodYears,
       monthlyCashFlow,
       cashInvestedComponents: {
@@ -627,7 +673,11 @@ function calcCashOnCash(input: z.infer<typeof cocSchema>): CalculatorResult {
     },
     interpretation: { text: interpretationText, classification, warnings },
     chartData,
-    assumptionsUsed: { paybackIgnoresResale: true }
+    assumptionsUsed: {
+      paybackIgnoresResale: true,
+      holdPeriodYears: H,
+      cashFlowGrowthPercentAnnual: growthPct
+    }
   };
 }
 

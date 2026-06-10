@@ -70,7 +70,8 @@ const FIELD_LAYOUT: Partial<Record<string, { core: string[]; advanced: string[] 
       "monthlyRent",
       "vacancyRatePercent",
       "monthlyOperatingExpenses",
-      "monthlyDebtService"
+      "monthlyDebtService",
+      "holdPeriodYears"
     ],
     advanced: [
       "initialRepairs",
@@ -78,6 +79,7 @@ const FIELD_LAYOUT: Partial<Record<string, { core: string[]; advanced: string[] 
       "otherAcquisitionCosts",
       "annualCashFlow",
       "otherMonthlyIncome",
+      "cashFlowGrowthPercentAnnual",
       "scenarioName"
     ]
   },
