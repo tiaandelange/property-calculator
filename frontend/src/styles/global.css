@@ -928,7 +928,7 @@ textarea {
 
 .pg-buy-vs-rent-table-better {
   font-weight: 600;
-  color: var(--accent-primary, #c99a5b);
+  color: #7c3aed;
 }
 
 .pg-buy-vs-rent-table--compact td,
@@ -7401,6 +7401,46 @@ html[data-theme="light"] .pg-statement-table th {
   border-radius: 0;
 }
 
+.pg-calc-tool-breakdown-list__title {
+  margin: 0 0 12px;
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #0f172a;
+}
+
+.pg-calc-tool-breakdown-list__rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.pg-calc-tool-breakdown-list__row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+  font-size: 14px;
+}
+
+.pg-calc-tool-breakdown-list__row[data-variant="subtotal"] {
+  font-weight: 800;
+  padding-top: 14px;
+  border-top: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.pg-calc-tool-breakdown-list__row[data-variant="detail"] .pg-calc-tool-breakdown-list__label {
+  padding-left: 4px;
+  color: #475569;
+}
+
+.pg-calc-tool-breakdown-list__value {
+  font-weight: 700;
+  white-space: nowrap;
+  color: #0f172a;
+}
+
 .pg-calc-tool-panel__title {
   margin: 0 0 16px;
   font-size: 1rem;
@@ -8482,37 +8522,6 @@ html[data-theme="light"] .pg-statement-table th {
     max-width: 100% !important;
   }
 
-  .pg-calc-tool-table--desktop {
-    display: none !important;
-  }
-
-  .pg-calc-tool-table--mobile {
-    display: block;
-  }
-
-  .pg-calc-tool-breakdown-list__row {
-    display: flex;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 12px 0;
-    border-bottom: 1px solid var(--home-light-card-border);
-    font-size: 14px;
-  }
-
-  .pg-calc-tool-breakdown-list__row[data-variant="subtotal"] {
-    font-weight: 800;
-    padding-top: 14px;
-  }
-
-  .pg-calc-tool-breakdown-list__row[data-variant="detail"] .pg-calc-tool-breakdown-list__label {
-    padding-left: 8px;
-  }
-
-  .pg-calc-tool-breakdown-list__value {
-    font-weight: 700;
-    white-space: nowrap;
-  }
-
   .pg-calc-tool-amort-table__head {
     display: flex;
     flex-direction: column;
@@ -8637,10 +8646,6 @@ html[data-theme="light"] .pg-statement-table th {
 }
 
 @media (min-width: 769px) {
-  .pg-calc-tool-table--mobile {
-    display: none !important;
-  }
-
   .pg-calc-tool-sticky-bar {
     display: none;
   }

@@ -180,18 +180,7 @@ function calcTransferBondCosts(input: z.infer<typeof transferBondSchema>): Calcu
       title: "Cost breakdown",
       data: {
         labels: chartLabels,
-        datasets: [
-          {
-            label: "ZAR",
-            data: chartValues,
-            backgroundColor: ["#c99a5b", "#1f8de0", "#4d7c0f", "#2b2b2b", "#555555", "#8b5cf6"]
-          }
-        ]
-      },
-      options: {
-        plugins: {
-          legend: { position: "bottom" as const }
-        }
+        datasets: [{ label: "ZAR", data: chartValues }]
       }
     }
   ];

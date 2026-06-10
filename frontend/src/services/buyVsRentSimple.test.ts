@@ -24,12 +24,12 @@ describe("runSimpleBuyVsRentCalculator", () => {
     expect(core.monthlyBondPayment).toBeLessThan(16_000);
   });
 
-  it("produces 3 charts and year-by-year rows", () => {
+  it("produces 2 themed charts and year-by-year rows", () => {
     const core = runSimpleBuyVsRentCalculator(TEST_INPUT);
     expect(core.yearRows).toHaveLength(10);
     const mapped = mapSimpleBuyVsRentToCalculatorResult(core);
-    expect(mapped.chartData).toHaveLength(3);
-    const line = mapped.chartData.find((c) => c.title === "Buy vs Rent Over Time");
+    expect(mapped.chartData).toHaveLength(2);
+    const line = mapped.chartData.find((c) => c.title === "Net position over time");
     expect(line?.data.labels).toHaveLength(11);
   });
 
@@ -54,7 +54,7 @@ describe("buy-vs-rent simple calculator integration", () => {
     expect(r.calculator).toBe("buy-vs-rent");
     expect(r.breakdown?.simple).toBeTruthy();
     expect(r.breakdown?.bondAmount).toBe(1_350_000);
-    expect(r.chartData?.length).toBe(3);
+    expect(r.chartData?.length).toBe(2);
     expect(r.interpretation?.text).toMatch(/buying|renting|close/i);
     expect(r.assumptionsUsed?.assumptions).toBeInstanceOf(Array);
   });

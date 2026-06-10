@@ -7,7 +7,7 @@ export function CalculatorToolBreakdownList({
   rows: Array<{ label: string; value: string; variant?: "detail" | "subtotal" }>;
 }) {
   return (
-    <div className="pg-calc-tool-panel pg-calc-tool-panel--table pg-calc-tool-breakdown-list pg-calc-tool-table--mobile">
+    <div className="pg-calc-tool-panel pg-calc-tool-panel--table pg-calc-tool-breakdown-list">
       <h3 className="pg-calc-tool-breakdown-list__title">{title}</h3>
       <ul className="pg-calc-tool-breakdown-list__rows">
         {rows.map((row) => (

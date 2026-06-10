@@ -179,6 +179,9 @@ export function getCalculatorChartTitle(slug: string, fallback?: string): string
   if (slug === "cash-flow") return "Cash flow breakdown";
   if (slug === "irr") return fallback ?? "Annual cash flow & IRR by year";
   if (slug === "cash-on-cash-return") return fallback ?? "Annual cash flow & cash-on-cash ROI";
+  if (slug === "buy-vs-rent") return "Buy vs rent comparison";
+  if (slug === "transfer-bond-costs") return fallback ?? "Registration cost breakdown";
+  if (slug === "monthly-payment") return fallback ?? "Principal vs interest by year";
   return fallback ?? "Chart";
 }
 

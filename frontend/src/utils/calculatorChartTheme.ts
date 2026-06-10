@@ -26,6 +26,9 @@ const DOUGHNUT_PALETTE = [
   "#E2E8F0",
   "#94A3B8"
 ];
+const COMPARISON_LINE_COLORS = [PRINCIPAL_STROKE, "#F59E0B", INTEREST_STROKE, "#94A3B8"];
+const BAR_FILL_COLORS = [PRINCIPAL_FILL, "rgba(245, 158, 11, 0.35)", INTEREST_FILL];
+const BAR_STROKE_COLORS = [PRINCIPAL_STROKE, "#F59E0B", INTEREST_STROKE];
 
 function isCashFlowBridgeChart(chart: ChartLike): boolean {
   const labels = chart.data?.labels ?? [];
@@ -82,6 +85,103 @@ function themedDataset(label: string, data: unknown[], index: number) {
 
 function doughnutSliceColors(count: number): string[] {
   return DOUGHNUT_PALETTE.slice(0, Math.max(count, 1));
+}
+
+function isMultiSeriesLineChart(chart: ChartLike): boolean {
+  return chart.chartType === "line" && (chart.data?.datasets?.length ?? 0) >= 2;
+}
+
+function themedComparisonLineData(chart: ChartLike) {
+  const datasets = chart.data?.datasets ?? [];
+  return {
+    labels: chart.data?.labels ?? [],
+    datasets: datasets.map((ds, idx) => ({
+      ...ds,
+      borderColor: COMPARISON_LINE_COLORS[idx % COMPARISON_LINE_COLORS.length],
+      backgroundColor: "transparent",
+      tension: 0.25,
+      pointRadius: 3,
+      pointHoverRadius: 6,
+      borderWidth: 2.5,
+      fill: false
+    }))
+  };
+}
+
+function themedBarChartData(chart: ChartLike) {
+  const datasets = chart.data?.datasets ?? [];
+  return {
+    labels: chart.data?.labels ?? [],
+    datasets: datasets.map((ds) => {
+      const data = (ds.data as unknown[]) ?? [];
+      return {
+        ...ds,
+        backgroundColor: data.map((_, i) => BAR_FILL_COLORS[i % BAR_FILL_COLORS.length]),
+        borderColor: data.map((_, i) => BAR_STROKE_COLORS[i % BAR_STROKE_COLORS.length]),
+        borderRadius: 6,
+        borderSkipped: false,
+        borderWidth: 1
+      };
+    })
+  };
+}
+
+function looksLikeCurrencyChart(chart: ChartLike): boolean {
+  const datasets = chart.data?.datasets ?? [];
+  const text = datasets
+    .flatMap((ds) => [String(ds.label ?? ""), ...((ds.data as number[]) ?? []).map(String)])
+    .join(" ")
+    .toLowerCase();
+  if (/zar|rand|cash|cost|position|paid|flow|rent|buy|equity|noi|income|expense|principal|interest|value/i.test(text)) {
+    return true;
+  }
+  const nums = datasets.flatMap((ds) => (ds.data as number[]) ?? []).filter((n) => Number.isFinite(n));
+  return nums.some((n) => Math.abs(n) >= 1000);
+}
+
+function themedCartesianOptions(chart: ChartLike, legendCenter: boolean): Record<string, unknown> {
+  const chartOpts = chart.options ?? {};
+  const scales = (chartOpts.scales as Record<string, Record<string, unknown>> | undefined) ?? {};
+  const existingYTicks = (scales.y?.ticks as Record<string, unknown> | undefined) ?? {};
+  const useCurrency = looksLikeCurrencyChart(chart);
+
+  const merged = mergeChartScales({
+    ...chartOpts,
+    scales: {
+      x: { grid: { display: false }, ...(scales.x ?? {}) },
+      y: {
+        ...(scales.y ?? {}),
+        ticks: {
+          color: TICK_COLOR,
+          ...existingYTicks,
+          callback:
+            (existingYTicks.callback as ((value: string | number) => string) | undefined) ??
+            (useCurrency ? (value: string | number) => formatDualAxisTick(value, "ZAR") : undefined)
+        }
+      }
+    }
+  });
+
+  const plugins = (merged.plugins as Record<string, unknown> | undefined) ?? {};
+  const legend = (plugins.legend as Record<string, unknown> | undefined) ?? {};
+  return {
+    ...merged,
+    plugins: {
+      ...plugins,
+      legend: {
+        ...legend,
+        position: "top",
+        align: legendCenter ? "center" : "end",
+        labels: {
+          color: TICK_COLOR,
+          boxWidth: 12,
+          usePointStyle: true,
+          padding: 14,
+          ...((legend.labels as object) ?? {})
+        }
+      }
+    }
+  };
 }
 
 function isDualAxisComboChart(chart: ChartLike): boolean {
@@ -348,7 +448,26 @@ export function applyProplyticChartTheme(chart: ChartLike, slug: string, graphTi
     };
   }
 
-  if (chart.chartType === "line" || chart.chartType === "bar" || chart.chartType === "combo") {
+  if (chart.chartType === "bar") {
+    return {
+      ...chart,
+      title: graphTitle ?? chart.title,
+      data: themedBarChartData(chart),
+      options: themedCartesianOptions(chart, (chart.data?.datasets?.length ?? 0) <= 2)
+    };
+  }
+
+  if (chart.chartType === "line") {
+    const multiLine = isMultiSeriesLineChart(chart);
+    return {
+      ...chart,
+      title: graphTitle ?? chart.title,
+      data: multiLine ? themedComparisonLineData(chart) : themedData,
+      options: themedCartesianOptions(chart, multiLine)
+    };
+  }
+
+  if (chart.chartType === "combo") {
     return {
       ...chart,
       title: graphTitle ?? chart.title,

@@ -1,6 +1,5 @@
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
-import { Bar, Doughnut, Line } from "react-chartjs-2";
 import { Chart as ChartJS, ArcElement, BarElement, CategoryScale, Legend, LinearScale, LineElement, PointElement, Tooltip } from "chart.js";
 import { CalculatorToolAdvancedAssumptions } from "../components/calculators/tool/CalculatorToolAdvancedAssumptions";
 import { CalculatorToolFormActions } from "../components/calculators/tool/CalculatorToolFormActions";
@@ -9,7 +8,7 @@ import { CalculatorToolSummaryCards } from "../components/calculators/tool/Calcu
 import { getCalculatorFieldLayout } from "../data/calculatorFieldLayout";
 import { getCalculatorAdvancedSubtitle, partitionFieldKeysBySlider } from "../data/calculatorFieldPresentation";
 import { applyCashFlowBondPaymentPayload, computeCashFlowMonthlyBondPayment } from "../utils/calculatorCashFlowPayload";
-import { applyProplyticChartTheme, isDualAxisComboChartType } from "../utils/calculatorChartTheme";
+import { buildTransferBondBreakdownRows } from "../utils/transferBondBreakdownRows";
 import { calculators } from "../data/calculators";
 import { getCalculatorDefaultValues } from "../data/calculatorDefaultValues";
 import { getCalculatorToolPage } from "../data/calculatorToolPageContent";
@@ -22,14 +21,13 @@ import { generateReportViaVercel } from "../services/reportsVercel";
 import { CalculatorToolPageLayout } from "../components/calculators/tool/CalculatorToolPageLayout";
 import { CalculatorToolProTip } from "../components/calculators/tool/CalculatorToolProTip";
 import { CalculatorToolResultsHero } from "../components/calculators/tool/CalculatorToolResultsHero";
-import { CalculatorToolResultsChartSection } from "../components/calculators/tool/CalculatorToolResultsChartSection";
+import { CalculatorThemedCharts } from "../components/calculators/tool/CalculatorThemedCharts";
 import { CalculatorToolResultsInterpretation } from "../components/calculators/tool/CalculatorToolResultsInterpretation";
 import {
   buildCalculatorSummaryCards,
   buildCashFlowInterpretation,
   formatCalculatorZar,
   formatResultsMetricDisplay,
-  getCalculatorChartTitle,
   getPrimaryResultPresentation,
   isCashFlowNegative,
   type SummaryMetricLike
@@ -545,6 +543,12 @@ export function CalculatorPage() {
     if (calc.slug === "cash-on-cash-return") {
       return raw.filter((c) => c.chartType === "combo" || c.chartType === "doughnut");
     }
+    if (calc.slug === "transfer-bond-costs") {
+      return raw.filter((c) => c.chartType === "doughnut");
+    }
+    if (calc.slug === "buy-vs-rent") {
+      return raw;
+    }
     return combined;
   }, [chartData, summary, calc.slug]);
 
@@ -625,15 +629,6 @@ export function CalculatorPage() {
   );
 
   const workspaceLayoutClass = ["pg-calc-tool-workspace-grid", "pg-calculator-detail-layout"].join(" ");
-
-  const chartOptionsForViewport = (
-    base: Record<string, unknown> | null | undefined,
-    chartType: string,
-    dualAxisCombo: boolean
-  ) => {
-    if (isMobile) return mergeMobileChartOptions(base, chartType, dualAxisCombo) as Record<string, unknown>;
-    return mergeThemedChartOptions(base) as Record<string, unknown>;
-  };
 
   const primarySummaryMetric = summary[0] as SummaryMetricLike | undefined;
   const primaryPresentation = getPrimaryResultPresentation(calc.slug, primarySummaryMetric);
@@ -968,7 +963,10 @@ export function CalculatorPage() {
                     upgradePrompt={
                       result.assumptionsUsed?.upgradePrompt as { title: string; body: string } | undefined
                     }
-                    getChartOptions={(base) => mergeThemedChartOptions(base) as Record<string, unknown>}
+                    graphTitle={pageMeta.graphTitle}
+                    isMobile={isMobile}
+                    mergeChartOptions={(base) => mergeThemedChartOptions(base) as Record<string, unknown>}
+                    mergeMobileChartOptions={mergeMobileChartOptions}
                   />
                 ) : calc.slug !== "buy-vs-rent" && extraSummaryMetrics.length > 0 ? (
                   <div className="pg-calculator-kpi-grid pg-calculator-kpi-grid--extra">
@@ -984,140 +982,34 @@ export function CalculatorPage() {
                 ) : null}
 
                 {calc.slug === "transfer-bond-costs" && result?.breakdown?.transferCosts ? (
-                  <>
                   <CalculatorToolBreakdownList
                     title="Detailed cost breakdown"
-                    rows={(
-                      [
-                        ["Transfer duty", result.breakdown.transferCosts.transferDuty],
-                        ["Transfer attorney (ex VAT)", result.breakdown.transferCosts.transferAttorneyFee],
-                        ["VAT on transfer attorney", result.breakdown.transferCosts.transferAttorneyFeeVat],
-                        ["Deeds Office transfer fee", result.breakdown.transferCosts.deedsOfficeTransferFee],
-                        ["Municipal / rates clearance provision", result.breakdown.transferCosts.municipalRatesClearanceProvision],
-                        ["Postages & petties", result.breakdown.transferCosts.postagesAndPettiesEstimate],
-                        ["FICA estimate", result.breakdown.transferCosts.ficaFeeEstimate],
-                        ["Deeds search estimate", result.breakdown.transferCosts.deedsSearchFeeEstimate],
-                        ["Electronic instruction estimate", result.breakdown.transferCosts.electronicInstructionFeeEstimate],
-                        ["Transfer subtotal", result.breakdown.transferCosts.transferSubtotal],
-                        ["Bond attorney (ex VAT)", result.breakdown.bondCosts.bondAttorneyFee],
-                        ["VAT on bond attorney", result.breakdown.bondCosts.bondAttorneyFeeVat],
-                        ["Deeds Office bond fee", result.breakdown.bondCosts.deedsOfficeBondFee],
-                        ["Bond subtotal", result.breakdown.bondCosts.bondSubtotal]
-                      ] as [string, number][]
-                    ).map(([label, val]) => ({
-                      label,
-                      value: typeof val === "number" ? formatCalculatorZar(val) : "—",
-                      variant: label.includes("subtotal") ? ("subtotal" as const) : ("detail" as const)
-                    }))}
+                    rows={buildTransferBondBreakdownRows(
+                      result.breakdown as Parameters<typeof buildTransferBondBreakdownRows>[0]
+                    )}
                   />
-                  <Card title="Detailed cost breakdown" className="pg-calc-tool-panel pg-calc-tool-panel--table pg-calc-tool-table--desktop">
-                    <table
-                      className="pg-table pg-transfer-cost-breakdown"
-                      style={{ width: "100%", fontSize: 13, borderCollapse: "collapse" }}
-                    >
-                      <tbody>
-                        {(
-                          [
-                            ["Transfer duty", result.breakdown.transferCosts.transferDuty],
-                            ["Transfer attorney (ex VAT)", result.breakdown.transferCosts.transferAttorneyFee],
-                            ["VAT on transfer attorney", result.breakdown.transferCosts.transferAttorneyFeeVat],
-                            ["Deeds Office transfer fee", result.breakdown.transferCosts.deedsOfficeTransferFee],
-                            ["Municipal / rates clearance provision", result.breakdown.transferCosts.municipalRatesClearanceProvision],
-                            ["Postages & petties", result.breakdown.transferCosts.postagesAndPettiesEstimate],
-                            ["FICA estimate", result.breakdown.transferCosts.ficaFeeEstimate],
-                            ["Deeds search estimate", result.breakdown.transferCosts.deedsSearchFeeEstimate],
-                            ["Electronic instruction estimate", result.breakdown.transferCosts.electronicInstructionFeeEstimate]
-                          ] as [string, number][]
-                        ).map(([label, val]) => (
-                          <tr key={label} className="pg-transfer-cost-breakdown-row pg-transfer-cost-breakdown-row--detail">
-                            <td>{label}</td>
-                            <td className="pg-transfer-cost-breakdown-amount">
-                              {typeof val === "number" ? formatCalculatorZar(val) : "—"}
-                            </td>
-                          </tr>
-                        ))}
-                        <tr className="pg-transfer-cost-breakdown-row pg-transfer-cost-breakdown-row--subtotal">
-                          <td>Transfer subtotal</td>
-                          <td className="pg-transfer-cost-breakdown-amount">
-                            {formatCalculatorZar(result.breakdown.transferCosts.transferSubtotal)}
-                          </td>
-                        </tr>
-                        {(
-                          [
-                            ["Bond attorney (ex VAT)", result.breakdown.bondCosts.bondAttorneyFee],
-                            ["VAT on bond attorney", result.breakdown.bondCosts.bondAttorneyFeeVat],
-                            ["Deeds Office bond fee", result.breakdown.bondCosts.deedsOfficeBondFee]
-                          ] as [string, number][]
-                        ).map(([label, val]) => (
-                          <tr key={label} className="pg-transfer-cost-breakdown-row pg-transfer-cost-breakdown-row--detail">
-                            <td>{label}</td>
-                            <td className="pg-transfer-cost-breakdown-amount">
-                              {typeof val === "number" ? formatCalculatorZar(val) : "—"}
-                            </td>
-                          </tr>
-                        ))}
-                        <tr className="pg-transfer-cost-breakdown-row pg-transfer-cost-breakdown-row--subtotal">
-                          <td>Bond subtotal</td>
-                          <td className="pg-transfer-cost-breakdown-amount">
-                            {formatCalculatorZar(result.breakdown.bondCosts.bondSubtotal)}
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </Card>
-                  </>
+                ) : null}
+
+                {calc.slug !== "buy-vs-rent" && chartsToRender.length > 0 ? (
+                  <CalculatorThemedCharts
+                    slug={calc.slug}
+                    charts={chartsToRender as Parameters<typeof CalculatorThemedCharts>[0]["charts"]}
+                    graphTitle={pageMeta.graphTitle}
+                    isMobile={isMobile}
+                    mergeChartOptions={(base) => mergeThemedChartOptions(base) as Record<string, unknown>}
+                    mergeMobileChartOptions={mergeMobileChartOptions}
+                  />
                 ) : null}
 
                 {calc.slug === "transfer-bond-costs" && Array.isArray(result?.assumptionsUsed?.assumptions) ? (
-                  <Card title="Assumptions">
-                    <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, lineHeight: 1.5 }}>
+                  <details className="pg-calculator-assumptions-used pg-calc-tool-panel">
+                    <summary>Assumptions used</summary>
+                    <ul style={{ margin: "8px 0 0", paddingLeft: 18, fontSize: 13, lineHeight: 1.5 }}>
                       {(result.assumptionsUsed.assumptions as string[]).map((a: string) => (
                         <li key={a}>{a}</li>
                       ))}
                     </ul>
-                  </Card>
-                ) : null}
-
-                {calc.slug !== "buy-vs-rent" && chartsToRender.length > 0 ? (
-                  <CalculatorToolResultsChartSection title={getCalculatorChartTitle(calc.slug, pageMeta.graphTitle)}>
-                    {chartsToRender.map((ch, idx) => {
-                      const themed = applyProplyticChartTheme(
-                        ch as Parameters<typeof applyProplyticChartTheme>[0],
-                        calc.slug,
-                        pageMeta.graphTitle
-                      );
-                      const dualAxisCombo = isDualAxisComboChartType(
-                        themed as Parameters<typeof isDualAxisComboChartType>[0]
-                      );
-                      const opts = chartOptionsForViewport(
-                        themed.options as Record<string, unknown>,
-                        themed.chartType,
-                        dualAxisCombo
-                      ) as any;
-                      const displayTitle = themed.title ?? "Chart";
-                      const ChartComponent =
-                        themed.chartType === "line"
-                          ? Line
-                          : themed.chartType === "doughnut"
-                            ? Doughnut
-                            : Bar;
-                      const showInlineTitle = chartsToRender.length > 1;
-                      const isDoughnutChart = themed.chartType === "doughnut";
-                      return (
-                        <div
-                          key={`${displayTitle}-${idx}`}
-                          className={`pg-calc-tool-chart-item${isDoughnutChart ? " pg-calc-tool-chart-item--doughnut" : ""}`}
-                        >
-                          {showInlineTitle ? (
-                            <h4 className="pg-calc-tool-chart-item__title">{displayTitle}</h4>
-                          ) : null}
-                          <div className="pg-calculator-chart-host">
-                            <ChartComponent data={themed.data as any} options={opts} />
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </CalculatorToolResultsChartSection>
+                  </details>
                 ) : null}
 
                 {calc.slug !== "buy-vs-rent" && result?.interpretation?.text ? (

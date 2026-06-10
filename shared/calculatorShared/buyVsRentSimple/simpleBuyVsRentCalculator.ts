@@ -313,8 +313,6 @@ export function mapSimpleBuyVsRentToCalculatorResult(
   const positionLabels = ["Year 0", ...yearRows.map((r) => `Year ${r.year}`)];
   const buyPositionSeries = [year0Buy, ...yearRows.map((r) => r.netBuyingPosition)];
   const rentPositionSeries = [year0Rent, ...yearRows.map((r) => r.netRentingPosition)];
-  const cumulativeBuyPaid = [core.buyerInitialCashOut, ...yearRows.map((r) => r.cumulativeBuyingCashPaid)];
-  const cumulativeRentPaidSeries = [core.renterInitialCashOut, ...yearRows.map((r) => r.cumulativeRentPaid)];
 
   const summaryMetrics: SummaryMetric[] = [
     summaryMetric("betterOption", "Better option", "number", null),
@@ -374,65 +372,27 @@ export function mapSimpleBuyVsRentToCalculatorResult(
     chartData: [
       {
         chartType: "line",
-        title: "Buy vs Rent Over Time",
+        title: "Net position over time",
         data: {
           labels: positionLabels,
           datasets: [
-            {
-              label: "Buying position",
-              data: buyPositionSeries,
-              borderColor: "#8b5cf6",
-              backgroundColor: "rgba(139, 92, 246, 0.12)",
-              fill: false
-            },
-            {
-              label: "Renting position",
-              data: rentPositionSeries,
-              borderColor: "#60a5fa",
-              backgroundColor: "rgba(96, 165, 250, 0.12)",
-              fill: false
-            }
-          ]
-        },
-        options: { plugins: { legend: { display: true } } }
-      },
-      {
-        chartType: "bar",
-        title: "Final Position",
-        data: {
-          labels: ["Buy", "Rent"],
-          datasets: [
-            {
-              label: "Estimated value (ZAR)",
-              data: [s.netBuyingPositionEnd, s.netRentingPositionEnd],
-              backgroundColor: ["#8b5cf6", "#60a5fa"]
-            }
+            { label: "Buying position", data: buyPositionSeries },
+            { label: "Renting position", data: rentPositionSeries }
           ]
         }
       },
       {
-        chartType: "line",
-        title: "Cash Paid Over Time",
+        chartType: "bar",
+        title: "Final net position",
         data: {
-          labels: positionLabels,
+          labels: ["Buy", "Rent"],
           datasets: [
             {
-              label: "Buying cash paid",
-              data: cumulativeBuyPaid,
-              borderColor: "#8b5cf6",
-              backgroundColor: "rgba(139, 92, 246, 0.08)",
-              fill: false
-            },
-            {
-              label: "Rent paid",
-              data: cumulativeRentPaidSeries,
-              borderColor: "#60a5fa",
-              backgroundColor: "rgba(96, 165, 250, 0.08)",
-              fill: false
+              label: "Estimated net position (ZAR)",
+              data: [s.netBuyingPositionEnd, s.netRentingPositionEnd]
             }
           ]
-        },
-        options: { plugins: { legend: { display: true } } }
+        }
       }
     ],
     assumptionsUsed: {

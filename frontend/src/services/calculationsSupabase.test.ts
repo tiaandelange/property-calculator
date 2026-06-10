@@ -75,7 +75,7 @@ describe("calculationsSupabase", () => {
     expect(irrByYear?.[4]?.irr).toBe(atTen.summary?.find((m) => m.key === "irrPercent")?.value);
   });
 
-  it("runCalculatorLocally runs buy-vs-rent with charts and interpretation", () => {
+  it("runCalculatorLocally runs buy-vs-rent with themed charts and interpretation", () => {
     const r = runCalculatorLocally("buy-vs-rent", {
       purchasePrice: 1_500_000,
       monthlyRent: 12_000,

@@ -1,4 +1,3 @@
-import { Bar, Line } from "react-chartjs-2";
 import type { ChartData } from "@calculatorShared/calculatorTypes";
 import type {
   SimpleBuyVsRentComparisonTable,
@@ -8,6 +7,7 @@ import type {
 } from "@calculatorShared/buyVsRentSimple/simpleBuyVsRentTypes";
 import { formatCompactZar } from "@calculatorShared/buyVsRentSimple/simpleBuyVsRentCalculator";
 import { Card } from "../ui/Card";
+import { CalculatorThemedCharts } from "./tool/CalculatorThemedCharts";
 
 type Props = {
   core: SimpleBuyVsRentCoreResult;
@@ -17,7 +17,14 @@ type Props = {
   assumptions: string[];
   assumptionsNote?: string;
   upgradePrompt?: { title: string; body: string };
-  getChartOptions: (base?: Record<string, unknown>) => Record<string, unknown>;
+  graphTitle?: string;
+  isMobile: boolean;
+  mergeChartOptions: (base: Record<string, unknown> | null | undefined) => Record<string, unknown>;
+  mergeMobileChartOptions: (
+    base: Record<string, unknown> | null | undefined,
+    chartType?: string,
+    dualAxisCombo?: boolean
+  ) => Record<string, unknown>;
 };
 
 function formatZar(n: number): string {
@@ -65,7 +72,7 @@ function ComparisonTable({ table }: { table: SimpleBuyVsRentComparisonTable }) {
   ];
 
   return (
-    <Card title="How they stack up">
+    <Card title="How they stack up" className="pg-calc-tool-panel">
       <div className="pg-buy-vs-rent-table-wrap">
         <table className="pg-buy-vs-rent-table">
           <thead>
@@ -92,7 +99,7 @@ function ComparisonTable({ table }: { table: SimpleBuyVsRentComparisonTable }) {
 
 function YearByYearAccordion({ rows }: { rows: SimpleBuyVsRentYearRow[] }) {
   return (
-    <details className="pg-buy-vs-rent-year-summary">
+    <details className="pg-buy-vs-rent-year-summary pg-calc-tool-panel">
       <summary>View year-by-year summary</summary>
       <div className="pg-buy-vs-rent-table-wrap" style={{ marginTop: 12 }}>
         <table className="pg-buy-vs-rent-table pg-buy-vs-rent-table--compact">
@@ -128,7 +135,10 @@ export function BuyVsRentSimpleResults({
   assumptions,
   assumptionsNote,
   upgradePrompt,
-  getChartOptions
+  graphTitle,
+  isMobile,
+  mergeChartOptions,
+  mergeMobileChartOptions
 }: Props) {
   const s = core.summary;
 
@@ -157,24 +167,19 @@ export function BuyVsRentSimpleResults({
         ))}
       </div>
 
-      {charts.map((ch, idx) => (
-        <Card key={`${ch.title ?? "chart"}-${idx}`} title={ch.title ?? "Chart"}>
-          <div className="pg-calculator-chart-host">
-            {ch.chartType === "line" ? (
-              <Line data={ch.data as never} options={getChartOptions(ch.options as Record<string, unknown>) as never} />
-            ) : (
-              <Bar data={ch.data as never} options={getChartOptions(ch.options as Record<string, unknown>) as never} />
-            )}
-          </div>
-        </Card>
-      ))}
+      <CalculatorThemedCharts
+        slug="buy-vs-rent"
+        charts={charts as Parameters<typeof CalculatorThemedCharts>[0]["charts"]}
+        graphTitle={graphTitle}
+        isMobile={isMobile}
+        mergeChartOptions={mergeChartOptions}
+        mergeMobileChartOptions={mergeMobileChartOptions}
+      />
 
       <ComparisonTable table={core.comparisonTable} />
 
-      <Card title="What this means">
-        <p className="pg-muted" style={{ margin: 0, lineHeight: 1.6 }}>
-          {interpretationText}
-        </p>
+      <Card title="What this means" className="pg-calc-tool-interpretation">
+        <p className="pg-calc-tool-interpretation__text">{interpretationText}</p>
         {warnings.length ? (
           <div className="pg-alert pg-alert-error" style={{ marginTop: 12 }}>
             {warnings.join(" · ")}
@@ -189,7 +194,7 @@ export function BuyVsRentSimpleResults({
 
       <YearByYearAccordion rows={core.yearRows} />
 
-      <details className="pg-calculator-assumptions-used">
+      <details className="pg-calculator-assumptions-used pg-calc-tool-panel">
         <summary>Assumptions used</summary>
         <ul style={{ margin: "8px 0 0", paddingLeft: 18, fontSize: 13, lineHeight: 1.5 }}>
           {assumptions.map((a) => (
