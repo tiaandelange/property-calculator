@@ -48,7 +48,10 @@ describe("universalDemoProperty", () => {
   });
 
   it("cash-on-cash-return exposes dual-axis cash flow chart and cash invested pie", () => {
-    const defaults = buildUniversalCalculatorDefaults("cash-on-cash-return");
+    const defaults = buildUniversalCalculatorDefaults("cash-on-cash-return") as {
+      holdPeriodYears: number;
+      cashFlowGrowthPercentAnnual?: number;
+    };
     const result = calculate("cash-on-cash-return", defaults);
     expect(result.chartData?.[0]?.chartType).toBe("combo");
     expect(result.chartData?.[0]?.data?.datasets).toHaveLength(2);
