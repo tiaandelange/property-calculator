@@ -1,12 +1,27 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { defineConfig } from "vite";
+import type { Plugin } from "vite";
+import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const DEFAULT_GTM_ID = "GTM-TGDJGNLW";
 
-export default defineConfig({
-  plugins: [react()],
+/** Replaces __GTM_ID__ in index.html at build/dev time from VITE_GTM_ID. */
+function injectGtmId(env: Record<string, string>): Plugin {
+  const gtmId = env.VITE_GTM_ID?.trim() || DEFAULT_GTM_ID;
+  return {
+    name: "inject-gtm-id",
+    transformIndexHtml(html) {
+      return html.replaceAll("__GTM_ID__", gtmId);
+    }
+  };
+}
+
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, __dirname, "");
+  return {
+  plugins: [react(), injectGtmId(env)],
   server: {
     port: 5173,
     fs: {
@@ -40,4 +55,5 @@ export default defineConfig({
     globals: true,
     setupFiles: "./src/test/setup.ts"
   }
+};
 });

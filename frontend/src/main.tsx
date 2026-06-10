@@ -11,12 +11,9 @@ import {
   markChunkReloadAttempted
 } from "./lib/chunkLoadError";
 import { logChunkLoadFailure } from "./lib/routeLoadLog";
-import { initGoogleTagManager } from "./lib/analytics/gtm";
 import { AnalyticsRouteTracker } from "./lib/analytics/AnalyticsRouteTracker";
 import { CookieConsentBanner } from "./components/consent/CookieConsentBanner";
 import "./styles/global.css";
-
-initGoogleTagManager();
 
 // Stale chunk after deploy — one safe reload attempt, then route error boundary handles it.
 window.addEventListener("vite:preloadError", (event: Event) => {
