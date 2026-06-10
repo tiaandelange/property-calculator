@@ -154,10 +154,15 @@ function calcTransferBondCosts(input: z.infer<typeof transferBondSchema>): Calcu
   }
 
   const summary = [
-    metric("transferDuty", "Transfer duty", "currency", sa.transferCosts.transferDuty),
+    metric(
+      "totalTransferAndBondCosts",
+      "Total transfer & bond costs",
+      "currency",
+      sa.totals.totalTransferAndBondCosts
+    ),
     metric("totalTransferCosts", "Transfer costs (incl. duty, attorney, Deeds, municipal, admin)", "currency", sa.totals.totalTransferCosts),
     metric("totalBondRegistrationCosts", "Bond registration costs", "currency", sa.totals.totalBondRegistrationCosts),
-    metric("totalCashRequiredExcludingDeposit", "Total costs excluding deposit", "currency", sa.totals.totalCashRequiredExcludingDeposit),
+    metric("transferDuty", "Transfer duty", "currency", sa.transferCosts.transferDuty),
     metric(
       "totalCashRequiredIncludingDeposit",
       "Total cash incl. deposit (if enabled)",

@@ -2,6 +2,8 @@
 
 const METRIC_INFO: Record<string, string> = {
   transferDuty: "SARS transfer duty on the purchase price (where applicable).",
+  totalTransferAndBondCosts:
+    "Combined transfer and bond registration costs payable at registration, excluding your deposit.",
   totalTransferCosts: "Transfer-side fees including duty, attorney, Deeds Office and typical disbursements.",
   totalBondRegistrationCosts: "Bond registration attorney fees and Deeds Office bond fee.",
   totalCashRequiredExcludingDeposit: "Transfer and bond costs payable at registration, excluding your deposit.",
