@@ -176,25 +176,47 @@ export function applyProplyticChartTheme(chart: ChartLike, slug: string, graphTi
           };
         })
       },
-      options: mergeChartScales({
-        ...chart.options,
-        scales: {
-          x: { grid: { display: false } },
-          y: {
-            position: "left",
-            title: { display: true, text: "Cash flow (ZAR)", color: TICK_COLOR, font: { size: 11, weight: 600 } }
-          },
-          y1: {
-            position: "right",
-            title: { display: true, text: "IRR (%)", color: TICK_COLOR, font: { size: 11, weight: 600 } },
-            grid: { drawOnChartArea: false },
-            ticks: {
-              color: TICK_COLOR,
-              callback: (value: string | number) => `${value}%`
+      options: (() => {
+        const merged = mergeChartScales({
+          ...chart.options,
+          scales: {
+            x: { grid: { display: false } },
+            y: {
+              position: "left",
+              title: { display: true, text: "Cash flow (ZAR)", color: TICK_COLOR, font: { size: 11, weight: 600 } }
+            },
+            y1: {
+              position: "right",
+              title: { display: true, text: "IRR (%)", color: TICK_COLOR, font: { size: 11, weight: 600 } },
+              grid: { drawOnChartArea: false },
+              ticks: {
+                color: TICK_COLOR,
+                callback: (value: string | number) => `${value}%`
+              }
             }
           }
-        }
-      })
+        });
+        const plugins = (merged.plugins as Record<string, unknown> | undefined) ?? {};
+        const legend = (plugins.legend as Record<string, unknown> | undefined) ?? {};
+        return {
+          ...merged,
+          plugins: {
+            ...plugins,
+            legend: {
+              ...legend,
+              position: "top",
+              align: "center",
+              labels: {
+                color: TICK_COLOR,
+                boxWidth: 12,
+                usePointStyle: true,
+                padding: 16,
+                ...((legend.labels as object) ?? {})
+              }
+            }
+          }
+        };
+      })()
     };
   }
 

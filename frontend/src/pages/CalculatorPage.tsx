@@ -267,7 +267,10 @@ function mergeThemedChartOptions(base: Record<string, unknown> | null | undefine
 }
 
 /** Responsive chart options for narrow viewports (no formula changes). */
-function mergeMobileChartOptions(base: Record<string, unknown> | null | undefined): Record<string, unknown> {
+function mergeMobileChartOptions(
+  base: Record<string, unknown> | null | undefined,
+  slug?: string
+): Record<string, unknown> {
   const themed = mergeThemedChartOptions(base);
   const plugins = (themed.plugins as Record<string, unknown> | undefined) ?? {};
   const legend = (plugins.legend as Record<string, unknown> | undefined) ?? {};
@@ -280,7 +283,7 @@ function mergeMobileChartOptions(base: Record<string, unknown> | null | undefine
       legend: {
         ...legend,
         position: "top",
-        align: "end"
+        align: slug === "irr" ? "center" : "end"
       }
     }
   };
@@ -615,7 +618,7 @@ export function CalculatorPage() {
   const workspaceLayoutClass = ["pg-calc-tool-workspace-grid", "pg-calculator-detail-layout"].join(" ");
 
   const chartOptionsForViewport = (base: Record<string, unknown> | null | undefined, slug: string) => {
-    if (isMobile) return mergeMobileChartOptions(base) as Record<string, unknown>;
+    if (isMobile) return mergeMobileChartOptions(base, slug) as Record<string, unknown>;
     return mergeThemedChartOptions(base) as Record<string, unknown>;
   };
 
