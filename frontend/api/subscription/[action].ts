@@ -1,17 +1,72 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { authenticateSupabaseRequest } from "../lib/supabaseServerAuth.js";
-import { BillingConfigError, getBillingProvider } from "../lib/billing/provider.js";
-import { getUserSubscriptionPaymentId } from "../lib/billing/billingSubscriptionSync.js";
+import { BillingConfigError, getBillingProvider, resolveBillingProviderName } from "../lib/billing/provider.js";
+import {
+  WebhookProcessingError,
+  activateSubscription,
+  getUserSubscriptionPaymentId
+} from "../lib/billing/billingSubscriptionSync.js";
 import { handleSubscriptionVerify } from "../lib/billing/handleSubscriptionVerify.js";
-import { CheckoutValidationError } from "../lib/billing/checkoutValidation.js";
-import { WebhookProcessingError } from "../lib/billing/billingSubscriptionSync.js";
+import {
+  CheckoutValidationError,
+  fetchSubscriptionPlanByCode
+} from "../lib/billing/checkoutValidation.js";
+import { handleSubscriptionCheckout } from "../lib/billing/handleSubscriptionCheckout.js";
 
-type SubscriptionAction = "cancel" | "verify";
+type SubscriptionAction = "cancel" | "verify" | "checkout" | "mock-complete";
 
 function parseAction(req: VercelRequest): SubscriptionAction | null {
   const raw = String(req.query.action ?? "").trim().toLowerCase();
-  if (raw === "cancel" || raw === "verify") return raw;
+  if (raw === "cancel" || raw === "verify" || raw === "checkout" || raw === "mock-complete") {
+    return raw;
+  }
   return null;
+}
+
+function isMockCompletionAllowed(): boolean {
+  try {
+    if (resolveBillingProviderName() !== "mock") return false;
+  } catch {
+    return false;
+  }
+  if (process.env.NODE_ENV !== "production") return true;
+  const vercelEnv = (process.env.VERCEL_ENV || "").trim();
+  return vercelEnv === "development" || vercelEnv === "preview";
+}
+
+async function handleMockComplete(req: VercelRequest, res: VercelResponse, uid: string): Promise<void> {
+  const body =
+    req.body && typeof req.body === "object" && !Array.isArray(req.body)
+      ? (req.body as Record<string, unknown>)
+      : {};
+  const planCode = String(body.planCode ?? "").trim().toLowerCase();
+  if (!planCode || planCode === "starter") {
+    res.status(400).json({ error: "A paid planCode is required for mock completion." });
+    return;
+  }
+
+  const plan = await fetchSubscriptionPlanByCode(planCode);
+  if (plan.monthlyPrice <= 0) {
+    res.status(400).json({ error: "Starter is free and does not require checkout." });
+    return;
+  }
+
+  const reference = String(body.reference ?? `mock_complete_${Date.now()}`).trim();
+  const now = new Date();
+  const periodEnd = new Date(now);
+  periodEnd.setMonth(periodEnd.getMonth() + 1);
+
+  await activateSubscription({
+    userId: uid,
+    planCode: plan.code,
+    provider: "mock",
+    customerId: uid,
+    subscriptionId: reference,
+    currentPeriodStart: now.toISOString(),
+    currentPeriodEnd: periodEnd.toISOString()
+  });
+
+  res.status(200).json({ status: "active", planCode: plan.code });
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
@@ -26,6 +81,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     return;
   }
 
+  if (action === "mock-complete" && !isMockCompletionAllowed()) {
+    res.status(403).json({ error: "Mock subscription completion is not available in this environment." });
+    return;
+  }
+
   const auth = await authenticateSupabaseRequest(req);
   if (!auth.ok) {
     res.status(auth.status).json({ error: auth.error });
@@ -33,6 +93,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   }
 
   try {
+    if (action === "checkout") {
+      const payload = await handleSubscriptionCheckout(req, auth.ctx.uid, auth.ctx.user.email);
+      res.status(200).json(payload);
+      return;
+    }
+
+    if (action === "mock-complete") {
+      await handleMockComplete(req, res, auth.ctx.uid);
+      return;
+    }
+
     if (action === "verify") {
       const outcome = await handleSubscriptionVerify(req, auth.ctx.uid);
       res.status(200).json({ message: "Payment verified.", outcome });
