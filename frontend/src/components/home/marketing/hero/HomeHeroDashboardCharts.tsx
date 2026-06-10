@@ -11,6 +11,59 @@ function scaleSeries(values: readonly number[], height: number, pad = 4) {
   });
 }
 
+function scaleSeriesCoords(values: readonly number[], height: number, pad = 4) {
+  const max = Math.max(...values);
+  const min = Math.min(...values);
+  const span = max - min || 1;
+  return values.map((v, i) => {
+    const x = pad + (i / Math.max(values.length - 1, 1)) * (100 - pad * 2);
+    const y = height - pad - ((v - min) / span) * (height - pad * 2);
+    return { x, y };
+  });
+}
+
+/** Featured portfolio overview line chart — mirrors the real dashboard panel. */
+export function HomeHeroPortfolioOverviewChart() {
+  const trend = HOME_HERO_DEMO.cashFlowTrend;
+  const values = trend.map((p) => p.value);
+  const chartHeight = 88;
+  const pad = 8;
+  const baseline = chartHeight - pad;
+  const coords = scaleSeriesCoords(values, chartHeight, pad);
+  const linePoints = coords.map((p) => `${p.x},${p.y}`).join(" ");
+  const areaPoints = [
+    `${coords[0]?.x ?? pad},${baseline}`,
+    linePoints,
+    `${coords[coords.length - 1]?.x ?? 100 - pad},${baseline}`
+  ].join(" ");
+
+  return (
+    <div className="hm-hero-dash-overview-chart" aria-hidden>
+      <svg viewBox={`0 0 100 ${chartHeight}`} className="hm-hero-dash-chart__svg hm-hero-dash-chart__svg--overview" preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="hm-hero-overview-fill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="rgba(124, 92, 255, 0.32)" />
+            <stop offset="100%" stopColor="rgba(124, 92, 255, 0.02)" />
+          </linearGradient>
+        </defs>
+        {[22, 44, 66].map((y) => (
+          <line key={y} x1={pad} y1={y} x2={100 - pad} y2={y} className="hm-hero-dash-chart__grid" />
+        ))}
+        <polygon points={areaPoints} className="hm-hero-dash-chart__area" fill="url(#hm-hero-overview-fill)" />
+        <polyline points={linePoints} className="hm-hero-dash-chart__line hm-hero-dash-chart__line--overview" />
+        {coords.map((pt, i) => (
+          <circle key={trend[i]?.label ?? i} cx={pt.x} cy={pt.y} r={i === coords.length - 1 ? 2.6 : 1.8} className="hm-hero-dash-chart__dot" />
+        ))}
+      </svg>
+      <div className="hm-hero-dash-overview-chart__labels">
+        {trend.map((p) => (
+          <span key={p.label}>{p.label}</span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function HomeHeroCashFlowLineChart() {
   const values = HOME_HERO_DEMO.cashFlowTrend.map((p) => p.value);
   const points = scaleSeries(values, 48, 6).join(" ");

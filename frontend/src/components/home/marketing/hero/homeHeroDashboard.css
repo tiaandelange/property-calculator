@@ -2,7 +2,7 @@
 
 .hm-hero-visual--premium {
   position: relative;
-  min-height: clamp(420px, 52vw, 620px);
+  min-height: clamp(520px, 58vw, 720px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -58,9 +58,9 @@
 
 .hm-hero-visual__stage {
   position: relative;
-  width: min(100%, clamp(700px, 52vw, 940px));
-  max-width: 52vw;
-  min-height: clamp(380px, 34vw, 520px);
+  width: min(100%, clamp(780px, 56vw, 1040px));
+  max-width: 56vw;
+  min-height: clamp(460px, 40vw, 620px);
   z-index: 2;
 }
 
@@ -179,7 +179,7 @@
   z-index: 1;
   display: grid;
   grid-template-columns: 148px minmax(0, 1fr);
-  min-height: 420px;
+  min-height: 520px;
   border-radius: 24px;
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -343,10 +343,50 @@
   font-variant-numeric: tabular-nums;
 }
 
+.hm-hero-dash__panel--overview {
+  padding: 10px 11px 8px;
+}
+
+.hm-hero-dash__panel--overview .hm-hero-dash__panel-head {
+  margin-bottom: 8px;
+}
+
+.hm-hero-dash__panel--overview .hm-hero-dash__panel-head h4 {
+  font-size: 10px;
+}
+
 .hm-hero-dash__charts {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
+}
+
+.hm-hero-dash-overview-chart {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.hm-hero-dash-chart__svg--overview {
+  height: clamp(88px, 10vw, 118px);
+}
+
+.hm-hero-dash-chart__area {
+  stroke: none;
+}
+
+.hm-hero-dash-chart__line--overview {
+  stroke-width: 2.2;
+}
+
+.hm-hero-dash-overview-chart__labels {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 2px;
+  font-size: 7px;
+  font-weight: 600;
+  color: #64748b;
+  text-align: center;
 }
 
 .hm-hero-dash__panel {
@@ -588,8 +628,8 @@
 
 @media (max-width: 1280px) {
   .hm-hero-visual__stage {
-    width: min(100%, clamp(620px, 48vw, 820px));
-    max-width: 48vw;
+    width: min(100%, clamp(680px, 52vw, 900px));
+    max-width: 52vw;
   }
 
   .hm-hero-float-icon--icon-a,
@@ -601,7 +641,7 @@
 
 @media (max-width: 1200px) {
   .hm-hero-visual__stage {
-    max-width: 46vw;
+    max-width: 50vw;
   }
 
   .hm-hero-dash__kpis--5 {
@@ -609,11 +649,7 @@
   }
 
   .hm-hero-dash__charts {
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .hm-hero-dash__charts .hm-hero-dash__panel:last-child {
-    grid-column: 1 / -1;
+    grid-template-columns: 1fr;
   }
 
   .hm-hero-float-icon--icon-e,

@@ -1,8 +1,8 @@
 import { AppIcon } from "../../../icons/AppIcon";
 import {
-  HomeHeroCashFlowLineChart,
   HomeHeroIncomeExpenseBars,
-  HomeHeroPortfolioDonutChart
+  HomeHeroPortfolioDonutChart,
+  HomeHeroPortfolioOverviewChart
 } from "./HomeHeroDashboardCharts";
 import {
   HOME_HERO_DASHBOARD_KPIS,
@@ -71,14 +71,17 @@ export function HomeHeroDashboardMockup({ compact = false }: Props) {
           </div>
 
           {!compact ? (
+            <article className="hm-hero-dash__panel hm-hero-dash__panel--overview">
+              <div className="hm-hero-dash__panel-head">
+                <h4>Portfolio Overview</h4>
+                <span>Last 6 Months</span>
+              </div>
+              <HomeHeroPortfolioOverviewChart />
+            </article>
+          ) : null}
+
+          {!compact ? (
             <div className="hm-hero-dash__charts">
-              <article className="hm-hero-dash__panel">
-                <div className="hm-hero-dash__panel-head">
-                  <h4>Net Cash Flow</h4>
-                  <span>6 months</span>
-                </div>
-                <HomeHeroCashFlowLineChart />
-              </article>
               <article className="hm-hero-dash__panel">
                 <div className="hm-hero-dash__panel-head">
                   <h4>Portfolio Mix</h4>
@@ -105,12 +108,12 @@ export function HomeHeroDashboardMockup({ compact = false }: Props) {
               </article>
             </div>
           ) : (
-            <article className="hm-hero-dash__panel hm-hero-dash__panel--compact">
+            <article className="hm-hero-dash__panel hm-hero-dash__panel--overview hm-hero-dash__panel--compact">
               <div className="hm-hero-dash__panel-head">
-                <h4>Net Cash Flow</h4>
-                <span>6 months</span>
+                <h4>Portfolio Overview</h4>
+                <span>Last 6 Months</span>
               </div>
-              <HomeHeroCashFlowLineChart />
+              <HomeHeroPortfolioOverviewChart />
             </article>
           )}
 

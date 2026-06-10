@@ -292,11 +292,11 @@ body:where(:has(.pg-main-marketing-home), :has(.hm-home), :has(.pg-calc-hub-land
 }
 
 .hm-hero--premium .hm-hero-grid {
-  grid-template-columns: minmax(420px, 0.9fr) minmax(520px, 1.1fr);
+  grid-template-columns: minmax(400px, 0.82fr) minmax(560px, 1.18fr);
   align-items: center;
-  gap: clamp(48px, 6vw, 96px);
+  gap: clamp(40px, 5vw, 80px);
   padding: clamp(32px, 5vw, 56px) clamp(24px, 4vw, 48px) clamp(40px, 5vw, 60px);
-  min-height: clamp(520px, 58vh, 640px);
+  min-height: clamp(580px, 62vh, 720px);
 }
 
 .hm-hero-copy {
@@ -307,15 +307,7 @@ body:where(:has(.pg-main-marketing-home), :has(.hm-home), :has(.pg-calc-hub-land
   position: relative;
   max-width: 680px;
   z-index: 5;
-}
-
-.hm-hero--premium .hm-hero-copy::before {
-  content: "";
-  position: absolute;
-  inset: -10% -6% -14% -10%;
-  background: radial-gradient(circle at 30% 35%, rgba(124, 58, 237, 0.22), transparent 55%);
-  pointer-events: none;
-  z-index: -1;
+  overflow: visible;
 }
 
 .hm-hero-copy-glass {
@@ -351,6 +343,7 @@ body:where(:has(.pg-main-marketing-home), :has(.hm-home), :has(.pg-calc-hub-land
 .hm-hero-title-wrap {
   position: relative;
   margin: 0 0 18px;
+  overflow: visible;
 }
 
 .hm-hero--premium .hm-hero-title-wrap {
@@ -359,28 +352,38 @@ body:where(:has(.pg-main-marketing-home), :has(.hm-home), :has(.pg-calc-hub-land
 
 .hm-hero-headline-glow {
   position: absolute;
-  left: -8%;
-  right: -8%;
+  left: 0;
+  right: 0;
   top: 50%;
-  height: 160%;
+  height: 200%;
   transform: translateY(-50%);
   pointer-events: none;
   z-index: 0;
   background: radial-gradient(
-    ellipse 72% 88% at 42% 50%,
-    color-mix(in srgb, var(--primary) 52%, transparent) 0%,
-    color-mix(in srgb, var(--primary) 22%, transparent) 38%,
+    ellipse 90% 80% at 38% 50%,
+    color-mix(in srgb, var(--primary) 40%, transparent) 0%,
+    color-mix(in srgb, var(--primary) 14%, transparent) 42%,
     transparent 72%
   );
-  filter: blur(2px);
+  filter: blur(24px);
+  -webkit-mask-image: radial-gradient(ellipse 95% 88% at 38% 50%, #000 18%, transparent 78%);
+  mask-image: radial-gradient(ellipse 95% 88% at 38% 50%, #000 18%, transparent 78%);
 }
 
 .hm-hero--premium .hm-hero-headline-glow {
-  left: -14%;
-  right: 6%;
-  height: 340%;
-  background: radial-gradient(circle at 38% 50%, rgba(124, 58, 237, 0.3), transparent 58%);
-  filter: blur(28px);
+  left: 0;
+  right: 0;
+  height: 260%;
+  background: radial-gradient(
+    ellipse 110% 90% at 32% 48%,
+    rgba(124, 58, 237, 0.26) 0%,
+    rgba(124, 58, 237, 0.1) 38%,
+    rgba(124, 58, 237, 0.03) 58%,
+    transparent 76%
+  );
+  filter: blur(36px);
+  -webkit-mask-image: radial-gradient(ellipse 100% 92% at 34% 50%, #000 12%, transparent 80%);
+  mask-image: radial-gradient(ellipse 100% 92% at 34% 50%, #000 12%, transparent 80%);
 }
 
 .hm-hero-eyebrow {
@@ -581,7 +584,7 @@ body:where(:has(.pg-main-marketing-home), :has(.hm-home), :has(.pg-calc-hub-land
   align-items: center;
   padding-top: 0;
   margin-right: 0;
-  min-height: clamp(520px, 42vw, 560px);
+  min-height: clamp(560px, 48vw, 680px);
   z-index: 2;
 }
 
@@ -4787,9 +4790,9 @@ body:where(:has(.pg-main-marketing-home), :has(.hm-home), :has(.pg-calc-hub-land
   }
 
   .hm-hero-headline-glow {
-    left: -4%;
-    right: -4%;
-    height: 140%;
+    left: 0;
+    right: 0;
+    height: 180%;
   }
 
   .hm-hero-grid {
