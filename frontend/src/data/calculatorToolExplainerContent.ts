@@ -282,3 +282,12 @@ export function getToolExplainer(slug: string, description: string): CalculatorT
     disadvantages: GENERIC_DIS
   };
 }
+
+/** Shown under Interpretation on the Total Return (IRR) calculator — why IRR % often falls by year on the chart. */
+export const IRR_DECLINING_BY_YEAR_EXPLANATION = `The Internal Rate of Return (IRR) often decreases as your hold period lengthens — even when the investment is performing well. IRR measures the annualised speed of return on the cash you actually put in, not your total wealth in the property.
+
+In the first year, a modest deposit alongside a bonded purchase can make percentage returns look very high when the property appreciates even slightly. That early spike is averaged over more years as time passes, which pulls the annualised rate down.
+
+At the same time, rental income helps service and pay down your bond while the property can appreciate — building a much larger equity stake inside the asset. Annual net cash flow after expenses and debt usually cannot grow as fast as that equity base. Return as a percentage can therefore look like it is “slowing” even while your total rand wealth in the property is rising.
+
+This pattern is common in South African buy-to-let with bond leverage. Read IRR together with total profit, equity build-up and cash flow — not in isolation.`;

@@ -13,7 +13,7 @@ import { applyProplyticChartTheme } from "../utils/calculatorChartTheme";
 import { calculators } from "../data/calculators";
 import { getCalculatorDefaultValues } from "../data/calculatorDefaultValues";
 import { getCalculatorToolPage } from "../data/calculatorToolPageContent";
-import { getToolExplainer } from "../data/calculatorToolExplainerContent";
+import { getToolExplainer, IRR_DECLINING_BY_YEAR_EXPLANATION } from "../data/calculatorToolExplainerContent";
 import { getLocalAuthSession } from "../lib/authSession";
 import { getSupabase } from "../lib/supabaseClient";
 import { runCalculatorLocally, saveCalculationResult } from "../services/calculationsSupabase";
@@ -1105,6 +1105,7 @@ export function CalculatorPage() {
                     }
                     warnings={result.interpretation.warnings ?? []}
                     showNegativeFundingNote={calc.slug === "cash-flow" && isCashFlowNegative(result)}
+                    supplementaryText={calc.slug === "irr" ? IRR_DECLINING_BY_YEAR_EXPLANATION : undefined}
                   />
                 ) : null}
 

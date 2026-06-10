@@ -7968,6 +7968,16 @@ html[data-theme="light"] .pg-statement-table th {
   color: #334155;
 }
 
+.pg-calc-tool-interpretation__supplementary {
+  margin: 14px 0 0;
+  padding-top: 14px;
+  border-top: 1px solid color-mix(in srgb, var(--primary) 12%, #e2e8f0);
+  font-size: 14px;
+  line-height: 1.6;
+  color: #475569;
+  white-space: pre-line;
+}
+
 .pg-calc-tool-interpretation__warn {
   margin: 12px 0 0;
   font-size: 14px;
