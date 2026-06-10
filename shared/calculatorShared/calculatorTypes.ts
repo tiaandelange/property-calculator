@@ -11,7 +11,7 @@ export type SummaryMetric = {
   formatted: string;
 };
 
-export type ChartType = "line" | "bar" | "doughnut";
+export type ChartType = "line" | "bar" | "doughnut" | "combo";
 
 export type ChartData = {
   chartType: ChartType;
@@ -19,13 +19,18 @@ export type ChartData = {
   data: {
     labels: string[];
     datasets: Array<{
+      type?: "bar" | "line";
       label: string;
-      data: number[];
+      data: Array<number | null>;
       backgroundColor?: string | string[];
       borderColor?: string | string[];
       borderWidth?: number;
       fill?: boolean;
       stack?: string;
+      yAxisID?: string;
+      tension?: number;
+      pointRadius?: number;
+      spanGaps?: boolean;
     }>;
   };
   options?: Record<string, unknown>;

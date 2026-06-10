@@ -99,7 +99,8 @@ function mergeChartScales(options: Record<string, unknown> | undefined): Record<
     scales: {
       ...scales,
       x: scales.x != null ? mergeAxis(scales.x as Record<string, unknown>) : { ticks: { color: TICK_COLOR }, grid: { display: false } },
-      y: scales.y != null ? mergeAxis(scales.y as Record<string, unknown>) : { ticks: { color: TICK_COLOR }, grid: { color: GRID_COLOR } }
+      y: scales.y != null ? mergeAxis(scales.y as Record<string, unknown>) : { ticks: { color: TICK_COLOR }, grid: { color: GRID_COLOR } },
+      y1: scales.y1 != null ? mergeAxis(scales.y1 as Record<string, unknown>) : scales.y1
     }
   };
 }
@@ -138,6 +139,65 @@ export function applyProplyticChartTheme(chart: ChartLike, slug: string, graphTi
     };
   }
 
+  if (slug === "irr" && chart.chartType === "combo") {
+    const datasets = chart.data?.datasets ?? [];
+    return {
+      ...chart,
+      title: graphTitle ?? chart.title ?? "Annual cash flow & IRR by year",
+      data: {
+        labels: chart.data?.labels ?? [],
+        datasets: datasets.map((ds) => {
+          const label = String(ds.label ?? "");
+          const isIrrLine = ds.type === "line" || label.toLowerCase().includes("irr");
+          if (isIrrLine) {
+            return {
+              ...ds,
+              type: "line",
+              label: "IRR (%)",
+              borderColor: "#F59E0B",
+              backgroundColor: "transparent",
+              tension: 0.25,
+              pointRadius: 4,
+              pointHoverRadius: 6,
+              borderWidth: 2.5,
+              yAxisID: "y1",
+              spanGaps: false
+            };
+          }
+          return {
+            ...ds,
+            type: "bar",
+            label: "Annual cash flow",
+            backgroundColor: PRINCIPAL_FILL,
+            borderColor: PRINCIPAL_STROKE,
+            borderRadius: 6,
+            borderSkipped: false,
+            yAxisID: "y"
+          };
+        })
+      },
+      options: mergeChartScales({
+        ...chart.options,
+        scales: {
+          x: { grid: { display: false } },
+          y: {
+            position: "left",
+            title: { display: true, text: "Cash flow (ZAR)", color: TICK_COLOR, font: { size: 11, weight: 600 } }
+          },
+          y1: {
+            position: "right",
+            title: { display: true, text: "IRR (%)", color: TICK_COLOR, font: { size: 11, weight: 600 } },
+            grid: { drawOnChartArea: false },
+            ticks: {
+              color: TICK_COLOR,
+              callback: (value: string | number) => `${value}%`
+            }
+          }
+        }
+      })
+    };
+  }
+
   if (slug === "monthly-payment" && chart.chartType === "bar" && isPrincipalInterestChart(chart)) {
     return {
       chartType: "line",
@@ -153,7 +213,7 @@ export function applyProplyticChartTheme(chart: ChartLike, slug: string, graphTi
     };
   }
 
-  if (chart.chartType === "line" || chart.chartType === "bar") {
+  if (chart.chartType === "line" || chart.chartType === "bar" || chart.chartType === "combo") {
     return {
       ...chart,
       title: graphTitle ?? chart.title,

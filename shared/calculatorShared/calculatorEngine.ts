@@ -1010,6 +1010,37 @@ type IrrBondAtSaleResolution = {
   interestRateUsed: number | null;
 };
 
+type IrrYearRow = { year: number; irr: number | null };
+
+function irrBondMonthlyPayment(input: IrrParsed): number | null {
+  const outstanding = input.outstandingBondBalance ?? 0;
+  if (outstanding <= 0) return null;
+  const rate = input.outstandingBondInterestRatePercent;
+  if (rate == null || !Number.isFinite(rate) || rate < 0) return null;
+  const termYears = input.bondTermYears ?? 20;
+  const { monthlyPayment } = calculateMonthlyBondPayment({
+    principal: outstanding,
+    annualInterestRatePercent: rate,
+    termYears
+  });
+  return monthlyPayment;
+}
+
+function bondBalanceAtYear(input: IrrParsed, year: number, holdYears: number): number {
+  const outstanding = input.outstandingBondBalance ?? 0;
+  if (outstanding <= 0) return 0;
+  if (input.projectedBondBalanceAtSale != null && year === holdYears) {
+    return input.projectedBondBalanceAtSale;
+  }
+  const rate = input.outstandingBondInterestRatePercent;
+  const monthlyPayment = irrBondMonthlyPayment(input);
+  if (rate != null && monthlyPayment != null) {
+    const projected = projectLoanBalanceAfterYears(outstanding, monthlyPayment, rate, year);
+    if (projected != null) return projected;
+  }
+  return outstanding;
+}
+
 function resolveIrrGrowthBondAtSale(
   input: IrrParsed,
   holdYears: number,
@@ -1035,22 +1066,15 @@ function resolveIrrGrowthBondAtSale(
   }
 
   const rate = input.outstandingBondInterestRatePercent;
-  if (rate != null && Number.isFinite(rate) && rate >= 0) {
-    const termYears = input.bondTermYears ?? 20;
-    const { monthlyPayment } = calculateMonthlyBondPayment({
-      principal: outstanding,
-      annualInterestRatePercent: rate,
-      termYears
-    });
-    const projected = projectLoanBalanceAfterYears(outstanding, monthlyPayment, rate, holdYears);
-    if (projected != null) {
-      return {
-        bondAtSale: projected,
-        bondBasis: "amortized",
-        monthlyPaymentUsed: monthlyPayment,
-        interestRateUsed: rate
-      };
-    }
+  const monthlyPayment = irrBondMonthlyPayment(input);
+  if (rate != null && monthlyPayment != null) {
+    const projected = bondBalanceAtYear(input, holdYears, holdYears);
+    return {
+      bondAtSale: projected,
+      bondBasis: "amortized",
+      monthlyPaymentUsed: monthlyPayment,
+      interestRateUsed: rate
+    };
   }
 
   warnings.push(
@@ -1062,6 +1086,81 @@ function resolveIrrGrowthBondAtSale(
     monthlyPaymentUsed: null,
     interestRateUsed: null
   };
+}
+
+function buildIrrGrowthCashFlowsToYear(input: IrrParsed, horizonYear: number, holdYears: number): number[] | null {
+  const tcRaw = input.totalCashInvested;
+  const value0 = input.currentEstimatedValue;
+  if (tcRaw == null || !(tcRaw > 0) || value0 == null || !(value0 > 0) || horizonYear < 1) {
+    return null;
+  }
+
+  const appreciation = input.expectedAnnualAppreciationPercent ?? 0;
+  const sellPct = clamp(input.estimatedSellingCostPercent ?? 5, 0, 100);
+  const g = operatingGrowthRatePerYear(input);
+  const baseAnnual = input.annualCashFlowAfterExpensesAndDebt ?? 0;
+
+  const flows: number[] = [-tcRaw];
+  for (let y = 1; y < horizonYear; y++) {
+    flows.push(round2(baseAnnual * Math.pow(1 + g, y - 1)));
+  }
+
+  const futurePropertyValue = value0 * Math.pow(1 + appreciation / 100, horizonYear);
+  const sellingCosts = futurePropertyValue * (sellPct / 100);
+  const bondAtSale = bondBalanceAtYear(input, horizonYear, holdYears);
+  const netSaleProceeds = futurePropertyValue - sellingCosts - bondAtSale;
+  const finalOperating = baseAnnual * Math.pow(1 + g, horizonYear - 1);
+  flows.push(round2(finalOperating + netSaleProceeds));
+  return flows;
+}
+
+function computeIrrByYearGrowth(input: IrrParsed, holdYears: number): IrrYearRow[] {
+  const rows: IrrYearRow[] = [];
+  for (let year = 1; year <= holdYears; year++) {
+    const flows = buildIrrGrowthCashFlowsToYear(input, year, holdYears);
+    if (!flows) {
+      rows.push({ year, irr: null });
+      continue;
+    }
+    const futureAllNonPositive = flows.slice(1).every((x) => x <= 0);
+    if (futureAllNonPositive) {
+      rows.push({ year, irr: null });
+      continue;
+    }
+    const rate = solveIrrPeriodicCashFlows(flows);
+    rows.push({ year, irr: rate == null ? null : round2(rate * 100) });
+  }
+  return rows;
+}
+
+function computeIrrByYearLegacy(input: IrrParsed, holdYears: number): IrrYearRow[] {
+  const cf0Raw = input.initialCashInvested;
+  const annualFlows = input.annualCashFlows;
+  const salePrice = input.expectedSalePrice;
+  if (cf0Raw == null || !annualFlows?.length || salePrice == null) return [];
+
+  const cf0 = cf0Raw > 0 ? -Math.abs(cf0Raw) : cf0Raw;
+  const saleCosts = salePrice * (clamp(input.sellingCostsPercent ?? 5, 0, 100) / 100);
+  const remainingLoan = input.remainingLoanBalanceAtSale ?? 0;
+  const netSaleProceeds = salePrice - saleCosts - remainingLoan;
+  const rows: IrrYearRow[] = [];
+
+  for (let year = 1; year <= holdYears; year++) {
+    const series = expandAnnualFlowsToHorizon(annualFlows, year);
+    const flows: number[] = [cf0];
+    for (let y = 1; y < year; y++) {
+      flows.push(series[y - 1]);
+    }
+    flows.push(series[year - 1] + netSaleProceeds);
+    const futureAllNonPositive = flows.slice(1).every((x) => x <= 0);
+    if (futureAllNonPositive) {
+      rows.push({ year, irr: null });
+      continue;
+    }
+    const rate = solveIrrPeriodicCashFlows(flows);
+    rows.push({ year, irr: rate == null ? null : round2(rate * 100) });
+  }
+  return rows;
 }
 
 function calcIrrGrowthFromValue(input: IrrParsed, H: number, warnings: string[], assumptions: string[]): CalculatorResult {
@@ -1150,7 +1249,8 @@ function calcIrrGrowthFromValue(input: IrrParsed, H: number, warnings: string[],
   const interpretationText =
     irrPercent === null ? "Insufficient data — IRR could not be computed." : `IRR is ${formatPercent(irrPercent)} (annual).`;
 
-  const chartData = irrChartData(cashFlows);
+  const irrByYear = computeIrrByYearGrowth(input, H);
+  const chartData = irrChartData(cashFlows, irrByYear);
 
   return {
     ...baseResult("irr", input.scenarioName),
@@ -1164,6 +1264,7 @@ function calcIrrGrowthFromValue(input: IrrParsed, H: number, warnings: string[],
     breakdown: {
       irrPercent,
       cashFlows,
+      irrByYear,
       futurePropertyValue,
       sellingCosts,
       bondBalanceAtSale: bondAtSale,
@@ -1241,6 +1342,9 @@ function calcIrrLegacySalePrice(input: IrrParsed, H: number, warnings: string[],
   const interpretationText =
     irrPercent === null ? "Insufficient data — IRR could not be computed." : `IRR is ${formatPercent(irrPercent)} (annual).`;
 
+  const irrByYear = computeIrrByYearLegacy(input, H);
+  const chartData = irrChartData(cashFlows, irrByYear);
+
   return {
     ...baseResult("irr", input.scenarioName),
     summary: [
@@ -1253,6 +1357,7 @@ function calcIrrLegacySalePrice(input: IrrParsed, H: number, warnings: string[],
     breakdown: {
       irrPercent,
       cashFlows,
+      irrByYear,
       futurePropertyValue: null,
       sellingCosts: saleCosts,
       bondBalanceAtSale: remainingLoan,
@@ -1269,37 +1374,62 @@ function calcIrrLegacySalePrice(input: IrrParsed, H: number, warnings: string[],
       averageAnnualCashFlow: avgAnnual
     },
     interpretation: { text: interpretationText, warnings },
-    chartData: irrChartData(cashFlows),
+    chartData,
     assumptionsUsed: { sellingCostsPercent: input.sellingCostsPercent }
   };
 }
 
-function irrChartData(cashFlows: number[]) {
+function irrChartData(cashFlows: number[], irrByYear: IrrYearRow[]) {
+  const labels = cashFlows.map((_, i) => `Y${i}`);
+  const irrByYearIndex = new Map(irrByYear.map((row) => [row.year, row.irr]));
+  const irrLine: Array<number | null> = labels.map((_, i) => {
+    if (i === 0) return null;
+    return irrByYearIndex.get(i) ?? null;
+  });
+
   return [
     {
-      chartType: "bar" as const,
-      title: "Annual cash flow",
+      chartType: "combo" as const,
+      title: "Annual cash flow & IRR by year",
       data: {
-        labels: cashFlows.map((_, i) => `Y${i}`),
-        datasets: [{ label: "ZAR", data: cashFlows.map((x) => round2(x)), backgroundColor: "#007acc" }]
-      }
-    },
-    {
-      chartType: "line" as const,
-      title: "Cumulative cash flow",
-      data: {
-        labels: cashFlows.map((_, i) => `Y${i}`),
+        labels,
         datasets: [
           {
-            label: "Cumulative",
-            data: cashFlows.reduce((acc: number[], x) => {
-              const prev = acc.length ? acc[acc.length - 1] : 0;
-              acc.push(round2(prev + x));
-              return acc;
-            }, []),
-            borderColor: "#007acc"
+            type: "bar" as const,
+            label: "Annual cash flow",
+            data: cashFlows.map((x) => round2(x)),
+            backgroundColor: "#007acc",
+            yAxisID: "y"
+          },
+          {
+            type: "line" as const,
+            label: "IRR (%)",
+            data: irrLine,
+            borderColor: "#f59e0b",
+            backgroundColor: "transparent",
+            tension: 0.25,
+            pointRadius: 4,
+            yAxisID: "y1",
+            spanGaps: false
           }
         ]
+      },
+      options: {
+        scales: {
+          x: { grid: { display: false } },
+          y: {
+            position: "left",
+            title: { display: true, text: "Cash flow (ZAR)" }
+          },
+          y1: {
+            position: "right",
+            title: { display: true, text: "IRR (%)" },
+            grid: { drawOnChartArea: false },
+            ticks: {
+              callback: (value: string | number) => `${value}%`
+            }
+          }
+        }
       }
     }
   ];
@@ -1317,7 +1447,7 @@ function irrEmptyResult(
   finalYearCashFlow: number | null,
   irrPercent: number | null
 ): CalculatorResult {
-  const chartData = cashFlows.length ? irrChartData(cashFlows) : [];
+  const chartData = cashFlows.length ? irrChartData(cashFlows, []) : [];
   return {
     ...baseResult("irr", input.scenarioName),
     summary: [

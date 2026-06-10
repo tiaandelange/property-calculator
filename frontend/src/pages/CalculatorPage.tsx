@@ -260,7 +260,8 @@ function mergeThemedChartOptions(base: Record<string, unknown> | null | undefine
     scales: {
       ...scales,
       x: scales.x != null ? mergeAxis(scales.x as Record<string, unknown>) : scales.x,
-      y: scales.y != null ? mergeAxis(scales.y as Record<string, unknown>) : scales.y
+      y: scales.y != null ? mergeAxis(scales.y as Record<string, unknown>) : scales.y,
+      y1: scales.y1 != null ? mergeAxis(scales.y1 as Record<string, unknown>) : scales.y1
     }
   };
 }
@@ -527,6 +528,10 @@ export function CalculatorPage() {
         return labels.some((l) => l.includes("principal")) && labels.some((l) => l.includes("interest"));
       });
       return repaymentChart ? [repaymentChart] : combined.slice(0, 1);
+    }
+    if (calc.slug === "irr") {
+      const combo = raw.filter((c) => c.chartType === "combo");
+      return combo.length ? combo : raw.slice(0, 1);
     }
     return combined;
   }, [chartData, summary, calc.slug]);
@@ -1068,7 +1073,11 @@ export function CalculatorPage() {
                       const opts = chartOptionsForViewport(themed.options as Record<string, unknown>, calc.slug) as any;
                       const displayTitle = themed.title ?? "Chart";
                       const ChartComponent =
-                        themed.chartType === "line" ? Line : themed.chartType === "doughnut" ? Doughnut : Bar;
+                        themed.chartType === "line"
+                          ? Line
+                          : themed.chartType === "doughnut"
+                            ? Doughnut
+                            : Bar;
                       const showInlineTitle = chartsToRender.length > 1;
                       return (
                         <div key={`${displayTitle}-${idx}`} className="pg-calc-tool-chart-item">

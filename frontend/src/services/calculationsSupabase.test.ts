@@ -66,6 +66,13 @@ describe("calculationsSupabase", () => {
 
     const atFive = runCalculatorLocally("irr", { ...base, estimatedSellingCostPercent: 5 });
     expect(atFive.breakdown?.sellingCosts).toBe(115_000);
+
+    const comboChart = atTen.chartData?.[0];
+    expect(comboChart?.chartType).toBe("combo");
+    expect(comboChart?.data?.datasets).toHaveLength(2);
+    const irrByYear = atTen.breakdown?.irrByYear as Array<{ year: number; irr: number | null }>;
+    expect(irrByYear?.length).toBe(5);
+    expect(irrByYear?.[4]?.irr).toBe(atTen.summary?.find((m) => m.key === "irrPercent")?.value);
   });
 
   it("runCalculatorLocally runs buy-vs-rent with charts and interpretation", () => {
