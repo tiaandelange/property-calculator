@@ -16,6 +16,16 @@ const PRIMARY_LINE = "#7C3AED";
 const PRIMARY_FILL = "rgba(124, 58, 237, 0.22)";
 const GRID_COLOR = "rgba(148, 163, 184, 0.22)";
 const TICK_COLOR = "#64748B";
+const DOUGHNUT_PALETTE = [
+  PRINCIPAL_STROKE,
+  "#8B5CF6",
+  "#A78BFA",
+  "#C4B5FD",
+  "#DDD6FE",
+  INTEREST_STROKE,
+  "#E2E8F0",
+  "#94A3B8"
+];
 
 function isPrincipalInterestChart(chart: ChartLike): boolean {
   const datasets = chart.data?.datasets ?? [];
@@ -76,6 +86,29 @@ function themedDataset(label: string, data: unknown[], index: number) {
   };
 }
 
+function doughnutSliceColors(count: number): string[] {
+  return DOUGHNUT_PALETTE.slice(0, Math.max(count, 1));
+}
+
+function isDualAxisComboChart(chart: ChartLike): boolean {
+  if (chart.chartType !== "combo") return false;
+  const scales = chart.options?.scales as Record<string, unknown> | undefined;
+  if (scales?.y1 != null) return true;
+  const datasets = chart.data?.datasets ?? [];
+  return datasets.some((ds) => ds.yAxisID === "y1" || ds.type === "line");
+}
+
+function isPercentLineDataset(ds: Record<string, unknown>): boolean {
+  const label = String(ds.label ?? "").toLowerCase();
+  return (
+    ds.type === "line" ||
+    ds.yAxisID === "y1" ||
+    label.includes("irr") ||
+    label.includes("cash-on-cash") ||
+    label.includes("%")
+  );
+}
+
 function mergeChartScales(options: Record<string, unknown> | undefined): Record<string, unknown> {
   const scales = (options?.scales as Record<string, unknown> | undefined) ?? {};
   const mergeAxis = (axis: Record<string, unknown> | undefined) => ({
@@ -101,6 +134,124 @@ function mergeChartScales(options: Record<string, unknown> | undefined): Record<
       x: scales.x != null ? mergeAxis(scales.x as Record<string, unknown>) : { ticks: { color: TICK_COLOR }, grid: { display: false } },
       y: scales.y != null ? mergeAxis(scales.y as Record<string, unknown>) : { ticks: { color: TICK_COLOR }, grid: { color: GRID_COLOR } },
       y1: scales.y1 != null ? mergeAxis(scales.y1 as Record<string, unknown>) : scales.y1
+    }
+  };
+}
+
+function themedDoughnutOptions(existing?: Record<string, unknown>): Record<string, unknown> {
+  const existingPlugins = (existing?.plugins as Record<string, unknown> | undefined) ?? {};
+  const existingLegend = (existingPlugins.legend as Record<string, unknown> | undefined) ?? {};
+  const existingTooltip = (existingPlugins.tooltip as Record<string, unknown> | undefined) ?? {};
+  return {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      ...existingPlugins,
+      legend: {
+        position: "right",
+        align: "start",
+        labels: {
+          color: TICK_COLOR,
+          boxWidth: 12,
+          usePointStyle: true,
+          padding: 10,
+          ...((existingLegend.labels as object) ?? {})
+        }
+      },
+      tooltip: {
+        ...existingTooltip,
+        callbacks: {
+          label: (ctx: { label?: string; parsed?: number; dataset?: { data?: number[] } }) => {
+            const value = typeof ctx.parsed === "number" ? ctx.parsed : 0;
+            const total = (ctx.dataset?.data ?? []).reduce((sum, n) => sum + (Number(n) || 0), 0);
+            const pct = total > 0 ? ((value / total) * 100).toFixed(1) : "0";
+            return `${ctx.label ?? ""}: R ${value.toLocaleString("en-ZA")} (${pct}%)`;
+          }
+        }
+      }
+    }
+  };
+}
+
+function themedDualAxisComboData(chart: ChartLike) {
+  const datasets = chart.data?.datasets ?? [];
+  return {
+    labels: chart.data?.labels ?? [],
+    datasets: datasets.map((ds) => {
+      if (isPercentLineDataset(ds)) {
+        return {
+          ...ds,
+          type: "line",
+          borderColor: "#F59E0B",
+          backgroundColor: "transparent",
+          tension: 0.25,
+          pointRadius: 4,
+          pointHoverRadius: 6,
+          borderWidth: 2.5,
+          yAxisID: "y1",
+          spanGaps: false
+        };
+      }
+      return {
+        ...ds,
+        type: "bar",
+        backgroundColor: PRINCIPAL_FILL,
+        borderColor: PRINCIPAL_STROKE,
+        borderRadius: 6,
+        borderSkipped: false,
+        yAxisID: ds.yAxisID ?? "y"
+      };
+    })
+  };
+}
+
+function themedDualAxisComboOptions(chart: ChartLike): Record<string, unknown> {
+  const chartOpts = chart.options ?? {};
+  const scales = (chartOpts.scales as Record<string, Record<string, unknown>> | undefined) ?? {};
+  const yTitle = (scales.y?.title as { text?: string } | undefined)?.text ?? "Cash flow (ZAR)";
+  const rightAxisTitle = (scales.y1?.title as { text?: string } | undefined)?.text ?? "Rate (%)";
+
+  const merged = mergeChartScales({
+    ...chartOpts,
+    scales: {
+      x: { grid: { display: false }, ...(scales.x ?? {}) },
+      y: {
+        position: "left",
+        title: { display: true, text: yTitle, color: TICK_COLOR, font: { size: 11, weight: 600 } },
+        ...(scales.y ?? {})
+      },
+      y1: {
+        position: "right",
+        title: { display: true, text: rightAxisTitle, color: TICK_COLOR, font: { size: 11, weight: 600 } },
+        grid: { drawOnChartArea: false },
+        ticks: {
+          color: TICK_COLOR,
+          callback: (value: string | number) => `${value}%`,
+          ...((scales.y1?.ticks as object) ?? {})
+        },
+        ...(scales.y1 ?? {})
+      }
+    }
+  });
+
+  const plugins = (merged.plugins as Record<string, unknown> | undefined) ?? {};
+  const legend = (plugins.legend as Record<string, unknown> | undefined) ?? {};
+  return {
+    ...merged,
+    plugins: {
+      ...plugins,
+      legend: {
+        ...legend,
+        position: "top",
+        align: "center",
+        labels: {
+          color: TICK_COLOR,
+          boxWidth: 12,
+          usePointStyle: true,
+          padding: 16,
+          ...((legend.labels as object) ?? {})
+        }
+      }
     }
   };
 }
@@ -139,134 +290,29 @@ export function applyProplyticChartTheme(chart: ChartLike, slug: string, graphTi
     };
   }
 
-  if (
-    (slug === "irr" || slug === "cash-on-cash-return") &&
-    chart.chartType === "combo"
-  ) {
-    const isIrr = slug === "irr";
-    const lineLabel = isIrr ? "IRR (%)" : "Cash-on-cash ROI (%)";
-    const rightAxisTitle = isIrr ? "IRR (%)" : "Cash-on-cash ROI (%)";
-    const defaultTitle = isIrr
-      ? "Annual cash flow & IRR by year"
-      : "Annual cash flow & cash-on-cash ROI by year";
-    const datasets = chart.data?.datasets ?? [];
+  if (isDualAxisComboChart(chart)) {
     return {
       ...chart,
-      title: graphTitle ?? chart.title ?? defaultTitle,
-      data: {
-        labels: chart.data?.labels ?? [],
-        datasets: datasets.map((ds) => {
-          const label = String(ds.label ?? "");
-          const isPercentLine =
-            ds.type === "line" ||
-            label.toLowerCase().includes("irr") ||
-            label.toLowerCase().includes("cash-on-cash");
-          if (isPercentLine) {
-            return {
-              ...ds,
-              type: "line",
-              label: lineLabel,
-              borderColor: "#F59E0B",
-              backgroundColor: "transparent",
-              tension: 0.25,
-              pointRadius: 4,
-              pointHoverRadius: 6,
-              borderWidth: 2.5,
-              yAxisID: "y1",
-              spanGaps: false
-            };
-          }
-          return {
-            ...ds,
-            type: "bar",
-            label: "Annual cash flow",
-            backgroundColor: PRINCIPAL_FILL,
-            borderColor: PRINCIPAL_STROKE,
-            borderRadius: 6,
-            borderSkipped: false,
-            yAxisID: "y"
-          };
-        })
-      },
-      options: (() => {
-        const merged = mergeChartScales({
-          ...chart.options,
-          scales: {
-            x: { grid: { display: false } },
-            y: {
-              position: "left",
-              title: { display: true, text: "Cash flow (ZAR)", color: TICK_COLOR, font: { size: 11, weight: 600 } }
-            },
-            y1: {
-              position: "right",
-              title: { display: true, text: rightAxisTitle, color: TICK_COLOR, font: { size: 11, weight: 600 } },
-              grid: { drawOnChartArea: false },
-              ticks: {
-                color: TICK_COLOR,
-                callback: (value: string | number) => `${value}%`
-              }
-            }
-          }
-        });
-        const plugins = (merged.plugins as Record<string, unknown> | undefined) ?? {};
-        const legend = (plugins.legend as Record<string, unknown> | undefined) ?? {};
-        return {
-          ...merged,
-          plugins: {
-            ...plugins,
-            legend: {
-              ...legend,
-              position: "top",
-              align: "center",
-              labels: {
-                color: TICK_COLOR,
-                boxWidth: 12,
-                usePointStyle: true,
-                padding: 16,
-                ...((legend.labels as object) ?? {})
-              }
-            }
-          }
-        };
-      })()
+      title: graphTitle ?? chart.title,
+      data: themedDualAxisComboData(chart),
+      options: themedDualAxisComboOptions(chart)
     };
   }
 
-  if (slug === "cash-on-cash-return" && chart.chartType === "doughnut") {
-    const datasets = chart.data?.datasets ?? [];
+  if (chart.chartType === "doughnut") {
     const sliceCount = ((datasets[0]?.data as unknown[]) ?? []).length;
     return {
       ...chart,
-      title: graphTitle ?? chart.title ?? "Cash invested components",
+      title: graphTitle ?? chart.title,
       data: {
         labels: chart.data?.labels ?? [],
         datasets: datasets.map((ds) => ({
           ...ds,
-          backgroundColor: [PRINCIPAL_STROKE, "#8B5CF6", "#A78BFA", "#C4B5FD", "#DDD6FE"].slice(0, sliceCount),
+          backgroundColor: doughnutSliceColors(sliceCount),
           borderWidth: 0
         }))
       },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: {
-            position: "right",
-            align: "start",
-            labels: { color: TICK_COLOR, boxWidth: 12, usePointStyle: true, padding: 10 }
-          },
-          tooltip: {
-            callbacks: {
-              label: (ctx: { label?: string; parsed?: number; dataset?: { data?: number[] } }) => {
-                const value = typeof ctx.parsed === "number" ? ctx.parsed : 0;
-                const total = (ctx.dataset?.data ?? []).reduce((sum, n) => sum + (Number(n) || 0), 0);
-                const pct = total > 0 ? ((value / total) * 100).toFixed(1) : "0";
-                return `${ctx.label ?? ""}: R ${value.toLocaleString("en-ZA")} (${pct}%)`;
-              }
-            }
-          }
-        }
-      }
+      options: themedDoughnutOptions(chart.options)
     };
   }
 
@@ -294,21 +340,10 @@ export function applyProplyticChartTheme(chart: ChartLike, slug: string, graphTi
     };
   }
 
-  if (chart.chartType === "doughnut") {
-    return {
-      ...chart,
-      title: graphTitle ?? chart.title,
-      data: {
-        ...chart.data,
-        datasets: datasets.map((ds, idx) => ({
-          ...ds,
-          backgroundColor: [PRINCIPAL_STROKE, INTEREST_STROKE, "#E2E8F0", "#94A3B8"].slice(0, ((ds.data as unknown[]) ?? []).length),
-          borderWidth: 0
-        }))
-      },
-      options: mergeChartScales(chart.options)
-    };
-  }
-
   return { ...chart, title: graphTitle ?? chart.title, options: mergeChartScales(chart.options) };
+}
+
+/** Whether a chart uses the dual-axis combo layout (for responsive legend tweaks). */
+export function isDualAxisComboChartType(chart: ChartLike): boolean {
+  return isDualAxisComboChart(chart);
 }

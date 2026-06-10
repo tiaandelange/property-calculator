@@ -9,7 +9,7 @@ import { CalculatorToolSummaryCards } from "../components/calculators/tool/Calcu
 import { getCalculatorFieldLayout } from "../data/calculatorFieldLayout";
 import { getCalculatorAdvancedSubtitle, partitionFieldKeysBySlider } from "../data/calculatorFieldPresentation";
 import { applyCashFlowBondPaymentPayload, computeCashFlowMonthlyBondPayment } from "../utils/calculatorCashFlowPayload";
-import { applyProplyticChartTheme } from "../utils/calculatorChartTheme";
+import { applyProplyticChartTheme, isDualAxisComboChartType } from "../utils/calculatorChartTheme";
 import { calculators } from "../data/calculators";
 import { getCalculatorDefaultValues } from "../data/calculatorDefaultValues";
 import { getCalculatorToolPage } from "../data/calculatorToolPageContent";
@@ -269,9 +269,13 @@ function mergeThemedChartOptions(base: Record<string, unknown> | null | undefine
 /** Responsive chart options for narrow viewports (no formula changes). */
 function mergeMobileChartOptions(
   base: Record<string, unknown> | null | undefined,
-  slug?: string
+  chartType?: string,
+  dualAxisCombo?: boolean
 ): Record<string, unknown> {
   const themed = mergeThemedChartOptions(base);
+  if (chartType === "doughnut") {
+    return { ...themed, responsive: true, maintainAspectRatio: false };
+  }
   const plugins = (themed.plugins as Record<string, unknown> | undefined) ?? {};
   const legend = (plugins.legend as Record<string, unknown> | undefined) ?? {};
   return {
@@ -283,7 +287,7 @@ function mergeMobileChartOptions(
       legend: {
         ...legend,
         position: "top",
-        align: slug === "irr" || slug === "cash-on-cash-return" ? "center" : "end"
+        align: dualAxisCombo ? "center" : "end"
       }
     }
   };
@@ -620,8 +624,12 @@ export function CalculatorPage() {
 
   const workspaceLayoutClass = ["pg-calc-tool-workspace-grid", "pg-calculator-detail-layout"].join(" ");
 
-  const chartOptionsForViewport = (base: Record<string, unknown> | null | undefined, slug: string) => {
-    if (isMobile) return mergeMobileChartOptions(base, slug) as Record<string, unknown>;
+  const chartOptionsForViewport = (
+    base: Record<string, unknown> | null | undefined,
+    chartType: string,
+    dualAxisCombo: boolean
+  ) => {
+    if (isMobile) return mergeMobileChartOptions(base, chartType, dualAxisCombo) as Record<string, unknown>;
     return mergeThemedChartOptions(base) as Record<string, unknown>;
   };
 
@@ -1076,7 +1084,14 @@ export function CalculatorPage() {
                         calc.slug,
                         pageMeta.graphTitle
                       );
-                      const opts = chartOptionsForViewport(themed.options as Record<string, unknown>, calc.slug) as any;
+                      const dualAxisCombo = isDualAxisComboChartType(
+                        themed as Parameters<typeof isDualAxisComboChartType>[0]
+                      );
+                      const opts = chartOptionsForViewport(
+                        themed.options as Record<string, unknown>,
+                        themed.chartType,
+                        dualAxisCombo
+                      ) as any;
                       const displayTitle = themed.title ?? "Chart";
                       const ChartComponent =
                         themed.chartType === "line"
@@ -1085,12 +1100,11 @@ export function CalculatorPage() {
                             ? Doughnut
                             : Bar;
                       const showInlineTitle = chartsToRender.length > 1;
-                      const isCocPie =
-                        calc.slug === "cash-on-cash-return" && themed.chartType === "doughnut";
+                      const isDoughnutChart = themed.chartType === "doughnut";
                       return (
                         <div
                           key={`${displayTitle}-${idx}`}
-                          className={`pg-calc-tool-chart-item${isCocPie ? " pg-calc-tool-chart-item--doughnut" : ""}`}
+                          className={`pg-calc-tool-chart-item${isDoughnutChart ? " pg-calc-tool-chart-item--doughnut" : ""}`}
                         >
                           {showInlineTitle ? (
                             <h4 className="pg-calc-tool-chart-item__title">{displayTitle}</h4>
