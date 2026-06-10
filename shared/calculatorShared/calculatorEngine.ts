@@ -430,6 +430,96 @@ function calcCashFlow(input: z.infer<typeof cashFlowSchema>): CalculatorResult {
   };
 }
 
+const COC_PROJECTION_YEARS = 5;
+
+function cashOnCashChartData(params: {
+  annualPreTaxCashFlow: number;
+  cashOnCashReturnPercent: number;
+  components: {
+    depositAmount: number;
+    transferAndBondCosts: number;
+    initialRepairs: number;
+    furnishingCosts: number;
+    otherAcquisitionCosts: number;
+  };
+}) {
+  const labels = Array.from({ length: COC_PROJECTION_YEARS }, (_, i) => `Y${i + 1}`);
+  const annualFlows = labels.map(() => round2(params.annualPreTaxCashFlow));
+  const cocByYear = labels.map(() => round2(params.cashOnCashReturnPercent));
+
+  const componentEntries = [
+    { label: "Deposit", value: params.components.depositAmount },
+    { label: "Transfer & bond costs", value: params.components.transferAndBondCosts },
+    { label: "Repairs", value: params.components.initialRepairs },
+    { label: "Furnishing", value: params.components.furnishingCosts },
+    { label: "Other", value: params.components.otherAcquisitionCosts }
+  ].filter((row) => row.value > 0);
+
+  const piePalette = ["#7C3AED", "#8B5CF6", "#A78BFA", "#C4B5FD", "#DDD6FE"];
+
+  return [
+    {
+      chartType: "combo" as const,
+      title: "Annual cash flow & cash-on-cash ROI by year",
+      data: {
+        labels,
+        datasets: [
+          {
+            type: "bar" as const,
+            label: "Annual cash flow",
+            data: annualFlows,
+            backgroundColor: "#007acc",
+            yAxisID: "y"
+          },
+          {
+            type: "line" as const,
+            label: "Cash-on-cash ROI (%)",
+            data: cocByYear,
+            borderColor: "#f59e0b",
+            backgroundColor: "transparent",
+            tension: 0.25,
+            pointRadius: 4,
+            yAxisID: "y1",
+            spanGaps: false
+          }
+        ]
+      },
+      options: {
+        scales: {
+          x: { grid: { display: false } },
+          y: {
+            position: "left",
+            title: { display: true, text: "Cash flow (ZAR)" }
+          },
+          y1: {
+            position: "right",
+            title: { display: true, text: "Cash-on-cash ROI (%)" },
+            grid: { drawOnChartArea: false },
+            ticks: {
+              callback: (value: string | number) => `${value}%`
+            }
+          }
+        }
+      }
+    },
+    {
+      chartType: "doughnut" as const,
+      title: "Cash invested components",
+      data: {
+        labels: componentEntries.map((row) => row.label),
+        datasets: [
+          {
+            label: "Cash invested",
+            data: componentEntries.map((row) => round2(row.value)),
+            backgroundColor: piePalette.slice(0, componentEntries.length),
+            borderWidth: 0
+          }
+        ]
+      }
+    }
+  ];
+}
+
 // 4) Cash-on-cash ROI
 const cocSchema = scenarioSchema.extend({
   purchasePrice: money.nonnegative(),
@@ -500,39 +590,17 @@ function calcCashOnCash(input: z.infer<typeof cocSchema>): CalculatorResult {
     `cash-on-cash return is ${formatPercent(cashOnCashReturnPercent)}.` +
     (paybackPeriodYears ? ` Payback period is ~${round2(paybackPeriodYears)} years (ignores resale value).` : "");
 
-  const chartData = [
-    {
-      chartType: "bar" as const,
-      title: "Cash invested components",
-      data: {
-        labels: ["Deposit", "Transfer & bond costs", "Repairs", "Furnishing", "Other"],
-        datasets: [{
-          label: "ZAR",
-          data: [input.depositAmount, input.transferAndBondCosts, input.initialRepairs, input.furnishingCosts, input.otherAcquisitionCosts],
-          backgroundColor: "#007acc"
-        }]
-      }
-    },
-    {
-      chartType: "line" as const,
-      title: "Cumulative cash flow vs cash invested (5y)",
-      data: {
-        labels: ["Y1", "Y2", "Y3", "Y4", "Y5"],
-        datasets: [
-          {
-            label: "Cumulative cash flow",
-            data: [1, 2, 3, 4, 5].map((y) => round2(annualPreTaxCashFlow * y)),
-            borderColor: "#007acc"
-          },
-          {
-            label: "Cash invested",
-            data: [1, 2, 3, 4, 5].map(() => round2(totalCashInvested)),
-            borderColor: "#2b2b2b"
-          }
-        ]
-      }
+  const chartData = cashOnCashChartData({
+    annualPreTaxCashFlow,
+    cashOnCashReturnPercent,
+    components: {
+      depositAmount: input.depositAmount,
+      transferAndBondCosts: input.transferAndBondCosts,
+      initialRepairs: input.initialRepairs,
+      furnishingCosts: input.furnishingCosts,
+      otherAcquisitionCosts: input.otherAcquisitionCosts
     }
-  ];
+  });
 
   return {
     ...baseResult("cash-on-cash-return", input.scenarioName),

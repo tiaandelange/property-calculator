@@ -139,21 +139,33 @@ export function applyProplyticChartTheme(chart: ChartLike, slug: string, graphTi
     };
   }
 
-  if (slug === "irr" && chart.chartType === "combo") {
+  if (
+    (slug === "irr" || slug === "cash-on-cash-return") &&
+    chart.chartType === "combo"
+  ) {
+    const isIrr = slug === "irr";
+    const lineLabel = isIrr ? "IRR (%)" : "Cash-on-cash ROI (%)";
+    const rightAxisTitle = isIrr ? "IRR (%)" : "Cash-on-cash ROI (%)";
+    const defaultTitle = isIrr
+      ? "Annual cash flow & IRR by year"
+      : "Annual cash flow & cash-on-cash ROI by year";
     const datasets = chart.data?.datasets ?? [];
     return {
       ...chart,
-      title: graphTitle ?? chart.title ?? "Annual cash flow & IRR by year",
+      title: graphTitle ?? chart.title ?? defaultTitle,
       data: {
         labels: chart.data?.labels ?? [],
         datasets: datasets.map((ds) => {
           const label = String(ds.label ?? "");
-          const isIrrLine = ds.type === "line" || label.toLowerCase().includes("irr");
-          if (isIrrLine) {
+          const isPercentLine =
+            ds.type === "line" ||
+            label.toLowerCase().includes("irr") ||
+            label.toLowerCase().includes("cash-on-cash");
+          if (isPercentLine) {
             return {
               ...ds,
               type: "line",
-              label: "IRR (%)",
+              label: lineLabel,
               borderColor: "#F59E0B",
               backgroundColor: "transparent",
               tension: 0.25,
@@ -187,7 +199,7 @@ export function applyProplyticChartTheme(chart: ChartLike, slug: string, graphTi
             },
             y1: {
               position: "right",
-              title: { display: true, text: "IRR (%)", color: TICK_COLOR, font: { size: 11, weight: 600 } },
+              title: { display: true, text: rightAxisTitle, color: TICK_COLOR, font: { size: 11, weight: 600 } },
               grid: { drawOnChartArea: false },
               ticks: {
                 color: TICK_COLOR,
@@ -217,6 +229,34 @@ export function applyProplyticChartTheme(chart: ChartLike, slug: string, graphTi
           }
         };
       })()
+    };
+  }
+
+  if (slug === "cash-on-cash-return" && chart.chartType === "doughnut") {
+    const datasets = chart.data?.datasets ?? [];
+    const sliceCount = ((datasets[0]?.data as unknown[]) ?? []).length;
+    return {
+      ...chart,
+      title: graphTitle ?? chart.title ?? "Cash invested components",
+      data: {
+        labels: chart.data?.labels ?? [],
+        datasets: datasets.map((ds) => ({
+          ...ds,
+          backgroundColor: [PRINCIPAL_STROKE, "#8B5CF6", "#A78BFA", "#C4B5FD", "#DDD6FE"].slice(0, sliceCount),
+          borderWidth: 0
+        }))
+      },
+      options: mergeChartScales({
+        ...chart.options,
+        plugins: {
+          ...((chart.options?.plugins as object) ?? {}),
+          legend: {
+            position: "bottom",
+            align: "center",
+            labels: { color: TICK_COLOR, boxWidth: 12, usePointStyle: true, padding: 12 }
+          }
+        }
+      })
     };
   }
 

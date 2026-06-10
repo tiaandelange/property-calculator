@@ -47,6 +47,14 @@ describe("universalDemoProperty", () => {
     expect(monthlyCashFlow?.value).toBeGreaterThan(0);
   });
 
+  it("cash-on-cash-return exposes dual-axis cash flow chart and cash invested pie", () => {
+    const result = calculate("cash-on-cash-return", buildUniversalCalculatorDefaults("cash-on-cash-return"));
+    expect(result.chartData?.[0]?.chartType).toBe("combo");
+    expect(result.chartData?.[0]?.data?.datasets).toHaveLength(2);
+    expect(result.chartData?.[1]?.chartType).toBe("doughnut");
+    expect((result.chartData?.[1]?.data?.labels ?? []).length).toBeGreaterThan(0);
+  });
+
   it("provides defaults for every public calculator slug", () => {
     for (const calc of calculators) {
       const defaults = buildUniversalCalculatorDefaults(calc.slug);

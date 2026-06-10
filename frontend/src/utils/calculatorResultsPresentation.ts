@@ -178,6 +178,7 @@ export function buildCalculatorSummaryCards(
 export function getCalculatorChartTitle(slug: string, fallback?: string): string {
   if (slug === "cash-flow") return "Cash flow breakdown";
   if (slug === "irr") return fallback ?? "Annual cash flow & IRR by year";
+  if (slug === "cash-on-cash-return") return fallback ?? "Annual cash flow & cash-on-cash ROI";
   return fallback ?? "Chart";
 }
 

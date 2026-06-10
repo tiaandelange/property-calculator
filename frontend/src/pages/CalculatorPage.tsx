@@ -283,7 +283,7 @@ function mergeMobileChartOptions(
       legend: {
         ...legend,
         position: "top",
-        align: slug === "irr" ? "center" : "end"
+        align: slug === "irr" || slug === "cash-on-cash-return" ? "center" : "end"
       }
     }
   };
@@ -518,11 +518,11 @@ export function CalculatorPage() {
   const chartData = result?.chartData ?? [];
   const chartsToRender = useMemo(() => {
     const raw = (chartData ?? []) as Array<{ chartType: string; title?: string; data?: unknown; options?: unknown }>;
-    const hasLine = raw.some((c) => c.chartType === "line");
+    const hasProjectionChart = raw.some((c) => c.chartType === "line" || c.chartType === "combo");
     const cur = summary.find((m: any) => m.unit === "currency" && m.value != null && Number.isFinite(m.value)) as
       | { label: string; value: number }
       | undefined;
-    const illustration = !hasLine && cur ? [buildIllustrativeFiveYearLineChart(cur)] : [];
+    const illustration = !hasProjectionChart && cur ? [buildIllustrativeFiveYearLineChart(cur)] : [];
     const combined = [...illustration, ...raw];
     if (calc.slug === "monthly-payment") {
       const repaymentChart = combined.find((c) => {
@@ -535,6 +535,9 @@ export function CalculatorPage() {
     if (calc.slug === "irr") {
       const combo = raw.filter((c) => c.chartType === "combo");
       return combo.length ? combo : raw.slice(0, 1);
+    }
+    if (calc.slug === "cash-on-cash-return") {
+      return raw.filter((c) => c.chartType === "combo" || c.chartType === "doughnut");
     }
     return combined;
   }, [chartData, summary, calc.slug]);
