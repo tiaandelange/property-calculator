@@ -25,7 +25,7 @@ export function CookieConsentBanner() {
     <div className="pg-cookie-banner" role="dialog" aria-label="Cookie consent" aria-live="polite">
       <div className="pg-cookie-banner__inner">
         <p className="pg-cookie-banner__text">
-          We use cookies to understand how Proplytic is used and improve the product.{" "}
+          We use analytics cookies to understand how Proplytic is used and improve the product.{" "}
           <Link to="/cookie-notice" className="pg-cookie-banner__link">
             Cookie notice
           </Link>
@@ -39,7 +39,7 @@ export function CookieConsentBanner() {
             Reject
           </Button>
           <Button type="button" variant="primary" size="sm" onClick={() => choose("accepted")}>
-            Accept
+            Accept analytics
           </Button>
         </div>
       </div>
