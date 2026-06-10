@@ -24,6 +24,7 @@ import {
   subscriptionSuccessHeadline,
   subscriptionSuccessMessage
 } from "../features/subscription/subscriptionSuccessState";
+import { trackEvent } from "../lib/analytics/analytics";
 
 const DASHBOARD_PATH = "/owned-properties/dashboard";
 const PAYSTACK_VERIFY_POLL_MS = 2000;
@@ -47,6 +48,7 @@ export function SubscriptionResultPage({ mode }: { mode: "success" | "cancel" })
   const [verifyError, setVerifyError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const verifyStartedRef = useRef(false);
+  const subscriptionSuccessTrackedRef = useRef(false);
 
   const mock = searchParams.get("mock") === "true";
   const planCodeParam = searchParams.get("planCode");
@@ -122,6 +124,18 @@ export function SubscriptionResultPage({ mode }: { mode: "success" | "cancel" })
       window.clearTimeout(timeout);
     };
   }, [mode, viewState, refreshSubscription]);
+
+  useEffect(() => {
+    if (mode !== "success" || viewState !== "active" || initialLoading) return;
+    if (subscriptionSuccessTrackedRef.current) return;
+    subscriptionSuccessTrackedRef.current = true;
+    const planCode = subscription?.planCode ?? planCodeParam ?? undefined;
+    trackEvent("subscription_success", {
+      ...(planCode ? { plan_code: planCode } : {}),
+      billing_period: billingPeriod,
+      source_page: "/subscription/success"
+    });
+  }, [mode, viewState, initialLoading, subscription?.planCode, planCodeParam, billingPeriod]);
 
   useEffect(() => {
     if (mode !== "success" || viewState !== "active") return;

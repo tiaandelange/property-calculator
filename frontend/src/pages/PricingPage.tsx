@@ -32,13 +32,16 @@ import {
   listActiveSubscriptionPlans,
   type SubscriptionPlanRecord
 } from "../services/subscriptionPlansSupabase";
+import { trackEvent } from "../lib/analytics/analytics";
 
 function PricingCard({
   plan,
-  billingPeriod
+  billingPeriod,
+  onSelectPlan
 }: {
   plan: SubscriptionPlanRecord;
   billingPeriod: BillingPeriod;
+  onSelectPlan: (planCode: string, period: BillingPeriod) => void;
 }) {
   const popular = isPopularPlan(plan);
   const cta = planCta(plan);
@@ -79,7 +82,12 @@ function PricingCard({
         ))}
       </ul>
       <div className="pg-pricing-card__actions">
-        <ButtonLink href={cta.href} variant={cta.variant} fullWidth>
+        <ButtonLink
+          href={cta.href}
+          variant={cta.variant}
+          fullWidth
+          onClick={() => onSelectPlan(plan.code, billingPeriod)}
+        >
           {cta.label}
         </ButtonLink>
         {secondary ? (
@@ -96,6 +104,10 @@ export function PricingPage() {
   const [plans, setPlans] = useState<SubscriptionPlanRecord[]>(FALLBACK_SUBSCRIPTION_PLANS);
   const [loading, setLoading] = useState(true);
   const [billingPeriod, setBillingPeriod] = useState<"monthly" | "annual">("monthly");
+
+  useEffect(() => {
+    trackEvent("view_pricing", { source_page: "/pricing" });
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -152,7 +164,17 @@ export function PricingPage() {
         <div className="pg-pricing-grid" role="list">
           {ordered.map((plan) => (
             <div key={plan.code} role="listitem">
-              <PricingCard plan={plan} billingPeriod={billingPeriod} />
+              <PricingCard
+                plan={plan}
+                billingPeriod={billingPeriod}
+                onSelectPlan={(planCode, period) =>
+                  trackEvent("select_plan", {
+                    plan_code: planCode,
+                    billing_period: period,
+                    source_page: "/pricing"
+                  })
+                }
+              />
             </div>
           ))}
         </div>

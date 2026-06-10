@@ -18,6 +18,7 @@ import { getSupabase } from "../lib/supabaseClient";
 import { runCalculatorLocally, saveCalculationResult } from "../services/calculationsSupabase";
 import { fetchPdfBlob, isAbsoluteHttpUrl, openPdfBlobInNewTab } from "../api/pdfBlob";
 import { generateReportViaVercel } from "../services/reportsVercel";
+import { trackEvent } from "../lib/analytics/analytics";
 import { CalculatorToolPageLayout } from "../components/calculators/tool/CalculatorToolPageLayout";
 import { CalculatorToolProTip } from "../components/calculators/tool/CalculatorToolProTip";
 import { CalculatorToolResultsHero } from "../components/calculators/tool/CalculatorToolResultsHero";
@@ -363,7 +364,13 @@ export function CalculatorPage() {
           : new Error(`Calculator: ${base}`);
       }
       setResult(calcResult);
-      if (opts?.userInitiated) onCalculateSuccess();
+      if (opts?.userInitiated) {
+        onCalculateSuccess();
+        trackEvent("calculator_used", {
+          calculator_type: targetSlug,
+          source_page: `${window.location.pathname}${window.location.search}`
+        });
+      }
       const sessionData = { session: await getLocalAuthSession().catch(() => null) };
       if (sessionData.session) {
         try {
@@ -574,12 +581,20 @@ export function CalculatorPage() {
       const gen = await generateReportViaVercel({ reportType: "CALCULATION", calculationId: String(savedId) });
       const downloadUrl = gen.downloadUrl;
       if (!downloadUrl) throw new Error(gen.error ?? "No download URL returned.");
+      trackEvent("report_generated", {
+        report_type: "calculation",
+        source_page: `${window.location.pathname}${window.location.search}`
+      });
       if (isAbsoluteHttpUrl(downloadUrl)) {
         window.open(downloadUrl, "_blank", "noopener,noreferrer");
       } else {
         const blob = await fetchPdfBlob(downloadUrl);
         openPdfBlobInNewTab(blob);
       }
+      trackEvent("pdf_downloaded", {
+        report_type: "calculation",
+        source_page: `${window.location.pathname}${window.location.search}`
+      });
     } catch (e: any) {
       setError(e?.response?.data?.message ?? e?.message ?? "Failed to generate PDF.");
     } finally {

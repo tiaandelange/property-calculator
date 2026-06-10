@@ -6,6 +6,7 @@ import { Card } from "../components/ui/Card";
 import { Field, Input } from "../components/ui/Input";
 import { Button, ButtonLink } from "../components/ui/Button";
 import { createTenant, getTenant, updateTenant } from "../api/ownedProperties";
+import { trackEvent } from "../lib/analytics/analytics";
 import { UseApplicantModal, type ApplicantPrefill } from "../features/applicants/UseApplicantModal";
 import { getApplicantApplicationOwner } from "../services/applicantApplicationsSupabase";
 
@@ -135,6 +136,9 @@ export function TenantFormPage() {
         navigate(`/tenants/${sourceApplicantId}`);
       } else {
         const created = await createTenant(isApplicant ? { ...payload, status: "APPLICANT" } : payload);
+        trackEvent("tenant_created", {
+          source_page: isApplicant ? "/tenants/new?applicant=1" : "/tenants/new"
+        });
         navigate(`/tenants/${created.id}`);
       }
     } catch (e: unknown) {

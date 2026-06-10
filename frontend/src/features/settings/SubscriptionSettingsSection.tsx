@@ -16,6 +16,7 @@ import {
   redirectToPlanCheckout,
   type PlanCheckoutCode
 } from "../../lib/billing/planCheckout";
+import { trackEvent } from "../../lib/analytics/analytics";
 import {
   formatSubscriptionStatus,
   formatSubscriptionStatusBadgeClass,
@@ -125,6 +126,11 @@ export function SubscriptionSettingsSection({ freeUsesRemaining }: SubscriptionS
 
       setCheckoutLoading(true);
       setPlanMessage(null);
+      trackEvent("complete_payment_click", {
+        plan_code: plan.code,
+        billing_period: "monthly",
+        source_page: "/settings"
+      });
       try {
         await redirectToPlanCheckout(plan.code as PlanCheckoutCode, "monthly");
       } catch (e) {

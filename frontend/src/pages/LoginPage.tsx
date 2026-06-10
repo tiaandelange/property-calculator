@@ -31,6 +31,7 @@ import {
   storeSignupBillingRedirect
 } from "../features/signup/signupBillingFlow";
 import { isPaidPlan } from "../features/pricing/pricingPlanDisplay";
+import { trackEvent } from "../lib/analytics/analytics";
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -129,6 +130,12 @@ export function LoginPage() {
   const submit = async (mode: "login" | "register") => {
     setLoading(mode);
     setMessage(null);
+    if (mode === "register" && isSignupEntry) {
+      trackEvent("signup_start", {
+        plan_code: signupPlan.plan.code,
+        source_page: isSignupEntry ? "/signup" : "/login"
+      });
+    }
     if (!isSupabaseConfigured) {
       setMessage({
         kind: "error",
@@ -204,6 +211,10 @@ export function LoginPage() {
 
       if (data.session) {
         recognizeSession(data.session);
+        trackEvent("sign_up", {
+          ...(selectedPlanCode ? { plan_code: selectedPlanCode } : {}),
+          source_page: "/signup"
+        });
         if (selectedPlanCode) {
           try {
             await ensureUserSubscriptionForPlanCode(selectedPlanCode);
@@ -233,6 +244,10 @@ export function LoginPage() {
         return;
       }
 
+      trackEvent("sign_up", {
+        ...(selectedPlanCode ? { plan_code: selectedPlanCode } : {}),
+        source_page: "/signup"
+      });
       setMessage({
         kind: "ok",
         text: selectedPlanCode

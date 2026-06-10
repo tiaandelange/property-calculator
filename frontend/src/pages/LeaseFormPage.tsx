@@ -11,6 +11,7 @@ import {
   updateLease
 } from "../api/ownedProperties";
 import { invalidatePropertyWorkspace } from "../features/properties/invalidate";
+import { trackEvent } from "../lib/analytics/analytics";
 import type { PropertyUnitDraft } from "../features/properties/units/propertyUnitTypes";
 import { unitDisplayLabel } from "../features/properties/link-tenants/unitTenantLinkUtils";
 import {
@@ -391,6 +392,9 @@ export function LeaseFormPage() {
         depositAmount: Number(form.depositAmount),
         rentDueDay,
         notes: form.notes || undefined
+      });
+      trackEvent("lease_created", {
+        source_page: `/owned-properties/${propertyId}/leases/new`
       });
       const newLeaseId = created.id != null ? String(created.id) : "";
       if (pendingLeaseContract && newLeaseId && primaryTenantId) {

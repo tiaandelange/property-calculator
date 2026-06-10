@@ -20,6 +20,7 @@ import {
 } from "../lib/contactFormClientValidation";
 import { resolvePublicPageUrl } from "../lib/publicPageSeo";
 import { submitContactForm } from "../services/contactFormApi";
+import { trackEvent } from "../lib/analytics/analytics";
 
 export function ContactPage() {
   const canonical = resolvePublicPageUrl("/contact");
@@ -52,6 +53,7 @@ export function ContactPage() {
     if (result.ok) {
       setValues(EMPTY_CONTACT_FORM_VALUES);
       setSuccess(true);
+      trackEvent("contact_form_submitted", { source_page: "/contact" });
       return;
     }
 

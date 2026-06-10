@@ -30,7 +30,7 @@ export const COOKIE_NOTICE_SECTIONS: CookieNoticeSection[] = [
     id: "how-proplytic-uses-cookies",
     title: "How Proplytic Uses Cookies",
     paragraphs: [
-      "We use cookies and browser storage only as needed to run the application. We do not use third-party advertising trackers, Google Analytics, Hotjar, or tracking pixels on this platform today."
+      "We use cookies and browser storage as needed to run the application. With your consent, we load Google Tag Manager to understand how Proplytic is used and improve the product. We do not send personal or financial information to analytics. You can accept or reject analytics cookies via the banner or in Settings → Integrations."
     ],
     subsections: [
       {
@@ -71,6 +71,13 @@ export const COOKIE_NOTICE_SECTIONS: CookieNoticeSection[] = [
       "Some cookies or storage may be set or managed by service providers that help us operate Proplytic:"
     ],
     subsections: [
+      {
+        title: "Google Tag Manager",
+        list: [
+          "Usage analytics when you accept analytics cookies",
+          "Configured inside GTM (for example GA4) — no advertising trackers are required for core app use"
+        ]
+      },
       {
         title: "Supabase",
         list: ["Authentication and session management"]

@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { AppIcon } from "../../components/icons";
 import { Button } from "../../components/ui/Button";
 import { ApplicantFormTemplateSettingsCard } from "../applicants/ApplicantFormTemplateSettingsCard";
+import { CookieConsentSettingsCard } from "./CookieConsentSettingsCard";
 import { SubscriptionSettingsSection } from "./SubscriptionSettingsSection";
 import { SettingsToggle, profileInitials } from "./settingsShared";
 import type { SettingsSectionId } from "./settingsSections";
@@ -477,6 +478,7 @@ export function SettingsSectionContent({
     case "integrations":
       return (
         <>
+          <CookieConsentSettingsCard />
           <div className="pg-settings-row">
             <div>
               <div className="pg-settings-row-label">Supabase</div>

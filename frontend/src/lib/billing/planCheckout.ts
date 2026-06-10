@@ -3,6 +3,7 @@ import {
   type BillingPeriod,
   type PlanCheckoutCode
 } from "../../services/subscriptionVercel";
+import { trackEvent } from "../analytics/analytics";
 
 export type { PlanCheckoutCode };
 
@@ -11,6 +12,11 @@ export async function redirectToPlanCheckout(
   billingPeriod: BillingPeriod = "monthly"
 ): Promise<void> {
   const { checkoutUrl } = await startSubscriptionCheckout({ planCode, billingPeriod });
+  trackEvent("checkout_start", {
+    plan_code: planCode,
+    billing_period: billingPeriod,
+    source_page: `${window.location.pathname}${window.location.search}`
+  });
   window.location.assign(checkoutUrl);
 }
 

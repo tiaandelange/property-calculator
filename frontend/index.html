@@ -2,6 +2,27 @@
 <html lang="en">
   <head>
     <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag("consent", "default", {
+        analytics_storage: "denied",
+        ad_storage: "denied",
+        ad_user_data: "denied",
+        ad_personalization: "denied"
+      });
+      try {
+        var consent = localStorage.getItem("proplytic_cookie_consent");
+        if (consent === "accepted") {
+          gtag("consent", "update", {
+            analytics_storage: "granted",
+            ad_storage: "granted",
+            ad_user_data: "granted",
+            ad_personalization: "granted"
+          });
+        }
+      } catch (e) {}
+    </script>
+    <script>
       (function () {
         try {
           var t = localStorage.getItem("pg-ui-color-scheme");

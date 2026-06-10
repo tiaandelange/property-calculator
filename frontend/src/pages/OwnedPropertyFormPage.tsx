@@ -22,6 +22,7 @@ import { PropertyForm } from "../features/properties/form/PropertyForm";
 import { BOND_TERM_YEAR_OPTIONS } from "../features/properties/form/propertyFormConstants";
 import { uploadPendingPropertyPhotos, type PendingPhoto } from "../features/properties/form/PropertyMediaUpload";
 import type { PropertyFormValues } from "../features/properties/form/propertyFormConstants";
+import { trackEvent } from "../lib/analytics/analytics";
 
 const DEFAULT_FORM: PropertyFormValues = {
   name: "",
@@ -178,6 +179,12 @@ export function OwnedPropertyFormPage() {
         bondRemainingTermMonths: null
       };
       const saved = isEdit && id ? await updateProperty(id, propertyPayload) : await createProperty(propertyPayload);
+      if (!isEdit) {
+        trackEvent("property_created", {
+          property_type: String(mapped.propertyType ?? ""),
+          source_page: "/owned-properties/new"
+        });
+      }
       const propertyId = isEdit && id ? id : (saved?.id as string | number | undefined);
 
       if (propertyId != null && propertyId !== "" && units.length > 0) {

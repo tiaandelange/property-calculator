@@ -147,7 +147,8 @@ export const PRIVACY_POLICY_SECTIONS: PrivacyPolicySection[] = [
     id: "cookies-and-analytics",
     title: "Cookies and Analytics",
     paragraphs: [
-      "We use cookies and browser storage that are necessary for sign-in, preferences, and reliable operation of the application."
+      "We use cookies and browser storage that are necessary for sign-in, preferences, and reliable operation of the application.",
+      "If you accept analytics cookies, we use Google Tag Manager to collect aggregated usage data (for example page views and product interactions). We do not send names, contact details, addresses, tenant or property identifiers, invoice numbers, or financial amounts to analytics. You can change your choice in Settings → Integrations or via the cookie banner."
     ]
   },
   {

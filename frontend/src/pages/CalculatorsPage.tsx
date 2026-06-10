@@ -16,6 +16,7 @@ import { CashFlowTrendChart, IncomeVsExpensesChart } from "../features/calculato
 import { buildCalculatorReportPayload } from "../features/calculators/calculatorReportPayload";
 import { closeReportTab, navigateReportTab, openBlankReportTab } from "../services/openReportInNewTab";
 import { generateReportViaVercel } from "../services/reportsVercel";
+import { trackEvent } from "../lib/analytics/analytics";
 import { AppModal } from "../components/ui/AppModal";
 import { deleteSavedCalculatorInput, listSavedCalculatorInputs, saveCalculatorInputs, type SavedCalculatorInput } from "../services/calculatorSavedInputsSupabase";
 import { useSettingsQuery } from "../features/queries";
@@ -167,6 +168,16 @@ export function CalculatorsPage() {
         throw new Error(gen.error ?? "Report could not be generated.");
       }
       navigateReportTab(tab, url);
+      trackEvent("report_generated", {
+        report_type: "investment_report",
+        property_type: propertyType,
+        source_page: "/calculators"
+      });
+      trackEvent("pdf_downloaded", {
+        report_type: "investment_report",
+        property_type: propertyType,
+        source_page: "/calculators"
+      });
       setGeneratedReportId(gen.reportId);
       setStep(3);
     } catch (e: unknown) {

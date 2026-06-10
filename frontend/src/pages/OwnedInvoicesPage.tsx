@@ -2,6 +2,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { fetchPdfBlob, triggerPdfFileDownload } from "../api/pdfBlob";
+import { trackEvent } from "../lib/analytics/analytics";
 import {
   generateInvoicePdf,
   getProperties,
@@ -60,6 +61,9 @@ export function OwnedInvoicesPage() {
     e.preventDefault();
     if (!propertyId) return;
     await createPropertyInvoice(propertyId, form);
+    trackEvent("invoice_created", {
+      source_page: `/owned-properties/${propertyId}/invoices`
+    });
     await loadData(propertyId);
     invalidatePropertyWorkspace(propertyId);
   };
