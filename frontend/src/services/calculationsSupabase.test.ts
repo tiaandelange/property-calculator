@@ -42,6 +42,26 @@ describe("calculationsSupabase", () => {
     expect(Array.isArray(r.summary)).toBe(true);
   });
 
+  it("runCalculatorLocally irr growth mode applies a single exit selling cost percent", () => {
+    const base = {
+      holdPeriodYears: 5,
+      totalCashInvested: 210_000,
+      currentEstimatedValue: 2_300_000,
+      annualCashFlowAfterExpensesAndDebt: 12_000,
+      outstandingBondBalance: 1_840_000,
+      expectedAnnualAppreciationPercent: 0,
+      estimatedSellingCostPercent: 10,
+      sellingCostsPercent: 5
+    };
+    const atTen = runCalculatorLocally("irr", base);
+    const futureValue = 2_300_000;
+    expect(atTen.breakdown?.futurePropertyValue).toBe(futureValue);
+    expect(atTen.breakdown?.sellingCosts).toBe(230_000);
+
+    const atFive = runCalculatorLocally("irr", { ...base, estimatedSellingCostPercent: 5 });
+    expect(atFive.breakdown?.sellingCosts).toBe(115_000);
+  });
+
   it("runCalculatorLocally runs buy-vs-rent with charts and interpretation", () => {
     const r = runCalculatorLocally("buy-vs-rent", {
       purchasePrice: 1_500_000,

@@ -372,7 +372,12 @@ export const calculators: CalculatorDef[] = [
           { key: "annualCashFlowAfterExpensesAndDebt", label: "Annual net cash flow after debt (R)", type: "money" },
           { key: "outstandingBondBalance", label: "Outstanding bond balance (R)", type: "money" },
           { key: "expectedAnnualAppreciationPercent", label: "Expected annual appreciation (%)", type: "percent" },
-          { key: "estimatedSellingCostPercent", label: "Selling costs at exit (%)", type: "percent" },
+          {
+            key: "estimatedSellingCostPercent",
+            label: "Selling costs at exit (%)",
+            type: "percent",
+            help: "Agent commission, compliance and closing fees as a % of projected sale value at exit."
+          },
           { key: "projectedBondBalanceAtSale", label: "Projected bond at sale (R) (optional)", type: "money" },
           { key: "cashFlowGrowthPercentAnnual", label: "Annual growth on net cash flow (%)", type: "percent" }
         ]
@@ -389,7 +394,12 @@ export const calculators: CalculatorDef[] = [
         title: "Legacy: exit",
         fields: [
           { key: "expectedSalePrice", label: "Expected sale price (R)", type: "money" },
-          { key: "sellingCostsPercent", label: "Selling costs (%)", type: "percent" },
+          {
+            key: "sellingCostsPercent",
+            label: "Selling costs (%)",
+            type: "percent",
+            help: "Legacy mode only — used when you enter an explicit expected sale price instead of growth mode."
+          },
           { key: "remainingLoanBalanceAtSale", label: "Remaining loan balance at sale (R)", type: "money" }
         ]
       }

@@ -179,8 +179,22 @@ function toPayload(slug: string, values: Record<string, any>) {
     }
   }
 
-  if (slug === "irr" && typeof values.annualCashFlows === "string") {
-    payload.annualCashFlows = parseNumberList(values.annualCashFlows);
+  if (slug === "irr") {
+    if (typeof values.annualCashFlows === "string") {
+      payload.annualCashFlows = parseNumberList(values.annualCashFlows);
+    }
+    const growthMode =
+      payload.currentEstimatedValue != null &&
+      payload.totalCashInvested != null &&
+      Number(payload.currentEstimatedValue) > 0;
+    if (growthMode) {
+      delete payload.sellingCostsPercent;
+      delete payload.initialCashInvested;
+      delete payload.expectedSalePrice;
+      delete payload.remainingLoanBalanceAtSale;
+    } else {
+      delete payload.estimatedSellingCostPercent;
+    }
   }
   if (slug === "dcf" && typeof values.annualCashFlows === "string") {
     payload.annualCashFlows = parseNumberList(values.annualCashFlows);

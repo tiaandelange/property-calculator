@@ -950,7 +950,8 @@ function expandAnnualFlowsToHorizon(annualCashFlows: number[], H: number): numbe
 
 const irrSchema = scenarioSchema.extend({
   holdPeriodYears: z.number().int().min(1).max(50),
-  sellingCostsPercent: percent.min(0).max(40).default(5),
+  /** Legacy exit mode only — growth mode uses estimatedSellingCostPercent. */
+  sellingCostsPercent: percent.min(0).max(40).optional(),
 
   initialCashInvested: money.optional(),
   annualCashFlows: z.array(money).optional(),
@@ -1018,7 +1019,7 @@ function calcIrrGrowthFromValue(input: IrrParsed, H: number, warnings: string[],
   }
 
   const appreciation = input.expectedAnnualAppreciationPercent ?? 0;
-  const sellPct = clamp(input.estimatedSellingCostPercent ?? input.sellingCostsPercent, 0, 100);
+  const sellPct = clamp(input.estimatedSellingCostPercent ?? 5, 0, 100);
   const outstanding = input.outstandingBondBalance ?? 0;
   const usedProjectedBond = input.projectedBondBalanceAtSale != null;
   const bondAtSale = usedProjectedBond ? input.projectedBondBalanceAtSale! : outstanding;
@@ -1116,7 +1117,7 @@ function calcIrrGrowthFromValue(input: IrrParsed, H: number, warnings: string[],
     chartData,
     assumptionsUsed: {
       appreciationPercentUsed: appreciation,
-      sellingCostsPercent: sellPct,
+      estimatedSellingCostPercent: sellPct,
       holdingPeriodYears: H,
       bondBalanceBasis: usedProjectedBond ? "projectedBondBalanceAtSale" : "outstandingBondBalance"
     }
@@ -1135,7 +1136,7 @@ function calcIrrLegacySalePrice(input: IrrParsed, H: number, warnings: string[],
   const cf0 = cf0Raw > 0 ? -Math.abs(cf0Raw) : cf0Raw;
   if (cf0 >= 0) warnings.push("Initial cash invested should be negative (cash outflow); normalized using −abs(value).");
 
-  const saleCosts = input.expectedSalePrice * (clamp(input.sellingCostsPercent, 0, 100) / 100);
+  const saleCosts = input.expectedSalePrice * (clamp(input.sellingCostsPercent ?? 5, 0, 100) / 100);
   const remainingLoan = input.remainingLoanBalanceAtSale ?? 0;
   const netSaleProceeds = input.expectedSalePrice - saleCosts - remainingLoan;
   const series = expandAnnualFlowsToHorizon(input.annualCashFlows, H);

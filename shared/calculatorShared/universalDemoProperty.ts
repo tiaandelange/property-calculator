@@ -260,13 +260,12 @@ export function buildUniversalCalculatorDefaults(slug: string): Record<string, u
     case "irr":
       return {
         holdPeriodYears: p.holdPeriodYears,
-        sellingCostsPercent: p.sellingCostsPercent,
-        totalCashInvested: round2(d.totalCashInvested),
+        totalCashInvested: 210_000,
         currentEstimatedValue: p.propertyValue,
         annualCashFlowAfterExpensesAndDebt: round2(d.annualPreTaxCashFlow),
         outstandingBondBalance: p.loanAmount,
         expectedAnnualAppreciationPercent: 3.5,
-        estimatedSellingCostPercent: 5.5,
+        estimatedSellingCostPercent: p.sellingCostsPercent,
         cashFlowGrowthPercentAnnual: 2
       };
     case "brrrr":

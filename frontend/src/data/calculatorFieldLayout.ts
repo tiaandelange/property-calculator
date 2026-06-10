@@ -105,7 +105,6 @@ const FIELD_LAYOUT: Partial<Record<string, { core: string[]; advanced: string[] 
       "projectedBondBalanceAtSale",
       "cashFlowGrowthPercentAnnual",
       "expectedSalePrice",
-      "sellingCostsPercent",
       "remainingLoanBalanceAtSale",
       "scenarioName"
     ]
