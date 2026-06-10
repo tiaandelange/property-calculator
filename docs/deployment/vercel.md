@@ -107,11 +107,12 @@ Vercel Hobby allows **12** Serverless Functions per deployment. This repo consol
 
 | Public URL | Entry file |
 | ---------- | ---------- |
-| `/api/subscription/checkout`, `/api/subscription/cancel`, `/api/subscription/verify`, `/api/subscription/mock-complete` | `api/subscription/[action].ts` |
+| All routes except the billing webhook (contact, cron, invoices, reports, bond, subscription actions, etc.) | `api/[...path].ts` |
 | `/api/subscription/webhook` | `api/subscription/webhook.ts` (kept separate — needs raw body for signature verification) |
-| `/api/properties/:id/bond/preview-at-date`, `…/statement-row`, `…/backfill-statement-rows` | `api/properties/[propertyId]/bond/[action].ts` |
 
-Current entry-file count (keep ≤ 12, and leave headroom for `middleware.js`): `contact`, `cron/run-due`, `invoices/generate`, `invoices/[id]/send-email`, `properties/[propertyId]/bond/[action]`, `recurring-expenses/run-due`, `reports/generate`, `subscription/webhook`, `subscription/[action]` = **9 functions**. When adding a new endpoint, prefer adding an action to an existing dynamic route over creating a new file under `api/`.
+Shared server code lives in `api/_lib/` (underscore paths are not deployed as separate functions). Handler modules are in `api/_lib/handlers/`.
+
+Current serverless entry files: **`api/[...path].ts`** + **`api/subscription/webhook.ts`** = **2 functions**. When adding a new endpoint, add a handler under `api/_lib/handlers/` and register it in `api/[...path].ts` — do not add new files directly under `api/` except the webhook.
 
 Dev-only `api/reports/pdf-smoke-test` was removed (use local `vercel dev` + report generate if needed).
 

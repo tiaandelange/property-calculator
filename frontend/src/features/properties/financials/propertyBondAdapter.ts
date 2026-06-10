@@ -1,4 +1,4 @@
-import { computePropertyBondFinance } from "../../../../api/lib/bondHelpers";
+import { computePropertyBondFinance } from "../../../../api/_lib/bondHelpers";
 
 export type BondPaymentDisplayItem = {
   id: string;

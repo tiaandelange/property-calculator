@@ -18,16 +18,11 @@
   ],
 
   "functions": {
-    "api/invoices/generate.ts": {
-      "includeFiles": "assets/fonts/pdfmake/**,public/proplytic_logo_600x200_nobg.png,public/proplytic_logo_300x100.png,public/proplytic_icon_500x500_nobg.png,public/proplytic_icon_500x500.png,public/assets/brand/**,api/lib/propertyCalculator.server.mjs",
+    "api/[...path].ts": {
+      "includeFiles": "assets/fonts/pdfmake/**,public/proplytic_logo_600x200_nobg.png,public/proplytic_logo_300x100.png,public/proplytic_icon_500x500_nobg.png,public/proplytic_icon_500x500.png,public/assets/brand/**,api/_lib/propertyCalculator.server.mjs,api/_lib/propertyCalculator/**",
       "maxDuration": 60
     },
-    "api/invoices/[id]/send-email.ts": {
-      "includeFiles": "assets/fonts/pdfmake/**,public/proplytic_logo_600x200_nobg.png,public/proplytic_logo_300x100.png,public/proplytic_icon_500x500_nobg.png,public/proplytic_icon_500x500.png,public/assets/brand/**,api/lib/propertyCalculator.server.mjs",
-      "maxDuration": 60
-    },
-    "api/reports/generate.ts": {
-      "includeFiles": "assets/fonts/pdfmake/**,public/proplytic_logo_600x200_nobg.png,public/proplytic_logo_300x100.png,public/proplytic_icon_500x500_nobg.png,public/proplytic_icon_500x500.png,public/assets/brand/**,api/lib/propertyCalculator.server.mjs",
+    "api/subscription/webhook.ts": {
       "maxDuration": 60
     }
   },

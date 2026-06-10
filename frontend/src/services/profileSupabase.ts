@@ -8,7 +8,7 @@ import {
   type FinancialLandlordParty,
   type NormalizedBusinessDetails,
   type NormalizedProfileDetails
-} from "../../api/lib/profileContactShared";
+} from "../../api/_lib/profileContactShared";
 import { getLocalAuthSession, requireLocalUserId } from "../lib/authSession";
 import { getSupabase } from "../lib/supabaseClient";
 

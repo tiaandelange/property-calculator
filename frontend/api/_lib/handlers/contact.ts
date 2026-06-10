@@ -1,17 +1,17 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { clientIpFromRequest, processContactFormSubmission } from "./lib/contactFormServer.js";
-import { getContactServerConfig } from "./lib/contactServerEnv.js";
+import { clientIpFromRequest, processContactFormSubmission } from "../contactFormServer.js";
+import { getContactServerConfig } from "../contactServerEnv.js";
 import {
   checkInMemoryRateLimit,
   pruneInMemoryRateLimitBuckets
-} from "./lib/inMemoryRateLimit.js";
+} from "../inMemoryRateLimit.js";
 
 const CONTACT_RATE_LIMIT = {
   max: 5,
   windowMs: 15 * 60 * 1000
 } as const;
 
-export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
+export async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
   if (req.method !== "POST") {
     res.status(405).setHeader("Allow", "POST").json({ error: "Method not allowed" });
     return;

@@ -16,8 +16,8 @@
     "baseUrl": ".",
     "paths": {
       "@calculatorShared/*": ["../shared/calculatorShared/*"],
-      "@propertyCalculator": ["api/lib/propertyCalculator/index.ts"],
-      "@propertyCalculator/*": ["api/lib/propertyCalculator/*"],
+      "@propertyCalculator": ["api/_lib/propertyCalculator/index.ts"],
+      "@propertyCalculator/*": ["api/_lib/propertyCalculator/*"],
       "zod": ["./node_modules/zod"],
       "zod/*": ["./node_modules/zod/*"]
     }

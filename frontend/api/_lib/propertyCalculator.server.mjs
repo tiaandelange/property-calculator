@@ -1,4 +1,4 @@
-// api/lib/propertyCalculator/financialMetrics.ts
+// api/_lib/propertyCalculator/financialMetrics.ts
 function round2(value) {
   if (!Number.isFinite(value)) return 0;
   return Math.round(value * 100) / 100;
@@ -79,7 +79,7 @@ function computeMetricsFromMonthlySnapshot(opts) {
   };
 }
 
-// api/lib/propertyCalculator/loanProjection.ts
+// api/_lib/propertyCalculator/loanProjection.ts
 function projectLoanBalanceAfterYears(startBalance, monthlyPayment, annualRatePct, years) {
   if (startBalance <= 0) return 0;
   const months = years * 12;
@@ -98,7 +98,7 @@ function projectLoanBalanceAfterYears(startBalance, monthlyPayment, annualRatePc
   return Math.round(balance * 100) / 100;
 }
 
-// api/lib/propertyCalculator/projectionCalculator.ts
+// api/_lib/propertyCalculator/projectionCalculator.ts
 function projectValue(base, annualPct, years) {
   if (!(base > 0) || years < 0) return null;
   if (annualPct == null || !Number.isFinite(annualPct)) return round2(base);
@@ -106,7 +106,7 @@ function projectValue(base, annualPct, years) {
   return Number.isFinite(result) ? round2(result) : null;
 }
 
-// api/lib/propertyCalculator/irrCalculator.ts
+// api/_lib/propertyCalculator/irrCalculator.ts
 function npv(rate, cashFlows) {
   if (!Number.isFinite(rate) || rate <= -1) return NaN;
   let total = 0;

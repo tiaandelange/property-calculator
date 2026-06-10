@@ -3,7 +3,7 @@ import {
   amortizingMonthlyPayment,
   inferMonthlyBondPaymentForExpenseBaseline,
   monthlyInterestFromAnnualPercent
-} from "../../../api/lib/bondHelpers";
+} from "../../../api/_lib/bondHelpers";
 
 export const PORTFOLIO_PROJECTION_HORIZON_YEARS = 30;
 

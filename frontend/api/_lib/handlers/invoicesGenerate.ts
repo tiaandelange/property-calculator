@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { createClient } from "@supabase/supabase-js";
-import { buildInvoicePdfForUser, INVOICES_BUCKET } from "../lib/invoicePdfGenerateServer.js";
-import { invoiceHasStoredPdf, invoicePdfStorageKey } from "../lib/invoicePdfPolicy.js";
+import { buildInvoicePdfForUser, INVOICES_BUCKET } from "../invoicePdfGenerateServer.js";
+import { invoiceHasStoredPdf, invoicePdfStorageKey } from "../invoicePdfPolicy.js";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const SIGNED_URL_TTL_SEC = 600;
@@ -31,7 +31,7 @@ function parseJsonBody(req: VercelRequest): Record<string, unknown> {
 }
 
 /** Invoice PDF generation — mirrors `api/reports/generate.ts` (static route + signed URL JSON). */
-export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
+export async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
   if (req.method === "OPTIONS") {
     res.status(204).end();
     return;

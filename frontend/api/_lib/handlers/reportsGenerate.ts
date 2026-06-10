@@ -4,10 +4,10 @@ import { createClient } from "@supabase/supabase-js";
 import {
   assertInvestmentReportQuota,
   recordInvestmentReportGenerated
-} from "../lib/investmentReportQuota.js";
-import { renderPdfDefinitionToBuffer } from "../lib/pdfMakeServer.js";
-import { buildCalculationReportPdfDefinition, buildInvestmentReportPdfDefinition, buildPropertySummaryPdfDefinition } from "../lib/reportPdfBuilders.js";
-import { assemblePropertyInvestmentReportData } from "../lib/propertyInvestmentReportData.js";
+} from "../investmentReportQuota.js";
+import { renderPdfDefinitionToBuffer } from "../pdfMakeServer.js";
+import { buildCalculationReportPdfDefinition, buildInvestmentReportPdfDefinition, buildPropertySummaryPdfDefinition } from "../reportPdfBuilders.js";
+import { assemblePropertyInvestmentReportData } from "../propertyInvestmentReportData.js";
 
 const PROPERTY_REPORT_SELECT = `
   id, name, property_type, investment_type,
@@ -74,7 +74,7 @@ function isPermissionDenied(err: any): boolean {
   return code === "42501" || msg.toLowerCase().includes("permission denied");
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
+export async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
   if (req.method === "OPTIONS") {
     res.status(204).end();
     return;

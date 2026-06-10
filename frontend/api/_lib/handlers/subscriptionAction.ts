@@ -1,17 +1,17 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { authenticateSupabaseRequest } from "../lib/supabaseServerAuth.js";
-import { BillingConfigError, getBillingProvider, resolveBillingProviderName } from "../lib/billing/provider.js";
+import { authenticateSupabaseRequest } from "../supabaseServerAuth.js";
+import { BillingConfigError, getBillingProvider, resolveBillingProviderName } from "../billing/provider.js";
 import {
   WebhookProcessingError,
   activateSubscription,
   getUserSubscriptionPaymentId
-} from "../lib/billing/billingSubscriptionSync.js";
-import { handleSubscriptionVerify } from "../lib/billing/handleSubscriptionVerify.js";
+} from "../billing/billingSubscriptionSync.js";
+import { handleSubscriptionVerify } from "../billing/handleSubscriptionVerify.js";
 import {
   CheckoutValidationError,
   fetchSubscriptionPlanByCode
-} from "../lib/billing/checkoutValidation.js";
-import { handleSubscriptionCheckout } from "../lib/billing/handleSubscriptionCheckout.js";
+} from "../billing/checkoutValidation.js";
+import { handleSubscriptionCheckout } from "../billing/handleSubscriptionCheckout.js";
 
 type SubscriptionAction = "cancel" | "verify" | "checkout" | "mock-complete";
 
@@ -69,7 +69,7 @@ async function handleMockComplete(req: VercelRequest, res: VercelResponse, uid: 
   res.status(200).json({ status: "active", planCode: plan.code });
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
+export async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
   if (req.method !== "POST") {
     res.status(405).setHeader("Allow", "POST").json({ error: "Method not allowed" });
     return;

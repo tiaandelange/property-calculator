@@ -23,25 +23,13 @@
   ],
 
   "functions": {
-    "frontend/api/invoices/generate.ts": {
-      "includeFiles": "frontend/assets/fonts/pdfmake/**,frontend/public/assets/brand/**,frontend/api/lib/propertyCalculator/**",
+    "frontend/api/[...path].ts": {
+      "includeFiles": "frontend/assets/fonts/pdfmake/**,frontend/public/assets/brand/**,frontend/api/_lib/propertyCalculator/**,frontend/api/_lib/propertyCalculator.server.mjs",
       "maxDuration": 60,
       "memory": 1024
     },
-    "frontend/api/reports/generate.ts": {
-      "includeFiles": "frontend/assets/fonts/pdfmake/**,frontend/public/assets/brand/**,frontend/api/lib/propertyCalculator/**",
-      "maxDuration": 60,
-      "memory": 1024
-    },
-    "frontend/api/invoices/**/*.ts": {
-      "includeFiles": "frontend/assets/fonts/pdfmake/**,frontend/public/assets/brand/**,frontend/api/lib/propertyCalculator/**",
-      "maxDuration": 60,
-      "memory": 1024
-    },
-    "frontend/api/reports/**/*.ts": {
-      "includeFiles": "frontend/assets/fonts/pdfmake/**,frontend/public/assets/brand/**,frontend/api/lib/propertyCalculator/**",
-      "maxDuration": 60,
-      "memory": 1024
+    "frontend/api/subscription/webhook.ts": {
+      "maxDuration": 60
     }
   },
 

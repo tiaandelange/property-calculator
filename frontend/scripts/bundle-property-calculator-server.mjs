@@ -9,8 +9,8 @@ import { fileURLToPath } from "node:url";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const frontendRoot = path.resolve(here, "..");
-const entry = path.join(frontendRoot, "api/lib/propertyCalculatorServer.entry.ts");
-const outfile = path.join(frontendRoot, "api/lib/propertyCalculator.server.mjs");
+const entry = path.join(frontendRoot, "api/_lib/propertyCalculatorServer.entry.ts");
+const outfile = path.join(frontendRoot, "api/_lib/propertyCalculator.server.mjs");
 
 await esbuild.build({
   entryPoints: [entry],

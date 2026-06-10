@@ -2,10 +2,10 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 import {
   handleProviderSubscriptionWebhook,
   mapWebhookError
-} from "../lib/billing/handleSubscriptionWebhook.js";
-import { readRawBody } from "../lib/billing/readRawBody.js";
-import { hasLegacyStripeWebhookSignature } from "../lib/billing/provider.js";
-import { stripeClient } from "../lib/stripeSubscriptionServer.js";
+} from "../_lib/billing/handleSubscriptionWebhook.js";
+import { readRawBody } from "../_lib/billing/readRawBody.js";
+import { hasLegacyStripeWebhookSignature } from "../_lib/billing/provider.js";
+import { stripeClient } from "../_lib/stripeSubscriptionServer.js";
 
 export const config = {
   api: {

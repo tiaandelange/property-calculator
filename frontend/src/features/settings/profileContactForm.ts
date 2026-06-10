@@ -5,7 +5,7 @@ import {
   profileDetailsToPayload,
   type NormalizedBusinessDetails,
   type NormalizedProfileDetails
-} from "../../../api/lib/profileContactShared";
+} from "../../../api/_lib/profileContactShared";
 
 export type ProfileContactFormState = {
   fullName: string;

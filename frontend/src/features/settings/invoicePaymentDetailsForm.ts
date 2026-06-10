@@ -1,5 +1,5 @@
 import type { InvoicePaymentDetailsPayload } from "../../services/profileSupabase";
-import { normalizeInvoicePaymentDetails } from "../../../api/lib/invoicePaymentDetailsShared";
+import { normalizeInvoicePaymentDetails } from "../../../api/_lib/invoicePaymentDetailsShared";
 
 export type InvoicePaymentDetailsFormState = {
   bankName: string;

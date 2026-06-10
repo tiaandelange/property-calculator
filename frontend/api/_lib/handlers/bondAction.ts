@@ -4,8 +4,8 @@ import {
   loadOwnedProperty,
   postBondStatementRow,
   previewBondAtDate
-} from "../../../lib/bondLedgerServer.js";
-import { authenticateSupabaseRequest, isUuid } from "../../../lib/supabaseServerAuth.js";
+} from "../bondLedgerServer.js";
+import { authenticateSupabaseRequest, isUuid } from "../supabaseServerAuth.js";
 
 type BondAction = "preview-at-date" | "statement-row" | "backfill-statement-rows";
 
@@ -35,7 +35,7 @@ function parseBondAction(req: VercelRequest): BondAction | null {
   return null;
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
+export async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
   const propertyId = String(req.query.propertyId ?? "").trim();
   if (!isUuid(propertyId)) {
     res.status(400).json({ error: "Property id must be a UUID." });

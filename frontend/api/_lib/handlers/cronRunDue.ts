@@ -3,14 +3,14 @@ import {
   createServiceRoleSupabase,
   cronSecretFromRequest,
   verifyCronSecret
-} from "../lib/supabaseServiceRole.js";
+} from "../supabaseServiceRole.js";
 
 /**
  * Protected cron entry: `Authorization: Bearer <CRON_SECRET>`.
  * Runs recurring income + invoice RPCs with service_role (all users).
  * Expense materialisation still requires `POST /api/recurring-expenses/run-due` (bond-aware TS).
  */
-export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
+export async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
   if (req.method !== "GET" && req.method !== "POST") {
     res.status(405).setHeader("Allow", "GET, POST").json({ error: "Method not allowed" });
     return;

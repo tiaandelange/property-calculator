@@ -1,11 +1,7 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { resendEmailDeliveryConfigured } from "../../lib/invoiceEmail.js";
-import { processInvoiceSendEmail, type InvoiceSendEmailBody } from "../../lib/invoiceSendEmailServer.js";
-import { authenticateSupabaseRequest, isUuid } from "../../lib/supabaseServerAuth.js";
-
-export const config = {
-  maxDuration: 60
-};
+import { resendEmailDeliveryConfigured } from "../invoiceEmail.js";
+import { processInvoiceSendEmail, type InvoiceSendEmailBody } from "../invoiceSendEmailServer.js";
+import { authenticateSupabaseRequest, isUuid } from "../supabaseServerAuth.js";
 
 function parseJsonBody(req: VercelRequest): Record<string, unknown> {
   const b = req.body;
@@ -21,7 +17,7 @@ function parseJsonBody(req: VercelRequest): Record<string, unknown> {
   return {};
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
+export async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
   if (req.method !== "POST") {
     res.status(405).setHeader("Allow", "POST").json({ error: "Method not allowed" });
     return;

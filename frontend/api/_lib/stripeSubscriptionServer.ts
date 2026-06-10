@@ -3,7 +3,7 @@
  *
  * Legacy Stripe checkout (hardcoded R99) and webhook handlers that wrote
  * `profiles.subscription_status` and `public.subscriptions`. Retained until Paystack
- * checkout/webhooks are confirmed live; new billing uses `frontend/api/lib/billing/*`
+ * checkout/webhooks are confirmed live; new billing uses `frontend/api/_lib/billing/*`
  * and writes only `user_subscriptions`, `webhook_events`, and `checkout_attempts`.
  */
 import type { VercelRequest } from "@vercel/node";
@@ -52,7 +52,7 @@ export async function handleStripeWebhookEvent(event: Stripe.Event): Promise<voi
   });
 }
 
-/** @deprecated Import from `frontend/api/lib/billing/readRawBody.ts` instead. */
+/** @deprecated Import from `frontend/api/_lib/billing/readRawBody.ts` instead. */
 export function readRawBody(req: VercelRequest): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];

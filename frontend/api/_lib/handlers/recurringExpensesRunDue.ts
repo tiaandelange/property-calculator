@@ -1,8 +1,8 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { materializeDueRecurringExpensesForUser } from "../lib/recurringExpenseMaterializeServer.js";
-import { authenticateSupabaseRequest } from "../lib/supabaseServerAuth.js";
+import { materializeDueRecurringExpensesForUser } from "../recurringExpenseMaterializeServer.js";
+import { authenticateSupabaseRequest } from "../supabaseServerAuth.js";
 
-export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
+export async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
   if (req.method !== "POST") {
     res.status(405).setHeader("Allow", "POST").json({ error: "Method not allowed" });
     return;
