@@ -8,7 +8,7 @@ export type FieldSliderConfig = {
 
 const ADVANCED_SUBTITLES: Partial<Record<string, string>> = {
   "cash-flow": "Bond rate & term, insurance, levies, growth and other expenses",
-  "monthly-payment": "Extra payments and optional scenario name",
+  "monthly-payment": "Purchase price, deposit, extra payments and optional scenario name",
   "buy-vs-rent": "Rent escalation and optional assumptions"
 };
 

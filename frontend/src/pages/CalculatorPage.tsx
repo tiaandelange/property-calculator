@@ -529,6 +529,8 @@ export function CalculatorPage() {
     const illustration = !hasProjectionChart && cur ? [buildIllustrativeFiveYearLineChart(cur)] : [];
     const combined = [...illustration, ...raw];
     if (calc.slug === "monthly-payment") {
+      const combo = raw.filter((c) => c.chartType === "combo");
+      if (combo.length) return combo;
       const repaymentChart = combined.find((c) => {
         const datasets = (c.data as { datasets?: Array<{ label?: string }> })?.datasets ?? [];
         const labels = datasets.map((d) => String(d.label ?? "").toLowerCase());

@@ -27,12 +27,6 @@ const DOUGHNUT_PALETTE = [
   "#94A3B8"
 ];
 
-function isPrincipalInterestChart(chart: ChartLike): boolean {
-  const datasets = chart.data?.datasets ?? [];
-  const labels = datasets.map((d) => String(d.label ?? "").toLowerCase());
-  return labels.some((l) => l.includes("principal")) && labels.some((l) => l.includes("interest"));
-}
-
 function isCashFlowBridgeChart(chart: ChartLike): boolean {
   const labels = chart.data?.labels ?? [];
   return labels.includes("Cash flow") && labels.includes("Income");
@@ -205,31 +199,69 @@ function themedDualAxisComboData(chart: ChartLike) {
   };
 }
 
+function formatDualAxisTick(value: string | number, axisTitle: string): string {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return String(value);
+  if (/%|irr|cash-on-cash/i.test(axisTitle)) return `${n}%`;
+  if (/zar|interest|principal|cash flow/i.test(axisTitle)) {
+    if (Math.abs(n) >= 1_000_000) return `R ${(n / 1_000_000).toFixed(1)}M`;
+    if (Math.abs(n) >= 1000) return `R ${Math.round(n / 1000)}k`;
+    return `R ${Math.round(n)}`;
+  }
+  return String(n);
+}
+
 function themedDualAxisComboOptions(chart: ChartLike): Record<string, unknown> {
   const chartOpts = chart.options ?? {};
   const scales = (chartOpts.scales as Record<string, Record<string, unknown>> | undefined) ?? {};
   const yTitle = (scales.y?.title as { text?: string } | undefined)?.text ?? "Cash flow (ZAR)";
   const rightAxisTitle = (scales.y1?.title as { text?: string } | undefined)?.text ?? "Rate (%)";
+  const existingYTicks = (scales.y?.ticks as Record<string, unknown> | undefined) ?? {};
+  const existingY1Ticks = (scales.y1?.ticks as Record<string, unknown> | undefined) ?? {};
+  const currencyAxis = (title: string) => /zar|interest|principal|cash flow/i.test(title);
 
   const merged = mergeChartScales({
     ...chartOpts,
     scales: {
       x: { grid: { display: false }, ...(scales.x ?? {}) },
       y: {
+        ...(scales.y ?? {}),
         position: "left",
-        title: { display: true, text: yTitle, color: TICK_COLOR, font: { size: 11, weight: 600 } },
-        ...(scales.y ?? {})
-      },
-      y1: {
-        position: "right",
-        title: { display: true, text: rightAxisTitle, color: TICK_COLOR, font: { size: 11, weight: 600 } },
-        grid: { drawOnChartArea: false },
+        title: {
+          display: true,
+          text: yTitle,
+          color: TICK_COLOR,
+          font: { size: 11, weight: 600 },
+          ...((scales.y?.title as object) ?? {})
+        },
         ticks: {
           color: TICK_COLOR,
-          callback: (value: string | number) => `${value}%`,
-          ...((scales.y1?.ticks as object) ?? {})
+          ...existingYTicks,
+          callback:
+            (existingYTicks.callback as ((value: string | number) => string) | undefined) ??
+            (currencyAxis(yTitle)
+              ? (value: string | number) => formatDualAxisTick(value, yTitle)
+              : undefined)
+        }
+      },
+      y1: {
+        ...(scales.y1 ?? {}),
+        position: "right",
+        title: {
+          display: true,
+          text: rightAxisTitle,
+          color: TICK_COLOR,
+          font: { size: 11, weight: 600 },
+          ...((scales.y1?.title as object) ?? {})
         },
-        ...(scales.y1 ?? {})
+        grid: { drawOnChartArea: false, ...((scales.y1?.grid as object) ?? {}) },
+        ticks: {
+          color: TICK_COLOR,
+          ...existingY1Ticks,
+          callback:
+            (existingY1Ticks.callback as ((value: string | number) => string) | undefined) ??
+            ((value: string | number) => formatDualAxisTick(value, rightAxisTitle))
+        }
       }
     }
   });
@@ -313,21 +345,6 @@ export function applyProplyticChartTheme(chart: ChartLike, slug: string, graphTi
         }))
       },
       options: themedDoughnutOptions(chart.options)
-    };
-  }
-
-  if (slug === "monthly-payment" && chart.chartType === "bar" && isPrincipalInterestChart(chart)) {
-    return {
-      chartType: "line",
-      title: graphTitle ?? "Repayment breakdown over time",
-      data: themedData,
-      options: mergeChartScales({
-        ...chart.options,
-        scales: {
-          x: { stacked: true, grid: { display: false } },
-          y: { stacked: true, beginAtZero: true }
-        }
-      })
     };
   }
 

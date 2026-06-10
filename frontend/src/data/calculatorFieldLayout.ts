@@ -3,8 +3,8 @@ import type { CalculatorDef } from "./calculators";
 /** Presentation-only: which inputs show as core vs advanced assumptions per calculator slug. */
 const FIELD_LAYOUT: Partial<Record<string, { core: string[]; advanced: string[] }>> = {
   "monthly-payment": {
-    core: ["purchasePrice", "depositAmount", "bondAmount", "annualInterestRate", "loanTermYears"],
-    advanced: ["extraMonthlyPayment", "onceOffExtraPayment", "scenarioName"]
+    core: ["bondAmount", "loanTermYears", "annualInterestRate"],
+    advanced: ["purchasePrice", "depositAmount", "extraMonthlyPayment", "onceOffExtraPayment", "scenarioName"]
   },
   "buy-vs-rent": {
     core: ["purchasePrice", "monthlyRent", "depositAmount", "interestRate", "analysisYears", "propertyAppreciation"],

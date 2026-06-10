@@ -288,14 +288,44 @@ function calcMonthlyBond(input: z.infer<typeof monthlyBondSchema>): CalculatorRe
       }
     },
     {
-      chartType: "bar" as const,
+      chartType: "combo" as const,
       title: "Principal vs interest by year",
       data: {
         labels: yearlyLabels,
         datasets: [
-          { label: "Principal", data: principalByYear, backgroundColor: "#007acc", stack: "pi" },
-          { label: "Interest", data: interestByYear, backgroundColor: "#2b2b2b", stack: "pi" }
+          {
+            type: "bar" as const,
+            label: "Principal",
+            data: principalByYear,
+            backgroundColor: "#007acc",
+            yAxisID: "y"
+          },
+          {
+            type: "line" as const,
+            label: "Interest",
+            data: interestByYear,
+            borderColor: "#f59e0b",
+            backgroundColor: "transparent",
+            tension: 0.25,
+            pointRadius: 4,
+            yAxisID: "y1",
+            spanGaps: false
+          }
         ]
+      },
+      options: {
+        scales: {
+          x: { grid: { display: false } },
+          y: {
+            position: "left",
+            title: { display: true, text: "Principal (ZAR)" }
+          },
+          y1: {
+            position: "right",
+            title: { display: true, text: "Interest (ZAR)" },
+            grid: { drawOnChartArea: false }
+          }
+        }
       }
     }
   ];

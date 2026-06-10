@@ -220,10 +220,7 @@ export const calculators: CalculatorDef[] = [
       {
         title: "Loan details",
         fields: [
-          { key: "purchasePrice", label: "Purchase price (optional, R)", type: "money" },
-          { key: "depositAmount", label: "Deposit (R)", type: "money" },
-          { key: "bondAmount", label: "Bond amount (leave blank to auto-calc)", type: "money" },
-          { key: "annualInterestRate", label: "Annual interest rate (%)", type: "percent", required: true },
+          { key: "bondAmount", label: "Bond amount (R)", type: "money" },
           {
             key: "loanTermYears",
             label: "Loan term (years)",
@@ -236,12 +233,15 @@ export const calculators: CalculatorDef[] = [
               { label: "25", value: 25 },
               { label: "30", value: 30 }
             ]
-          }
+          },
+          { key: "annualInterestRate", label: "Annual interest rate (%)", type: "percent", required: true }
         ]
       },
       {
-        title: "Extra payments (optional)",
+        title: "Property & extra payments (optional)",
         fields: [
+          { key: "purchasePrice", label: "Purchase price (R)", type: "money", help: "If bond amount is blank, bond is estimated as purchase price minus deposit." },
+          { key: "depositAmount", label: "Deposit (R)", type: "money" },
           { key: "extraMonthlyPayment", label: "Extra monthly payment (R)", type: "money" },
           { key: "onceOffExtraPayment", label: "Once-off extra payment (R)", type: "money" }
         ]
