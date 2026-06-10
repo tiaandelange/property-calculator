@@ -101,6 +101,8 @@ const FIELD_LAYOUT: Partial<Record<string, { core: string[]; advanced: string[] 
     ],
     advanced: [
       "outstandingBondBalance",
+      "outstandingBondInterestRatePercent",
+      "bondTermYears",
       "estimatedSellingCostPercent",
       "projectedBondBalanceAtSale",
       "cashFlowGrowthPercentAnnual",

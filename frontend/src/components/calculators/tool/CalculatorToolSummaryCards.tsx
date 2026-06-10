@@ -25,6 +25,7 @@ const METRIC_ICONS: Record<string, IconName> = {
   noi: "income",
   dscr: "calculators",
   irr: "calculators",
+  propertyValueAfterSale: "income",
   effectiveIncome: "income",
   monthlyNOI: "wallet",
   debtService: "calculators",

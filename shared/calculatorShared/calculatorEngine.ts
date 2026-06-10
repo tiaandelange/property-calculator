@@ -11,6 +11,7 @@ import {
   calculateLoanConstant,
   calculateMonthlyBondPayment,
   calculateNOI,
+  projectLoanBalanceAfterYears,
   calculateNPV,
   calculateYieldOnCost,
   clamp,
@@ -962,6 +963,8 @@ const irrSchema = scenarioSchema.extend({
   annualCashFlowAfterExpensesAndDebt: money.optional(),
   currentEstimatedValue: money.nonnegative().optional(),
   outstandingBondBalance: money.nonnegative().optional(),
+  outstandingBondInterestRatePercent: percent.min(0).max(100).optional(),
+  bondTermYears: z.number().int().min(1).max(40).optional(),
   expectedAnnualAppreciationPercent: percent.optional(),
   estimatedSellingCostPercent: percent.min(0).max(40).optional(),
   projectedBondBalanceAtSale: money.nonnegative().optional(),
@@ -1000,6 +1003,67 @@ function operatingGrowthRatePerYear(input: IrrParsed): number {
   return flatG / 100;
 }
 
+type IrrBondAtSaleResolution = {
+  bondAtSale: number;
+  bondBasis: "manual" | "amortized" | "outstanding_snapshot";
+  monthlyPaymentUsed: number | null;
+  interestRateUsed: number | null;
+};
+
+function resolveIrrGrowthBondAtSale(
+  input: IrrParsed,
+  holdYears: number,
+  warnings: string[]
+): IrrBondAtSaleResolution {
+  const outstanding = input.outstandingBondBalance ?? 0;
+  if (outstanding <= 0) {
+    return {
+      bondAtSale: 0,
+      bondBasis: "outstanding_snapshot",
+      monthlyPaymentUsed: null,
+      interestRateUsed: null
+    };
+  }
+
+  if (input.projectedBondBalanceAtSale != null) {
+    return {
+      bondAtSale: input.projectedBondBalanceAtSale,
+      bondBasis: "manual",
+      monthlyPaymentUsed: null,
+      interestRateUsed: null
+    };
+  }
+
+  const rate = input.outstandingBondInterestRatePercent;
+  if (rate != null && Number.isFinite(rate) && rate >= 0) {
+    const termYears = input.bondTermYears ?? 20;
+    const { monthlyPayment } = calculateMonthlyBondPayment({
+      principal: outstanding,
+      annualInterestRatePercent: rate,
+      termYears
+    });
+    const projected = projectLoanBalanceAfterYears(outstanding, monthlyPayment, rate, holdYears);
+    if (projected != null) {
+      return {
+        bondAtSale: projected,
+        bondBasis: "amortized",
+        monthlyPaymentUsed: monthlyPayment,
+        interestRateUsed: rate
+      };
+    }
+  }
+
+  warnings.push(
+    "Using current bond balance as estimated future bond balance. Enter bond interest rate (and term) for an amortised projection to sale."
+  );
+  return {
+    bondAtSale: outstanding,
+    bondBasis: "outstanding_snapshot",
+    monthlyPaymentUsed: null,
+    interestRateUsed: null
+  };
+}
+
 function calcIrrGrowthFromValue(input: IrrParsed, H: number, warnings: string[], assumptions: string[]): CalculatorResult {
   const tcRaw = input.totalCashInvested!;
   if (tcRaw <= 0) {
@@ -1021,14 +1085,8 @@ function calcIrrGrowthFromValue(input: IrrParsed, H: number, warnings: string[],
   const appreciation = input.expectedAnnualAppreciationPercent ?? 0;
   const sellPct = clamp(input.estimatedSellingCostPercent ?? 5, 0, 100);
   const outstanding = input.outstandingBondBalance ?? 0;
-  const usedProjectedBond = input.projectedBondBalanceAtSale != null;
-  const bondAtSale = usedProjectedBond ? input.projectedBondBalanceAtSale! : outstanding;
-
-  if (!usedProjectedBond) {
-    warnings.push(
-      "Using current bond balance as estimated future bond balance. Add amortisation details for a more accurate IRR."
-    );
-  }
+  const bondResolution = resolveIrrGrowthBondAtSale(input, H, warnings);
+  const bondAtSale = bondResolution.bondAtSale;
 
   const futurePropertyValue = value0 * Math.pow(1 + appreciation / 100, H);
   const sellingCosts = futurePropertyValue * (sellPct / 100);
@@ -1038,11 +1096,19 @@ function calcIrrGrowthFromValue(input: IrrParsed, H: number, warnings: string[],
 
   assumptions.push(`Future value (exit) = current estimated value × (1 + appreciation)ᴴ (${appreciation}% p.a.).`);
   assumptions.push(`Selling costs = ${sellPct}% × future property value.`);
-  assumptions.push(
-    usedProjectedBond
-      ? `Bond at sale = projected balance (${bondAtSale}).`
-      : `Bond at sale = outstanding bond (${bondAtSale}) — conservative snapshot until amortisation is supplied.`
-  );
+  if (bondResolution.bondBasis === "manual") {
+    assumptions.push(`Bond at sale = manual projected balance (${formatCurrency(bondAtSale)}).`);
+  } else if (bondResolution.bondBasis === "amortized") {
+    const termYears = input.bondTermYears ?? 20;
+    assumptions.push(
+      `Bond at sale = amortised balance after ${H} year(s) at ${bondResolution.interestRateUsed}% ` +
+        `(from ${formatCurrency(outstanding)} at ${formatCurrency(bondResolution.monthlyPaymentUsed ?? 0)}/mo over ${termYears}-year term).`
+    );
+  } else if (outstanding > 0) {
+    assumptions.push(
+      `Bond at sale = outstanding bond (${formatCurrency(bondAtSale)}) — snapshot until rate and term are supplied.`
+    );
+  }
   assumptions.push(`Operating cash grows at implied annual factor ${(g * 100).toFixed(2)}% on prior-year net operating cash.`);
 
   const cashFlows: number[] = [-tcRaw];
@@ -1090,6 +1156,7 @@ function calcIrrGrowthFromValue(input: IrrParsed, H: number, warnings: string[],
     ...baseResult("irr", input.scenarioName),
     summary: [
       metric("irrPercent", "IRR", "percent", irrPercent),
+      metric("propertyValueAfterSale", "Property value after sale", "currency", futurePropertyValue),
       metric("equityMultiple", "Equity multiple", "number", equityMultiple ?? 0),
       metric("totalProfit", "Total profit", "currency", totalProfit),
       metric("netSaleProceeds", "Net sale proceeds", "currency", netSaleProceeds)
@@ -1111,7 +1178,10 @@ function calcIrrGrowthFromValue(input: IrrParsed, H: number, warnings: string[],
       totalProfit,
       averageAnnualCashFlow: baseAnnual,
       appreciationPercentUsed: appreciation,
-      bondBasis: usedProjectedBond ? "projected" : "outstanding_snapshot"
+      bondBasis: bondResolution.bondBasis,
+      bondMonthlyPaymentUsed: bondResolution.monthlyPaymentUsed,
+      bondInterestRateUsed: bondResolution.interestRateUsed,
+      bondTermYearsUsed: bondResolution.bondBasis === "amortized" ? input.bondTermYears ?? 20 : null
     },
     interpretation: { text: interpretationText, warnings },
     chartData,
@@ -1119,7 +1189,8 @@ function calcIrrGrowthFromValue(input: IrrParsed, H: number, warnings: string[],
       appreciationPercentUsed: appreciation,
       estimatedSellingCostPercent: sellPct,
       holdingPeriodYears: H,
-      bondBalanceBasis: usedProjectedBond ? "projectedBondBalanceAtSale" : "outstandingBondBalance"
+      bondBalanceBasis: bondResolution.bondBasis,
+      outstandingBondInterestRatePercent: bondResolution.interestRateUsed
     }
   };
 }
@@ -1174,6 +1245,7 @@ function calcIrrLegacySalePrice(input: IrrParsed, H: number, warnings: string[],
     ...baseResult("irr", input.scenarioName),
     summary: [
       metric("irrPercent", "IRR", "percent", irrPercent),
+      metric("propertyValueAfterSale", "Property value after sale", "currency", input.expectedSalePrice ?? null),
       metric("equityMultiple", "Equity multiple", "number", equityMultiple ?? 0),
       metric("totalProfit", "Total profit", "currency", totalProfit),
       metric("netSaleProceeds", "Net sale proceeds", "currency", netSaleProceeds)
@@ -1250,6 +1322,7 @@ function irrEmptyResult(
     ...baseResult("irr", input.scenarioName),
     summary: [
       metric("irrPercent", "IRR", "percent", irrPercent),
+      metric("propertyValueAfterSale", "Property value after sale", "currency", futurePropertyValue),
       metric("equityMultiple", "Equity multiple", "number", 0),
       metric("totalProfit", "Total profit", "currency", cashFlows.reduce((s, x) => s + x, 0)),
       metric("netSaleProceeds", "Net sale proceeds", "currency", netSaleProceeds ?? 0)

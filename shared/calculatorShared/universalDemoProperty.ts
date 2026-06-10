@@ -264,6 +264,8 @@ export function buildUniversalCalculatorDefaults(slug: string): Record<string, u
         currentEstimatedValue: p.propertyValue,
         annualCashFlowAfterExpensesAndDebt: round2(d.annualPreTaxCashFlow),
         outstandingBondBalance: p.loanAmount,
+        outstandingBondInterestRatePercent: p.annualInterestRatePercent,
+        bondTermYears: p.loanTermYears,
         expectedAnnualAppreciationPercent: 3.5,
         estimatedSellingCostPercent: p.sellingCostsPercent,
         cashFlowGrowthPercentAnnual: 2

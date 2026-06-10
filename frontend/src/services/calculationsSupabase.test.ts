@@ -49,6 +49,8 @@ describe("calculationsSupabase", () => {
       currentEstimatedValue: 2_300_000,
       annualCashFlowAfterExpensesAndDebt: 12_000,
       outstandingBondBalance: 1_840_000,
+      outstandingBondInterestRatePercent: 10.5,
+      bondTermYears: 20,
       expectedAnnualAppreciationPercent: 0,
       estimatedSellingCostPercent: 10,
       sellingCostsPercent: 5
@@ -57,6 +59,10 @@ describe("calculationsSupabase", () => {
     const futureValue = 2_300_000;
     expect(atTen.breakdown?.futurePropertyValue).toBe(futureValue);
     expect(atTen.breakdown?.sellingCosts).toBe(230_000);
+    const propertyValueCard = atTen.summary?.find((m) => m.key === "propertyValueAfterSale");
+    expect(propertyValueCard?.value).toBe(futureValue);
+    expect(atTen.breakdown?.bondBasis).toBe("amortized");
+    expect(Number(atTen.breakdown?.bondBalanceAtSale)).toBeLessThan(1_840_000);
 
     const atFive = runCalculatorLocally("irr", { ...base, estimatedSellingCostPercent: 5 });
     expect(atFive.breakdown?.sellingCosts).toBe(115_000);

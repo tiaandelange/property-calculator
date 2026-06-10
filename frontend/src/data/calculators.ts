@@ -371,6 +371,25 @@ export const calculators: CalculatorDef[] = [
           { key: "currentEstimatedValue", label: "Current estimated value (R)", type: "money" },
           { key: "annualCashFlowAfterExpensesAndDebt", label: "Annual net cash flow after debt (R)", type: "money" },
           { key: "outstandingBondBalance", label: "Outstanding bond balance (R)", type: "money" },
+          {
+            key: "outstandingBondInterestRatePercent",
+            label: "Outstanding bond interest rate (%)",
+            type: "percent",
+            help: "Used to amortise repayments over your hold period so bond at sale is lower than today's balance."
+          },
+          {
+            key: "bondTermYears",
+            label: "Bond term (years)",
+            type: "select",
+            options: [
+              { label: "10", value: 10 },
+              { label: "15", value: 15 },
+              { label: "20", value: 20 },
+              { label: "25", value: 25 },
+              { label: "30", value: 30 }
+            ],
+            help: "For an existing loan, use remaining years on the bond; defaults to 20 when blank."
+          },
           { key: "expectedAnnualAppreciationPercent", label: "Expected annual appreciation (%)", type: "percent" },
           {
             key: "estimatedSellingCostPercent",

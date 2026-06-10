@@ -31,6 +31,8 @@ const METRIC_INFO: Record<string, string> = {
   annualDebtService: "Total bond repayments over 12 months.",
   safetyBuffer: "How much NOI exceeds the minimum needed to cover debt service.",
   irrPercent: "Internal rate of return on your cash flows over the hold period.",
+  propertyValueAfterSale:
+    "Projected property value at the end of your hold period, before selling costs and loan payoff.",
   equityMultiple: "Total cash returned divided by total cash invested.",
   totalProfit: "Sum of all cash flows over the analysis period.",
   netSaleProceeds: "Estimated sale proceeds after selling costs and loan payoff.",
