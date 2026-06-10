@@ -47,14 +47,6 @@ export const HOME_HERO_DASHBOARD_KPIS = [
   { key: "value", label: "Portfolio Value", value: HOME_HERO_DEMO.portfolioValue, icon: "activity" as const, highlight: true }
 ] as const;
 
-export const HOME_HERO_FLOATING_METRICS = [
-  { key: "equity", label: "Total Equity", value: "R 4.82M", change: "+8.6%", tone: "up" as const, placement: "upper-left" as const, delay: 0 },
-  { key: "cashFlow", label: "Net Cash Flow", value: "R 41,200", change: "+12.4%", tone: "up" as const, placement: "mid-left" as const, delay: 0.8 },
-  { key: "occupancy", label: "Occupancy", value: "96%", change: "+2.1%", tone: "up" as const, placement: "upper-right" as const, delay: 0.4 },
-  { key: "yield", label: "Avg Yield", value: "8.7%", change: "+0.6pp", tone: "up" as const, placement: "mid-right" as const, delay: 1.2 },
-  { key: "value", label: "Portfolio Value", value: "R 8.45M", change: "+9.3%", tone: "up" as const, placement: "lower-right" as const, delay: 1.6 }
-] as const;
-
 export const HOME_HERO_FLOATING_ICONS = [
   { icon: "property" as const, placement: "icon-a" as const, delay: 0.2, faded: false },
   { icon: "reports" as const, placement: "icon-b" as const, delay: 1, faded: true },

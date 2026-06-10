@@ -1,8 +1,7 @@
 import { HomeHeroDashboardMockup } from "./HomeHeroDashboardMockup";
 import { HomeHeroFloatingIconTile } from "./HomeHeroFloatingIconTile";
-import { HomeHeroFloatingMetricCard } from "./HomeHeroFloatingMetricCard";
 import { HomeHeroOrbitLines } from "./HomeHeroOrbitLines";
-import { HOME_HERO_FLOATING_ICONS, HOME_HERO_FLOATING_METRICS } from "./homeHeroDemoData";
+import { HOME_HERO_FLOATING_ICONS } from "./homeHeroDemoData";
 import "./homeHeroDashboard.css";
 
 /** Right-side cinematic dashboard visual for the public homepage hero. */
@@ -15,10 +14,6 @@ export function HomeHeroVisual() {
       <div className="hm-hero-visual__stage">
         {HOME_HERO_FLOATING_ICONS.map((tile) => (
           <HomeHeroFloatingIconTile key={tile.placement} tile={tile} />
-        ))}
-
-        {HOME_HERO_FLOATING_METRICS.map((metric) => (
-          <HomeHeroFloatingMetricCard key={metric.key} metric={metric} />
         ))}
 
         <div className="hm-hero-visual__dash-wrap">

@@ -376,16 +376,11 @@ body:where(:has(.pg-main-marketing-home), :has(.hm-home), :has(.pg-calc-hub-land
 }
 
 .hm-hero--premium .hm-hero-headline-glow {
-  left: -4%;
-  right: 20%;
-  height: 130%;
-  background: radial-gradient(
-    ellipse 80% 90% at 36% 48%,
-    rgba(124, 58, 237, 0.18) 0%,
-    rgba(124, 58, 237, 0.06) 42%,
-    transparent 72%
-  );
-  filter: blur(18px);
+  left: -14%;
+  right: 6%;
+  height: 340%;
+  background: radial-gradient(circle at 38% 50%, rgba(124, 58, 237, 0.3), transparent 58%);
+  filter: blur(28px);
 }
 
 .hm-hero-eyebrow {

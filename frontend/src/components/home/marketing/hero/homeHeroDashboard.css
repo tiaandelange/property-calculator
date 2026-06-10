@@ -91,89 +91,6 @@
   display: none;
 }
 
-/* Floating metric cards */
-.hm-hero-float-card {
-  position: absolute;
-  z-index: 6;
-  min-width: 118px;
-  max-width: 148px;
-  padding: 10px 12px;
-  border-radius: 18px;
-  background: rgba(15, 23, 42, 0.72);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow:
-    0 16px 40px rgba(0, 0, 0, 0.35),
-    0 0 28px rgba(124, 58, 237, 0.18);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  animation: hm-hero-float-card 7.5s ease-in-out infinite;
-  will-change: transform;
-}
-
-.hm-hero-float-card__label {
-  display: block;
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: #94a3b8;
-}
-
-.hm-hero-float-card__value {
-  display: block;
-  margin-top: 3px;
-  font-size: 13px;
-  font-weight: 800;
-  color: #f8fafc;
-  font-variant-numeric: tabular-nums;
-}
-
-.hm-hero-float-card__change {
-  display: block;
-  margin-top: 2px;
-  font-size: 9px;
-  font-weight: 700;
-}
-
-.hm-hero-float-card__change--up {
-  color: #4ade80;
-}
-
-.hm-hero-float-card--upper-left {
-  top: 4%;
-  left: 6%;
-}
-
-.hm-hero-float-card--mid-left {
-  top: 42%;
-  left: 2%;
-}
-
-.hm-hero-float-card--upper-right {
-  top: 8%;
-  right: -2%;
-}
-
-.hm-hero-float-card--mid-right {
-  top: 46%;
-  right: -5%;
-}
-
-.hm-hero-float-card--lower-right {
-  bottom: 6%;
-  right: 0;
-}
-
-@keyframes hm-hero-float-card {
-  0%,
-  100% {
-    transform: translate3d(0, 0, 0);
-  }
-  50% {
-    transform: translate3d(4px, -8px, 0);
-  }
-}
-
 /* Floating icon tiles */
 .hm-hero-float-icon {
   position: absolute;
@@ -675,8 +592,6 @@
     max-width: 48vw;
   }
 
-  .hm-hero-float-card--upper-left,
-  .hm-hero-float-card--mid-left,
   .hm-hero-float-icon--icon-a,
   .hm-hero-float-icon--icon-c,
   .hm-hero-float-icon--icon-e {
@@ -701,11 +616,6 @@
     grid-column: 1 / -1;
   }
 
-  .hm-hero-float-card--mid-left,
-  .hm-hero-float-card--mid-right {
-    display: none;
-  }
-
   .hm-hero-float-icon--icon-e,
   .hm-hero-float-icon--icon-f {
     display: none;
@@ -722,7 +632,6 @@
     width: 100%;
   }
 
-  .hm-hero-float-card,
   .hm-hero-float-icon,
   .hm-hero-orbit {
     display: none;
@@ -750,7 +659,6 @@
 
 @media (prefers-reduced-motion: reduce) {
   .hm-hero-visual__dash-wrap,
-  .hm-hero-float-card,
   .hm-hero-float-icon,
   .hm-hero-visual__glow,
   .hm-hero-orbit__path,
