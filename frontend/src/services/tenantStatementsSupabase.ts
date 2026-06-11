@@ -79,6 +79,120 @@ const STATEMENT_DETAIL_SELECT = `
   leases ( id, start_date, fixed_term_end_date, status, lease_reference, deposit_amount )
 `;
 
+const STATEMENT_DIRECTORY_SELECT = `
+  id,
+  statement_number,
+  statement_type,
+  statement_date,
+  period_start,
+  period_end,
+  total,
+  status,
+  sent_at,
+  created_at,
+  updated_at,
+  pdf_storage_bucket,
+  pdf_storage_key,
+  property_id,
+  tenant_id,
+  tenants ( id, first_name, last_name ),
+  properties ( id, name )
+`;
+
+export type TenantStatementDirectoryRow = {
+  id: string;
+  statementNumber: string;
+  statementType: "FINANCIAL" | "DEPOSIT";
+  statementDate: string;
+  periodStart: string | null;
+  periodEnd: string | null;
+  total: number;
+  status: string;
+  sentAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  propertyId: string;
+  propertyName: string;
+  tenantId: string;
+  tenantName: string;
+  hasPdf: boolean;
+  pdfStorageBucket: string | null;
+  pdfStorageKey: string | null;
+};
+
+function nestedName(row: Record<string, unknown> | null | undefined, fallback: string): string {
+  if (!row || typeof row !== "object") return fallback;
+  const first = String(row.first_name ?? row.firstName ?? "").trim();
+  const last = String(row.last_name ?? row.lastName ?? "").trim();
+  const full = `${first} ${last}`.trim();
+  return full || fallback;
+}
+
+function mapStatementDirectoryRow(row: Record<string, unknown>): TenantStatementDirectoryRow {
+  const mapped = dbStatementToClient(row);
+  const tenants = row.tenants as Record<string, unknown> | Record<string, unknown>[] | null | undefined;
+  const properties = row.properties as Record<string, unknown> | Record<string, unknown>[] | null | undefined;
+  const tenantRow = Array.isArray(tenants) ? tenants[0] : tenants;
+  const propertyRow = Array.isArray(properties) ? properties[0] : properties;
+  const statementType = String(mapped.statementType ?? "FINANCIAL").toUpperCase() as "FINANCIAL" | "DEPOSIT";
+
+  return {
+    id: String(mapped.id ?? row.id ?? ""),
+    statementNumber: String(mapped.statementNumber ?? row.statement_number ?? ""),
+    statementType: statementType === "DEPOSIT" ? "DEPOSIT" : "FINANCIAL",
+    statementDate: String(mapped.statementDate ?? row.statement_date ?? ""),
+    periodStart: mapped.periodStart != null ? String(mapped.periodStart) : null,
+    periodEnd: mapped.periodEnd != null ? String(mapped.periodEnd) : null,
+    total: n(mapped.totalAmount ?? mapped.total ?? row.total),
+    status: String(mapped.status ?? row.status ?? "DRAFT"),
+    sentAt: mapped.sentAt != null ? String(mapped.sentAt) : null,
+    createdAt: String(mapped.createdAt ?? row.created_at ?? ""),
+    updatedAt: String(mapped.updatedAt ?? row.updated_at ?? row.created_at ?? ""),
+    propertyId: String(mapped.propertyId ?? row.property_id ?? ""),
+    propertyName: String(propertyRow?.name ?? "Property"),
+    tenantId: String(mapped.tenantId ?? row.tenant_id ?? ""),
+    tenantName: nestedName(tenantRow, "Tenant"),
+    hasPdf: Boolean(mapped.hasPdf),
+    pdfStorageBucket:
+      mapped.pdfStorageBucket != null
+        ? String(mapped.pdfStorageBucket)
+        : row.pdf_storage_bucket != null
+          ? String(row.pdf_storage_bucket)
+          : null,
+    pdfStorageKey:
+      mapped.pdfStorageKey != null
+        ? String(mapped.pdfStorageKey)
+        : row.pdf_storage_key != null
+          ? String(row.pdf_storage_key)
+          : null
+  };
+}
+
+/** Draft and sent tenant statements for the workspace documents directory. */
+export async function listTenantStatementsDirectory(): Promise<TenantStatementDirectoryRow[]> {
+  await requireLocalUserId();
+  const sb = getSupabase();
+  const { data, error } = await sb
+    .from("tenant_statement_documents")
+    .select(STATEMENT_DIRECTORY_SELECT)
+    .not("status", "in", '("VOID","CANCELLED")')
+    .order("updated_at", { ascending: false });
+  if (error) throw toError(error);
+  return (data ?? []).map((row) => mapStatementDirectoryRow(row as Record<string, unknown>));
+}
+
+export async function getTenantStatementDirectorySignedUrl(
+  row: Pick<TenantStatementDirectoryRow, "pdfStorageBucket" | "pdfStorageKey">
+): Promise<string | null> {
+  const bucket = row.pdfStorageBucket;
+  const key = row.pdfStorageKey;
+  if (!bucket || !key) return null;
+  const sb = getSupabase();
+  const { data, error } = await sb.storage.from(bucket).createSignedUrl(key, SIGNED_URL_TTL_SEC);
+  if (error) throw toError(error);
+  return data?.signedUrl ?? null;
+}
+
 export async function getTenantStatement(id: string | number): Promise<Record<string, unknown>> {
   await requireLocalUserId();
   const sb = getSupabase();
