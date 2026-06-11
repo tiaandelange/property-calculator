@@ -46,6 +46,8 @@ export async function generateStatementPdfViaVercel(
   }
 
   const json = (await res.json().catch(() => ({}))) as GenerateStatementPdfResponse & { error?: string };
-  if (!json.downloadUrl && json.error) throw new ApiRequestError(json.error);
+  if (!json.downloadUrl) {
+    throw new ApiRequestError(json.error ?? "No download URL returned from statement PDF generator.");
+  }
   return json;
 }

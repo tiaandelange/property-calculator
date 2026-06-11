@@ -112,6 +112,18 @@ export async function handler(req: VercelRequest, res: VercelResponse): Promise<
     });
     if (upErr) {
       console.error("[statements/generate] storage upload failed", upErr);
+      if (!built.persistPdf) {
+        res.status(200).json({
+          message: "Draft statement PDF generated (inline)",
+          statementId,
+          hasPdf: false,
+          ephemeral: true,
+          downloadUrl: `data:application/pdf;base64,${built.pdfBuffer.toString("base64")}`,
+          storageKey,
+          storageBucket: STATEMENTS_BUCKET
+        });
+        return;
+      }
       res.status(500).json({ error: "Failed to upload PDF to storage." });
       return;
     }

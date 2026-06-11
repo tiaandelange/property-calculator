@@ -28,6 +28,15 @@
       "maxDuration": 60,
       "memory": 1024
     },
+    "frontend/api/statements/generate.ts": {
+      "includeFiles": "frontend/assets/fonts/pdfmake/**,frontend/public/assets/brand/**,frontend/api/_lib/propertyCalculator/**,frontend/api/_lib/propertyCalculator.server.mjs",
+      "maxDuration": 60,
+      "memory": 1024
+    },
+    "frontend/api/statements/[id]/send-email.ts": {
+      "maxDuration": 60,
+      "memory": 1024
+    },
     "frontend/api/subscription/webhook.ts": {
       "maxDuration": 60
     }

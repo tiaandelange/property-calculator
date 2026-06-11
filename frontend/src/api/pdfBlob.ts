@@ -25,6 +25,12 @@ export async function fetchPdfBlob(downloadUrl: string): Promise<Blob> {
     );
   }
 
+  if (url.startsWith("data:")) {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error("Could not read inline PDF data.");
+    return res.blob();
+  }
+
   if (isAbsoluteHttpUrl(url)) {
     const res = await fetch(url);
     if (!res.ok) throw new Error(`Download failed (${res.status}).`);

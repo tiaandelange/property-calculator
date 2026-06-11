@@ -1,6 +1,6 @@
-import { fetchPdfBlob, isAbsoluteHttpUrl, openPdfBlobInNewTab } from "../../api/pdfBlob";
+import { fetchPdfBlob, openPdfBlobInNewTab } from "../../api/pdfBlob";
 import type { GenerateStatementPdfResponse } from "../../services/tenantStatementsVercel";
-import { closeReportTab, navigateReportTab } from "../../services/openReportInNewTab";
+import { closeReportTab } from "../../services/openReportInNewTab";
 
 export async function openStatementPdfExport(
   gen: GenerateStatementPdfResponse,
@@ -11,18 +11,14 @@ export async function openStatementPdfExport(
     closeReportTab(previewTab ?? null);
     throw new Error(gen.error ?? "No download URL returned.");
   }
-  if (isAbsoluteHttpUrl(downloadUrl)) {
-    navigateReportTab(previewTab ?? null, downloadUrl);
-    return;
+  try {
+    const blob = await fetchPdfBlob(downloadUrl);
+    closeReportTab(previewTab ?? null);
+    openPdfBlobInNewTab(blob);
+  } catch (e) {
+    closeReportTab(previewTab ?? null);
+    throw e;
   }
-  const blob = await fetchPdfBlob(downloadUrl);
-  if (previewTab && !previewTab.closed) {
-    const objectUrl = URL.createObjectURL(blob);
-    previewTab.location.href = objectUrl;
-    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
-    return;
-  }
-  openPdfBlobInNewTab(blob);
 }
 
 export function statementPdfWasStored(gen: GenerateStatementPdfResponse): boolean {

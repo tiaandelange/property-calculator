@@ -22,6 +22,15 @@
       "includeFiles": "assets/fonts/pdfmake/**,public/proplytic*,public/assets/brand/**,api/_lib/propertyCalculator.server.mjs",
       "maxDuration": 60
     },
+    "api/statements/generate.ts": {
+      "includeFiles": "assets/fonts/pdfmake/**,public/proplytic*,public/assets/brand/**,api/_lib/propertyCalculator.server.mjs",
+      "maxDuration": 60,
+      "memory": 1024
+    },
+    "api/statements/[id]/send-email.ts": {
+      "maxDuration": 60,
+      "memory": 1024
+    },
     "api/subscription/webhook.ts": {
       "maxDuration": 60
     }

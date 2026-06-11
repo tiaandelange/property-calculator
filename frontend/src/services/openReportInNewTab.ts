@@ -8,7 +8,7 @@
 
 /** Synchronous (user-gesture) placeholder tab; returns null if the browser blocked it. */
 export function openBlankReportTab(): Window | null {
-  return window.open("", "_blank");
+  return window.open("about:blank", "_blank");
 }
 
 export function navigateReportTab(tab: Window | null, downloadUrl: string): void {
