@@ -3,7 +3,7 @@ import type { Session, User } from "@supabase/supabase-js";
 import { fetchProfileForUserId, type ProfileForApp } from "../api/profileFromSupabase";
 import { logAuthEvent, logAuthSignOut, logAuthState } from "../lib/authDebug";
 import { authLoginInProgressRef } from "../lib/authLoginGuard";
-import { readAuthSession } from "../lib/authSession";
+import { readAuthSession, supabaseAuthStorageKey } from "../lib/authSession";
 import { sessionFromInitialAuthEvent, shouldIgnoreSignedOutEvent } from "../lib/authSessionPolicy";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 
@@ -30,13 +30,6 @@ export type AuthContextValue = {
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
-
-function supabaseAuthStorageKey(): string | null {
-  const url = import.meta.env.VITE_SUPABASE_URL?.trim() ?? "";
-  const match = url.match(/https?:\/\/([^.]+)\.supabase\.co/i);
-  if (!match?.[1]) return null;
-  return `sb-${match[1]}-auth-token`;
-}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);

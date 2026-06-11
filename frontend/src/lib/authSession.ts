@@ -1,6 +1,27 @@
 import type { AuthError, Session, User } from "@supabase/supabase-js";
 import { getSupabase } from "./supabaseClient";
 
+/** localStorage key Supabase Auth uses for the browser session (derived from project ref). */
+export function supabaseAuthStorageKey(): string | null {
+  const url = import.meta.env.VITE_SUPABASE_URL?.trim() ?? "";
+  const match = url.match(/https?:\/\/([^.]+)\.supabase\.co/i);
+  if (!match?.[1]) return null;
+  return `sb-${match[1]}-auth-token`;
+}
+
+/**
+ * Remove a stale browser auth token without calling Supabase signOut (no network).
+ * Used before sign-in to avoid refresh-token races without triggering SIGNED_OUT events.
+ */
+export function clearStaleLocalAuthStorage(): void {
+  try {
+    const key = supabaseAuthStorageKey();
+    if (key) localStorage.removeItem(key);
+  } catch {
+    // private mode / quota — non-fatal
+  }
+}
+
 export type AuthSessionReadResult = {
   session: Session | null;
   error: AuthError | null;

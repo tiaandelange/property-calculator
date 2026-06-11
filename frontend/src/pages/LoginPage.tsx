@@ -15,7 +15,7 @@ import {
   resolveSignupPlanSelection,
   SIGNUP_PLAN_USER_METADATA_KEY
 } from "../features/signup/signupPlan";
-import { readAuthSession } from "../lib/authSession";
+import { clearStaleLocalAuthStorage, readAuthSession } from "../lib/authSession";
 import { getSupabase, isSupabaseConfigured } from "../lib/supabaseClient";
 import { authLoginInProgressRef } from "../lib/authLoginGuard";
 import { getConfirmEmailRedirectUrl } from "../lib/authRedirect";
@@ -152,12 +152,8 @@ export function LoginPage() {
         logSignInFlow("start");
         authLoginInProgressRef.current = true;
         try {
-          // Clear stale refresh tokens so a slow bootstrap getSession cannot sign the user out after login.
-          try {
-            await sb.auth.signOut({ scope: "local" });
-          } catch {
-            /* non-fatal */
-          }
+          // Clear stale local tokens only — no signOut() network call or SIGNED_OUT race.
+          clearStaleLocalAuthStorage();
           const { data: signInData, error } = await sb.auth.signInWithPassword({
             email: email.trim(),
             password
@@ -165,6 +161,7 @@ export function LoginPage() {
           if (error) {
             logSignInFlow("error", { message: error.message });
             setMessage({ kind: "error", text: formatAuthError(error) });
+            setLoading(null);
             return;
           }
           if (signInData.session) {

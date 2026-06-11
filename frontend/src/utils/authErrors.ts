@@ -27,6 +27,9 @@ export function formatAuthError(err: AuthError | Error | null | undefined): stri
       if (/email not confirmed/i.test(msg)) return "Please confirm your email before signing in.";
       if (/already registered/i.test(msg)) return "An account with this email already exists.";
       if (/password/i.test(msg) && /short|weak|least/i.test(msg)) return "Password is too weak. Use at least 8 characters.";
+      if (/failed to fetch|networkerror|network error|load failed|err_connection/i.test(msg)) {
+        return "Could not reach the sign-in service. Check your internet connection, try disabling ad blockers or privacy extensions for this site, and try again. If this continues, verify your Supabase project is active in the dashboard.";
+      }
       return msg || "Something went wrong. Please try again.";
   }
 }
