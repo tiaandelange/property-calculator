@@ -161,7 +161,7 @@ export function StatementLineItemsEditor({ lineItems, editable, statementType, o
 
       {editable ? (
         <div className="pg-inv-lines__add">
-          <Button type="button" variant="soft" iconLeft="plus" onClick={addLine}>
+          <Button type="button" variant="soft" iconLeft="add" onClick={addLine}>
             {statementType === "DEPOSIT" ? "Add expense" : "Add line"}
           </Button>
         </div>

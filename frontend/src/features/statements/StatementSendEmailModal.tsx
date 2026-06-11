@@ -77,7 +77,7 @@ export function StatementSendEmailModal({
     userOrBusinessName
   ]);
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const normalized = normalizeRecipientEmails(recipientEmails);
     if (!normalized.length) {
@@ -101,8 +101,29 @@ export function StatementSendEmailModal({
   };
 
   return (
-    <AppFormModal open={open} title="Send statement" onClose={onClose} size="md">
-      <form onSubmit={handleSubmit}>
+    <AppFormModal
+      open={open}
+      onOpenChange={(next) => {
+        if (!next) onClose();
+      }}
+      title="Send statement"
+      onClose={onClose}
+      size="md"
+      loading={loading}
+      closeOnOverlayClick={!loading}
+      onSubmit={handleSubmit}
+      footer={
+        <div className="pg-app-modal-actions">
+          <Button type="button" variant="soft" onClick={onClose} disabled={loading}>
+            Cancel
+          </Button>
+          <Button type="submit" loading={loading}>
+            {loading ? "Sending…" : "Send email"}
+          </Button>
+        </div>
+      }
+    >
+      <div className="pg-inv-send-email">
         {validationError ? <div className="pg-alert pg-alert-error">{validationError}</div> : null}
         <Field label="To">
           <Input
@@ -129,15 +150,7 @@ export function StatementSendEmailModal({
           <input type="checkbox" checked={copyMe} onChange={(e) => setCopyMe(e.target.checked)} />
           Send me a copy
         </label>
-        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 20 }}>
-          <Button type="button" variant="ghost" onClick={onClose} disabled={loading}>
-            Cancel
-          </Button>
-          <Button type="submit" loading={loading}>
-            Send email
-          </Button>
-        </div>
-      </form>
+      </div>
     </AppFormModal>
   );
 }
