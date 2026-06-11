@@ -14,7 +14,8 @@ import {
   ProplyticTableRow,
   ProplyticTableSkeleton,
   ProplyticTableWrap,
-  ProplyticTableRowActionsMenu
+  ProplyticTableRowActionsMenu,
+  type ProplyticTableRowAction
 } from "../components/tables";
 import { AppListPage } from "../components/ui/AppPage";
 import { Card } from "../components/ui/Card";
@@ -147,42 +148,41 @@ export function OwnedDocumentsPage() {
     }
   };
 
-  const statementActions = (row: TenantStatementDirectoryRow) => {
+  const statementActions = (row: TenantStatementDirectoryRow): ProplyticTableRowAction[] => {
     const editable = isInvoiceEditable(row.status);
-    return [
+    const actions: ProplyticTableRowAction[] = [
       {
         key: "open",
         label: editable ? "Edit statement" : "Open statement",
-        icon: "open" as const,
+        icon: "open",
         onClick: () => openStatement(row),
         primary: true
       },
       {
         key: "pdf",
         label: "View or download PDF",
-        icon: "download" as const,
+        icon: "download",
         onClick: () => void openStatementPdf(row)
-      },
-      ...(editable
-        ? [
-            {
-              key: "delete",
-              label: "Delete draft",
-              icon: "delete" as const,
-              onClick: () => setPendingDelete(row),
-              destructive: true
-            }
-          ]
-        : [])
+      }
     ];
+    if (editable) {
+      actions.push({
+        key: "delete",
+        label: "Delete draft",
+        icon: "delete",
+        onClick: () => setPendingDelete(row),
+        destructive: true
+      });
+    }
+    return actions;
   };
 
-  const leaseActions = (row: ActiveLeaseContractRow) => {
-    const actions = [
+  const leaseActions = (row: ActiveLeaseContractRow): ProplyticTableRowAction[] => {
+    const actions: ProplyticTableRowAction[] = [
       {
         key: "tenant",
         label: "Open tenant workspace",
-        icon: "open" as const,
+        icon: "open",
         onClick: () => navigate(`/tenants/${row.tenantId}`),
         primary: true
       }
@@ -191,7 +191,7 @@ export function OwnedDocumentsPage() {
       actions.push({
         key: "contract",
         label: "View signed lease contract",
-        icon: "download" as const,
+        icon: "download",
         onClick: () => void openLeaseContract(row)
       });
     }
