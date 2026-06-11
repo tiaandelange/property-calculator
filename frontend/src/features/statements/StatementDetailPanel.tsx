@@ -1,6 +1,6 @@
-import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { AppIcon, IconButton } from "../../components/icons";
+import { AppIcon } from "../../components/icons";
 import {
   createTenantStatement,
   deleteTenantStatement,
@@ -100,8 +100,6 @@ export function StatementDetailPanel({
   const [sentEditUnlocked, setSentEditUnlocked] = useState(false);
   const [sendEmailModalOpen, setSendEmailModalOpen] = useState(false);
   const [emailSending, setEmailSending] = useState(false);
-  const [moreOpen, setMoreOpen] = useState(false);
-  const moreRef = useRef<HTMLDivElement>(null);
   const [statementNumber, setStatementNumber] = useState("Draft");
   const [status, setStatus] = useState<string>("DRAFT");
   const [fromName, setFromName] = useState(profileName);
@@ -149,15 +147,6 @@ export function StatementDetailPanel({
     if (!me) return;
     setFromName(me.financialLandlord?.name?.trim() || me.name?.trim() || me.email?.trim() || "Proplytic");
   }, [profileQuery.data]);
-
-  useEffect(() => {
-    if (!moreOpen) return;
-    const close = (e: MouseEvent) => {
-      if (moreRef.current && !moreRef.current.contains(e.target as Node)) setMoreOpen(false);
-    };
-    document.addEventListener("mousedown", close);
-    return () => document.removeEventListener("mousedown", close);
-  }, [moreOpen]);
 
   useEffect(() => {
     if (!isInvoicePostSendStatus(status)) setSentEditUnlocked(false);
@@ -396,7 +385,6 @@ export function StatementDetailPanel({
   const downloadPdf = async () => {
     if (!activeId) return;
     setPdfBusy(true);
-    setMoreOpen(false);
     try {
       const stmt = await getTenantStatement(activeId);
       const gen = await generateTenantStatementPdf(activeId, { force: true });
@@ -528,6 +516,50 @@ export function StatementDetailPanel({
     </>
   );
 
+  const renderDateField = (
+    id: string,
+    label: string,
+    value: string,
+    onChange: (v: string) => void,
+    readOnlyAlways = false
+  ) => (
+    <div className="pg-inv-editor__field pg-inv-editor__field--date">
+      <label className="pg-inv-editor__label" htmlFor={id}>
+        {label}
+      </label>
+      <div className="pg-inv-editor__input-wrap">
+        <AppIcon name="calendar" size="md" className="pg-inv-editor__input-icon" />
+        <Input
+          id={id}
+          type="date"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          readOnly={readOnlyAlways || !fieldsEnabled}
+          disabled={readOnlyAlways || !fieldsEnabled}
+          aria-label={label}
+        />
+      </div>
+    </div>
+  );
+
+  const renderTenantField = (showLabel = true) => {
+    const control = (
+      <div className="pg-inv-editor__tenant-select">
+        <span className="pg-inv-editor__tenant-avatar" aria-hidden>
+          <AppIcon name="tenant" size="sm" />
+        </span>
+        <span className="pg-inv-editor__tenant-name">{toName}</span>
+      </div>
+    );
+    if (!showLabel) return control;
+    return (
+      <div className="pg-inv-editor__field pg-inv-editor__field--tenant">
+        <label className="pg-inv-editor__label">Tenant / Contact</label>
+        {control}
+      </div>
+    );
+  };
+
   if (loading || bootstrapLoading) {
     return <div className="pg-tstmt-skeleton" style={{ minHeight: 320 }} aria-busy="true" />;
   }
@@ -562,6 +594,16 @@ export function StatementDetailPanel({
           <div className="pg-inv-editor__actions pg-inv-editor__actions--desktop">{renderActionButtons(false)}</div>
         </header>
 
+        <header className="pg-inv-editor__mobile-head">
+          <Link className="pg-inv-editor__back" to={`/tenants/${tenantId}`} aria-label="Back to tenant">
+            <AppIcon name="back" size="md" />
+          </Link>
+          <div className="pg-inv-editor__mobile-title-wrap">
+            <h1 className="pg-inv-editor__mobile-title">{pageTitle}</h1>
+            <InvoiceStatusBadge status={status} />
+          </div>
+        </header>
+
         {error ? <div className="pg-alert pg-alert-error">{error}</div> : null}
         {success ? (
           <div className="pg-alert" style={{ background: "var(--success-soft)", color: "var(--success)" }}>
@@ -578,62 +620,78 @@ export function StatementDetailPanel({
               </Button>
             </div>
           ) : null}
+          {postSend && sentEditUnlocked ? (
+            <div className="pg-inv-editor__locked pg-inv-editor__locked--editing" role="status">
+              You are editing a sent statement. Save when you are done.
+            </div>
+          ) : null}
 
           <div className="pg-inv-editor__fields pg-inv-editor__fields--desktop">
-            <div className="pg-inv-editor__field">
-              <label className="pg-inv-editor__label">Tenant</label>
-              <Input value={toName} readOnly disabled />
-            </div>
-            <div className="pg-inv-editor__field">
-              <label className="pg-inv-editor__label" htmlFor="stmt-issue-date">
-                Statement date
-              </label>
-              <Input
-                id="stmt-issue-date"
-                type="date"
-                value={issueDate}
-                disabled={!fieldsEnabled}
-                onChange={(e) => setIssueDate(e.target.value)}
-              />
-            </div>
+            {renderTenantField()}
+            {renderDateField("stmt-issue-date", "Statement Date", issueDate, setIssueDate)}
             {statementType === "FINANCIAL" ? (
-              <div className="pg-inv-editor__field">
+              <div className="pg-inv-editor__field pg-inv-editor__field--date">
                 <label className="pg-inv-editor__label" htmlFor="stmt-period">
                   Period
                 </label>
-                <Select
-                  id="stmt-period"
-                  value={periodKey}
-                  disabled={!fieldsEnabled || Boolean(activeId)}
-                  onChange={(e) => void reloadPeriodLines(e.target.value as StatementPeriodKey)}
-                >
-                  {STATEMENT_PERIOD_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </Select>
+                <div className="pg-inv-editor__input-wrap">
+                  <Select
+                    id="stmt-period"
+                    value={periodKey}
+                    disabled={!fieldsEnabled || Boolean(activeId)}
+                    onChange={(e) => void reloadPeriodLines(e.target.value as StatementPeriodKey)}
+                  >
+                    {STATEMENT_PERIOD_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
                 {periodLabel ? <p className="pg-muted" style={{ marginTop: 4 }}>{periodLabel}</p> : null}
               </div>
             ) : (
-              <div className="pg-inv-editor__field">
+              <div className="pg-inv-editor__field pg-inv-editor__field--date">
                 <label className="pg-inv-editor__label" htmlFor="stmt-opening">
                   Opening deposit (credit)
                 </label>
-                <Input
-                  id="stmt-opening"
-                  type="number"
-                  min={0}
-                  step="0.01"
-                  value={openingBalance}
-                  disabled={!fieldsEnabled}
-                  onChange={(e) => syncDepositOpening(Number(e.target.value))}
-                />
+                <div className="pg-inv-editor__input-wrap">
+                  <AppIcon name="payments" size="md" className="pg-inv-editor__input-icon" />
+                  <Input
+                    id="stmt-opening"
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={openingBalance}
+                    disabled={!fieldsEnabled}
+                    onChange={(e) => syncDepositOpening(Number(e.target.value))}
+                    aria-label="Opening deposit"
+                  />
+                </div>
               </div>
             )}
-            <div className="pg-inv-editor__field">
-              <label className="pg-inv-editor__label">Reference</label>
-              <Input value={leaseReference ?? "—"} readOnly disabled />
+            <div className="pg-inv-editor__field pg-inv-editor__field--number">
+              <label className="pg-inv-editor__label" htmlFor="stmt-number">
+                Statement Number
+              </label>
+              <div className="pg-inv-editor__input-wrap">
+                <AppIcon name="hash" size="md" className="pg-inv-editor__input-icon" />
+                <Input id="stmt-number" value={displayNumber} readOnly disabled aria-label="Statement number" />
+              </div>
+            </div>
+            <div className="pg-inv-editor__field pg-inv-editor__field--reference">
+              <label className="pg-inv-editor__label" htmlFor="stmt-reference">
+                Reference
+              </label>
+              <div className="pg-inv-editor__input-wrap">
+                <Input
+                  id="stmt-reference"
+                  value={leaseReference ?? "—"}
+                  readOnly
+                  disabled
+                  aria-label="Lease reference"
+                />
+              </div>
             </div>
             <div className="pg-inv-editor__branding">
               <span>PDF Branding:</span>
@@ -644,6 +702,50 @@ export function StatementDetailPanel({
             </div>
           </div>
 
+          <div className="pg-inv-editor__mobile-fields">
+            <div className="pg-inv-editor__mobile-card">
+              <span className="pg-inv-editor__label">Tenant / Contact</span>
+              <div style={{ marginTop: 8 }}>{renderTenantField(false)}</div>
+            </div>
+            <div className="pg-inv-editor__mobile-card">
+              <dl>
+                <div className="pg-inv-editor__mobile-detail-row">
+                  <dt>Statement Date</dt>
+                  <dd>
+                    <Input
+                      type="date"
+                      value={issueDate}
+                      onChange={(e) => setIssueDate(e.target.value)}
+                      readOnly={!fieldsEnabled}
+                      disabled={!fieldsEnabled}
+                      aria-label="Statement Date"
+                      style={{ border: "none", background: "transparent", textAlign: "right", padding: 0, minHeight: 0 }}
+                    />
+                  </dd>
+                </div>
+                {statementType === "FINANCIAL" ? (
+                  <div className="pg-inv-editor__mobile-detail-row">
+                    <dt>Period</dt>
+                    <dd>{periodLabel || STATEMENT_PERIOD_OPTIONS.find((o) => o.value === periodKey)?.label}</dd>
+                  </div>
+                ) : (
+                  <div className="pg-inv-editor__mobile-detail-row">
+                    <dt>Opening deposit</dt>
+                    <dd>{fmtZar(openingBalance)}</dd>
+                  </div>
+                )}
+                <div className="pg-inv-editor__mobile-detail-row">
+                  <dt>Statement Number</dt>
+                  <dd>{displayNumber}</dd>
+                </div>
+                <div className="pg-inv-editor__mobile-detail-row">
+                  <dt>Reference</dt>
+                  <dd>{leaseReference ?? "—"}</dd>
+                </div>
+              </dl>
+            </div>
+          </div>
+
           <StatementLineItemsEditor
             lineItems={lineItems}
             editable={fieldsEnabled}
@@ -651,37 +753,43 @@ export function StatementDetailPanel({
             onChange={setLineItems}
           />
 
-          <div className="pg-inv-editor__totals">
-            <div>
-              <span className="pg-muted">Charges</span>
-              <strong>{fmtZar(debits)}</strong>
+          <div className="pg-inv-editor__footer-grid">
+            <div className="pg-inv-editor__notes-stack">
+              <div className="pg-inv-editor__field">
+                <label className="pg-inv-editor__label" htmlFor="stmt-notes">
+                  Notes to tenant
+                </label>
+                <textarea
+                  id="stmt-notes"
+                  className="pg-inv-editor__textarea"
+                  rows={4}
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  readOnly={!fieldsEnabled}
+                  disabled={!fieldsEnabled}
+                  placeholder="Optional notes included on the statement."
+                />
+              </div>
             </div>
-            <div>
-              <span className="pg-muted">Credits</span>
-              <strong>{fmtZar(credits)}</strong>
-            </div>
-            <div>
-              <span className="pg-muted">{statementType === "DEPOSIT" ? "Refund due" : "Balance due"}</span>
-              <strong>{fmtZar(total)}</strong>
-            </div>
-          </div>
 
-          <div className="pg-inv-editor__field" style={{ marginTop: 16 }}>
-            <label className="pg-inv-editor__label" htmlFor="stmt-notes">
-              Notes
-            </label>
-            <textarea
-              id="stmt-notes"
-              className="pg-input"
-              rows={3}
-              value={notes}
-              disabled={!fieldsEnabled}
-              onChange={(e) => setNotes(e.target.value)}
-            />
+            <aside className="pg-inv-editor__totals" aria-label="Statement totals">
+              <div className="pg-inv-editor__totals-row">
+                <span>Charges</span>
+                <strong>{fmtZar(debits)}</strong>
+              </div>
+              <div className="pg-inv-editor__totals-row">
+                <span>Credits</span>
+                <strong>{fmtZar(credits)}</strong>
+              </div>
+              <div className="pg-inv-editor__totals-row pg-inv-editor__totals-balance">
+                <span>{statementType === "DEPOSIT" ? "Refund due" : "Balance due"}</span>
+                <strong>{fmtZar(total)}</strong>
+              </div>
+            </aside>
           </div>
         </div>
 
-        <div className="pg-inv-editor__actions pg-inv-editor__actions--mobile">{renderActionButtons(true)}</div>
+        <div className="pg-inv-editor__mobile-bar">{renderActionButtons(true)}</div>
       </form>
 
       <StatementSendEmailModal

@@ -114,21 +114,17 @@ export function TenantWorkspacePage() {
       window.alert("Link this tenant to a property before creating a statement.");
       return;
     }
-    const url = `${window.location.origin}${statementCreatePath({
-      type,
-      tenantId: id,
-      propertyId,
-      leaseId: ctx?.currentLease?.id != null ? String(ctx.currentLease.id) : null
-    })}`;
     if (isMobile) {
       setOverlayStatementType(type);
       setOverlayStatementId(undefined);
       setStatementOverlay(true);
     } else {
-      const opened = window.open(url, "_blank", "noopener,noreferrer");
-      if (!opened) {
-        window.alert("Pop-up blocked. Allow pop-ups for this site to open the statement editor.");
-      }
+      navigate(statementCreatePath({
+        type,
+        tenantId: id,
+        propertyId,
+        leaseId: ctx?.currentLease?.id != null ? String(ctx.currentLease.id) : null
+      }));
     }
   };
 
@@ -303,7 +299,7 @@ export function TenantWorkspacePage() {
 
       {statementOverlay && ctx && id ? (
         <div className="pg-tstmt-overlay-backdrop" role="dialog" aria-modal="true" aria-label="Create statement">
-          <div className="pg-tstmt-overlay-panel">
+          <div className="pg-tstmt-overlay-panel pg-inv-editor-page">
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
               <h2 style={{ margin: 0 }}>
                 {overlayStatementType === "DEPOSIT" ? "Deposit Statement" : "Financial Statement"}
@@ -349,7 +345,7 @@ export function TenantWorkspacePage() {
 
       {invoiceOverlay && ctx && id ? (
         <div className="pg-tstmt-overlay-backdrop" role="dialog" aria-modal="true" aria-label="Create invoice">
-          <div className="pg-tstmt-overlay-panel">
+          <div className="pg-tstmt-overlay-panel pg-inv-editor-page">
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
               <h2 style={{ margin: 0 }}>Create Invoice</h2>
               <Button type="button" variant="ghost" onClick={() => setInvoiceOverlay(false)}>

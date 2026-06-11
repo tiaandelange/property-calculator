@@ -10,6 +10,7 @@ const WORKSPACE_PREFIXES = [
   "/leases",
   "/financials",
   "/invoices",
+  "/statements",
   "/documents",
   "/account",
   "/subscription",
