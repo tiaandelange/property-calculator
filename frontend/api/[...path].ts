@@ -4,6 +4,8 @@ import { handler as handleContact } from "./_lib/handlers/contact.js";
 import { handler as handleCronRunDue } from "./_lib/handlers/cronRunDue.js";
 import { handler as handleInvoicesGenerate } from "./_lib/handlers/invoicesGenerate.js";
 import { handler as handleInvoicesSendEmail } from "./_lib/handlers/invoicesSendEmail.js";
+import { handler as handleStatementsGenerate } from "./_lib/handlers/statementsGenerate.js";
+import { handler as handleStatementsSendEmail } from "./_lib/handlers/statementsSendEmail.js";
 import { handler as handleRecurringExpensesRunDue } from "./_lib/handlers/recurringExpensesRunDue.js";
 import { handler as handleReportsGenerate } from "./_lib/handlers/reportsGenerate.js";
 import { handler as handleSubscriptionAction } from "./_lib/handlers/subscriptionAction.js";
@@ -39,6 +41,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     return;
   }
 
+  if (routeKey === "statements/generate") {
+    await handleStatementsGenerate(req, res);
+    return;
+  }
+
   if (routeKey === "recurring-expenses/run-due") {
     await handleRecurringExpensesRunDue(req, res);
     return;
@@ -52,6 +59,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   if (segments.length === 3 && segments[0] === "invoices" && segments[2] === "send-email") {
     req.query.id = segments[1];
     await handleInvoicesSendEmail(req, res);
+    return;
+  }
+
+  if (segments.length === 3 && segments[0] === "statements" && segments[2] === "send-email") {
+    req.query.id = segments[1];
+    await handleStatementsSendEmail(req, res);
     return;
   }
 

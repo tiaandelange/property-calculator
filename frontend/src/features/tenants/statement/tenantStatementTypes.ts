@@ -1,4 +1,10 @@
-export type TenantStatementPeriodKey = "this_month" | "last_6_months" | "last_12_months" | "since_lease";
+export type TenantStatementPeriodKey =
+  | "this_month"
+  | "last_3_months"
+  | "last_6_months"
+  | "last_12_months"
+  | "year_to_date"
+  | "since_lease";
 
 export type TenantLedgerTxnType =
   | "balance"

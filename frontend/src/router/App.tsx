@@ -144,6 +144,10 @@ const InvoiceDetailPage = lazyWithRetry(
   () => import("../pages/InvoiceDetailPage").then((m) => ({ default: m.InvoiceDetailPage })),
   { label: "Invoice Detail" }
 );
+const StatementDetailPage = lazyWithRetry(
+  () => import("../pages/StatementDetailPage").then((m) => ({ default: m.StatementDetailPage })),
+  { label: "Statement Detail" }
+);
 const LegacyTenantInvoiceRedirect = lazyWithRetry(
   () => import("../pages/InvoiceDetailPage").then((m) => ({ default: m.LegacyTenantInvoiceRedirect })),
   { label: "Tenant Invoice Redirect" }
@@ -332,6 +336,8 @@ export function App() {
         <Route path="/invoices" element={<Auth label="Invoices"><InvoicesListPage /></Auth>} />
         <Route path="/invoices/new" element={<Auth label="Edit Invoice"><InvoiceDetailPage /></Auth>} />
         <Route path="/invoices/:invoiceId" element={<Auth label="Invoice Detail"><InvoiceDetailPage /></Auth>} />
+        <Route path="/statements/new" element={<Auth label="Create Statement"><StatementDetailPage /></Auth>} />
+        <Route path="/statements/:statementId" element={<Auth label="Statement Detail"><StatementDetailPage /></Auth>} />
         <Route path="/invoices/legacy" element={<Auth label="Invoices Legacy"><OwnedInvoicesPage /></Auth>} />
         <Route path="/documents" element={<Auth label="Documents"><OwnedDocumentsPage /></Auth>} />
         <Route path="/tenants" element={<Auth label="Tenants"><TenantsListPage /></Auth>} />

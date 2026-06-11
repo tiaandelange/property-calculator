@@ -1,14 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Download, MoreVertical, Plus } from "lucide-react";
+import { ArrowLeft, MoreVertical, Plus } from "lucide-react";
 import { AppDetailPage } from "../components/ui/AppPage";
 import { AppSectionTabs } from "../components/ui/AppSectionTabs";
 import { Button, ButtonLink } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { cancelLease, deleteTenant } from "../api/ownedProperties";
 import { invalidateTenantQueries, useWorkspaceId } from "../features/queries";
-import { openPropertyInvestmentReport } from "../services/propertyReportOpen";
+import { SplitButton } from "../components/ui/SplitButton";
 import { useMediaQuery } from "../hooks/useMediaQuery";
 import { TenantInvoiceEditorForm } from "../features/tenants/workspace/TenantInvoiceEditorForm";
 import {
@@ -24,6 +24,8 @@ import { TenantDocumentsCard } from "../features/tenants/workspace/TenantDocumen
 import { useTenantApplicantDetails } from "../features/tenants/workspace/useTenantApplicantDetails";
 import { useTenantWorkspaceData } from "../features/tenants/workspace/useTenantWorkspaceData";
 import { invoiceCreatePath, invoiceDetailPath } from "../features/invoices/invoiceRoutes";
+import { statementCreatePath, statementDetailPath } from "../features/statements/statementRoutes";
+import { TenantStatementEditorForm } from "../features/tenants/workspace/TenantStatementEditorForm";
 import type { TenantStatementPeriodKey } from "../features/tenants/statement/tenantStatementTypes";
 
 function useFinTab() {
@@ -67,10 +69,11 @@ export function TenantWorkspacePage() {
   const { tab, setTab } = useWorkspaceTab();
   const { fin, setFin } = useFinTab();
   const [periodKey, setPeriodKey] = useState<TenantStatementPeriodKey>("this_month");
-  const [downloadBusy, setDownloadBusy] = useState(false);
-  const [downloadError, setDownloadError] = useState("");
   const [invoiceOverlay, setInvoiceOverlay] = useState(false);
   const [overlayInvoiceId, setOverlayInvoiceId] = useState<string | undefined>(undefined);
+  const [statementOverlay, setStatementOverlay] = useState(false);
+  const [overlayStatementType, setOverlayStatementType] = useState<"FINANCIAL" | "DEPOSIT">("FINANCIAL");
+  const [overlayStatementId, setOverlayStatementId] = useState<string | undefined>(undefined);
 
   const needsFinancials = tab === "statement";
   const workspaceId = useWorkspaceId();
@@ -105,16 +108,27 @@ export function TenantWorkspacePage() {
     </nav>
   );
 
-  const downloadStatement = async () => {
-    if (!propertyId) return;
-    setDownloadBusy(true);
-    setDownloadError("");
-    try {
-      await openPropertyInvestmentReport(propertyId);
-    } catch (e: unknown) {
-      setDownloadError(e instanceof Error ? e.message : String(e));
-    } finally {
-      setDownloadBusy(false);
+  const openCreateStatement = (type: "FINANCIAL" | "DEPOSIT") => {
+    if (!id) return;
+    if (!propertyId) {
+      window.alert("Link this tenant to a property before creating a statement.");
+      return;
+    }
+    const url = `${window.location.origin}${statementCreatePath({
+      type,
+      tenantId: id,
+      propertyId,
+      leaseId: ctx?.currentLease?.id != null ? String(ctx.currentLease.id) : null
+    })}`;
+    if (isMobile) {
+      setOverlayStatementType(type);
+      setOverlayStatementId(undefined);
+      setStatementOverlay(true);
+    } else {
+      const opened = window.open(url, "_blank", "noopener,noreferrer");
+      if (!opened) {
+        window.alert("Pop-up blocked. Allow pop-ups for this site to open the statement editor.");
+      }
     }
   };
 
@@ -170,10 +184,25 @@ export function TenantWorkspacePage() {
               {breadcrumbs}
             </div>
             <div className="pg-tstmt-actions pg-tstmt-actions--desktop-only">
-              <Button variant="secondary" loading={downloadBusy} onClick={() => void downloadStatement()} disabled={!propertyId}>
-                <Download size={16} style={{ marginRight: 8 }} aria-hidden />
-                Download Statement
-              </Button>
+              <SplitButton
+                variant="secondary"
+                mainLabel="Create Statement"
+                mainIcon="document"
+                disabled={!propertyId}
+                onMainClick={() => openCreateStatement("FINANCIAL")}
+                menuItems={[
+                  {
+                    label: "Financial Statement",
+                    icon: "document",
+                    onClick: () => openCreateStatement("FINANCIAL")
+                  },
+                  {
+                    label: "Deposit Statement",
+                    icon: "payments",
+                    onClick: () => openCreateStatement("DEPOSIT")
+                  }
+                ]}
+              />
               <Button onClick={openCreateInvoice} disabled={!propertyId}>
                 <Plus size={16} style={{ marginRight: 8 }} aria-hidden />
                 Create Invoice
@@ -181,7 +210,6 @@ export function TenantWorkspacePage() {
             </div>
           </div>
 
-          {downloadError ? <div className="pg-alert pg-alert-error">{downloadError}</div> : null}
           {error ? <div className="pg-alert pg-alert-error">{error}</div> : null}
 
           <AppSectionTabs
@@ -201,11 +229,27 @@ export function TenantWorkspacePage() {
               <TenantApplicantDetailsCard record={applicantRecord} loading={applicantLoading} />
 
               <div className="pg-tstmt-actions pg-tstmt-actions--mobile-only" style={{ marginTop: 0 }}>
-                <Button variant="secondary" loading={downloadBusy} onClick={() => void downloadStatement()} disabled={!propertyId}>
-                  <Download size={16} style={{ marginRight: 8 }} aria-hidden />
-                  Download
-                </Button>
-                <Button onClick={openCreateInvoice} disabled={!propertyId}>
+                <SplitButton
+                  variant="secondary"
+                  mainLabel="Create Statement"
+                  mainIcon="document"
+                  fullWidth
+                  disabled={!propertyId}
+                  onMainClick={() => openCreateStatement("FINANCIAL")}
+                  menuItems={[
+                    {
+                      label: "Financial Statement",
+                      icon: "document",
+                      onClick: () => openCreateStatement("FINANCIAL")
+                    },
+                    {
+                      label: "Deposit Statement",
+                      icon: "payments",
+                      onClick: () => openCreateStatement("DEPOSIT")
+                    }
+                  ]}
+                />
+                <Button onClick={openCreateInvoice} disabled={!propertyId} fullWidth>
                   <Plus size={16} style={{ marginRight: 8 }} aria-hidden />
                   Create Invoice
                 </Button>
@@ -256,6 +300,52 @@ export function TenantWorkspacePage() {
             <TenantDocumentsCard tenantId={id} loading={applicantLoading} />
           ) : null}
       </AppDetailPage>
+
+      {statementOverlay && ctx && id ? (
+        <div className="pg-tstmt-overlay-backdrop" role="dialog" aria-modal="true" aria-label="Create statement">
+          <div className="pg-tstmt-overlay-panel">
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+              <h2 style={{ margin: 0 }}>
+                {overlayStatementType === "DEPOSIT" ? "Deposit Statement" : "Financial Statement"}
+              </h2>
+              <Button type="button" variant="ghost" onClick={() => setStatementOverlay(false)}>
+                Close
+              </Button>
+            </div>
+            <TenantStatementEditorForm
+              statementType={overlayStatementType}
+              propertyId={ctx.propertyId}
+              tenantId={id}
+              tenantName={tenantName}
+              tenantEmail={ctx.tenant.email != null ? String(ctx.tenant.email) : null}
+              statementId={overlayStatementId}
+              leaseId={ctx.currentLease?.id != null ? String(ctx.currentLease.id) : null}
+              profileName={ctx.profileName}
+              depositAmount={
+                ctx.currentLease?.depositAmount != null
+                  ? Number(ctx.currentLease.depositAmount)
+                  : undefined
+              }
+              leaseStartDate={
+                ctx.currentLease?.startDate != null ? String(ctx.currentLease.startDate).slice(0, 10) : null
+              }
+              tenantLeaseIds={
+                ctx.currentLease?.id != null ? [String(ctx.currentLease.id)] : []
+              }
+              onStatementCreated={(newId) => {
+                setOverlayStatementId(newId);
+                navigate(statementDetailPath(newId));
+              }}
+              onSaved={() => void reload()}
+              onCancel={() => {
+                setStatementOverlay(false);
+                setOverlayStatementId(undefined);
+                void reload();
+              }}
+            />
+          </div>
+        </div>
+      ) : null}
 
       {invoiceOverlay && ctx && id ? (
         <div className="pg-tstmt-overlay-backdrop" role="dialog" aria-modal="true" aria-label="Create invoice">

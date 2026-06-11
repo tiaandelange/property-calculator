@@ -21,6 +21,12 @@ import * as operationsSupabase from "../services/operationsSupabase";
 import * as equityMetricsSupabase from "../services/equityMetricsSupabase";
 import * as bondOperationsVercel from "../services/bondOperationsVercel";
 import { sendInvoiceEmailViaVercel } from "../services/invoicesEmailVercel";
+import * as tenantStatementsSupabase from "../services/tenantStatementsSupabase";
+import {
+  generateStatementPdfViaVercel,
+  type GenerateStatementPdfOptions
+} from "../services/tenantStatementsVercel";
+import { sendStatementEmailViaVercel } from "../services/tenantStatementsEmailVercel";
 
 import { formatQueryErrorMessage } from "../lib/queryErrors";
 
@@ -499,4 +505,48 @@ export async function sendInvoiceEmail(
 export async function getPropertyWorkspaceReports(propertyId: string | number) {
   assertSupabaseConfigured();
   return propertiesSupabase.listPropertyWorkspaceReports(propertyId);
+}
+
+export async function getTenantStatement(statementId: string | number) {
+  assertSupabaseConfigured();
+  return tenantStatementsSupabase.getTenantStatement(statementId);
+}
+
+export async function createTenantStatement(propertyId: string | number, payload: Record<string, unknown>) {
+  assertSupabaseConfigured();
+  return tenantStatementsSupabase.createTenantStatement(propertyId, payload);
+}
+
+export async function updateTenantStatement(statementId: string | number, payload: Record<string, unknown>) {
+  assertSupabaseConfigured();
+  return tenantStatementsSupabase.updateTenantStatement(statementId, payload);
+}
+
+export async function deleteTenantStatement(statementId: string | number) {
+  assertSupabaseConfigured();
+  return tenantStatementsSupabase.deleteTenantStatement(statementId);
+}
+
+export async function markTenantStatementSent(statementId: string | number) {
+  assertSupabaseConfigured();
+  return tenantStatementsSupabase.markTenantStatementSent(statementId);
+}
+
+export async function generateTenantStatementPdf(
+  statementId: string | number,
+  opts?: GenerateStatementPdfOptions
+) {
+  assertSupabaseConfigured();
+  return generateStatementPdfViaVercel(String(statementId), opts);
+}
+
+export async function sendTenantStatementEmail(
+  statementId: string | number,
+  payload: Omit<import("../services/tenantStatementsEmailVercel").SendStatementEmailPayload, "statementId">
+) {
+  assertSupabaseConfigured();
+  return sendStatementEmailViaVercel({
+    statementId: String(statementId),
+    ...payload
+  });
 }

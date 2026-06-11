@@ -40,10 +40,14 @@ export function resolveStatementPeriod(
 
   if (key === "this_month") {
     start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+  } else if (key === "last_3_months") {
+    start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 2, 1));
   } else if (key === "last_6_months") {
     start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 5, 1));
   } else if (key === "last_12_months") {
     start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 11, 1));
+  } else if (key === "year_to_date") {
+    start = new Date(Date.UTC(now.getUTCFullYear(), 0, 1));
   } else {
     const ls = leaseStartDate ? parseYmd(String(leaseStartDate).slice(0, 10)) : null;
     start = ls ?? new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
