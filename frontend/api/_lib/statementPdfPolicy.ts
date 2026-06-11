@@ -4,8 +4,13 @@ export function shouldPersistStatementPdf(status: unknown): boolean {
   return PDF_PERSIST_STATUSES.has(String(status ?? "").toUpperCase());
 }
 
+/** Matches `invoices` bucket RLS: `{user_id}/invoices/...` */
 export function statementPdfStorageKey(userId: string, statementId: string): string {
-  return `${userId}/tenant-statements/${statementId}.pdf`;
+  return `${userId}/invoices/tenant-statements/${statementId}.pdf`;
+}
+
+export function statementPreviewPdfStorageKey(userId: string, statementId: string): string {
+  return `${userId}/invoices/tenant-statements/preview/${statementId}.pdf`;
 }
 
 export function statementHasStoredPdf(

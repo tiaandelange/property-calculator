@@ -1,7 +1,11 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { createClient } from "@supabase/supabase-js";
 import { buildStatementPdfForUser, STATEMENTS_BUCKET } from "../statementPdfGenerateServer.js";
-import { statementHasStoredPdf, statementPdfStorageKey } from "../statementPdfPolicy.js";
+import {
+  statementHasStoredPdf,
+  statementPdfStorageKey,
+  statementPreviewPdfStorageKey
+} from "../statementPdfPolicy.js";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const SIGNED_URL_TTL_SEC = 600;
@@ -100,7 +104,7 @@ export async function handler(req: VercelRequest, res: VercelResponse): Promise<
 
     const storageKey = built.persistPdf
       ? statementPdfStorageKey(uid, statementId)
-      : `${uid}/tenant-statements/preview/${statementId}.pdf`;
+      : statementPreviewPdfStorageKey(uid, statementId);
 
     const { error: upErr } = await sb.storage.from(STATEMENTS_BUCKET).upload(storageKey, built.pdfBuffer, {
       contentType: "application/pdf",

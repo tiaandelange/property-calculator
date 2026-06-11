@@ -38,6 +38,7 @@ import {
   sortStatementLineItems,
   statementLineItemsForSave
 } from "./statementLineItemUtils";
+import { closeReportTab, openBlankReportTab } from "../../services/openReportInNewTab";
 import { openStatementPdfExport, statementPdfWasStored } from "./statementPdfExport";
 import { StatementLineItemsEditor } from "./StatementLineItemsEditor";
 import { StatementSendEmailModal, type StatementSendEmailFormState } from "./StatementSendEmailModal";
@@ -363,19 +364,24 @@ export function StatementDetailPanel({
 
   const exportPdf = async () => {
     setError("");
+    const previewTab = openBlankReportTab();
     let id: string | undefined = activeId;
     if (!id) {
       const saved = await saveStatement();
-      if (!saved) return;
+      if (!saved) {
+        closeReportTab(previewTab);
+        return;
+      }
       id = saved;
     }
     setPdfBusy(true);
     try {
       const gen = await generateTenantStatementPdf(id, { force: true });
-      await openStatementPdfExport(gen);
+      await openStatementPdfExport(gen, previewTab);
       if (statementPdfWasStored(gen)) setHasPdf(true);
       setSuccess(gen.reused ? "PDF opened (stored copy)." : "PDF opened in a new tab.");
     } catch (e: unknown) {
+      closeReportTab(previewTab);
       setError(e instanceof Error ? e.message : "Could not export PDF.");
     } finally {
       setPdfBusy(false);
