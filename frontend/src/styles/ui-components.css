@@ -1257,14 +1257,27 @@ a.pg-app-card:active {
 .pg-app-metric-card {
   display: flex;
   align-items: flex-start;
-  justify-content: space-between;
-  gap: 14px;
+  gap: 10px;
+  min-width: 0;
+}
+
+.pg-app-metric-card-copy {
+  min-width: 0;
+  flex: 1;
+}
+
+.pg-app-metric-card-icon {
+  flex-shrink: 0;
+  margin-top: 1px;
 }
 
 .pg-app-metric-card-label {
   font-size: var(--type-metric-label);
   font-weight: var(--weight-medium);
+  line-height: var(--leading-normal);
   color: var(--text-secondary);
+  overflow-wrap: anywhere;
+  word-break: normal;
 }
 
 .pg-app-metric-card-value {
@@ -1274,6 +1287,7 @@ a.pg-app-card:active {
   letter-spacing: var(--tracking-heading);
   line-height: var(--leading-tight);
   color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
 }
 
 .pg-app-metric-card-hint {

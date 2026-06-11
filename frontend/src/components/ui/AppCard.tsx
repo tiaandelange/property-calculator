@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { AppIcon } from "../icons/AppIcon";
 import type { IconName } from "../icons/iconRegistry";
 import { IconContainer, type IconContainerAccent } from "../icons/IconContainer";
+import type { IconContainerSize } from "../icons/iconSizes";
 import { Button, ButtonLink } from "./Button";
 import { typographyClassName } from "./Typography";
 
@@ -89,6 +90,7 @@ export function AppMetricCard({
   hint,
   icon,
   iconAccent = "primary",
+  iconSize = "sm",
   variant = "elevated",
   to,
   onClick,
@@ -100,6 +102,7 @@ export function AppMetricCard({
   hint?: string;
   icon?: IconName;
   iconAccent?: IconContainerAccent;
+  iconSize?: IconContainerSize;
   variant?: AppCardVariant;
   to?: string;
   onClick?: () => void;
@@ -108,12 +111,12 @@ export function AppMetricCard({
 }) {
   const inner = (
     <>
+      {icon ? <IconContainer icon={icon} accent={iconAccent} size={iconSize} className="pg-app-metric-card-icon" /> : null}
       <div className="pg-app-metric-card-copy">
         <div className={typographyClassName("metricLabel", "pg-app-metric-card-label")}>{label}</div>
         <div className={typographyClassName("metricValue", "pg-app-metric-card-value")}>{value}</div>
         {hint ? <div className={typographyClassName("helper", "pg-app-metric-card-hint")}>{hint}</div> : null}
       </div>
-      {icon ? <IconContainer icon={icon} accent={iconAccent} size="md" className="pg-app-metric-card-icon" /> : null}
     </>
   );
 

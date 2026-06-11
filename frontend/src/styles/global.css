@@ -1693,6 +1693,16 @@ textarea {
   gap: 10px;
 }
 
+.pg-calculators-summary-grid .pg-app-metric-card,
+.pg-calculators-metrics-6 .pg-app-metric-card {
+  padding: 12px 14px;
+}
+
+.pg-calculators-summary-grid .pg-app-metric-card-value,
+.pg-calculators-metrics-6 .pg-app-metric-card-value {
+  font-size: var(--type-lg);
+}
+
 .pg-calculators-metrics-6 {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -8232,9 +8242,9 @@ html[data-theme="light"] .pg-statement-table th {
 .pg-calc-tool-summary-card .pg-pfin-metric-card__label {
   flex: 1;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+  word-break: normal;
+  line-height: var(--leading-normal);
 }
 
 .pg-calc-tool-summary-card .pg-field-info {

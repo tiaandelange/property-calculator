@@ -90,12 +90,12 @@ export function PortfolioMetricCard({
           .join(" ")}
       >
         <div className="pg-app-metric-card">
+          <IconContainer icon={icon} accent={iconAccent} size="md" className="pg-app-metric-card-icon" />
           <div className="pg-app-metric-card-copy">
             <div className="pg-text-metric-label pg-pdash-metric-label">{label}</div>
             <div className="pg-text-metric-value pg-pdash-metric-value">{value}</div>
             <div className={`pg-pdash-metric-change pg-pdash-metric-change--${changeTone}`}>{changeText}</div>
           </div>
-          <IconContainer icon={icon} accent={iconAccent} size="md" className="pg-app-metric-card-icon" />
         </div>
       </div>
     );
