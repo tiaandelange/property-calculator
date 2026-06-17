@@ -159,7 +159,10 @@ function mapTenantDirectoryItem(raw: Record<string, unknown>): TenantListItem {
     coApplicantTenantId: raw.coApplicantTenantId != null ? String(raw.coApplicantTenantId) : null,
     memberTenantIds: Array.isArray(raw.memberTenantIds)
       ? (raw.memberTenantIds as unknown[]).map((id) => String(id))
-      : undefined
+      : undefined,
+    isCoTenant: raw.isCoTenant === true,
+    sharedLeaseId: raw.sharedLeaseId != null ? String(raw.sharedLeaseId) : null,
+    primaryTenantName: raw.primaryTenantName != null ? String(raw.primaryTenantName) : null
   };
 }
 

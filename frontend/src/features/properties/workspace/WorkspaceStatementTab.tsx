@@ -33,6 +33,7 @@ import {
   updatePropertyExpense,
   updatePropertyIncome
 } from "../../../api/ownedProperties";
+import { syncPropertyStatementLines } from "../../../services/propertyStatementSyncSupabase";
 import { MetricCard } from "../../../components/ui/DashboardKit";
 
 type StatementSource = "EXPENSE" | "INCOME" | "INVOICE";
@@ -295,6 +296,7 @@ export function WorkspaceStatementTab({
   const [statusUpdatingRowId, setStatusUpdatingRowId] = useState<string | null>(null);
   const [statusMenuKey, setStatusMenuKey] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<any>(null);
+  const [syncNote, setSyncNote] = useState<string | null>(null);
 
   const periodRange = useMemo(() => resolveStatementPeriodRange(preset, year), [preset, year]);
   const statementQuery = usePropertyStatementRangeQuery(
@@ -320,6 +322,29 @@ export function WorkspaceStatementTab({
       setPresetReady(true);
     }
   }, [settingsQuery.data, settingsQuery.isLoading]);
+
+  useEffect(() => {
+    if (!propertyId) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const result = await syncPropertyStatementLines({ propertyId });
+        if (cancelled) return;
+        if (result.hadChanges) {
+          setSyncNote("Statement updated from active leases and recurring financial settings.");
+          invalidatePropertyQueries({
+            workspaceId: workspaceId ?? undefined,
+            propertyId
+          });
+        }
+      } catch {
+        // Sync is best-effort; statement still loads from existing data.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [propertyId, workspaceId]);
 
   useEffect(() => {
     if (!statusMenuKey) return;
@@ -533,6 +558,12 @@ export function WorkspaceStatementTab({
         <div className="pg-alert pg-alert-error" role="alert">
           {error}
         </div>
+      ) : null}
+
+      {syncNote ? (
+        <p className="pg-muted" style={{ fontSize: 13, margin: "0 0 8px" }}>
+          {syncNote}
+        </p>
       ) : null}
 
       <div

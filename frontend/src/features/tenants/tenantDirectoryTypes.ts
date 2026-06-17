@@ -34,6 +34,10 @@ export type TenantListItem = {
   coApplicantTenantId?: string | null;
   /** All tenant ids in a joint application (for delete). */
   memberTenantIds?: string[];
+  /** Lease occupant linked via lease_tenants (not primary billing tenant). */
+  isCoTenant?: boolean;
+  sharedLeaseId?: string | null;
+  primaryTenantName?: string | null;
 };
 
 export type TenantDirectoryMetrics = {

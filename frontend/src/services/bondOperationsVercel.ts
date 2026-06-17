@@ -29,3 +29,13 @@ export async function runDueRecurringExpensesViaVercel(): Promise<{ createdCount
     message?: string;
   }>;
 }
+
+export async function runDueRecurringExpensesForProperty(
+  propertyId: string
+): Promise<{ createdCount: number; message?: string }> {
+  if (!isUuid(propertyId)) throw new Error("Property id must be a UUID.");
+  return authFetch("/api/recurring-expenses/run-due", {
+    method: "POST",
+    body: JSON.stringify({ propertyId })
+  }) as Promise<{ createdCount: number; message?: string }>;
+}

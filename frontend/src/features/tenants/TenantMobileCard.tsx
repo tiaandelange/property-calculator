@@ -9,6 +9,7 @@ import {
 } from "./tenantDirectoryUtils";
 import { LeaseStatusBadge, PaymentStatusBadge } from "./TenantStatusBadges";
 import { TenantRowActions } from "./TenantRowActions";
+import { TenantCoTenantBadge } from "./TenantCoTenantBadge";
 
 export function TenantMobileCard({
   tenant,
@@ -28,6 +29,7 @@ export function TenantMobileCard({
             <Link className="pg-tenants-name" to={`/tenants/${tenant.id}`}>
               {tenantRowDisplayName(tenant)}
             </Link>
+            <TenantCoTenantBadge tenant={tenant} />
             <div className="pg-tenants-sub pg-tenants-mobile-property">
               {tenant.propertyName || "No property assigned"}
               {tenant.unitNumber ? ` · ${tenant.unitNumber}` : ""}
