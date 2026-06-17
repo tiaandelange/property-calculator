@@ -9,11 +9,13 @@ import {
 } from "./invoiceSendWorkflow";
 
 describe("invoiceSendWorkflow", () => {
-  it("allows mark-as-sent only for draft and generated", () => {
+  it("allows mark-as-sent when not yet sent, including after partial payment", () => {
     expect(canMarkInvoiceSent("DRAFT")).toBe(true);
     expect(canMarkInvoiceSent("GENERATED")).toBe(true);
-    expect(canMarkInvoiceSent("SENT")).toBe(false);
-    expect(canMarkInvoiceSent("PAID")).toBe(false);
+    expect(canMarkInvoiceSent("PARTIALLY_PAID", null)).toBe(true);
+    expect(canMarkInvoiceSent("SENT", "2026-01-01T12:00:00.000Z")).toBe(false);
+    expect(canMarkInvoiceSent("PAID", "2026-01-01T12:00:00.000Z")).toBe(false);
+    expect(canMarkInvoiceSent("VOID", null)).toBe(false);
   });
 
   it("enables email delivery for Send button flow", () => {

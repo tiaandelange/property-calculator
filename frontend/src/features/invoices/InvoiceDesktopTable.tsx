@@ -19,6 +19,8 @@ import { useMediaQuery } from "../../hooks/useMediaQuery";
 import { invoiceDetailPath } from "./invoiceRoutes";
 import type { InvoiceDirectoryRow } from "./invoiceDirectoryTypes";
 import { fmtZar, formatDateShort } from "./invoiceDirectoryUtils";
+import { InvoiceStatusBadge } from "./InvoiceStatusBadge";
+import { invoiceStatusLabel } from "./invoiceFoundation";
 
 export function InvoiceDesktopTable({
   items,
@@ -65,6 +67,7 @@ export function InvoiceDesktopTable({
                 subtitle={row.tenantName}
                 fields={[
                   { label: "Reference", value: row.leaseReference ?? "—" },
+                  { label: "Status", value: invoiceStatusLabel(row.status) },
                   { label: "Due date", value: formatDateShort(row.dueDate) },
                   { label: "Amount due", value: fmtZar(amountDue) }
                 ]}
@@ -103,6 +106,7 @@ export function InvoiceDesktopTable({
             <ProplyticTableHeadCell columnType="reference">Invoice #</ProplyticTableHeadCell>
             <ProplyticTableHeadCell columnType="reference">Reference</ProplyticTableHeadCell>
             <ProplyticTableHeadCell columnType="text">Tenant</ProplyticTableHeadCell>
+            <ProplyticTableHeadCell columnType="text">Status</ProplyticTableHeadCell>
             <ProplyticTableHeadCell columnType="date">Due Date</ProplyticTableHeadCell>
             <ProplyticTableHeadCell columnType="currency">Amount Due</ProplyticTableHeadCell>
             <ProplyticTableHeadCell columnType="actions" />
@@ -133,6 +137,9 @@ export function InvoiceDesktopTable({
                     row.tenantName
                   )}
                 </ProplyticTableCell>
+                <ProplyticTableCell columnType="text">
+                  <InvoiceStatusBadge status={row.status} />
+                </ProplyticTableCell>
                 <ProplyticTableCell columnType="date">{formatDateShort(row.dueDate)}</ProplyticTableCell>
                 <ProplyticTableCell columnType="currency">
                   <ProplyticAmountCell tone="balance">{fmtZar(amountDue)}</ProplyticAmountCell>
@@ -143,7 +150,7 @@ export function InvoiceDesktopTable({
                       {
                         key: "view",
                         label: "View invoice",
-                        icon: "edit",
+                        icon: "open",
                         href: viewHref,
                         primary: true
                       },

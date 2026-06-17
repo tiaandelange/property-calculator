@@ -1,4 +1,4 @@
-import { isInvoiceEditable } from "./invoiceFoundation";
+import { canMarkInvoiceSent as canMarkInvoiceSentFoundation } from "./invoiceFoundation";
 
 /** True only when the Vercel email route delivers mail (not scaffold / SMTP-only). */
 export const INVOICE_EMAIL_DELIVERY_ENABLED = true;
@@ -7,8 +7,8 @@ export function isInvoiceEmailDeliveryAvailable(): boolean {
   return INVOICE_EMAIL_DELIVERY_ENABLED;
 }
 
-export function canMarkInvoiceSent(status: unknown): boolean {
-  return isInvoiceEditable(status);
+export function canMarkInvoiceSent(status: unknown, sentAt?: unknown): boolean {
+  return canMarkInvoiceSentFoundation(status, sentAt);
 }
 
 export function invoiceSendButtonLabel(): string {

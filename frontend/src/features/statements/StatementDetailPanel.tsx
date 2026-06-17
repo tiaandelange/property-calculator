@@ -526,22 +526,20 @@ export function StatementDetailPanel({
     id: string,
     label: string,
     value: string,
-    onChange: (v: string) => void,
-    readOnlyAlways = false
+    onChange: (v: string) => void
   ) => (
     <div className="pg-inv-editor__field pg-inv-editor__field--date">
       <label className="pg-inv-editor__label" htmlFor={id}>
         {label}
       </label>
-      <div className="pg-inv-editor__input-wrap">
-        <AppIcon name="calendar" size="md" className="pg-inv-editor__input-icon" />
+      <div className="pg-inv-editor__input-wrap pg-inv-editor__input-wrap--plain">
         <Input
           id={id}
           type="date"
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          readOnly={readOnlyAlways || !fieldsEnabled}
-          disabled={readOnlyAlways || !fieldsEnabled}
+          readOnly={!fieldsEnabled}
+          disabled={!fieldsEnabled}
           aria-label={label}
         />
       </div>

@@ -241,7 +241,7 @@ describe("invoicesSupabase", () => {
             eq: vi.fn(() => ({
               eq: vi.fn(() => ({
                 maybeSingle: vi.fn(() =>
-                  Promise.resolve({ data: { id: "inv-1", status: "DRAFT" }, error: null })
+                  Promise.resolve({ data: { id: "inv-1", status: "DRAFT", sent_at: null }, error: null })
                 )
               }))
             }))
@@ -285,20 +285,76 @@ describe("invoicesSupabase", () => {
     expect(out.sentAt).toBeTruthy();
   });
 
-  it("markInvoiceSent rejects non-editable status", async () => {
+  it("markInvoiceSent rejects when already sent", async () => {
     getSession.mockResolvedValue({ data: { session: { user: { id: "u1" } } }, error: null });
     from.mockReturnValue({
       select: vi.fn(() => ({
         eq: vi.fn(() => ({
           eq: vi.fn(() => ({
             maybeSingle: vi.fn(() =>
-              Promise.resolve({ data: { id: "inv-1", status: "SENT" }, error: null })
+              Promise.resolve({
+                data: { id: "inv-1", status: "SENT", sent_at: "2026-01-02T12:00:00.000Z" },
+                error: null
+              })
             )
           }))
         }))
       }))
     });
     await expect(markInvoiceSent("inv-1")).rejects.toThrow(/cannot be marked as sent/i);
+  });
+
+  it("markInvoiceSent preserves PARTIALLY_PAID status while setting sent_at", async () => {
+    getSession.mockResolvedValue({ data: { session: { user: { id: "u1" } } }, error: null });
+    let fromCalls = 0;
+    from.mockImplementation(() => {
+      fromCalls++;
+      if (fromCalls === 1) {
+        return {
+          select: vi.fn(() => ({
+            eq: vi.fn(() => ({
+              eq: vi.fn(() => ({
+                maybeSingle: vi.fn(() =>
+                  Promise.resolve({
+                    data: { id: "inv-1", status: "PARTIALLY_PAID", sent_at: null },
+                    error: null
+                  })
+                )
+              }))
+            }))
+          }))
+        };
+      }
+      return {
+        update: vi.fn(() => ({
+          eq: vi.fn(() => ({
+            eq: vi.fn(() => ({
+              select: vi.fn(() => ({
+                single: vi.fn(() =>
+                  Promise.resolve({
+                    data: {
+                      id: "inv-1",
+                      status: "PARTIALLY_PAID",
+                      sent_at: "2026-01-02T12:00:00.000Z",
+                      invoice_number: "INV-1",
+                      invoice_date: "2026-01-01T12:00:00.000Z",
+                      due_date: "2026-01-15T12:00:00.000Z",
+                      subtotal: 100,
+                      total: 100
+                    },
+                    error: null
+                  })
+                )
+              }))
+            }))
+          }))
+        }))
+      };
+    });
+
+    const out = await markInvoiceSent("inv-1");
+    expect(out.status).toBe("PARTIALLY_PAID");
+    expect(out.sentAt).toBeTruthy();
   });
 
   it("markInvoicePaid updates row", async () => {

@@ -34,6 +34,7 @@ import {
 import { InvoiceStatusBadge } from "./InvoiceStatusBadge";
 import {
   canRecordInvoicePayment,
+  canEditInvoiceDueDate,
   isInvoiceContentEditable,
   isInvoiceEditable,
   isInvoicePostSendStatus
@@ -130,8 +131,11 @@ export function InvoiceDetailPanel({
   const [payments, setPayments] = useState<InvoicePaymentRow[]>([]);
   const [moreOpen, setMoreOpen] = useState(false);
   const moreRef = useRef<HTMLDivElement>(null);
+  const dueDateManualRef = useRef(false);
+  const dueDateSaveRef = useRef<string | null>(null);
   const [invoiceNumber, setInvoiceNumber] = useState("Draft");
   const [status, setStatus] = useState<string>("DRAFT");
+  const [sentAt, setSentAt] = useState<string | null>(null);
   const [balanceDue, setBalanceDue] = useState(0);
   const [fromName, setFromName] = useState(profileName);
   const [toName, setToName] = useState(bootstrapTenantName ?? "Tenant");
@@ -150,9 +154,10 @@ export function InvoiceDetailPanel({
 
   const draftEditable = !activeId || isInvoiceEditable(status);
   const contentEditable = !activeId || isInvoiceContentEditable(status);
-  const postSend = Boolean(activeId) && isInvoicePostSendStatus(status);
+  const postSend = Boolean(activeId) && isInvoicePostSendStatus(status, sentAt);
   const needsSentEditUnlock = postSend && !sentEditUnlocked;
   const fieldsEnabled = contentEditable && (!postSend || sentEditUnlocked);
+  const dueDateEditable = canEditInvoiceDueDate(status);
   const pageTitle = activeId ? "Edit Invoice" : "Create Invoice";
   const displayNumber = invoiceNumber === "Draft" && !activeId ? "New invoice" : invoiceNumber;
 
@@ -229,6 +234,8 @@ export function InvoiceDetailPanel({
       setLeaseId(inv.leaseId != null ? String(inv.leaseId) : null);
       setInvoiceNumber(String(inv.invoiceNumber ?? inv.id));
       setStatus(String(inv.status ?? "DRAFT"));
+      setSentAt(inv.sentAt != null ? String(inv.sentAt) : null);
+      dueDateManualRef.current = false;
       const total = Number(inv.totalAmount ?? inv.total ?? 0);
       const bal = inv.balanceDue != null ? Number(inv.balanceDue) : total;
       setBalanceDue(Number.isFinite(bal) ? bal : total);
@@ -298,15 +305,47 @@ export function InvoiceDetailPanel({
   }, [balanceDue, total]);
 
   useEffect(() => {
-    if (!isInvoicePostSendStatus(status)) {
+    if (!isInvoicePostSendStatus(status, sentAt)) {
       setSentEditUnlocked(false);
     }
-  }, [status, activeId]);
+  }, [status, sentAt, activeId]);
 
   useEffect(() => {
-    if (!fieldsEnabled) return;
+    if (!fieldsEnabled || dueDateManualRef.current) return;
     setDueDate(dueDateFromIssueDate(issueDate, gracePeriodDays));
   }, [issueDate, gracePeriodDays, fieldsEnabled]);
+
+  const saveDueDateOnly = useCallback(
+    async (nextDueDate: string) => {
+      if (!activeId || !dueDateEditable) return;
+      if (fieldsEnabled) return;
+      setSaving(true);
+      setError("");
+      try {
+        await updateInvoice(activeId, { dueDate: nextDueDate });
+        invalidatePropertyWorkspace(propertyId);
+        setSuccess("Due date updated.");
+        window.setTimeout(() => setSuccess(""), 3000);
+      } catch (e: unknown) {
+        setError(e instanceof Error ? e.message : "Could not update due date.");
+      } finally {
+        setSaving(false);
+      }
+    },
+    [activeId, dueDateEditable, fieldsEnabled, propertyId]
+  );
+
+  const handleDueDateChange = (value: string) => {
+    dueDateManualRef.current = true;
+    setDueDate(value);
+  };
+
+  const handleDueDateBlur = () => {
+    if (!activeId || !dueDateEditable || fieldsEnabled) return;
+    if (dueDateSaveRef.current === dueDate) return;
+    dueDateSaveRef.current = dueDate;
+    void saveDueDateOnly(dueDate);
+  };
 
   const handleTenantChange = (nextTenantId: string) => {
     if (!fieldsEnabled) return;
@@ -333,7 +372,7 @@ export function InvoiceDetailPanel({
       ? Math.max(0, Number.isFinite(balanceDue) ? balanceDue : total - paymentsTotal)
       : total;
   const saveButtonLabel = draftEditable ? "Save Draft" : "Save";
-  const showMarkAsSent = canMarkInvoiceSent(status);
+  const showMarkAsSent = canMarkInvoiceSent(status, sentAt);
 
   const buildPayload = () => {
     const payload: Record<string, unknown> = {
@@ -577,7 +616,7 @@ export function InvoiceDetailPanel({
   };
 
   const confirmMarkAsSent = async () => {
-    if (!canMarkInvoiceSent(status)) return;
+    if (!canMarkInvoiceSent(status, sentAt)) return;
     setError("");
     setSuccess("");
     const statusBeforeSend = status;
@@ -625,27 +664,30 @@ export function InvoiceDetailPanel({
     label: string,
     value: string,
     onChange: (v: string) => void,
-    readOnlyAlways = false
-  ) => (
-    <div className="pg-inv-editor__field pg-inv-editor__field--date">
-      <label className="pg-inv-editor__label" htmlFor={id}>
-        {label}
-      </label>
-      <div className="pg-inv-editor__input-wrap">
-        <AppIcon name="calendar" size="md" className="pg-inv-editor__input-icon" />
-        <Input
-          id={id}
-          type="date"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          required
-          readOnly={readOnlyAlways || !fieldsEnabled}
-          disabled={readOnlyAlways || !fieldsEnabled}
-          aria-label={label}
-        />
+    options?: { readOnly?: boolean; onBlur?: () => void }
+  ) => {
+    const readOnly = options?.readOnly ?? !fieldsEnabled;
+    return (
+      <div className="pg-inv-editor__field pg-inv-editor__field--date">
+        <label className="pg-inv-editor__label" htmlFor={id}>
+          {label}
+        </label>
+        <div className="pg-inv-editor__input-wrap pg-inv-editor__input-wrap--plain">
+          <Input
+            id={id}
+            type="date"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            onBlur={options?.onBlur}
+            required
+            readOnly={readOnly}
+            disabled={readOnly}
+            aria-label={label}
+          />
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   const renderTenantField = (showLabel = true) => {
     const canSelect = fieldsEnabled && propertyTenants.length > 0;
@@ -907,7 +949,10 @@ export function InvoiceDetailPanel({
             {renderTenantField()}
 
             {renderDateField("inv-issue-date", "Issue Date", issueDate, setIssueDate)}
-            {renderDateField("inv-due-date", "Due Date", dueDate, () => undefined, true)}
+            {renderDateField("inv-due-date", "Due Date", dueDate, handleDueDateChange, {
+              readOnly: !(fieldsEnabled || dueDateEditable),
+              onBlur: handleDueDateBlur
+            })}
 
             <div className="pg-inv-editor__field pg-inv-editor__field--number">
               <label className="pg-inv-editor__label" htmlFor="inv-number">
@@ -968,7 +1013,19 @@ export function InvoiceDetailPanel({
                 </div>
                 <div className="pg-inv-editor__mobile-detail-row">
                   <dt>Due Date</dt>
-                  <dd>{dueDate}</dd>
+                  <dd>
+                    <Input
+                      type="date"
+                      value={dueDate}
+                      onChange={(e) => handleDueDateChange(e.target.value)}
+                      onBlur={handleDueDateBlur}
+                      required
+                      readOnly={!(fieldsEnabled || dueDateEditable)}
+                      disabled={!(fieldsEnabled || dueDateEditable)}
+                      aria-label="Due Date"
+                      style={{ border: "none", background: "transparent", textAlign: "right", padding: 0, minHeight: 0 }}
+                    />
+                  </dd>
                 </div>
                 <div className="pg-inv-editor__mobile-detail-row">
                   <dt>Invoice Number</dt>

@@ -6,7 +6,11 @@ import {
   dbInvoiceToClient,
   rpcInvoiceCreateResultToClient
 } from "../api/invoiceRowMapping";
-import { isInvoiceEditable } from "../features/invoices/invoiceFoundation";
+import {
+  canMarkInvoiceSent,
+  isInvoiceMarkedSent,
+  normalizeInvoiceStatus
+} from "../features/invoices/invoiceFoundation";
 
 const INVOICES_BUCKET = "invoices";
 const SIGNED_URL_TTL_SEC = 600;
@@ -402,21 +406,28 @@ export async function markInvoiceSent(id: string | number): Promise<Record<strin
   const sb = getSupabase();
   const { data: existing, error: fetchErr } = await sb
     .from("invoices")
-    .select("id, status")
+    .select("id, status, sent_at")
     .eq("id", String(id))
     .eq("user_id", uid)
     .maybeSingle();
   if (fetchErr) throw toError(fetchErr);
   if (!existing) throw new Error("Invoice not found");
-  if (!isInvoiceEditable(existing.status)) {
+  if (!canMarkInvoiceSent(existing.status, existing.sent_at)) {
     throw new Error("Invoice cannot be marked as sent in its current status.");
+  }
+  if (isInvoiceMarkedSent(existing.sent_at)) {
+    return getInvoice(id);
   }
 
   const now = new Date().toISOString();
+  const normalized = normalizeInvoiceStatus(existing.status);
+  const nextStatus =
+    normalized === "DRAFT" || normalized === "GENERATED" ? "SENT" : normalized;
+
   const { data, error } = await sb
     .from("invoices")
     .update({
-      status: "SENT",
+      status: nextStatus,
       sent_at: now,
       updated_at: now
     })

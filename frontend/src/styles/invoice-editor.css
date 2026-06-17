@@ -267,6 +267,10 @@
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 12%, transparent);
 }
 
+.pg-inv-editor__input-wrap--plain {
+  padding: 0 14px;
+}
+
 .pg-inv-editor__input-wrap .pg-input,
 .pg-inv-editor__input-wrap .pg-select {
   flex: 1;
