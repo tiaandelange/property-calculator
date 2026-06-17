@@ -1,11 +1,11 @@
 import type { IconName } from "../../components/icons";
 
 export const SETTINGS_SECTION_IDS = [
+  "general",
   "account",
   "appearance",
   "subscription",
   "invoice-banking",
-  "workspace",
   "notifications",
   "security",
   "data-export",
@@ -25,6 +25,13 @@ export type SettingsSectionConfig = {
 };
 
 export const SETTINGS_SECTIONS: SettingsSectionConfig[] = [
+  {
+    id: "general",
+    title: "General",
+    description: "Workspace defaults and regional preferences.",
+    icon: "sliders",
+    supportsSave: true
+  },
   {
     id: "account",
     title: "Account & Profile",
@@ -51,13 +58,6 @@ export const SETTINGS_SECTIONS: SettingsSectionConfig[] = [
     title: "Invoice & Banking Details",
     description: "Default invoice and banking information.",
     icon: "invoices",
-    supportsSave: true
-  },
-  {
-    id: "workspace",
-    title: "Workspace Defaults",
-    description: "Property, projection and applicant defaults.",
-    icon: "sliders",
     supportsSave: true
   },
   {
@@ -103,11 +103,10 @@ export function resolveSettingsSection(raw: string | null | undefined): Settings
     return value as SettingsSectionId;
   }
 
-  // Legacy hash targets from older settings page links.
-  if (value === "subscription") return "subscription";
-  if (value === "applicant-form-template") return "workspace";
+  // Legacy section ids from older settings links.
+  if (value === "workspace" || value === "applicant-form-template") return "general";
 
-  return "account";
+  return "general";
 }
 
 export function settingsSectionPath(section: SettingsSectionId, extra?: Record<string, string>): string {

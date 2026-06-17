@@ -7,6 +7,7 @@ import {
   saveCookieConsent,
   type CookieConsentChoice
 } from "../../lib/analytics/consent";
+import { SettingsRow } from "./SettingsRow";
 
 export function CookieConsentSettingsCard() {
   const [choice, setChoice] = useState<CookieConsentChoice | null>(() => readCookieConsent());
@@ -32,28 +33,25 @@ export function CookieConsentSettingsCard() {
         : "No preference saved";
 
   return (
-    <div className="pg-settings-row pg-settings-row--stack">
-      <div>
-        <div className="pg-settings-row-label">Cookie & analytics preferences</div>
-        <div className="pg-settings-row-desc">
-          Usage analytics via Google Tag Manager. No personal or financial data is sent. Current:{" "}
-          <strong>{label}</strong>
-          {bannerPending ? " — reload the page to see the consent banner again." : null}
-        </div>
-      </div>
-      <div className="pg-settings-actions">
-        <Button type="button" variant="secondary" size="sm" onClick={() => apply("accepted")}>
-          Accept analytics
+    <SettingsRow
+      label="Cookie & analytics preferences"
+      description={`Usage analytics via Google Tag Manager. Current: ${label}${
+        bannerPending ? " — reload to see the consent banner again." : ""
+      }`}
+    >
+      <div className="pg-settings-panel-inline-actions">
+        <Button type="button" variant="outline" size="sm" onClick={() => apply("accepted")}>
+          Accept
         </Button>
-        <Button type="button" variant="outline" size="sm" onClick={() => apply("rejected")}>
-          Reject analytics
+        <Button type="button" variant="ghost" size="sm" onClick={() => apply("rejected")}>
+          Reject
         </Button>
         {hasCookieConsentChoice() || choice ? (
           <Button type="button" variant="ghost" size="sm" onClick={handleReset}>
-            Reset preference
+            Reset
           </Button>
         ) : null}
       </div>
-    </div>
+    </SettingsRow>
   );
 }

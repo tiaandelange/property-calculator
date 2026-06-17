@@ -1,8 +1,11 @@
 import { Link } from "react-router-dom";
 import { AppIcon } from "../../components/icons";
 import { Button } from "../../components/ui/Button";
+import { Select } from "../../components/ui/Input";
 import { ApplicantFormTemplateSettingsCard } from "../applicants/ApplicantFormTemplateSettingsCard";
 import { CookieConsentSettingsCard } from "./CookieConsentSettingsCard";
+import { SettingsRow } from "./SettingsRow";
+import { SettingsSectionError } from "./SettingsSectionError";
 import { SubscriptionSettingsSection } from "./SubscriptionSettingsSection";
 import { SettingsToggle, profileInitials } from "./settingsShared";
 import type { SettingsSectionId } from "./settingsSections";
@@ -12,15 +15,36 @@ import {
 } from "./settingsDefaults";
 import type { AccentColor, ThemePreference, UserSettings } from "./settingsTypes";
 
+const ACCENT_LABELS: Record<AccentColor, string> = {
+  purple: "Purple",
+  blue: "Blue",
+  green: "Green",
+  orange: "Orange",
+  red: "Red",
+  teal: "Teal"
+};
+
+const THEME_LABELS: Record<ThemePreference, string> = {
+  light: "Light",
+  dark: "Dark",
+  system: "System"
+};
+
 export type SettingsSectionContentProps = {
   sectionId: SettingsSectionId;
-  draft: UserSettings;
+  draft: UserSettings | null;
   patchDraft: (patch: Partial<UserSettings>) => void;
   email: string;
   fullName: string;
   avatarUrl: string | null;
   role: string;
   freeUsesRemaining?: number | null;
+  settingsLoadError?: string;
+  profileLoadError?: string;
+  onRetrySettings?: () => void;
+  onRetryProfile?: () => void;
+  settingsRetrying?: boolean;
+  profileRetrying?: boolean;
   onEditProfile: () => void;
   onOpenInvoiceBanking: () => void;
   onOpenChangePassword: () => void;
@@ -28,7 +52,20 @@ export type SettingsSectionContentProps = {
 };
 
 function SettingsSubheading({ children }: { children: React.ReactNode }) {
-  return <h3 className="pg-settings-subheading">{children}</h3>;
+  return <h3 className="pg-settings-panel-subheading">{children}</h3>;
+}
+
+function DraftRequired({
+  error,
+  onRetry,
+  retrying
+}: {
+  error?: string;
+  onRetry?: () => void;
+  retrying?: boolean;
+}) {
+  if (!error) return <p className="pg-settings-panel-muted">Loading settings…</p>;
+  return <SettingsSectionError message={error} onRetry={onRetry} retrying={retrying} />;
 }
 
 export function SettingsSectionContent({
@@ -40,6 +77,12 @@ export function SettingsSectionContent({
   avatarUrl,
   role,
   freeUsesRemaining,
+  settingsLoadError,
+  profileLoadError,
+  onRetrySettings,
+  onRetryProfile,
+  settingsRetrying,
+  profileRetrying,
   onEditProfile,
   onOpenInvoiceBanking,
   onOpenChangePassword,
@@ -47,303 +90,352 @@ export function SettingsSectionContent({
 }: SettingsSectionContentProps) {
   switch (sectionId) {
     case "account":
+      if (profileLoadError) {
+        return (
+          <SettingsSectionError
+            message={profileLoadError}
+            onRetry={onRetryProfile}
+            retrying={profileRetrying}
+          />
+        );
+      }
       return (
-        <>
-          <div className="pg-settings-profile">
-            <div className="pg-settings-avatar" aria-hidden>
+        <div className="pg-settings-panel-rows">
+          <SettingsRow label="Avatar">
+            <div className="pg-settings-avatar pg-settings-avatar--compact" aria-hidden>
               {avatarUrl ? (
                 <img src={avatarUrl} alt="" className="pg-edit-profile-avatar-img" />
               ) : (
                 profileInitials(fullName, email)
               )}
             </div>
-            <div className="pg-settings-profile-meta">
-              <strong>{fullName || "No name set"}</strong>
-              <span>{email}</span>
-              <span>Proplytic workspace · {role}</span>
-            </div>
-          </div>
-          <div className="pg-settings-actions">
-            <Button variant="secondary" onClick={onEditProfile}>
+          </SettingsRow>
+          <SettingsRow label="Display name" description="Shown across your workspace">
+            <span className="pg-settings-panel-value">{fullName || "No name set"}</span>
+          </SettingsRow>
+          <SettingsRow label="Email" description="Sign-in address (read-only)">
+            <span className="pg-settings-panel-value">{email}</span>
+          </SettingsRow>
+          <SettingsRow label="Workspace role">
+            <span className="pg-settings-panel-value">{role}</span>
+          </SettingsRow>
+          <SettingsRow label="Edit profile" description="Name, avatar, contact and business details">
+            <Button variant="outline" size="sm" onClick={onEditProfile}>
               Edit profile
             </Button>
-            <Button variant="outline" onClick={onGoToSecurity}>
+          </SettingsRow>
+          <SettingsRow label="Password" description="Update your sign-in password">
+            <Button variant="outline" size="sm" onClick={onGoToSecurity}>
               Change password
             </Button>
-            <Button variant="ghost" onClick={onOpenInvoiceBanking}>
-              Invoice & banking details
+          </SettingsRow>
+          <SettingsRow label="Invoice & banking" description="Banking lines and invoice CC email">
+            <Button variant="ghost" size="sm" onClick={onOpenInvoiceBanking}>
+              Open details
             </Button>
-          </div>
-        </>
+          </SettingsRow>
+        </div>
       );
 
     case "appearance":
+      if (!draft) {
+        return (
+          <DraftRequired error={settingsLoadError} onRetry={onRetrySettings} retrying={settingsRetrying} />
+        );
+      }
       return (
-        <>
-          <div className="pg-settings-field">
-            <label className="pg-text-label">Theme</label>
-            <div className="pg-settings-theme-options">
+        <div className="pg-settings-panel-rows">
+          <SettingsRow label="Theme" description="Light, dark, or match your system" htmlFor="settings-theme">
+            <Select
+              id="settings-theme"
+              className="pg-settings-panel-select"
+              value={draft.themePreference}
+              onChange={(e) => patchDraft({ themePreference: e.target.value as ThemePreference })}
+            >
               {(["light", "dark", "system"] as ThemePreference[]).map((t) => (
-                <button
-                  key={t}
-                  type="button"
-                  className={`pg-settings-theme-btn${draft.themePreference === t ? " pg-settings-theme-btn--active" : ""}`}
-                  onClick={() => patchDraft({ themePreference: t })}
-                >
-                  {t === "light" ? "Light" : t === "dark" ? "Dark" : "System"}
-                </button>
+                <option key={t} value={t}>
+                  {THEME_LABELS[t]}
+                </option>
               ))}
-            </div>
-            <p className="pg-text-helper">System follows your browser or OS colour preference.</p>
-          </div>
-          <div className="pg-settings-field">
-            <label className="pg-text-label">Accent colour</label>
-            <div className="pg-settings-accent-dots">
-              {(["purple", "blue", "green", "orange", "red", "teal"] as AccentColor[]).map((c) => (
-                <button
-                  key={c}
-                  type="button"
-                  className={`pg-settings-accent-dot pg-settings-accent-dot--${c}${draft.accentColor === c ? " pg-settings-accent-dot--active" : ""}`}
-                  aria-label={c}
-                  onClick={() => patchDraft({ accentColor: c })}
+            </Select>
+          </SettingsRow>
+          <SettingsRow label="Accent colour" description="Highlights buttons and links">
+            <div className="pg-settings-accent-picker">
+              <span className="pg-settings-accent-picker__label">
+                <span
+                  className={`pg-settings-accent-dot pg-settings-accent-dot--${draft.accentColor} pg-settings-accent-dot--inline`}
+                  aria-hidden
                 />
-              ))}
+                {ACCENT_LABELS[draft.accentColor]}
+              </span>
+              <div className="pg-settings-accent-dots pg-settings-accent-dots--compact">
+                {(["purple", "blue", "green", "orange", "red", "teal"] as AccentColor[]).map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    className={`pg-settings-accent-dot pg-settings-accent-dot--${c}${draft.accentColor === c ? " pg-settings-accent-dot--active" : ""}`}
+                    aria-label={ACCENT_LABELS[c]}
+                    aria-pressed={draft.accentColor === c}
+                    onClick={() => patchDraft({ accentColor: c })}
+                  />
+                ))}
+              </div>
             </div>
-          </div>
-          <div className="pg-settings-field">
-            <label className="pg-text-label">Density</label>
-            <div className="pg-settings-theme-options">
-              {(["comfortable", "compact"] as const).map((d) => (
-                <button
-                  key={d}
-                  type="button"
-                  className={`pg-settings-theme-btn${draft.density === d ? " pg-settings-theme-btn--active" : ""}`}
-                  onClick={() => patchDraft({ density: d })}
-                >
-                  {d === "comfortable" ? "Comfortable" : "Compact"}
-                </button>
-              ))}
-            </div>
-          </div>
-        </>
+          </SettingsRow>
+          <SettingsRow label="Density" description="Spacing across tables and lists" htmlFor="settings-density">
+            <Select
+              id="settings-density"
+              className="pg-settings-panel-select"
+              value={draft.density}
+              onChange={(e) => patchDraft({ density: e.target.value as UserSettings["density"] })}
+            >
+              <option value="comfortable">Comfortable</option>
+              <option value="compact">Compact</option>
+            </Select>
+          </SettingsRow>
+        </div>
       );
 
     case "subscription":
       return <SubscriptionSettingsSection freeUsesRemaining={freeUsesRemaining} />;
 
     case "invoice-banking":
+      if (!draft) {
+        return (
+          <DraftRequired error={settingsLoadError} onRetry={onRetrySettings} retrying={settingsRetrying} />
+        );
+      }
       return (
-        <>
-          <p className="pg-settings-field-hint" style={{ marginTop: 0 }}>
-            Banking lines on invoice PDFs and the CC address used when emailing invoices are configured
-            in invoice &amp; banking details.
-          </p>
-          <div className="pg-settings-actions" style={{ marginBottom: 16 }}>
-            <Button variant="outline" onClick={onOpenInvoiceBanking}>
-              Edit invoice & banking details
+        <div className="pg-settings-panel-rows">
+          <SettingsRow
+            label="Invoice & banking details"
+            description="Banking lines on PDFs and CC address for emailed invoices"
+          >
+            <Button variant="outline" size="sm" onClick={onOpenInvoiceBanking}>
+              Edit details
             </Button>
-          </div>
-          <div className="pg-settings-field">
-            <label htmlFor="settings-inv-format">Invoice number format</label>
+          </SettingsRow>
+          <SettingsRow
+            label="Invoice number format"
+            description="Stored for future use; generator uses sequential INV numbers today"
+            htmlFor="settings-inv-format"
+          >
             <input
               id="settings-inv-format"
-              className="pg-settings-input"
+              className="pg-settings-panel-input"
               value={draft.invoiceNumberFormat}
               onChange={(e) => patchDraft({ invoiceNumberFormat: e.target.value })}
             />
-            <p className="pg-settings-field-hint">
-              Stored for future use; current generator uses sequential INV numbers.
-            </p>
-          </div>
-          <div className="pg-settings-row">
-            <div>
-              <div className="pg-settings-row-label">Auto-generate invoices</div>
-              <div className="pg-settings-row-desc">Scheduled rent invoices from active leases</div>
-            </div>
+          </SettingsRow>
+          <SettingsRow
+            label="Auto-generate invoices"
+            description="Scheduled rent invoices from active leases"
+          >
             <SettingsToggle
               label="Auto-generate invoices"
               checked={draft.autoGenerateInvoices}
               onChange={(v) => patchDraft({ autoGenerateInvoices: v })}
             />
-          </div>
-          <div className="pg-settings-field">
-            <label htmlFor="settings-inv-days">Generate invoices before due date (days)</label>
+          </SettingsRow>
+          <SettingsRow
+            label="Generate before due date"
+            description="Days before due date to create invoices"
+            htmlFor="settings-inv-days"
+          >
             <input
               id="settings-inv-days"
               type="number"
               min={0}
               max={31}
-              className="pg-settings-input"
+              className="pg-settings-panel-input pg-settings-panel-input--narrow"
               value={draft.invoiceGenerateDaysBeforeDue}
               onChange={(e) => patchDraft({ invoiceGenerateDaysBeforeDue: Number(e.target.value) })}
             />
-          </div>
-          <div className="pg-settings-row">
-            <div>
-              <div className="pg-settings-row-label">PDF branding</div>
-              <div className="pg-settings-row-desc">Show company branding on exported PDFs</div>
-            </div>
+          </SettingsRow>
+          <SettingsRow label="PDF branding" description="Show company branding on exported PDFs">
             <SettingsToggle
               label="PDF branding"
               checked={draft.pdfBrandingEnabled}
               onChange={(v) => patchDraft({ pdfBrandingEnabled: v })}
             />
-          </div>
-          <div className="pg-settings-field">
-            <label htmlFor="settings-reminder-days">Payment reminder timing (days before due)</label>
+          </SettingsRow>
+          <SettingsRow
+            label="Payment reminder timing"
+            description="Days before due date for payment reminders"
+            htmlFor="settings-reminder-days"
+          >
             <input
               id="settings-reminder-days"
               type="number"
               min={0}
               max={31}
-              className="pg-settings-input"
+              className="pg-settings-panel-input pg-settings-panel-input--narrow"
               value={draft.paymentReminderDaysBeforeDue}
               onChange={(e) => patchDraft({ paymentReminderDaysBeforeDue: Number(e.target.value) })}
             />
-          </div>
-          <div className="pg-settings-row">
-            <div>
-              <div className="pg-settings-row-label">Lock editing after sent</div>
-              <div className="pg-settings-row-desc">Sent invoices cannot be edited</div>
-            </div>
+          </SettingsRow>
+          <SettingsRow label="Lock editing after sent" description="Sent invoices cannot be edited">
             <SettingsToggle
               label="Lock editing after sent"
               checked={draft.lockInvoiceAfterSent}
               onChange={(v) => patchDraft({ lockInvoiceAfterSent: v })}
             />
-          </div>
-        </>
+          </SettingsRow>
+        </div>
       );
 
-    case "workspace":
+    case "general":
+      if (!draft) {
+        return (
+          <DraftRequired error={settingsLoadError} onRetry={onRetrySettings} retrying={settingsRetrying} />
+        );
+      }
       return (
         <>
+          <div className="pg-settings-panel-rows">
+            <SettingsRow label="Workspace name" description="Your display name in this workspace">
+              <span className="pg-settings-panel-value">{fullName || email || "—"}</span>
+            </SettingsRow>
+            <SettingsRow label="Default currency" htmlFor="settings-currency">
+              <Select
+                id="settings-currency"
+                className="pg-settings-panel-select"
+                value={draft.defaultCurrency}
+                onChange={(e) => patchDraft({ defaultCurrency: e.target.value })}
+              >
+                <option value="ZAR">ZAR — South African Rand</option>
+              </Select>
+            </SettingsRow>
+            <SettingsRow
+              label="Default dashboard view"
+              description="Statement period shown by default"
+              htmlFor="settings-statement-filter"
+            >
+              <Select
+                id="settings-statement-filter"
+                className="pg-settings-panel-select"
+                value={draft.statementDefaultFilter}
+                onChange={(e) =>
+                  patchDraft({ statementDefaultFilter: e.target.value as UserSettings["statementDefaultFilter"] })
+                }
+              >
+                {STATEMENT_FILTER_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </Select>
+            </SettingsRow>
+            <SettingsRow label="Region / date format">
+              <span className="pg-settings-coming-soon">Coming soon</span>
+            </SettingsRow>
+          </div>
+
           <SettingsSubheading>Property defaults</SettingsSubheading>
-          <p className="pg-settings-field-hint">Defaults for new properties and leases.</p>
-          <div className="pg-settings-field">
-            <label htmlFor="settings-currency">Default currency</label>
-            <select
-              id="settings-currency"
-              className="pg-settings-input"
-              value={draft.defaultCurrency}
-              onChange={(e) => patchDraft({ defaultCurrency: e.target.value })}
+          <div className="pg-settings-panel-rows">
+            <SettingsRow label="Lease default term" description="Months" htmlFor="settings-lease-term">
+              <input
+                id="settings-lease-term"
+                type="number"
+                min={1}
+                className="pg-settings-panel-input pg-settings-panel-input--narrow"
+                value={draft.leaseDefaultTermMonths}
+                onChange={(e) => patchDraft({ leaseDefaultTermMonths: Number(e.target.value) })}
+              />
+            </SettingsRow>
+            <SettingsRow
+              label="Rent due day default"
+              description="Day of month (1–28)"
+              htmlFor="settings-rent-due"
             >
-              <option value="ZAR">ZAR — South African Rand</option>
-            </select>
-          </div>
-          <div className="pg-settings-field">
-            <label htmlFor="settings-statement-filter">Statement default filter</label>
-            <select
-              id="settings-statement-filter"
-              className="pg-settings-input"
-              value={draft.statementDefaultFilter}
-              onChange={(e) =>
-                patchDraft({ statementDefaultFilter: e.target.value as UserSettings["statementDefaultFilter"] })
-              }
+              <input
+                id="settings-rent-due"
+                type="number"
+                min={1}
+                max={28}
+                className="pg-settings-panel-input pg-settings-panel-input--narrow"
+                value={draft.defaultRentDueDay}
+                onChange={(e) => patchDraft({ defaultRentDueDay: Number(e.target.value) })}
+              />
+            </SettingsRow>
+            <SettingsRow
+              label="Recurring expense category"
+              description="Default for new recurring expenses"
+              htmlFor="settings-expense-cat"
             >
-              {STATEMENT_FILTER_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="pg-settings-field">
-            <label htmlFor="settings-lease-term">Lease default term (months)</label>
-            <input
-              id="settings-lease-term"
-              type="number"
-              min={1}
-              className="pg-settings-input"
-              value={draft.leaseDefaultTermMonths}
-              onChange={(e) => patchDraft({ leaseDefaultTermMonths: Number(e.target.value) })}
-            />
-          </div>
-          <div className="pg-settings-field">
-            <label htmlFor="settings-rent-due">Rent due day default (1–28)</label>
-            <input
-              id="settings-rent-due"
-              type="number"
-              min={1}
-              max={28}
-              className="pg-settings-input"
-              value={draft.defaultRentDueDay}
-              onChange={(e) => patchDraft({ defaultRentDueDay: Number(e.target.value) })}
-            />
-          </div>
-          <div className="pg-settings-field">
-            <label htmlFor="settings-expense-cat">Recurring expense default category</label>
-            <select
-              id="settings-expense-cat"
-              className="pg-settings-input"
-              value={draft.recurringExpenseDefaultCategory}
-              onChange={(e) => patchDraft({ recurringExpenseDefaultCategory: e.target.value })}
-            >
-              {EXPENSE_CATEGORY_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
+              <Select
+                id="settings-expense-cat"
+                className="pg-settings-panel-select"
+                value={draft.recurringExpenseDefaultCategory}
+                onChange={(e) => patchDraft({ recurringExpenseDefaultCategory: e.target.value })}
+              >
+                {EXPENSE_CATEGORY_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </Select>
+            </SettingsRow>
           </div>
 
           <SettingsSubheading>Future projections</SettingsSubheading>
-          <p className="pg-settings-field-hint">
-            Used for forward-looking projections in the dashboard, property analyses, and investor
-            reports. These do not change your historical statements.
+          <p className="pg-settings-panel-section-hint">
+            Forward-looking assumptions for dashboards, analyses, and investor reports. Historical
+            statements are unchanged.
           </p>
-          <div className="pg-settings-field">
-            <label htmlFor="settings-income-growth">Annual income growth (% p.a.)</label>
-            <input
-              id="settings-income-growth"
-              type="number"
-              inputMode="decimal"
-              min={0}
-              max={30}
-              className="pg-settings-input"
-              value={draft.annualIncomeGrowthPercentAnnual}
-              onChange={(e) => patchDraft({ annualIncomeGrowthPercentAnnual: Number(e.target.value) })}
-            />
-            <p className="pg-settings-field-hint">
-              Applied to rental income when projecting future years (e.g. Year n income = Year 1 × (1 +
-              g)^(n − 1)).
-            </p>
-          </div>
-          <div className="pg-settings-field">
-            <label htmlFor="settings-expense-growth">Expense growth / inflation (% p.a.)</label>
-            <input
-              id="settings-expense-growth"
-              type="number"
-              inputMode="decimal"
-              min={0}
-              max={30}
-              className="pg-settings-input"
-              value={draft.expenseGrowthPercentAnnual}
-              onChange={(e) => patchDraft({ expenseGrowthPercentAnnual: Number(e.target.value) })}
-            />
-            <p className="pg-settings-field-hint">
-              Applied to operating expenses and costs when projecting future years.
-            </p>
-          </div>
-          <div className="pg-settings-field">
-            <label htmlFor="settings-appreciation">Property appreciation (% p.a.)</label>
-            <input
-              id="settings-appreciation"
-              type="number"
-              inputMode="decimal"
-              min={0}
-              max={30}
-              className="pg-settings-input"
-              value={draft.propertyAppreciationPercentAnnual}
-              onChange={(e) => patchDraft({ propertyAppreciationPercentAnnual: Number(e.target.value) })}
-            />
-            <p className="pg-settings-field-hint">
-              Used for projected property value growth and equity over time.
-            </p>
+          <div className="pg-settings-panel-rows">
+            <SettingsRow
+              label="Annual income growth"
+              description="% per year applied to rental income"
+              htmlFor="settings-income-growth"
+            >
+              <input
+                id="settings-income-growth"
+                type="number"
+                inputMode="decimal"
+                min={0}
+                max={30}
+                className="pg-settings-panel-input pg-settings-panel-input--narrow"
+                value={draft.annualIncomeGrowthPercentAnnual}
+                onChange={(e) => patchDraft({ annualIncomeGrowthPercentAnnual: Number(e.target.value) })}
+              />
+            </SettingsRow>
+            <SettingsRow
+              label="Expense growth"
+              description="% per year for operating costs"
+              htmlFor="settings-expense-growth"
+            >
+              <input
+                id="settings-expense-growth"
+                type="number"
+                inputMode="decimal"
+                min={0}
+                max={30}
+                className="pg-settings-panel-input pg-settings-panel-input--narrow"
+                value={draft.expenseGrowthPercentAnnual}
+                onChange={(e) => patchDraft({ expenseGrowthPercentAnnual: Number(e.target.value) })}
+              />
+            </SettingsRow>
+            <SettingsRow
+              label="Property appreciation"
+              description="% per year for projected equity"
+              htmlFor="settings-appreciation"
+            >
+              <input
+                id="settings-appreciation"
+                type="number"
+                inputMode="decimal"
+                min={0}
+                max={30}
+                className="pg-settings-panel-input pg-settings-panel-input--narrow"
+                value={draft.propertyAppreciationPercentAnnual}
+                onChange={(e) => patchDraft({ propertyAppreciationPercentAnnual: Number(e.target.value) })}
+              />
+            </SettingsRow>
           </div>
 
           <SettingsSubheading>Applicant form template</SettingsSubheading>
-          <p className="pg-settings-field-hint">Default fields sent on every applicant share link.</p>
+          <p className="pg-settings-panel-section-hint">Default fields on every applicant share link.</p>
           <ApplicantFormTemplateSettingsCard
             template={draft.applicantFormTemplate}
             onTemplateChange={(next) => patchDraft({ applicantFormTemplate: next })}
@@ -352,162 +444,130 @@ export function SettingsSectionContent({
       );
 
     case "notifications":
+      if (!draft) {
+        return (
+          <DraftRequired error={settingsLoadError} onRetry={onRetrySettings} retrying={settingsRetrying} />
+        );
+      }
       return (
-        <>
-          <p className="pg-settings-field-hint" style={{ marginTop: 0 }}>
+        <div className="pg-settings-panel-rows">
+          <p className="pg-settings-panel-section-hint pg-settings-panel-section-hint--top">
             In-app alerts in the header bell. Email delivery is planned separately.
           </p>
-          <div className="pg-settings-row">
-            <div>
-              <div className="pg-settings-row-label">Overdue rent</div>
-              <div className="pg-settings-row-desc">When unpaid rent is past due</div>
-            </div>
+          <SettingsRow label="Overdue rent" description="When unpaid rent is past due">
             <SettingsToggle
               label="Overdue rent"
               checked={draft.overdueAlertsEnabled}
               onChange={(v) => patchDraft({ overdueAlertsEnabled: v })}
             />
-          </div>
-          <div className="pg-settings-row">
-            <div>
-              <div className="pg-settings-row-label">Rent due soon</div>
-              <div className="pg-settings-row-desc">
-                {draft.paymentReminderDaysBeforeDue > 0
-                  ? `Within ${draft.paymentReminderDaysBeforeDue} day(s) of due date`
-                  : "Off — enable payment reminders in Invoice & Banking"}
-              </div>
-            </div>
+          </SettingsRow>
+          <SettingsRow
+            label="Rent due soon"
+            description={
+              draft.paymentReminderDaysBeforeDue > 0
+                ? `Within ${draft.paymentReminderDaysBeforeDue} day(s) of due date`
+                : "Off — enable payment reminders in Invoice & Banking"
+            }
+          >
             <SettingsToggle
               label="Rent due soon"
               checked={draft.paymentReminderDaysBeforeDue > 0}
               onChange={(v) =>
-                patchDraft({ paymentReminderDaysBeforeDue: v ? (draft.paymentReminderDaysBeforeDue || 3) : 0 })
+                patchDraft({ paymentReminderDaysBeforeDue: v ? draft.paymentReminderDaysBeforeDue || 3 : 0 })
               }
             />
-          </div>
-          <div className="pg-settings-row">
-            <div>
-              <div className="pg-settings-row-label">Lease expiring</div>
-              <div className="pg-settings-row-desc">Fixed-term leases ending within 60 days</div>
-            </div>
+          </SettingsRow>
+          <SettingsRow label="Lease expiring" description="Fixed-term leases ending within 60 days">
             <SettingsToggle
               label="Lease expiring"
               checked={draft.leaseExpiringAlertsEnabled}
               onChange={(v) => patchDraft({ leaseExpiringAlertsEnabled: v })}
             />
-          </div>
-          <div className="pg-settings-row">
-            <div>
-              <div className="pg-settings-row-label">Monthly summaries</div>
-              <div className="pg-settings-row-desc">Email portfolio summary (not shown in the bell)</div>
-            </div>
+          </SettingsRow>
+          <SettingsRow
+            label="Monthly summaries"
+            description="Email portfolio summary (not shown in the bell)"
+          >
             <SettingsToggle
               label="Monthly summaries"
               checked={draft.monthlySummariesEnabled}
               onChange={(v) => patchDraft({ monthlySummariesEnabled: v })}
             />
-          </div>
-        </>
+          </SettingsRow>
+          <SettingsRow label="Email notifications" description="Delivery preferences for email alerts">
+            <span className="pg-settings-coming-soon">Coming soon</span>
+          </SettingsRow>
+        </div>
       );
 
     case "security":
       return (
-        <>
-          <div className="pg-settings-row">
-            <div>
-              <div className="pg-settings-row-label">Change password</div>
-              <div className="pg-settings-row-desc">Update your sign-in password</div>
-            </div>
-            <Button variant="secondary" onClick={onOpenChangePassword}>
+        <div className="pg-settings-panel-rows">
+          <SettingsRow label="Change password" description="Update your sign-in password">
+            <Button variant="outline" size="sm" onClick={onOpenChangePassword}>
               Change password
             </Button>
-          </div>
-          <div className="pg-settings-row">
-            <div>
-              <div className="pg-settings-row-label">Two-factor authentication</div>
-              <div className="pg-settings-row-desc">Extra protection for your account</div>
-            </div>
+          </SettingsRow>
+          <SettingsRow label="Two-factor authentication" description="Extra protection for your account">
             <span className="pg-settings-coming-soon">Coming soon</span>
-          </div>
-          <div className="pg-settings-row">
-            <div>
-              <div className="pg-settings-row-label">Active sessions</div>
-              <div className="pg-settings-row-desc">Devices signed in to your account</div>
-            </div>
+          </SettingsRow>
+          <SettingsRow label="Active sessions" description="Devices signed in to your account">
             <span className="pg-settings-coming-soon">Coming soon</span>
-          </div>
-          <div className="pg-settings-row">
-            <div>
-              <div className="pg-settings-row-label">Sign out all devices</div>
-              <div className="pg-settings-row-desc">End sessions on every device</div>
-            </div>
+          </SettingsRow>
+          <SettingsRow label="Sign out all devices" description="End sessions on every device">
             <span className="pg-settings-coming-soon">Coming soon</span>
-          </div>
-        </>
+          </SettingsRow>
+        </div>
       );
 
     case "data-export":
       return (
         <>
-          <div className="pg-settings-row">
-            <div>
-              <div className="pg-settings-row-label">Export workspace data</div>
-              <div className="pg-settings-row-desc">Download properties, leases, and financial records</div>
-            </div>
-            <span className="pg-settings-coming-soon">Coming soon</span>
+          <div className="pg-settings-panel-rows">
+            <SettingsRow
+              label="Export workspace data"
+              description="Download properties, leases, and financial records"
+            >
+              <span className="pg-settings-coming-soon">Coming soon</span>
+            </SettingsRow>
+            <SettingsRow label="Download reports archive" description="Export generated portfolio reports">
+              <span className="pg-settings-coming-soon">Coming soon</span>
+            </SettingsRow>
           </div>
-          <div className="pg-settings-row">
-            <div>
-              <div className="pg-settings-row-label">Backup & restore</div>
-              <div className="pg-settings-row-desc">Create a full workspace backup</div>
-            </div>
-            <span className="pg-settings-coming-soon">Coming soon</span>
-          </div>
-          <div className="pg-settings-danger-zone">
-            <SettingsSubheading>Delete account</SettingsSubheading>
-            <p className="pg-settings-field-hint">
-              Permanently delete your account and workspace data. This action is not available yet.
-            </p>
-            <Button variant="outline" disabled>
-              Delete account
-            </Button>
+          <div className="pg-settings-panel-rows pg-settings-panel-rows--danger">
+            <SettingsRow label="Delete account" description="Permanently delete your account and data" danger>
+              <Button variant="outline" size="sm" disabled>
+                Delete account
+              </Button>
+            </SettingsRow>
           </div>
         </>
       );
 
     case "integrations":
       return (
-        <>
+        <div className="pg-settings-panel-rows">
           <CookieConsentSettingsCard />
-          <div className="pg-settings-row">
-            <div>
-              <div className="pg-settings-row-label">Supabase</div>
-              <div className="pg-settings-row-desc">Database and authentication backend</div>
-            </div>
+          <SettingsRow label="Supabase" description="Database and authentication backend">
             <span className="pg-settings-badge">Connected</span>
-          </div>
-          <div className="pg-settings-row">
-            <div>
-              <div className="pg-settings-row-label">Email delivery</div>
-              <div className="pg-settings-row-desc">Invoice and contact emails via Resend (server-managed)</div>
-            </div>
+          </SettingsRow>
+          <SettingsRow label="Email delivery" description="Invoice and contact emails via Resend">
             <span className="pg-settings-badge pg-settings-badge--muted">Configured on server</span>
-          </div>
-          <div className="pg-settings-row">
-            <div>
-              <div className="pg-settings-row-label">Paystack billing</div>
-              <div className="pg-settings-row-desc">Subscription checkout and renewals</div>
-            </div>
+          </SettingsRow>
+          <SettingsRow label="Paystack billing" description="Subscription checkout and renewals">
             <span className="pg-settings-badge pg-settings-badge--muted">Configured on server</span>
-          </div>
-          <Link className="pg-settings-link-row" to="/owned-properties/reports">
-            <div>
-              <div className="pg-settings-row-label">Report generation</div>
-              <div className="pg-settings-row-desc">Portfolio reports and PDF exports</div>
+          </SettingsRow>
+          <SettingsRow label="Google Analytics / GTM" description="Usage analytics via tag manager">
+            <span className="pg-settings-badge pg-settings-badge--muted">See cookie preferences</span>
+          </SettingsRow>
+          <Link className="pg-settings-panel-link-row" to="/owned-properties/reports">
+            <div className="pg-settings-panel-row__label">
+              <span className="pg-settings-panel-row__title">Report generation</span>
+              <span className="pg-settings-panel-row__desc">Portfolio reports and PDF exports</span>
             </div>
             <AppIcon name="open" size="sm" />
           </Link>
-        </>
+        </div>
       );
 
     default:

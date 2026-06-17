@@ -14,11 +14,12 @@ export function SettingsNav({ sections, activeId, onSelect, mobile }: SettingsNa
   if (mobile) {
     return (
       <div className="pg-settings-nav-mobile">
-        <label className="pg-text-label" htmlFor="pg-settings-section-select">
-          Settings section
+        <label className="pg-settings-nav-mobile__label" htmlFor="pg-settings-section-select">
+          Section
         </label>
         <Select
           id="pg-settings-section-select"
+          className="pg-settings-nav-mobile__select"
           value={activeId}
           onChange={(e) => onSelect(e.target.value as SettingsSectionId)}
         >
@@ -33,27 +34,22 @@ export function SettingsNav({ sections, activeId, onSelect, mobile }: SettingsNa
   }
 
   return (
-    <nav className="pg-settings-nav" aria-label="Settings sections">
-      <ul className="pg-settings-nav__list">
+    <nav className="pg-settings-panel-nav" aria-label="Settings sections">
+      <ul className="pg-settings-panel-nav__list">
         {sections.map((section) => {
           const active = section.id === activeId;
           return (
             <li key={section.id}>
               <button
                 type="button"
-                className={`pg-settings-nav__item${active ? " pg-settings-nav__item--active" : ""}`}
+                className={`pg-settings-panel-nav__item${active ? " pg-settings-panel-nav__item--active" : ""}`}
                 aria-current={active ? "page" : undefined}
                 onClick={() => onSelect(section.id)}
               >
-                <span className="pg-settings-nav__icon" aria-hidden>
-                  <AppIcon name={section.icon} size="sm" />
-                </span>
-                <span className="pg-settings-nav__text">
-                  <span className="pg-settings-nav__title">{section.title}</span>
-                  <span className="pg-settings-nav__desc">{section.description}</span>
-                </span>
+                <AppIcon name={section.icon} size="sm" className="pg-settings-panel-nav__icon" />
+                <span className="pg-settings-panel-nav__title">{section.title}</span>
                 {section.badge ? (
-                  <span className="pg-settings-badge pg-settings-nav__badge">{section.badge}</span>
+                  <span className="pg-settings-badge pg-settings-panel-nav__badge">{section.badge}</span>
                 ) : null}
               </button>
             </li>
@@ -61,18 +57,18 @@ export function SettingsNav({ sections, activeId, onSelect, mobile }: SettingsNa
         })}
       </ul>
 
-      <div className="pg-settings-nav__support">
-        <p className="pg-settings-nav__support-label">Support & legal</p>
-        <Link className="pg-settings-nav__support-link" to="/faq">
+      <div className="pg-settings-panel-nav__support">
+        <p className="pg-settings-panel-nav__support-label">Support & legal</p>
+        <Link className="pg-settings-panel-nav__support-link" to="/faq">
           FAQs
         </Link>
-        <Link className="pg-settings-nav__support-link" to="/help">
+        <Link className="pg-settings-panel-nav__support-link" to="/help">
           Help & support
         </Link>
-        <a className="pg-settings-nav__support-link" href="/terms">
+        <a className="pg-settings-panel-nav__support-link" href="/terms">
           Terms of service
         </a>
-        <a className="pg-settings-nav__support-link" href="/privacy">
+        <a className="pg-settings-panel-nav__support-link" href="/privacy">
           Privacy policy
         </a>
       </div>

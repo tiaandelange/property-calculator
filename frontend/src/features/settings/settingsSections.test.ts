@@ -2,20 +2,22 @@ import { describe, expect, it } from "vitest";
 import { resolveSettingsSection, settingsSectionPath } from "./settingsSections";
 
 describe("settingsSections", () => {
-  it("defaults unknown sections to account", () => {
-    expect(resolveSettingsSection(null)).toBe("account");
-    expect(resolveSettingsSection("")).toBe("account");
-    expect(resolveSettingsSection("not-real")).toBe("account");
+  it("defaults unknown sections to general", () => {
+    expect(resolveSettingsSection(null)).toBe("general");
+    expect(resolveSettingsSection("")).toBe("general");
+    expect(resolveSettingsSection("not-real")).toBe("general");
   });
 
   it("resolves known section ids", () => {
     expect(resolveSettingsSection("subscription")).toBe("subscription");
     expect(resolveSettingsSection("invoice-banking")).toBe("invoice-banking");
     expect(resolveSettingsSection("security")).toBe("security");
+    expect(resolveSettingsSection("general")).toBe("general");
   });
 
   it("maps legacy hash targets", () => {
-    expect(resolveSettingsSection("applicant-form-template")).toBe("workspace");
+    expect(resolveSettingsSection("applicant-form-template")).toBe("general");
+    expect(resolveSettingsSection("workspace")).toBe("general");
   });
 
   it("builds deep-link paths", () => {

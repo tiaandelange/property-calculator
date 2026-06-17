@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { AppPage, AppPageContent, AppPageHeader, AppPageSubtitle, AppPageTitle } from "../../components/ui/AppPage";
+import { AppPage, AppPageContent } from "../../components/ui/AppPage";
 import { Button } from "../../components/ui/Button";
 import { QueryErrorCard } from "../../components/ui/QueryState";
 import { formatQueryErrorMessage } from "../../lib/queryErrors";
@@ -33,6 +33,13 @@ import {
   type SettingsSectionId
 } from "./settingsSections";
 
+const DRAFT_SECTIONS: SettingsSectionId[] = [
+  "general",
+  "appearance",
+  "invoice-banking",
+  "notifications"
+];
+
 export function SettingsDashboard() {
   const isMobile = useMediaQuery("(max-width: 768px)");
   const [searchParams, setSearchParams] = useSearchParams();
@@ -45,7 +52,7 @@ export function SettingsDashboard() {
   const [saved, setSaved] = useState<UserSettings | null>(null);
   const [draft, setDraft] = useState<UserSettings | null>(null);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
+  const [saveError, setSaveError] = useState("");
   const [success, setSuccess] = useState(false);
   const [email, setEmail] = useState("");
   const [fullName, setFullName] = useState("");
@@ -60,6 +67,13 @@ export function SettingsDashboard() {
     [searchParams]
   );
   const activeConfig = getSettingsSection(activeSection);
+
+  const settingsLoadError = settingsQuery.error
+    ? formatQueryErrorMessage(settingsQuery.error, "Could not load settings.")
+    : "";
+  const profileLoadError = profileQuery.error
+    ? formatQueryErrorMessage(profileQuery.error, "Could not load profile.")
+    : "";
 
   useEffect(() => {
     if (!settingsQuery.data) return;
@@ -85,22 +99,15 @@ export function SettingsDashboard() {
     }
   }, [profileQuery.data]);
 
-  const loading = (settingsQuery.isLoading && !settingsQuery.data) || (profileQuery.isLoading && !profileQuery.data);
-
-  useEffect(() => {
-    if (settingsQuery.error) {
-      setError(formatQueryErrorMessage(settingsQuery.error, "Could not load settings."));
-    } else if (profileQuery.error) {
-      setError(formatQueryErrorMessage(profileQuery.error, "Could not load profile."));
-    }
-  }, [settingsQuery.error, profileQuery.error]);
+  const initialLoading =
+    (settingsQuery.isLoading && !settingsQuery.data) || (profileQuery.isLoading && !profileQuery.data);
 
   useEffect(() => {
     const next = new URLSearchParams(searchParams);
     let changed = false;
 
     if (!next.get("section")) {
-      next.set("section", "account");
+      next.set("section", "general");
       changed = true;
     }
 
@@ -151,18 +158,18 @@ export function SettingsDashboard() {
       });
     }
     setSuccess(false);
-    setError("");
+    setSaveError("");
   }, [saved]);
 
   const save = useCallback(async (): Promise<boolean> => {
     if (!draft || !saved) return false;
     const validationError = validateUserSettings(draft);
     if (validationError) {
-      setError(validationError);
+      setSaveError(validationError);
       return false;
     }
     setSaving(true);
-    setError("");
+    setSaveError("");
     setSuccess(false);
     try {
       const patch: Partial<UserSettings> = {};
@@ -195,7 +202,7 @@ export function SettingsDashboard() {
       window.setTimeout(() => setSuccess(false), 4000);
       return true;
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Could not save settings.");
+      setSaveError(e instanceof Error ? e.message : "Could not save settings.");
       return false;
     } finally {
       setSaving(false);
@@ -218,28 +225,32 @@ export function SettingsDashboard() {
     selectSection("security");
   }, [selectSection]);
 
-  if (loading) {
+  const sectionNeedsDraft = DRAFT_SECTIONS.includes(activeSection);
+  const sectionBlockedBySettings = sectionNeedsDraft && !draft && Boolean(settingsLoadError);
+
+  if (initialLoading) {
     return (
       <AppPage variant="settings" className="pg-settings-page">
         <AppPageContent>
-          <AppPageHeader>
-            <AppPageTitle>Settings</AppPageTitle>
-          </AppPageHeader>
-          <div className="pg-settings-layout">
-            <div className="pg-settings-nav-skeleton pg-settings-skeleton" />
-            <div className="pg-settings-detail-skeleton pg-settings-skeleton" />
+          <div className="pg-settings-panel-wrap">
+            <div className="pg-settings-panel pg-settings-panel--loading" aria-busy="true">
+              <div className="pg-settings-panel__grid">
+                <div className="pg-settings-nav-skeleton pg-settings-skeleton" />
+                <div className="pg-settings-detail-skeleton pg-settings-skeleton" />
+              </div>
+            </div>
           </div>
         </AppPageContent>
       </AppPage>
     );
   }
 
-  if (error && !draft) {
+  if (!draft && !profileQuery.data && settingsLoadError && profileLoadError) {
     return (
       <AppPage variant="settings" className="pg-settings-page">
         <AppPageContent>
           <QueryErrorCard
-            message={error}
+            message={settingsLoadError || profileLoadError}
             onRetry={() => {
               void settingsQuery.refetch();
               void profileQuery.refetch();
@@ -251,9 +262,7 @@ export function SettingsDashboard() {
     );
   }
 
-  if (!draft) return null;
-
-  const footer = activeConfig.supportsSave ? (
+  const footer = activeConfig.supportsSave && draft ? (
     <>
       <Button variant="soft" onClick={cancel} disabled={!dirty || saving}>
         Cancel
@@ -267,61 +276,71 @@ export function SettingsDashboard() {
   return (
     <AppPage variant="settings" className="pg-settings-page">
       <AppPageContent>
-        {!isMobile ? (
-          <AppPageHeader>
-            <div className="pg-app-page-header__main">
-              <AppPageTitle>Settings</AppPageTitle>
-              <AppPageSubtitle>Account preferences and workspace configuration.</AppPageSubtitle>
+        <div className="pg-settings-panel-wrap">
+          <div className="pg-settings-panel">
+            <div className="pg-settings-panel__grid">
+              {!isMobile ? (
+                <SettingsNav sections={SETTINGS_SECTIONS} activeId={activeSection} onSelect={selectSection} />
+              ) : null}
+
+              <div className="pg-settings-panel__content">
+                {isMobile ? (
+                  <SettingsNav
+                    sections={SETTINGS_SECTIONS}
+                    activeId={activeSection}
+                    onSelect={selectSection}
+                    mobile
+                  />
+                ) : null}
+
+                <SettingsDetailPanel title={activeConfig.title} badge={activeConfig.badge}>
+                  {saveError ? (
+                    <div className="pg-alert pg-alert-error pg-settings-panel-alert">{saveError}</div>
+                  ) : null}
+                  {success ? (
+                    <div className="pg-alert pg-settings-panel-alert">Settings saved.</div>
+                  ) : null}
+
+                  {sectionBlockedBySettings ? (
+                    <QueryErrorCard
+                      message={settingsLoadError}
+                      onRetry={() => void settingsQuery.refetch()}
+                      retrying={settingsQuery.isFetching}
+                    />
+                  ) : (
+                    <SettingsSectionContent
+                      sectionId={activeSection}
+                      draft={draft}
+                      patchDraft={patchDraft}
+                      email={email}
+                      fullName={fullName}
+                      avatarUrl={avatarUrl}
+                      role={role}
+                      freeUsesRemaining={profile?.free_uses_remaining}
+                      settingsLoadError={settingsLoadError}
+                      profileLoadError={profileLoadError}
+                      onRetrySettings={() => void settingsQuery.refetch()}
+                      onRetryProfile={() => void profileQuery.refetch()}
+                      settingsRetrying={settingsQuery.isFetching}
+                      profileRetrying={profileQuery.isFetching}
+                      onEditProfile={() => setEditProfileOpen(true)}
+                      onOpenInvoiceBanking={() => setInvoiceBankingOpen(true)}
+                      onOpenChangePassword={() => setChangePasswordOpen(true)}
+                      onGoToSecurity={goToSecurity}
+                    />
+                  )}
+                </SettingsDetailPanel>
+
+                {footer ? (
+                  <>
+                    <div className="pg-settings-panel__footer pg-settings-footer-desktop">{footer}</div>
+                    <div className="pg-settings-panel__footer pg-settings-footer-mobile">{footer}</div>
+                  </>
+                ) : null}
+              </div>
             </div>
-          </AppPageHeader>
-        ) : null}
-
-        {error ? <div className="pg-alert pg-alert-error pg-settings-page-alert">{error}</div> : null}
-        {success ? <div className="pg-alert pg-settings-page-alert">Settings saved.</div> : null}
-
-        {isMobile ? (
-          <SettingsNav
-            sections={SETTINGS_SECTIONS}
-            activeId={activeSection}
-            onSelect={selectSection}
-            mobile
-          />
-        ) : null}
-
-        <div className="pg-settings-layout">
-          {!isMobile ? (
-            <SettingsNav sections={SETTINGS_SECTIONS} activeId={activeSection} onSelect={selectSection} />
-          ) : null}
-
-          <SettingsDetailPanel
-            icon={activeConfig.icon}
-            title={activeConfig.title}
-            description={activeConfig.description}
-            badge={activeConfig.badge}
-          >
-            <SettingsSectionContent
-              sectionId={activeSection}
-              draft={draft}
-              patchDraft={patchDraft}
-              email={email}
-              fullName={fullName}
-              avatarUrl={avatarUrl}
-              role={role}
-              freeUsesRemaining={profile?.free_uses_remaining}
-              onEditProfile={() => setEditProfileOpen(true)}
-              onOpenInvoiceBanking={() => setInvoiceBankingOpen(true)}
-              onOpenChangePassword={() => setChangePasswordOpen(true)}
-              onGoToSecurity={goToSecurity}
-            />
-          </SettingsDetailPanel>
+          </div>
         </div>
-
-        {footer ? (
-          <>
-            <div className="pg-settings-footer pg-settings-footer-desktop">{footer}</div>
-            <div className="pg-settings-footer-mobile">{footer}</div>
-          </>
-        ) : null}
 
         <EditProfileModal
           open={editProfileOpen}
