@@ -48,7 +48,7 @@ describe("invoiceAutomationSupabase", () => {
       error: null
     });
     const res = await generateDueLeaseInvoices();
-    expect(rpc).toHaveBeenCalledWith("generate_due_lease_invoices");
+    expect(rpc).toHaveBeenCalledWith("generate_due_lease_invoices", {});
     expect(res.leasesChecked).toBe(3);
     expect(res.invoicesCreated).toBe(1);
     expect(res.timezone).toBe("Africa/Johannesburg");

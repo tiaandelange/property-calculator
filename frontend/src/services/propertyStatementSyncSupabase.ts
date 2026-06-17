@@ -47,7 +47,7 @@ export async function syncPropertyStatementLines(params: {
 
   const [recurringResult, invoiceResult] = await Promise.all([
     runDueRecurringExpensesForProperty(propertyId),
-    generateDueLeaseInvoices()
+    generateDueLeaseInvoices({ propertyId })
   ]);
 
   const recurringExpenseLinesCreated = recurringResult.createdCount;
@@ -56,6 +56,7 @@ export async function syncPropertyStatementLines(params: {
     invoiceResult.skippedDuplicate +
     invoiceResult.skippedInactive +
     invoiceResult.skippedNotDue +
+    (invoiceResult.skippedOutsideLease ?? 0) +
     (invoiceResult.skippedAutoDisabled ?? 0);
   const hadChanges = recurringExpenseLinesCreated > 0 || invoicesCreated > 0;
 

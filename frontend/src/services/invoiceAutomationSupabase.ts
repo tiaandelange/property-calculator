@@ -19,6 +19,7 @@ export type GenerateDueLeaseInvoicesResult = {
   skippedDuplicate: number;
   skippedInactive: number;
   skippedNotDue: number;
+  skippedOutsideLease?: number;
   skippedAutoDisabled?: number;
   errors: Array<{ leaseId?: string; propertyId?: string; message: string }>;
   asOfDate: string;
@@ -51,6 +52,7 @@ function mapGenerateResult(raw: Record<string, unknown>): GenerateDueLeaseInvoic
     skippedDuplicate: Number(raw.skipped_duplicate ?? raw.skippedDuplicate ?? 0),
     skippedInactive: Number(raw.skipped_inactive ?? raw.skippedInactive ?? 0),
     skippedNotDue: Number(raw.skipped_not_due ?? raw.skippedNotDue ?? 0),
+    skippedOutsideLease: Number(raw.skipped_outside_lease ?? raw.skippedOutsideLease ?? 0),
     skippedAutoDisabled: Number(raw.skipped_auto_disabled ?? raw.skippedAutoDisabled ?? 0),
     errors,
     asOfDate: String(raw.as_of_date ?? raw.asOfDate ?? ""),
@@ -148,10 +150,16 @@ export async function updatePlatformInvoiceAutomationDefaults(patch: {
 }
 
 /** Idempotent rent invoice sync for signed-in landlord (own leases only). */
-export async function generateDueLeaseInvoices(): Promise<GenerateDueLeaseInvoicesResult> {
+export async function generateDueLeaseInvoices(opts?: {
+  propertyId?: string;
+  asOf?: string;
+}): Promise<GenerateDueLeaseInvoicesResult> {
   await requireUserId();
   const sb = getSupabase();
-  const { data, error } = await sb.rpc("generate_due_lease_invoices");
+  const args: { p_as_of?: string; p_property_id?: string } = {};
+  if (opts?.asOf) args.p_as_of = opts.asOf;
+  if (opts?.propertyId) args.p_property_id = opts.propertyId;
+  const { data, error } = await sb.rpc("generate_due_lease_invoices", args);
   if (error) throw toError(error);
   return mapGenerateResult((data ?? {}) as Record<string, unknown>);
 }

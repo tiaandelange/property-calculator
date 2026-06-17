@@ -246,6 +246,13 @@
   color: var(--text-secondary);
 }
 
+.pg-tenants-lease-status-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
 .pg-tenants-actions {
   display: flex;
   gap: 6px;

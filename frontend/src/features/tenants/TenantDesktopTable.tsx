@@ -21,7 +21,7 @@ import {
   tenantRowDisplayName
 } from "./tenantDirectoryUtils";
 import { TenantRowActions } from "./TenantRowActions";
-import { TenantCoTenantBadge } from "./TenantCoTenantBadge";
+import { TenantLeaseStatusCell } from "./TenantLeaseStatusCell";
 
 function TenantAvatar({ tenant }: { tenant: TenantListItem }) {
   return (
@@ -73,7 +73,6 @@ export function TenantDesktopTable({
                     <Link className="pg-tenants-name" to={`/tenants/${t.id}`}>
                       {tenantRowDisplayName(t)}
                     </Link>
-                    <TenantCoTenantBadge tenant={t} />
                     <div className="pg-tenants-sub">{tenantRowContactEmail(t) || "No email"}</div>
                   </div>
                 </div>
@@ -111,7 +110,7 @@ export function TenantDesktopTable({
                 <ProplyticStatusBadge status={t.paymentStatus} />
               </ProplyticTableCell>
               <ProplyticTableCell columnType="status">
-                <ProplyticStatusBadge status={t.leaseStatus} />
+                <TenantLeaseStatusCell tenant={t} useProplyticBadge />
               </ProplyticTableCell>
               <ProplyticTableCell columnType="actions">
                 <TenantRowActions tenant={t} onDelete={onDelete} />

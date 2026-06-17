@@ -7,9 +7,9 @@ import {
   tenantRowContactPhone,
   tenantRowDisplayName
 } from "./tenantDirectoryUtils";
-import { LeaseStatusBadge, PaymentStatusBadge } from "./TenantStatusBadges";
+import { PaymentStatusBadge } from "./TenantStatusBadges";
 import { TenantRowActions } from "./TenantRowActions";
-import { TenantCoTenantBadge } from "./TenantCoTenantBadge";
+import { TenantLeaseStatusCell } from "./TenantLeaseStatusCell";
 
 export function TenantMobileCard({
   tenant,
@@ -29,7 +29,6 @@ export function TenantMobileCard({
             <Link className="pg-tenants-name" to={`/tenants/${tenant.id}`}>
               {tenantRowDisplayName(tenant)}
             </Link>
-            <TenantCoTenantBadge tenant={tenant} />
             <div className="pg-tenants-sub pg-tenants-mobile-property">
               {tenant.propertyName || "No property assigned"}
               {tenant.unitNumber ? ` · ${tenant.unitNumber}` : ""}
@@ -46,7 +45,7 @@ export function TenantMobileCard({
       <div className="pg-tenants-mobile-card-foot">
         <div className="pg-tenants-mobile-badges">
           <PaymentStatusBadge status={tenant.paymentStatus} />
-          <LeaseStatusBadge status={tenant.leaseStatus} />
+          <TenantLeaseStatusCell tenant={tenant} />
         </div>
         <TenantRowActions tenant={tenant} onDelete={onDelete} />
       </div>
