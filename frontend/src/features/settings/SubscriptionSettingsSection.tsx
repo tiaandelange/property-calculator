@@ -25,13 +25,14 @@ import {
   subscriptionHasPaymentProvider
 } from "./subscriptionStatusDisplay";
 import {
-  planApplicationLinksLimitLabel,
   subscriptionDashboardFeatureRows,
   type SubscriptionFeatureRow
 } from "./subscriptionDashboardFeatures";
 import { ChangePlanModal } from "./ChangePlanModal";
+import { SettingsAccordion } from "./components/SettingsAccordion";
 import { SettingsCard } from "./components/SettingsCard";
 import { SettingsSectionStack } from "./components/SettingsSectionStack";
+import { SettingsRow } from "./SettingsRow";
 import { StorageUsageCard } from "./StorageUsageCard";
 
 function UsageMeter({
@@ -46,19 +47,16 @@ function UsageMeter({
   const unlimited = limit == null;
   const atLimit = !unlimited && used >= limit;
   return (
-    <div className="pg-settings-subscription-usage-row">
-      <div>
-        <div className="pg-settings-row-label">{label}</div>
-        <div className="pg-settings-row-desc">
-          {unlimited ? `${used} used · unlimited` : `${used} of ${limit} used`}
-        </div>
+    <SettingsRow label={label}>
+      <div className="pg-settings-panel-inline-actions">
+        <span className="pg-settings-panel-value">
+          {unlimited ? `${used} · unlimited` : `${used} / ${limit}`}
+        </span>
+        <span className={`pg-settings-badge${atLimit ? " pg-settings-badge--muted" : ""}`}>
+          {atLimit ? "At limit" : unlimited ? "Unlimited" : "OK"}
+        </span>
       </div>
-      {atLimit ? (
-        <span className="pg-settings-badge pg-settings-badge--muted">At limit</span>
-      ) : (
-        <span className="pg-settings-badge">{unlimited ? "Unlimited" : "Within limit"}</span>
-      )}
-    </div>
+    </SettingsRow>
   );
 }
 
@@ -236,6 +234,15 @@ export function SubscriptionSettingsSection({ freeUsesRemaining: _freeUsesRemain
       : (effectivePlan?.monthlyPrice ?? 0);
   const monthlyCurrency = effectivePlan?.currency ?? selectedPlan?.currency ?? "ZAR";
 
+  const usageSummary = usage
+    ? `${usage.propertyCount} properties · ${usage.investmentReportCount} reports`
+    : undefined;
+
+  const featuresTitle = isPendingPayment ? "Current access (Free)" : "Features on your plan";
+  const featuresIncluded = featureRows.filter((row) => row.enabled).length;
+  const featuresSummary =
+    featureRows.length > 0 ? `${featuresIncluded} of ${featureRows.length} included` : undefined;
+
   return (
     <SettingsSectionStack className="pg-settings-subscription">
       <div className="pg-settings-subscription-notice" role="status">
@@ -264,118 +271,72 @@ export function SubscriptionSettingsSection({ freeUsesRemaining: _freeUsesRemain
 
       <SettingsCard className="pg-settings-subscription-current">
         <div className="pg-settings-panel-rows">
-        <div className="pg-settings-row">
-          <div>
-            <div className="pg-settings-row-label">Current plan</div>
-            <div className="pg-settings-row-desc">
-              {isPendingPayment
-                ? "Free access until payment is confirmed"
-                : effectivePlan?.description ?? "Proplytic subscription"}
-            </div>
-          </div>
-          <span className="pg-settings-subscription-current__plan-name">{displayPlanName}</span>
-        </div>
+          <SettingsRow label="Current plan">
+            <span className="pg-settings-panel-value pg-settings-subscription-current__plan-name">
+              {displayPlanName}
+            </span>
+          </SettingsRow>
 
-        {isPendingPayment ? (
-          <div className="pg-settings-row">
-            <div>
-              <div className="pg-settings-row-label">Selected paid plan</div>
-              <div className="pg-settings-row-desc">Complete checkout to activate</div>
-            </div>
-            <span>{permissions.selectedPlanName ?? selectedPlan?.name ?? "—"}</span>
-          </div>
-        ) : null}
+          {isPendingPayment ? (
+            <SettingsRow label="Selected paid plan">
+              <span className="pg-settings-panel-value">
+                {permissions.selectedPlanName ?? selectedPlan?.name ?? "—"}
+              </span>
+            </SettingsRow>
+          ) : null}
 
-        <div className="pg-settings-row">
-          <div>
-            <div className="pg-settings-row-label">Status</div>
-            {subscriptionHasPaymentProvider(subscription) ? (
-              <div className="pg-settings-row-desc">Payment provider linked</div>
-            ) : subscription ? (
-              <div className="pg-settings-row-desc">No payment provider linked</div>
-            ) : (
-              <div className="pg-settings-row-desc">Default free plan</div>
-            )}
-          </div>
-          <span className={formatSubscriptionStatusBadgeClass(displayStatus)}>
-            {formatSubscriptionStatus(displayStatus)}
-          </span>
-        </div>
+          <SettingsRow label="Status">
+            <span className={formatSubscriptionStatusBadgeClass(displayStatus)}>
+              {formatSubscriptionStatus(displayStatus)}
+            </span>
+          </SettingsRow>
 
-        {trialEndLabel ? (
-          <div className="pg-settings-row">
-            <div>
-              <div className="pg-settings-row-label">Trial ends</div>
-              <div className="pg-settings-row-desc">Access until trial end; not billed yet</div>
-            </div>
-            <span>{trialEndLabel}</span>
-          </div>
-        ) : null}
+          {trialEndLabel ? (
+            <SettingsRow label="Trial ends">
+              <span className="pg-settings-panel-value">{trialEndLabel}</span>
+            </SettingsRow>
+          ) : null}
 
-        {renewalLabel ? (
-          <div className="pg-settings-row">
-            <div>
-              <div className="pg-settings-row-label">Renewal date</div>
-              <div className="pg-settings-row-desc">Current billing period ends</div>
-            </div>
-            <span>{renewalLabel}</span>
-          </div>
-        ) : null}
+          {renewalLabel ? (
+            <SettingsRow label="Renewal date">
+              <span className="pg-settings-panel-value">{renewalLabel}</span>
+            </SettingsRow>
+          ) : null}
 
-        <div className="pg-settings-row">
-          <div className="pg-settings-row-label">Price</div>
-          <span>{formatPlanPrice(monthlyPrice, monthlyCurrency)}</span>
-        </div>
-
-        <div className="pg-settings-row">
-          <div className="pg-settings-row-label">Property limit</div>
-          <span>
-            {propertyLimit == null
-              ? "Unlimited"
-              : `Up to ${propertyLimit} ${propertyLimit === 1 ? "property" : "properties"}`}
-          </span>
-        </div>
-
-        <div className="pg-settings-row">
-          <div className="pg-settings-row-label">Report limit (per month)</div>
-          <span>{reportLimit == null ? "Unlimited" : `${reportLimit} reports`}</span>
-        </div>
-
-        {effectivePlan ? (
-          <div className="pg-settings-row">
-            <div className="pg-settings-row-label">Application link limit</div>
-            <span>{planApplicationLinksLimitLabel(effectivePlan)}</span>
-          </div>
-        ) : null}
+          <SettingsRow label="Price">
+            <span className="pg-settings-panel-value">
+              {formatPlanPrice(monthlyPrice, monthlyCurrency)}
+            </span>
+          </SettingsRow>
         </div>
       </SettingsCard>
 
       {usage ? (
-        <SettingsCard className="pg-settings-subscription-usage">
-          <h3 className="pg-settings-subscription-usage__title">Current usage</h3>
-          <p className="pg-settings-subscription-usage__period">
-            {usage.period.label}: {formatUsagePeriodRange(usage.period)}
-          </p>
-          <UsageMeter label="Properties" used={usage.propertyCount} limit={propertyLimit} />
-          <UsageMeter
-            label="Reports generated"
-            used={usage.investmentReportCount}
-            limit={reportLimit}
-          />
-          <UsageMeter
-            label="Active applicant links"
-            used={usage.applicationLinksActive}
-            limit={applicationLinkLimit}
-          />
-        </SettingsCard>
+        <SettingsAccordion title="Current usage" summary={usageSummary} defaultOpen={false}>
+          <div className="pg-settings-panel-rows pg-settings-panel-rows--nested">
+            <p className="pg-settings-panel-muted pg-settings-panel-muted--nested">
+              {usage.period.label}: {formatUsagePeriodRange(usage.period)}
+            </p>
+            <UsageMeter label="Properties" used={usage.propertyCount} limit={propertyLimit} />
+            <UsageMeter
+              label="Reports generated"
+              used={usage.investmentReportCount}
+              limit={reportLimit}
+            />
+            <UsageMeter
+              label="Active applicant links"
+              used={usage.applicationLinksActive}
+              limit={applicationLinkLimit}
+            />
+          </div>
+        </SettingsAccordion>
       ) : null}
 
-      <SettingsCard className="pg-settings-subscription-features-panel">
-        <h3 className="pg-settings-subscription-features-panel__title">
-          {isPendingPayment ? "Current access (Free)" : "Features on your plan"}
-        </h3>
-        <FeatureChecklist rows={featureRows} />
-      </SettingsCard>
+      {featureRows.length > 0 ? (
+        <SettingsAccordion title={featuresTitle} summary={featuresSummary} defaultOpen={false}>
+          <FeatureChecklist rows={featureRows} />
+        </SettingsAccordion>
+      ) : null}
 
       {planMessage ? (
         <div className={`pg-alert${planMessage.kind === "error" ? " pg-alert-error" : ""}`}>
@@ -413,34 +374,35 @@ export function SubscriptionSettingsSection({ freeUsesRemaining: _freeUsesRemain
           </div>
         </div>
       ) : !isAdmin ? (
-        <div className="pg-settings-subscription-cta">
-          {showCompletePayment ? (
-            <Button
-              type="button"
-              variant="primary"
-              size="sm"
-              loading={checkoutLoading}
-              disabled={checkoutLoading}
-              onClick={() => void startCheckout(subscription!.planCode)}
-            >
-              Complete payment
-            </Button>
-          ) : null}
-          <Button
-            type="button"
-            variant={showCompletePayment ? "secondary" : "primary"}
-            size="sm"
-            disabled={checkoutLoading}
-            onClick={() => setChangePlanOpen(true)}
-          >
-            Change plan
-          </Button>
-          <p className="pg-settings-subscription-cta__hint">
-            {showCompletePayment
-              ? "Finish checkout to activate your paid plan, or choose a different plan."
-              : "Upgrade, downgrade, or switch billing period without leaving settings."}
-          </p>
-        </div>
+        <SettingsCard className="pg-settings-subscription-actions">
+          <div className="pg-settings-panel-rows">
+            {showCompletePayment ? (
+              <SettingsRow label="Complete payment">
+                <Button
+                  type="button"
+                  variant="primary"
+                  size="sm"
+                  loading={checkoutLoading}
+                  disabled={checkoutLoading}
+                  onClick={() => void startCheckout(subscription!.planCode)}
+                >
+                  Complete payment
+                </Button>
+              </SettingsRow>
+            ) : null}
+            <SettingsRow label="Change plan">
+              <Button
+                type="button"
+                variant={showCompletePayment ? "outline" : "primary"}
+                size="sm"
+                disabled={checkoutLoading}
+                onClick={() => setChangePlanOpen(true)}
+              >
+                Change plan
+              </Button>
+            </SettingsRow>
+          </div>
+        </SettingsCard>
       ) : null}
 
       <StorageUsageCard />
