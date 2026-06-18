@@ -7,7 +7,7 @@ describe("resolveFinancialLandlordParty", () => {
       useBusinessForFinancials: false,
       fullName: "Alex Landlord",
       authEmail: "alex@example.com",
-      profileDetails: { phone: "082 111 2222", address: "1 Home St", avatarStorageKey: "" },
+      profileDetails: { phone: "082 111 2222", address: "1 Home St", avatarStorageKey: "", avatarIcon: "property" },
       businessDetails: {
         businessName: "ACME Props",
         landlordName: "ACME",
@@ -27,7 +27,7 @@ describe("resolveFinancialLandlordParty", () => {
       useBusinessForFinancials: true,
       fullName: "Alex Landlord",
       authEmail: "alex@example.com",
-      profileDetails: { phone: "082 111 2222", address: "1 Home St", avatarStorageKey: "" },
+      profileDetails: { phone: "082 111 2222", address: "1 Home St", avatarStorageKey: "", avatarIcon: "property" },
       businessDetails: {
         businessName: "ACME Properties",
         landlordName: "Jane ACME",
