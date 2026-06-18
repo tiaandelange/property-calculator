@@ -1,8 +1,7 @@
 import { FileText } from "lucide-react";
-import { Link } from "react-router-dom";
 import { MARKETING_SIGNUP_FREE_HREF } from "../../data/homepageMarketingContent";
 import { IconContainerByName } from "../icons";
-import { Button } from "../ui/Button";
+import { Button, ButtonLink } from "../ui/Button";
 import { Container } from "../ui/Container";
 import { ReportsLandingHeroBackdrop } from "./ReportsLandingHeroBackdrop";
 import { ReportsLandingHeroMockup } from "./ReportsLandingHeroMockup";
@@ -59,9 +58,13 @@ export function ReportsLandingHero() {
               <Button type="button" variant="primary" onClick={scrollToSamplePreview}>
                 View Sample Report
               </Button>
-              <Link to={MARKETING_SIGNUP_FREE_HREF} className="pg-btn pg-btn-secondary pg-reports-hub-landing-hero__cta-secondary">
+              <ButtonLink
+                href={MARKETING_SIGNUP_FREE_HREF}
+                variant="secondary"
+                className="pg-reports-hub-landing-hero__cta-secondary"
+              >
                 Start Free
-              </Link>
+              </ButtonLink>
             </div>
             <ul className="pg-reports-hub-landing-hero__features" aria-label="Report highlights">
               {FEATURES.map((feature) => (

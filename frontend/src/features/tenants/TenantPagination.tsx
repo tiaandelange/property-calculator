@@ -1,5 +1,5 @@
-import { ChevronLeft, ChevronRight } from "lucide-react";
 import { PAGE_SIZE } from "./tenantDirectoryUtils";
+import { PaginationNav } from "../../components/ui/PaginationNav";
 
 export function TenantPagination({
   page,
@@ -17,11 +17,6 @@ export function TenantPagination({
   const from = totalItems === 0 ? 0 : (safePage - 1) * pageSize + 1;
   const to = Math.min(safePage * pageSize, totalItems);
 
-  const pages: number[] = [];
-  const start = Math.max(1, safePage - 2);
-  const end = Math.min(totalPages, safePage + 2);
-  for (let i = start; i <= end; i += 1) pages.push(i);
-
   return (
     <footer className="pg-tenants-pagination">
       <p className="pg-tenants-pagination-summary">
@@ -29,39 +24,13 @@ export function TenantPagination({
           ? "No tenants to show"
           : `Showing ${from} to ${to} of ${totalItems} tenant${totalItems === 1 ? "" : "s"}`}
       </p>
-      {totalPages > 1 ? (
-        <nav className="pg-tenants-pagination-nav" aria-label="Tenant list pagination">
-          <button
-            type="button"
-            className="pg-tenants-page-btn"
-            disabled={safePage <= 1}
-            onClick={() => onPageChange(safePage - 1)}
-            aria-label="Previous page"
-          >
-            <ChevronLeft size={18} aria-hidden />
-          </button>
-          {pages.map((p) => (
-            <button
-              key={p}
-              type="button"
-              className={`pg-tenants-page-btn ${p === safePage ? "pg-tenants-page-btn--active" : ""}`}
-              onClick={() => onPageChange(p)}
-              aria-current={p === safePage ? "page" : undefined}
-            >
-              {p}
-            </button>
-          ))}
-          <button
-            type="button"
-            className="pg-tenants-page-btn"
-            disabled={safePage >= totalPages}
-            onClick={() => onPageChange(safePage + 1)}
-            aria-label="Next page"
-          >
-            <ChevronRight size={18} aria-hidden />
-          </button>
-        </nav>
-      ) : null}
+      <PaginationNav
+        className="pg-tenants-pagination-nav"
+        page={safePage}
+        totalPages={totalPages}
+        onPageChange={onPageChange}
+        ariaLabel="Tenant list pagination"
+      />
     </footer>
   );
 }

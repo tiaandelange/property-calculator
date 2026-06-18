@@ -1,10 +1,9 @@
 import { useCallback, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { buildReportsSampleMetrics } from "../../data/reportsSamplePreview";
 import { MARKETING_SIGNUP_FREE_HREF } from "../../data/homepageMarketingContent";
 import { Container } from "../ui/Container";
-import { Button } from "../ui/Button";
+import { Button, ButtonLink } from "../ui/Button";
 import { ReportsSampleA4Page1, ReportsSampleA4Page2, ReportsSampleA4Page3 } from "./ReportsSampleA4Pages";
 
 const PAGE_COUNT = 3;
@@ -106,9 +105,13 @@ export function ReportsSamplePreviewSection() {
         </div>
 
         <div className="pg-reports-hub-sample-cta">
-          <Link to={MARKETING_SIGNUP_FREE_HREF} className="pg-btn pg-btn-primary pg-reports-hub-sample-cta__btn">
+          <ButtonLink
+            href={MARKETING_SIGNUP_FREE_HREF}
+            variant="primary"
+            className="pg-reports-hub-sample-cta__btn"
+          >
             Start Free to Create Your Own Reports
-          </Link>
+          </ButtonLink>
         </div>
       </Container>
     </section>

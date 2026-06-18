@@ -91,9 +91,9 @@ function PricingCard({
           {cta.label}
         </ButtonLink>
         {secondary ? (
-          <Link to={secondary.href} className="pg-pricing-card__secondary-cta">
+          <ButtonLink href={secondary.href} variant="ghost" size="sm" fullWidth>
             {secondary.label}
-          </Link>
+          </ButtonLink>
         ) : null}
       </div>
     </article>

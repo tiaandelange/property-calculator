@@ -1,5 +1,4 @@
 import { FormEvent, useEffect, useState } from "react";
-import { Link } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { fetchPdfBlob, triggerPdfFileDownload } from "../api/pdfBlob";
 import { trackEvent } from "../lib/analytics/analytics";
@@ -17,7 +16,7 @@ import { Container } from "../components/ui/Container";
 import { Section } from "../components/ui/Section";
 import { Card } from "../components/ui/Card";
 import { Field, Input } from "../components/ui/Input";
-import { Button } from "../components/ui/Button";
+import { Button, ButtonLink } from "../components/ui/Button";
 
 export function OwnedInvoicesPage() {
   const [invoicePdfBusyId, setInvoicePdfBusyId] = useState<string | number | null>(null);
@@ -136,9 +135,9 @@ export function OwnedInvoicesPage() {
                     Download PDF
                   </Button>
                   <Button variant="ghost" onClick={() => markPaid(inv.id)}>Mark Paid</Button>
-                  <Link className="pg-btn pg-btn-ghost" to={`/invoices/${inv.id}`}>
+                  <ButtonLink variant="ghost" href={`/invoices/${inv.id}`}>
                     Send email
-                  </Link>
+                  </ButtonLink>
                 </div>
               </div>
             ))}

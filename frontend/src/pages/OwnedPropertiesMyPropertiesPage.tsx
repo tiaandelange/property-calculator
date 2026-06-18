@@ -4,7 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "react-router-dom";
 import { propertyApiErrorMessage } from "../api/ownedProperties";
 import { IconButton } from "../components/icons";
-import { AppListPage } from "../components/ui/AppPage";
+import { AppListPage, AppPageActions, AppPageToolbar } from "../components/ui/AppPage";
 import { Grid } from "../components/ui/Grid";
 import { Card, WorkspaceFilterCard } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
@@ -139,10 +139,11 @@ export function OwnedPropertiesMyPropertiesPage() {
       <Helmet>
         <title>My Properties | The Property Guy</title>
       </Helmet>
-      <div style={{ display: "flex", justifyContent: "flex-end", gap: 12, flexWrap: "wrap", alignItems: "center", marginTop: 8 }}>
+      <AppPageToolbar className="pg-properties-page-toolbar">
         <QueryRefreshingIndicator active={refreshing} />
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+        <AppPageActions>
           <Button
+            variant="soft"
             onClick={() => {
               if (workspaceId) {
                 void queryClient.invalidateQueries({ queryKey: queryKeys.propertiesDirectory(workspaceId) });
@@ -154,8 +155,8 @@ export function OwnedPropertiesMyPropertiesPage() {
             Refresh
           </Button>
           <AddPropertyButton variant="primary" showUsageHint />
-        </div>
-      </div>
+        </AppPageActions>
+      </AppPageToolbar>
 
       {error ? (
         <QueryErrorCard
@@ -207,7 +208,7 @@ export function OwnedPropertiesMyPropertiesPage() {
             No properties were returned for your account. If you recently reset the database or ran migrations that recreate tables, your portfolio data may have been cleared—restore from a backup if you need it. Otherwise try{" "}
             <strong>logging out and logging in again</strong> so your session matches the current user record.
           </p>
-          <AddPropertyButton variant="primary" style={{ marginTop: 12, display: "inline-block" }}>
+          <AddPropertyButton variant="primary" className="pg-properties-empty-cta">
             Add a property
           </AddPropertyButton>
         </Card>
