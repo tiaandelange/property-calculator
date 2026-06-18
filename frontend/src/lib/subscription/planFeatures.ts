@@ -222,62 +222,26 @@ export function computePlanPermissions(input: PlanPermissionsInput): PlanPermiss
   }
 
   if (!input.subscription || !hasSubscriptionRow(input.subscription.status)) {
-    if (input.isAuthenticated !== false) {
-      const starterPlan = input.plans.find((p) => p.code === PLAN_CODES.starter) ?? null;
-      const effectiveCode = PLAN_CODES.starter;
-
-      return {
-        planCode: effectiveCode,
-        planName: starterPlan?.name ?? "Free",
-        isAdmin: false,
-        isStarter: true,
-        isInvestor: false,
-        isPortfolio: false,
-        isPro: false,
-        limits: limitsFromPlan(starterPlan),
-        features: featuresFromPlan(starterPlan),
-        limitsActive: true,
-        isLegacyProfile: false,
-        isPublicGuest: false,
-        ...emptyEntitlementMeta(),
-        reportPeriodLabel: usage.period.label,
-        usage: usageSnapshot,
-        currentPlan: starterPlan
-      };
-    }
-
-    const legacyReportCap =
-      input.freeUsesRemaining != null && Number.isFinite(input.freeUsesRemaining)
-        ? Math.max(0, input.freeUsesRemaining)
-        : null;
-
-    const legacyLimits = emptyLimits();
-    if (legacyReportCap != null) {
-      legacyLimits.maxReportsPerMonth = legacyReportCap;
-    }
-
-    const legacyFeatures = emptyFeatures();
-    legacyFeatures.basicManagement = true;
-    legacyFeatures.basicCalculators = true;
+    const starterPlan = input.plans.find((p) => p.code === PLAN_CODES.starter) ?? null;
+    const effectiveCode = PLAN_CODES.starter;
 
     return {
-      planCode: null,
-      planName: null,
+      planCode: effectiveCode,
+      planName: starterPlan?.name ?? "Free",
       isAdmin: false,
-      isStarter: false,
+      isStarter: true,
       isInvestor: false,
       isPortfolio: false,
       isPro: false,
-      limits: legacyLimits,
-      features: legacyFeatures,
-      limitsActive: legacyReportCap != null,
-      isLegacyProfile: true,
+      limits: limitsFromPlan(starterPlan),
+      features: featuresFromPlan(starterPlan),
+      limitsActive: true,
+      isLegacyProfile: false,
       isPublicGuest: false,
       ...emptyEntitlementMeta(),
-      reportPeriodLabel:
-        legacyReportCap != null ? "Free calculator reports remaining" : usage.period.label,
+      reportPeriodLabel: usage.period.label,
       usage: usageSnapshot,
-      currentPlan: null
+      currentPlan: starterPlan
     };
   }
 
