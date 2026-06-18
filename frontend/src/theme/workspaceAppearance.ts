@@ -21,8 +21,8 @@ export function applyDocumentAccent(accent: AccentColor): void {
   document.documentElement.setAttribute("data-accent", accent);
 }
 
-export function applyDocumentDensity(density: DensityPreference): void {
-  document.documentElement.setAttribute("data-density", density);
+export function applyDocumentDensity(_density: DensityPreference): void {
+  document.documentElement.setAttribute("data-density", "comfortable");
 }
 
 /** Public marketing pages always use the light marketing palette regardless of user prefs. */

@@ -14,12 +14,14 @@ export function normalizeThemePreference(value: unknown): ThemePreference {
   return "system";
 }
 
+export function getSystemTheme(): UiColorScheme {
+  if (typeof window === "undefined") return "dark";
+  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+}
+
 export function resolveEffectiveUiColorScheme(pref: ThemePreference): UiColorScheme {
   if (pref === "light" || pref === "dark") return pref;
-  if (typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: light)").matches) {
-    return "light";
-  }
-  return "dark";
+  return getSystemTheme();
 }
 
 /** Apply palette to `document.documentElement`. */
@@ -27,8 +29,10 @@ export function applyDocumentTheme(scheme: UiColorScheme): void {
   const html = document.documentElement;
   if (scheme === "light") {
     html.setAttribute("data-theme", "light");
+    html.classList.remove("dark");
   } else {
     html.removeAttribute("data-theme");
+    html.classList.add("dark");
   }
 }
 
@@ -68,7 +72,7 @@ export function readStoredUiColorScheme(): UiColorScheme | null {
 
 export function subscribeToSystemTheme(onChange: () => void): () => void {
   if (typeof window === "undefined") return () => {};
-  const mq = window.matchMedia("(prefers-color-scheme: light)");
+  const mq = window.matchMedia("(prefers-color-scheme: dark)");
   const handler = () => onChange();
   mq.addEventListener("change", handler);
   return () => mq.removeEventListener("change", handler);

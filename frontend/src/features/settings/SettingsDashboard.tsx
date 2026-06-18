@@ -57,6 +57,7 @@ export function SettingsDashboard() {
   const [email, setEmail] = useState("");
   const [fullName, setFullName] = useState("");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [avatarIcon, setAvatarIcon] = useState<string | null>(null);
   const [role, setRole] = useState("");
   const [editProfileOpen, setEditProfileOpen] = useState(false);
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
@@ -95,6 +96,7 @@ export function SettingsDashboard() {
       setEmail(profileQuery.data.email);
       setFullName(profileQuery.data.name ?? "");
       setAvatarUrl(profileQuery.data.avatarUrl ?? null);
+      setAvatarIcon(profileQuery.data.profileDetails?.avatarIcon ?? null);
       setRole(profileQuery.data.role ?? "USER");
     }
   }, [profileQuery.data]);
@@ -221,10 +223,6 @@ export function SettingsDashboard() {
     [searchParams, setSearchParams]
   );
 
-  const goToSecurity = useCallback(() => {
-    selectSection("security");
-  }, [selectSection]);
-
   const sectionNeedsDraft = DRAFT_SECTIONS.includes(activeSection);
   const sectionBlockedBySettings = sectionNeedsDraft && !draft && Boolean(settingsLoadError);
 
@@ -315,6 +313,7 @@ export function SettingsDashboard() {
                       email={email}
                       fullName={fullName}
                       avatarUrl={avatarUrl}
+                      avatarIcon={avatarIcon}
                       role={role}
                       freeUsesRemaining={profile?.free_uses_remaining}
                       settingsLoadError={settingsLoadError}
@@ -326,7 +325,6 @@ export function SettingsDashboard() {
                       onEditProfile={() => setEditProfileOpen(true)}
                       onOpenInvoiceBanking={() => setInvoiceBankingOpen(true)}
                       onOpenChangePassword={() => setChangePasswordOpen(true)}
-                      onGoToSecurity={goToSecurity}
                     />
                   )}
                 </SettingsDetailPanel>

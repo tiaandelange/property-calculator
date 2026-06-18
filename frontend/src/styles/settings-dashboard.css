@@ -1370,3 +1370,167 @@
 [data-density="compact"] .pg-settings-field {
   margin-bottom: 10px;
 }
+
+/* Collapsible settings panels */
+.pg-settings-panel-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.pg-settings-collapsible {
+  border: 1px solid var(--border-soft, var(--border));
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--surface-elevated, var(--surface));
+}
+
+.pg-settings-collapsible__trigger {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 14px;
+  border: none;
+  background: transparent;
+  color: var(--text-primary, var(--text));
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+}
+
+.pg-settings-collapsible__trigger:hover {
+  background: var(--surface-hover, rgba(255, 255, 255, 0.04));
+}
+
+.pg-settings-collapsible__title {
+  font-weight: 600;
+  font-size: 0.9375rem;
+  flex-shrink: 0;
+}
+
+.pg-settings-collapsible__summary {
+  margin-left: auto;
+  font-size: 0.8125rem;
+  color: var(--text-secondary, var(--text2));
+  font-family: ui-monospace, monospace;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 45%;
+}
+
+.pg-settings-collapsible__chevron {
+  flex-shrink: 0;
+  color: var(--text-secondary, var(--text2));
+  transition: transform 0.15s ease;
+}
+
+.pg-settings-collapsible--open .pg-settings-collapsible__chevron {
+  transform: rotate(180deg);
+}
+
+.pg-settings-collapsible__panel {
+  padding: 0 14px 14px;
+  border-top: 1px solid var(--border-soft, var(--border));
+}
+
+.pg-settings-panel-rows--nested {
+  padding-top: 12px;
+}
+
+.pg-settings-panel-value--mono {
+  font-family: ui-monospace, monospace;
+  font-size: 0.875rem;
+}
+
+/* Storage usage */
+.pg-settings-storage-usage {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 4px;
+}
+
+.pg-settings-storage-usage__row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 0.875rem;
+}
+
+.pg-settings-storage-usage__label {
+  color: var(--text-secondary, var(--text2));
+}
+
+.pg-settings-storage-usage__value {
+  font-weight: 600;
+}
+
+.pg-settings-storage-usage__bar {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--border-soft, var(--border));
+  overflow: hidden;
+}
+
+.pg-settings-storage-usage__bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--accent, var(--primary));
+  transition: width 0.2s ease;
+}
+
+.pg-settings-storage-usage__hint {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--text-secondary, var(--text2));
+  line-height: 1.45;
+}
+
+/* Profile avatar icon picker */
+.pg-edit-profile-avatar-icons-label {
+  margin: 0 0 8px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-secondary, var(--text2));
+}
+
+.pg-edit-profile-avatar-icons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.pg-edit-profile-avatar-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 1px solid var(--border-soft, var(--border));
+  border-radius: 10px;
+  background: var(--surface);
+  cursor: pointer;
+  color: var(--text-secondary, var(--text2));
+}
+
+.pg-edit-profile-avatar-icon-btn:hover {
+  border-color: var(--accent, var(--primary));
+}
+
+.pg-edit-profile-avatar-icon-btn--active {
+  border-color: var(--accent, var(--primary));
+  background: color-mix(in srgb, var(--accent, var(--primary)) 12%, transparent);
+  color: var(--accent, var(--primary));
+}
+
+@media (max-width: 768px) {
+  .pg-settings-collapsible__summary {
+    max-width: 35%;
+  }
+}

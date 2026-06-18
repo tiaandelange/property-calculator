@@ -28,63 +28,63 @@ export const SETTINGS_SECTIONS: SettingsSectionConfig[] = [
   {
     id: "general",
     title: "General",
-    description: "Workspace defaults and regional preferences.",
+    description: "",
     icon: "sliders",
     supportsSave: true
   },
   {
     id: "account",
-    title: "Account & Profile",
-    description: "Identity, email and workspace role.",
+    title: "Account",
+    description: "",
     icon: "profile",
     supportsSave: false
   },
   {
     id: "appearance",
-    title: "Appearance",
-    description: "Theme, accent colour and density.",
+    title: "Branding and Appearance",
+    description: "",
     icon: "palette",
     supportsSave: true
   },
   {
     id: "subscription",
-    title: "Subscription & Billing",
-    description: "Plan, usage limits and billing status.",
+    title: "Subscription and Billing",
+    description: "",
     icon: "payments",
     supportsSave: false
   },
   {
     id: "invoice-banking",
-    title: "Invoice & Banking Details",
-    description: "Default invoice and banking information.",
+    title: "Invoice and Statement Settings",
+    description: "",
     icon: "invoices",
     supportsSave: true
   },
   {
     id: "notifications",
-    title: "Notifications",
-    description: "Email and app notification preferences.",
+    title: "Email and Notifications",
+    description: "",
     icon: "bell",
     supportsSave: true
   },
   {
     id: "security",
     title: "Security",
-    description: "Password and account security.",
+    description: "",
     icon: "shield",
     supportsSave: false
   },
   {
     id: "data-export",
-    title: "Data & Export",
-    description: "Download or manage workspace data.",
+    title: "Data and Exports",
+    description: "",
     icon: "reports",
     supportsSave: false
   },
   {
     id: "integrations",
     title: "Integrations",
-    description: "Connected services and future integrations.",
+    description: "",
     icon: "plug",
     supportsSave: false
   }

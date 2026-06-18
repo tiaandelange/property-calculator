@@ -4,6 +4,12 @@ import { Button } from "../../components/ui/Button";
 import { Field, Input } from "../../components/ui/Input";
 import { supabase } from "../../lib/supabaseClient";
 
+import { AppIcon } from "../../components/icons";
+import {
+  normalizeProfileAvatarIcon,
+  profileAvatarIconName
+} from "./profileAvatarIcons";
+
 export function profileInitials(name: string | null | undefined, email: string): string {
   const n = (name ?? "").trim();
   if (n) {
@@ -12,6 +18,33 @@ export function profileInitials(name: string | null | undefined, email: string):
     return parts[0].slice(0, 2).toUpperCase();
   }
   return email.slice(0, 2).toUpperCase();
+}
+
+export function ProfileAvatarDisplay({
+  avatarUrl,
+  avatarIcon,
+  fullName,
+  email,
+  className = ""
+}: {
+  avatarUrl?: string | null;
+  avatarIcon?: string | null;
+  fullName?: string | null;
+  email: string;
+  className?: string;
+}) {
+  if (avatarUrl) {
+    return <img src={avatarUrl} alt="" className={`pg-edit-profile-avatar-img ${className}`.trim()} />;
+  }
+  const iconId = normalizeProfileAvatarIcon(avatarIcon);
+  return (
+    <AppIcon
+      name={profileAvatarIconName(iconId)}
+      size="md"
+      className={className}
+      aria-hidden
+    />
+  );
 }
 
 export function SettingsToggle({

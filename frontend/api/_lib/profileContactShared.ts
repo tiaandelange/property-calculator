@@ -6,6 +6,7 @@ export type NormalizedProfileDetails = {
   phone: string;
   address: string;
   avatarStorageKey: string;
+  avatarIcon: string;
 };
 
 export type NormalizedBusinessDetails = {
@@ -22,13 +23,15 @@ function str(v: unknown): string {
 
 export function normalizeProfileDetails(raw: unknown): NormalizedProfileDetails {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
-    return { phone: "", address: "", avatarStorageKey: "" };
+    return { phone: "", address: "", avatarStorageKey: "", avatarIcon: "property" };
   }
   const d = raw as Record<string, unknown>;
+  const icon = str(d.avatarIcon ?? d.avatar_icon) || "property";
   return {
     phone: str(d.phone ?? d.cell ?? d.cellNumber ?? d.cell_number),
     address: str(d.address),
-    avatarStorageKey: str(d.avatarStorageKey ?? d.avatar_storage_key)
+    avatarStorageKey: str(d.avatarStorageKey ?? d.avatar_storage_key),
+    avatarIcon: icon
   };
 }
 
@@ -106,7 +109,8 @@ export function profileDetailsToPayload(details: NormalizedProfileDetails): Reco
   return {
     phone: details.phone,
     address: details.address,
-    avatarStorageKey: details.avatarStorageKey
+    avatarStorageKey: details.avatarStorageKey,
+    avatarIcon: details.avatarIcon
   };
 }
 

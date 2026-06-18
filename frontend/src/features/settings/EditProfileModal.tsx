@@ -12,6 +12,8 @@ import {
   profileContactFormToPayloads,
   type ProfileContactFormState
 } from "./profileContactForm";
+import { PROFILE_AVATAR_ICONS } from "./profileAvatarIcons";
+import { ProfileAvatarDisplay } from "./settingsShared";
 
 function SettingsToggle({
   checked,
@@ -168,10 +170,31 @@ export function EditProfileModal({ open, onClose, onSaved }: Props) {
                 {avatarPreview ? (
                   <img src={avatarPreview} alt="" className="pg-edit-profile-avatar-img" />
                 ) : (
-                  <span aria-hidden>{(form.fullName || loginEmail).slice(0, 2).toUpperCase()}</span>
+                  <ProfileAvatarDisplay
+                    avatarIcon={form.avatarIcon}
+                    fullName={form.fullName}
+                    email={loginEmail}
+                  />
                 )}
               </div>
               <div>
+                <p className="pg-edit-profile-avatar-icons-label">Icon avatar</p>
+                <div className="pg-edit-profile-avatar-icons" role="list">
+                  {PROFILE_AVATAR_ICONS.map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      role="listitem"
+                      className={`pg-edit-profile-avatar-icon-btn${form.avatarIcon === item.id ? " pg-edit-profile-avatar-icon-btn--active" : ""}`}
+                      aria-label={item.label}
+                      aria-pressed={form.avatarIcon === item.id}
+                      disabled={saving || uploadingAvatar}
+                      onClick={() => patch({ avatarIcon: item.id })}
+                    >
+                      <ProfileAvatarDisplay avatarIcon={item.id} email="" />
+                    </button>
+                  ))}
+                </div>
                 <input
                   ref={fileRef}
                   type="file"

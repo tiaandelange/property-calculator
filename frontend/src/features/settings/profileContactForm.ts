@@ -6,12 +6,18 @@ import {
   type NormalizedBusinessDetails,
   type NormalizedProfileDetails
 } from "../../../api/_lib/profileContactShared";
+import {
+  DEFAULT_PROFILE_AVATAR_ICON,
+  normalizeProfileAvatarIcon,
+  type ProfileAvatarIconId
+} from "./profileAvatarIcons";
 
 export type ProfileContactFormState = {
   fullName: string;
   personalPhone: string;
   personalAddress: string;
   avatarStorageKey: string;
+  avatarIcon: ProfileAvatarIconId;
   useBusinessForFinancials: boolean;
   businessName: string;
   landlordName: string;
@@ -26,6 +32,7 @@ export function emptyProfileContactForm(email = ""): ProfileContactFormState {
     personalPhone: "",
     personalAddress: "",
     avatarStorageKey: "",
+    avatarIcon: DEFAULT_PROFILE_AVATAR_ICON,
     useBusinessForFinancials: false,
     businessName: "",
     landlordName: "",
@@ -51,6 +58,7 @@ export function profileContactFormFromMe(
     personalPhone: p.phone,
     personalAddress: p.address,
     avatarStorageKey: p.avatarStorageKey,
+    avatarIcon: normalizeProfileAvatarIcon(p.avatarIcon),
     useBusinessForFinancials,
     businessName: b.businessName,
     landlordName: b.landlordName,
@@ -64,7 +72,8 @@ export function profileContactFormToPayloads(form: ProfileContactFormState) {
   const profileDetails = profileDetailsToPayload({
     phone: form.personalPhone.trim(),
     address: form.personalAddress.trim(),
-    avatarStorageKey: form.avatarStorageKey.trim()
+    avatarStorageKey: form.avatarStorageKey.trim(),
+    avatarIcon: form.avatarIcon
   });
   const businessDetails = businessDetailsToPayload({
     businessName: form.businessName.trim(),

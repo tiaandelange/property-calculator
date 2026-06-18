@@ -30,6 +30,7 @@ import {
   type SubscriptionFeatureRow
 } from "./subscriptionDashboardFeatures";
 import { ChangePlanModal } from "./ChangePlanModal";
+import { StorageUsageCard } from "./StorageUsageCard";
 
 function UsageMeter({
   label,
@@ -437,6 +438,8 @@ export function SubscriptionSettingsSection({ freeUsesRemaining: _freeUsesRemain
           </p>
         </div>
       ) : null}
+
+      <StorageUsageCard />
 
       <ChangePlanModal
         open={changePlanOpen}
