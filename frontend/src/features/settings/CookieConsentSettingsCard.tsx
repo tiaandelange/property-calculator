@@ -25,21 +25,17 @@ export function CookieConsentSettingsCard() {
     setBannerPending(true);
   }
 
-  const label =
+  const statusLabel =
     choice === "accepted"
-      ? "Analytics cookies accepted"
+      ? "Accepted"
       : choice === "rejected"
-        ? "Analytics cookies rejected"
-        : "No preference saved";
+        ? "Rejected"
+        : "Not set";
 
   return (
-    <SettingsRow
-      label="Cookie & analytics preferences"
-      description={`Usage analytics via Google Tag Manager. Current: ${label}${
-        bannerPending ? " — reload to see the consent banner again." : ""
-      }`}
-    >
+    <SettingsRow label="Cookie and analytics">
       <div className="pg-settings-panel-inline-actions">
+        <span className="pg-settings-badge pg-settings-badge--muted">{statusLabel}</span>
         <Button type="button" variant="outline" size="sm" onClick={() => apply("accepted")}>
           Accept
         </Button>
@@ -50,6 +46,9 @@ export function CookieConsentSettingsCard() {
           <Button type="button" variant="ghost" size="sm" onClick={handleReset}>
             Reset
           </Button>
+        ) : null}
+        {bannerPending ? (
+          <span className="pg-settings-panel-muted">Reload to see the banner again.</span>
         ) : null}
       </div>
     </SettingsRow>

@@ -9,10 +9,10 @@ export const INVOICE_NUMBER_FORMAT_OPTIONS: Array<{
   key: InvoiceNumberFormatKey;
   label: string;
 }> = [
-  { key: "INV-YY-###", label: "INV-YY-### (year + sequence)" },
-  { key: "INV-####", label: "INV-#### (sequence only)" },
-  { key: "INV-YYMM-###", label: "INV-YYMM-### (year-month + sequence)" },
-  { key: "INV-YYYY-###", label: "INV-YYYY-### (full year + sequence)" }
+  { key: "INV-YY-###", label: "INV-YY-###" },
+  { key: "INV-####", label: "INV-####" },
+  { key: "INV-YYMM-###", label: "INV-YYMM-###" },
+  { key: "INV-YYYY-###", label: "INV-YYYY-###" }
 ];
 
 const DEFAULT_DB_FORMAT = "INV-YY-{####}";

@@ -30,6 +30,8 @@ import {
   type SubscriptionFeatureRow
 } from "./subscriptionDashboardFeatures";
 import { ChangePlanModal } from "./ChangePlanModal";
+import { SettingsCard } from "./components/SettingsCard";
+import { SettingsSectionStack } from "./components/SettingsSectionStack";
 import { StorageUsageCard } from "./StorageUsageCard";
 
 function UsageMeter({
@@ -235,7 +237,7 @@ export function SubscriptionSettingsSection({ freeUsesRemaining: _freeUsesRemain
   const monthlyCurrency = effectivePlan?.currency ?? selectedPlan?.currency ?? "ZAR";
 
   return (
-    <div className="pg-settings-subscription">
+    <SettingsSectionStack className="pg-settings-subscription">
       <div className="pg-settings-subscription-notice" role="status">
         {isPendingPayment ? (
           <>
@@ -260,7 +262,8 @@ export function SubscriptionSettingsSection({ freeUsesRemaining: _freeUsesRemain
         </div>
       ) : null}
 
-      <div className="pg-settings-subscription-current">
+      <SettingsCard className="pg-settings-subscription-current">
+        <div className="pg-settings-panel-rows">
         <div className="pg-settings-row">
           <div>
             <div className="pg-settings-row-label">Current plan</div>
@@ -344,10 +347,11 @@ export function SubscriptionSettingsSection({ freeUsesRemaining: _freeUsesRemain
             <span>{planApplicationLinksLimitLabel(effectivePlan)}</span>
           </div>
         ) : null}
-      </div>
+        </div>
+      </SettingsCard>
 
       {usage ? (
-        <div className="pg-settings-subscription-usage">
+        <SettingsCard className="pg-settings-subscription-usage">
           <h3 className="pg-settings-subscription-usage__title">Current usage</h3>
           <p className="pg-settings-subscription-usage__period">
             {usage.period.label}: {formatUsagePeriodRange(usage.period)}
@@ -363,15 +367,15 @@ export function SubscriptionSettingsSection({ freeUsesRemaining: _freeUsesRemain
             used={usage.applicationLinksActive}
             limit={applicationLinkLimit}
           />
-        </div>
+        </SettingsCard>
       ) : null}
 
-      <div className="pg-settings-subscription-features-panel">
+      <SettingsCard className="pg-settings-subscription-features-panel">
         <h3 className="pg-settings-subscription-features-panel__title">
           {isPendingPayment ? "Current access (Free)" : "Features on your plan"}
         </h3>
         <FeatureChecklist rows={featureRows} />
-      </div>
+      </SettingsCard>
 
       {planMessage ? (
         <div className={`pg-alert${planMessage.kind === "error" ? " pg-alert-error" : ""}`}>
@@ -449,6 +453,6 @@ export function SubscriptionSettingsSection({ freeUsesRemaining: _freeUsesRemain
         currentPlanCode={permissions.planCode}
         subscriptionLoading={isLoading}
       />
-    </div>
+    </SettingsSectionStack>
   );
 }

@@ -23,6 +23,7 @@ export function SettingsRow({
   return (
     <div
       className={[
+        "pg-settings-field-row",
         "pg-settings-panel-row",
         danger ? "pg-settings-panel-row--danger" : "",
         className

@@ -15,6 +15,7 @@ import { SettingsDetailPanel } from "./SettingsDetailPanel";
 import { SettingsNav } from "./SettingsNav";
 import { SettingsSectionContent } from "./SettingsSectionContent";
 import { ChangePasswordModal } from "./settingsShared";
+import { SettingsSaveBar } from "./components/SettingsSaveBar";
 import type { UserSettings } from "./settingsTypes";
 import { previewWorkspaceAppearance } from "../../theme/workspaceAppearance";
 import {
@@ -260,12 +261,14 @@ export function SettingsDashboard() {
     );
   }
 
-  const footer = activeConfig.supportsSave && draft ? (
+  const showSaveBar = activeConfig.supportsSave && draft && dirty;
+
+  const saveBar = showSaveBar ? (
     <>
-      <Button variant="soft" onClick={cancel} disabled={!dirty || saving}>
+      <Button variant="soft" onClick={cancel} disabled={saving}>
         Cancel
       </Button>
-      <Button onClick={() => void save()} loading={saving} disabled={!dirty}>
+      <Button onClick={() => void save()} loading={saving}>
         Save changes
       </Button>
     </>
@@ -281,7 +284,14 @@ export function SettingsDashboard() {
                 <SettingsNav sections={SETTINGS_SECTIONS} activeId={activeSection} onSelect={selectSection} />
               ) : null}
 
-              <div className="pg-settings-panel__content">
+              <div
+                className={[
+                  "pg-settings-panel__content",
+                  showSaveBar ? "pg-settings-panel__content--save-bar" : ""
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
+              >
                 {isMobile ? (
                   <SettingsNav
                     sections={SETTINGS_SECTIONS}
@@ -329,10 +339,10 @@ export function SettingsDashboard() {
                   )}
                 </SettingsDetailPanel>
 
-                {footer ? (
+                {saveBar ? (
                   <>
-                    <div className="pg-settings-panel__footer pg-settings-footer-desktop">{footer}</div>
-                    <div className="pg-settings-panel__footer pg-settings-footer-mobile">{footer}</div>
+                    <SettingsSaveBar mobile={false}>{saveBar}</SettingsSaveBar>
+                    <SettingsSaveBar mobile>{saveBar}</SettingsSaveBar>
                   </>
                 ) : null}
               </div>

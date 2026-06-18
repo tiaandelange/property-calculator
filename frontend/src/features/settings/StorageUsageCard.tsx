@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { authFetch } from "../../lib/authFetch";
 import { formatStorageBytes } from "../../lib/billing/planStorageLimits";
-import { SettingsCollapsible } from "./SettingsCollapsible";
+import { SettingsAccordion } from "./components/SettingsAccordion";
 
 type StorageUsageResponse = {
   usedBytes: number;
@@ -28,7 +28,7 @@ export function StorageUsageCard() {
       : undefined;
 
   return (
-    <SettingsCollapsible title="Storage usage" summary={summary} defaultOpen={false}>
+    <SettingsAccordion title="Storage usage" summary={summary} defaultOpen={false}>
       {isLoading ? (
         <p className="pg-settings-panel-muted">Loading storage…</p>
       ) : isError ? (
@@ -77,6 +77,6 @@ export function StorageUsageCard() {
       ) : (
         <p className="pg-settings-panel-muted">Storage usage is not available yet.</p>
       )}
-    </SettingsCollapsible>
+    </SettingsAccordion>
   );
 }

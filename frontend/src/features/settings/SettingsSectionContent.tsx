@@ -1,7 +1,7 @@
+import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { AppIcon } from "../../components/icons";
 import { Button } from "../../components/ui/Button";
-import { Select } from "../../components/ui/Input";
 import {
   dbStringToFormatKey,
   formatKeyToDbString,
@@ -11,7 +11,13 @@ import {
 } from "../../lib/billing/invoiceNumberFormat";
 import { ApplicantFormTemplateSettingsCard } from "../applicants/ApplicantFormTemplateSettingsCard";
 import { CookieConsentSettingsCard } from "./CookieConsentSettingsCard";
-import { SettingsCollapsible } from "./SettingsCollapsible";
+import {
+  SettingsAccordion,
+  SettingsCard,
+  SettingsFieldInput,
+  SettingsFieldSelect,
+  SettingsSectionStack
+} from "./components";
 import { SettingsRow } from "./SettingsRow";
 import { SettingsSectionError } from "./SettingsSectionError";
 import { StorageUsageCard } from "./StorageUsageCard";
@@ -73,6 +79,14 @@ function DraftRequired({
   return <SettingsSectionError message={error} onRetry={onRetry} retrying={retrying} />;
 }
 
+function SettingsRows({ children }: { children: ReactNode }) {
+  return (
+    <SettingsCard>
+      <div className="pg-settings-panel-rows">{children}</div>
+    </SettingsCard>
+  );
+}
+
 export function SettingsSectionContent({
   sectionId,
   draft,
@@ -105,8 +119,8 @@ export function SettingsSectionContent({
         );
       }
       return (
-        <div className="pg-settings-panel-stack">
-          <div className="pg-settings-panel-rows">
+        <SettingsSectionStack>
+          <SettingsRows>
             <SettingsRow label="Avatar">
               <div className="pg-settings-avatar pg-settings-avatar--compact" aria-hidden>
                 <ProfileAvatarDisplay
@@ -141,9 +155,9 @@ export function SettingsSectionContent({
                 Open details
               </Button>
             </SettingsRow>
-          </div>
+          </SettingsRows>
           <StorageUsageCard />
-        </div>
+        </SettingsSectionStack>
       );
 
     case "appearance":
@@ -153,45 +167,46 @@ export function SettingsSectionContent({
         );
       }
       return (
-        <div className="pg-settings-panel-rows">
-          <SettingsRow label="Theme" htmlFor="settings-theme">
-            <Select
-              id="settings-theme"
-              className="pg-settings-panel-select"
-              value={draft.themePreference}
-              onChange={(e) => patchDraft({ themePreference: e.target.value as ThemePreference })}
-            >
-              {(["light", "dark", "system"] as ThemePreference[]).map((t) => (
-                <option key={t} value={t}>
-                  {THEME_LABELS[t]}
-                </option>
-              ))}
-            </Select>
-          </SettingsRow>
-          <SettingsRow label="Accent colour">
-            <div className="pg-settings-accent-picker">
-              <span className="pg-settings-accent-picker__label">
-                <span
-                  className={`pg-settings-accent-dot pg-settings-accent-dot--${draft.accentColor} pg-settings-accent-dot--inline`}
-                  aria-hidden
-                />
-                {ACCENT_LABELS[draft.accentColor]}
-              </span>
-              <div className="pg-settings-accent-dots pg-settings-accent-dots--compact">
-                {(["purple", "blue", "green", "orange", "red", "teal"] as AccentColor[]).map((c) => (
-                  <button
-                    key={c}
-                    type="button"
-                    className={`pg-settings-accent-dot pg-settings-accent-dot--${c}${draft.accentColor === c ? " pg-settings-accent-dot--active" : ""}`}
-                    aria-label={ACCENT_LABELS[c]}
-                    aria-pressed={draft.accentColor === c}
-                    onClick={() => patchDraft({ accentColor: c })}
-                  />
+        <SettingsSectionStack>
+          <SettingsRows>
+            <SettingsRow label="Theme" htmlFor="settings-theme">
+              <SettingsFieldSelect
+                id="settings-theme"
+                value={draft.themePreference}
+                onChange={(e) => patchDraft({ themePreference: e.target.value as ThemePreference })}
+              >
+                {(["light", "dark", "system"] as ThemePreference[]).map((t) => (
+                  <option key={t} value={t}>
+                    {THEME_LABELS[t]}
+                  </option>
                 ))}
+              </SettingsFieldSelect>
+            </SettingsRow>
+            <SettingsRow label="Accent colour">
+              <div className="pg-settings-accent-picker">
+                <span className="pg-settings-accent-picker__label">
+                  <span
+                    className={`pg-settings-accent-dot pg-settings-accent-dot--${draft.accentColor} pg-settings-accent-dot--inline`}
+                    aria-hidden
+                  />
+                  {ACCENT_LABELS[draft.accentColor]}
+                </span>
+                <div className="pg-settings-accent-dots pg-settings-accent-dots--compact">
+                  {(["purple", "blue", "green", "orange", "red", "teal"] as AccentColor[]).map((c) => (
+                    <button
+                      key={c}
+                      type="button"
+                      className={`pg-settings-accent-dot pg-settings-accent-dot--${c}${draft.accentColor === c ? " pg-settings-accent-dot--active" : ""}`}
+                      aria-label={ACCENT_LABELS[c]}
+                      aria-pressed={draft.accentColor === c}
+                      onClick={() => patchDraft({ accentColor: c })}
+                    />
+                  ))}
+                </div>
               </div>
-            </div>
-          </SettingsRow>
-          <SettingsCollapsible title="PDF document colour" defaultOpen={false}>
+            </SettingsRow>
+          </SettingsRows>
+          <SettingsAccordion title="PDF document colour" defaultOpen={false}>
             <SettingsRow label="Use accent on PDFs">
               <SettingsToggle
                 label="PDF branding"
@@ -199,8 +214,8 @@ export function SettingsSectionContent({
                 onChange={(v) => patchDraft({ pdfBrandingEnabled: v })}
               />
             </SettingsRow>
-          </SettingsCollapsible>
-        </div>
+          </SettingsAccordion>
+        </SettingsSectionStack>
       );
 
     case "subscription":
@@ -216,8 +231,8 @@ export function SettingsSectionContent({
         const formatKey = dbStringToFormatKey(draft.invoiceNumberFormat);
         const formatPreview = previewInvoiceNumber(formatKey);
         return (
-          <div className="pg-settings-panel-stack">
-            <div className="pg-settings-panel-rows">
+          <SettingsSectionStack>
+            <SettingsRows>
               <SettingsRow label="Banking and invoice details">
                 <Button variant="outline" size="sm" onClick={onOpenInvoiceBanking}>
                   Edit details
@@ -231,24 +246,23 @@ export function SettingsSectionContent({
                 />
               </SettingsRow>
               <SettingsRow label="Generate before due date" htmlFor="settings-inv-days">
-                <input
+                <SettingsFieldInput
                   id="settings-inv-days"
                   type="number"
                   min={0}
                   max={31}
-                  className="pg-settings-panel-input pg-settings-panel-input--narrow"
+                  narrow
                   value={draft.invoiceGenerateDaysBeforeDue}
                   onChange={(e) => patchDraft({ invoiceGenerateDaysBeforeDue: Number(e.target.value) })}
                 />
               </SettingsRow>
-            </div>
+            </SettingsRows>
 
-            <SettingsCollapsible title="Invoice numbering" summary={formatPreview} defaultOpen={false}>
+            <SettingsAccordion title="Invoice numbering" summary={formatPreview} defaultOpen={false}>
               <div className="pg-settings-panel-rows pg-settings-panel-rows--nested">
                 <SettingsRow label="Format" htmlFor="settings-inv-format">
-                  <Select
+                  <SettingsFieldSelect
                     id="settings-inv-format"
-                    className="pg-settings-panel-select"
                     value={formatKey}
                     onChange={(e) =>
                       patchDraft({
@@ -261,26 +275,26 @@ export function SettingsSectionContent({
                         {o.label}
                       </option>
                     ))}
-                  </Select>
+                  </SettingsFieldSelect>
                 </SettingsRow>
                 <SettingsRow label="Preview">
                   <span className="pg-settings-panel-value pg-settings-panel-value--mono">{formatPreview}</span>
                 </SettingsRow>
-                <p className="pg-settings-panel-muted">
-                  The next number is assigned automatically from your invoice history when a new invoice is created.
+                <p className="pg-settings-panel-muted pg-settings-panel-muted--nested">
+                  Next number is assigned from your invoice history when a new invoice is created.
                 </p>
               </div>
-            </SettingsCollapsible>
+            </SettingsAccordion>
 
-            <SettingsCollapsible title="Reminders and editing rules" defaultOpen={false}>
+            <SettingsAccordion title="Reminders and editing rules" defaultOpen={false}>
               <div className="pg-settings-panel-rows pg-settings-panel-rows--nested">
                 <SettingsRow label="Payment reminder timing" htmlFor="settings-reminder-days">
-                  <input
+                  <SettingsFieldInput
                     id="settings-reminder-days"
                     type="number"
                     min={0}
                     max={31}
-                    className="pg-settings-panel-input pg-settings-panel-input--narrow"
+                    narrow
                     value={draft.paymentReminderDaysBeforeDue}
                     onChange={(e) => patchDraft({ paymentReminderDaysBeforeDue: Number(e.target.value) })}
                   />
@@ -293,8 +307,8 @@ export function SettingsSectionContent({
                   />
                 </SettingsRow>
               </div>
-            </SettingsCollapsible>
-          </div>
+            </SettingsAccordion>
+          </SettingsSectionStack>
         );
       }
 
@@ -305,25 +319,23 @@ export function SettingsSectionContent({
         );
       }
       return (
-        <div className="pg-settings-panel-stack">
-          <div className="pg-settings-panel-rows">
+        <SettingsSectionStack>
+          <SettingsRows>
             <SettingsRow label="Workspace name">
               <span className="pg-settings-panel-value">{fullName || email || "—"}</span>
             </SettingsRow>
             <SettingsRow label="Default currency" htmlFor="settings-currency">
-              <Select
+              <SettingsFieldSelect
                 id="settings-currency"
-                className="pg-settings-panel-select"
                 value={draft.defaultCurrency}
                 onChange={(e) => patchDraft({ defaultCurrency: e.target.value })}
               >
-                <option value="ZAR">ZAR — South African Rand</option>
-              </Select>
+                <option value="ZAR">ZAR</option>
+              </SettingsFieldSelect>
             </SettingsRow>
             <SettingsRow label="Default dashboard view" htmlFor="settings-statement-filter">
-              <Select
+              <SettingsFieldSelect
                 id="settings-statement-filter"
-                className="pg-settings-panel-select"
                 value={draft.statementDefaultFilter}
                 onChange={(e) =>
                   patchDraft({ statementDefaultFilter: e.target.value as UserSettings["statementDefaultFilter"] })
@@ -334,37 +346,36 @@ export function SettingsSectionContent({
                     {o.label}
                   </option>
                 ))}
-              </Select>
+              </SettingsFieldSelect>
             </SettingsRow>
-          </div>
+          </SettingsRows>
 
-          <SettingsCollapsible title="Property defaults" defaultOpen={false}>
+          <SettingsAccordion title="Property defaults" defaultOpen={false}>
             <div className="pg-settings-panel-rows pg-settings-panel-rows--nested">
               <SettingsRow label="Lease default term" htmlFor="settings-lease-term">
-                <input
+                <SettingsFieldInput
                   id="settings-lease-term"
                   type="number"
                   min={1}
-                  className="pg-settings-panel-input pg-settings-panel-input--narrow"
+                  narrow
                   value={draft.leaseDefaultTermMonths}
                   onChange={(e) => patchDraft({ leaseDefaultTermMonths: Number(e.target.value) })}
                 />
               </SettingsRow>
               <SettingsRow label="Rent due day default" htmlFor="settings-rent-due">
-                <input
+                <SettingsFieldInput
                   id="settings-rent-due"
                   type="number"
                   min={1}
                   max={28}
-                  className="pg-settings-panel-input pg-settings-panel-input--narrow"
+                  narrow
                   value={draft.defaultRentDueDay}
                   onChange={(e) => patchDraft({ defaultRentDueDay: Number(e.target.value) })}
                 />
               </SettingsRow>
               <SettingsRow label="Recurring expense category" htmlFor="settings-expense-cat">
-                <Select
+                <SettingsFieldSelect
                   id="settings-expense-cat"
-                  className="pg-settings-panel-select"
                   value={draft.recurringExpenseDefaultCategory}
                   onChange={(e) => patchDraft({ recurringExpenseDefaultCategory: e.target.value })}
                 >
@@ -373,59 +384,59 @@ export function SettingsSectionContent({
                       {o.label}
                     </option>
                   ))}
-                </Select>
+                </SettingsFieldSelect>
               </SettingsRow>
             </div>
-          </SettingsCollapsible>
+          </SettingsAccordion>
 
-          <SettingsCollapsible title="Future projections" defaultOpen={false}>
+          <SettingsAccordion title="Future projections" defaultOpen={false}>
             <div className="pg-settings-panel-rows pg-settings-panel-rows--nested">
               <SettingsRow label="Annual income growth" htmlFor="settings-income-growth">
-                <input
+                <SettingsFieldInput
                   id="settings-income-growth"
                   type="number"
                   inputMode="decimal"
                   min={0}
                   max={30}
-                  className="pg-settings-panel-input pg-settings-panel-input--narrow"
+                  narrow
                   value={draft.annualIncomeGrowthPercentAnnual}
                   onChange={(e) => patchDraft({ annualIncomeGrowthPercentAnnual: Number(e.target.value) })}
                 />
               </SettingsRow>
               <SettingsRow label="Expense growth" htmlFor="settings-expense-growth">
-                <input
+                <SettingsFieldInput
                   id="settings-expense-growth"
                   type="number"
                   inputMode="decimal"
                   min={0}
                   max={30}
-                  className="pg-settings-panel-input pg-settings-panel-input--narrow"
+                  narrow
                   value={draft.expenseGrowthPercentAnnual}
                   onChange={(e) => patchDraft({ expenseGrowthPercentAnnual: Number(e.target.value) })}
                 />
               </SettingsRow>
               <SettingsRow label="Property appreciation" htmlFor="settings-appreciation">
-                <input
+                <SettingsFieldInput
                   id="settings-appreciation"
                   type="number"
                   inputMode="decimal"
                   min={0}
                   max={30}
-                  className="pg-settings-panel-input pg-settings-panel-input--narrow"
+                  narrow
                   value={draft.propertyAppreciationPercentAnnual}
                   onChange={(e) => patchDraft({ propertyAppreciationPercentAnnual: Number(e.target.value) })}
                 />
               </SettingsRow>
             </div>
-          </SettingsCollapsible>
+          </SettingsAccordion>
 
-          <SettingsCollapsible title="Applicant form template" defaultOpen={false}>
+          <SettingsAccordion title="Applicant form template" defaultOpen={false}>
             <ApplicantFormTemplateSettingsCard
               template={draft.applicantFormTemplate}
               onTemplateChange={(next) => patchDraft({ applicantFormTemplate: next })}
             />
-          </SettingsCollapsible>
-        </div>
+          </SettingsAccordion>
+        </SettingsSectionStack>
       );
 
     case "notifications":
@@ -435,8 +446,8 @@ export function SettingsSectionContent({
         );
       }
       return (
-        <div className="pg-settings-panel-stack">
-          <div className="pg-settings-panel-rows">
+        <SettingsSectionStack>
+          <SettingsRows>
             <SettingsRow label="Overdue rent">
               <SettingsToggle
                 label="Overdue rent"
@@ -467,24 +478,26 @@ export function SettingsSectionContent({
                 onChange={(v) => patchDraft({ monthlySummariesEnabled: v })}
               />
             </SettingsRow>
-          </div>
-          <SettingsCollapsible title="Email templates and delivery" defaultOpen={false}>
-            <p className="pg-settings-panel-muted">Email delivery preferences are coming soon.</p>
-          </SettingsCollapsible>
-        </div>
+          </SettingsRows>
+          <SettingsAccordion title="Email templates and delivery" defaultOpen={false}>
+            <p className="pg-settings-panel-muted pg-settings-panel-muted--nested">
+              Email delivery preferences are coming soon.
+            </p>
+          </SettingsAccordion>
+        </SettingsSectionStack>
       );
 
     case "security":
       return (
-        <div className="pg-settings-panel-stack">
-          <div className="pg-settings-panel-rows">
+        <SettingsSectionStack>
+          <SettingsRows>
             <SettingsRow label="Change password">
               <Button variant="outline" size="sm" onClick={onOpenChangePassword}>
                 Change password
               </Button>
             </SettingsRow>
-          </div>
-          <SettingsCollapsible title="Advanced security" defaultOpen={false}>
+          </SettingsRows>
+          <SettingsAccordion title="Advanced security" defaultOpen={false}>
             <div className="pg-settings-panel-rows pg-settings-panel-rows--nested">
               <SettingsRow label="Two-factor authentication">
                 <span className="pg-settings-coming-soon">Coming soon</span>
@@ -496,14 +509,14 @@ export function SettingsSectionContent({
                 <span className="pg-settings-coming-soon">Coming soon</span>
               </SettingsRow>
             </div>
-          </SettingsCollapsible>
-        </div>
+          </SettingsAccordion>
+        </SettingsSectionStack>
       );
 
     case "data-export":
       return (
-        <div className="pg-settings-panel-stack">
-          <SettingsCollapsible title="Export workspace data" defaultOpen={false}>
+        <SettingsSectionStack>
+          <SettingsAccordion title="Export workspace data" defaultOpen={false}>
             <div className="pg-settings-panel-rows pg-settings-panel-rows--nested">
               <SettingsRow label="Properties, leases and financials">
                 <span className="pg-settings-coming-soon">Coming soon</span>
@@ -512,25 +525,29 @@ export function SettingsSectionContent({
                 <span className="pg-settings-coming-soon">Coming soon</span>
               </SettingsRow>
             </div>
-          </SettingsCollapsible>
-          <SettingsCollapsible title="Danger zone" defaultOpen={false}>
+          </SettingsAccordion>
+          <SettingsAccordion title="Danger zone" defaultOpen={false}>
             <div className="pg-settings-panel-rows pg-settings-panel-rows--nested pg-settings-panel-rows--danger">
               <SettingsRow label="Delete account" danger>
                 <Button variant="outline" size="sm" disabled>
                   Delete account
                 </Button>
               </SettingsRow>
-              <p className="pg-settings-panel-muted">Account deletion is not available yet.</p>
+              <p className="pg-settings-panel-muted pg-settings-panel-muted--nested">
+                Account deletion is not available yet.
+              </p>
             </div>
-          </SettingsCollapsible>
-        </div>
+          </SettingsAccordion>
+        </SettingsSectionStack>
       );
 
     case "integrations":
       return (
-        <div className="pg-settings-panel-stack">
-          <CookieConsentSettingsCard />
-          <SettingsCollapsible title="Connected services" defaultOpen={false}>
+        <SettingsSectionStack>
+          <SettingsCard>
+            <CookieConsentSettingsCard />
+          </SettingsCard>
+          <SettingsAccordion title="Connected services" defaultOpen={false}>
             <div className="pg-settings-panel-rows pg-settings-panel-rows--nested">
               <SettingsRow label="Supabase">
                 <span className="pg-settings-badge">Connected</span>
@@ -545,14 +562,12 @@ export function SettingsSectionContent({
                 <span className="pg-settings-badge pg-settings-badge--muted">See cookie preferences</span>
               </SettingsRow>
             </div>
-          </SettingsCollapsible>
+          </SettingsAccordion>
           <Link className="pg-settings-panel-link-row" to="/owned-properties/reports">
-            <div className="pg-settings-panel-row__label">
-              <span className="pg-settings-panel-row__title">Report generation</span>
-            </div>
+            <span className="pg-settings-panel-row__title">Report generation</span>
             <AppIcon name="open" size="sm" />
           </Link>
-        </div>
+        </SettingsSectionStack>
       );
 
     default:

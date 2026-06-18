@@ -19,7 +19,7 @@ export function SettingsDetailPanel({ title, badge, headerActions, children }: S
         </div>
         {headerActions ? <div className="pg-settings-panel-detail__actions">{headerActions}</div> : null}
       </header>
-      <div className="pg-settings-panel-detail__body">{children}</div>
+      <div className="pg-settings-panel-detail__body pg-settings-panel-detail__scroll">{children}</div>
     </section>
   );
 }
