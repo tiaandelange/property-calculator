@@ -23,10 +23,17 @@ export async function authFetch(path: string, init?: RequestInit): Promise<unkno
   const json = await res.json().catch(() => ({}));
   if (!res.ok) {
     const err = json as { error?: string; message?: string };
-    throw new ApiRequestError(
-      err.error ?? err.message ?? `Request failed (${res.status}).`,
-      { status: res.status }
-    );
+    const serverMessage = err.error ?? err.message;
+    let message = serverMessage;
+    if (!message) {
+      if (res.status === 404) {
+        message =
+          "The billing service endpoint was not found. Please refresh the page and try again.";
+      } else {
+        message = `Request failed (${res.status}).`;
+      }
+    }
+    throw new ApiRequestError(message, { status: res.status });
   }
   return json;
 }

@@ -1,17 +1,10 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { AppConfirmDialog, AppModal } from "../../components/ui/AppModal";
 import { Button } from "../../components/ui/Button";
 import type { SubscriptionPlanRecord } from "../../services/subscriptionPlansSupabase";
 import type { UserSubscriptionRecord } from "../../services/userSubscriptionsSupabase";
-import {
-  formatPlanPrice,
-  planCardFeatureLines,
-  planMarketingName,
-  planPriceHeadline,
-  planPriceSubline,
-  type BillingPeriod
-} from "../pricing/pricingPlanDisplay";
+import { planMarketingName } from "../pricing/pricingPlanDisplay";
 import { changeSubscriptionPlan } from "../../services/subscriptionBilling";
 import {
   isPaidCheckoutPlanCode,
@@ -21,6 +14,17 @@ import {
 import { useWorkspaceId } from "../queries";
 import { queryKeys } from "../../lib/queryKeys";
 import { trackEvent } from "../../lib/analytics/analytics";
+import { ApiRequestError } from "../../lib/queryErrors";
+import {
+  filterPlansForChangeModal,
+  planModalCtaLabel,
+  planModalFeatureBullets,
+  planModalPriceLine,
+  planModalShortDescription,
+  planModalTrialNote,
+  resolveChangeModalCurrentPlanCode,
+  resolvePendingCheckoutPlanCode
+} from "./planModalDisplay";
 
 type ChangePlanModalProps = {
   open: boolean;
@@ -28,34 +32,72 @@ type ChangePlanModalProps = {
   plans: SubscriptionPlanRecord[];
   subscription: UserSubscriptionRecord | null;
   currentPlanCode: string | null;
+  subscriptionLoading?: boolean;
 };
 
 type ModalPhase = "idle" | "processing" | "success" | "error";
+
+function formatBillingActionError(error: unknown, action: "checkout" | "downgrade"): string {
+  if (error instanceof ApiRequestError) {
+    if (error.status === 404) {
+      return action === "checkout"
+        ? "Could not start checkout. The billing endpoint was not found. Please refresh and try again."
+        : "Could not change plan. The billing endpoint was not found. Please refresh and try again.";
+    }
+    if (error.message && !error.message.startsWith("Request failed (")) {
+      return error.message;
+    }
+  }
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+  return action === "checkout" ? "Could not start checkout." : "Could not change plan.";
+}
 
 export function ChangePlanModal({
   open,
   onOpenChange,
   plans,
   subscription,
-  currentPlanCode
+  currentPlanCode,
+  subscriptionLoading = false
 }: ChangePlanModalProps) {
   const workspaceId = useWorkspaceId();
   const queryClient = useQueryClient();
-  const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>("monthly");
   const [selectedCode, setSelectedCode] = useState<string | null>(null);
   const [phase, setPhase] = useState<ModalPhase>("idle");
   const [message, setMessage] = useState<string | null>(null);
   const [confirmFreeOpen, setConfirmFreeOpen] = useState(false);
 
-  const sortedPlans = useMemo(
-    () => [...plans].sort((a, b) => a.sortOrder - b.sortOrder || a.monthlyPrice - b.monthlyPrice),
-    [plans]
+  const modalPlans = useMemo(() => filterPlansForChangeModal(plans), [plans]);
+
+  const currentPlanCodeResolved = useMemo(
+    () => resolveChangeModalCurrentPlanCode(subscription, currentPlanCode),
+    [subscription, currentPlanCode]
   );
 
-  const effectiveCurrentCode =
-    subscription?.status === "pending_payment"
-      ? subscription.planCode
-      : (currentPlanCode ?? subscription?.planCode ?? "starter");
+  const pendingCheckoutPlanCode = useMemo(
+    () => resolvePendingCheckoutPlanCode(subscription),
+    [subscription]
+  );
+
+  const hasPaidPlan =
+    subscription?.status === "active" &&
+    subscription.planCode !== "starter" &&
+    Boolean(subscription.paymentProvider);
+
+  const currentPlanLabel = useMemo(() => {
+    const plan = modalPlans.find((p) => p.code === currentPlanCodeResolved);
+    return plan ? planMarketingName(plan) : "Free";
+  }, [modalPlans, currentPlanCodeResolved]);
+
+  useEffect(() => {
+    if (!open) return;
+    setPhase("idle");
+    setMessage(null);
+    setSelectedCode(null);
+    setConfirmFreeOpen(false);
+  }, [open]);
 
   const resetState = useCallback(() => {
     setSelectedCode(null);
@@ -76,66 +118,70 @@ export function ChangePlanModal({
     }
   }, [queryClient, workspaceId]);
 
-  const startPaidCheckout = useCallback(
-    async (plan: SubscriptionPlanRecord) => {
-      if (!isPaidCheckoutPlanCode(plan.code, plan.monthlyPrice)) {
-        setPhase("error");
-        setMessage("This plan cannot be purchased online. Contact us for Portfolio Pro.");
-        return;
-      }
+  const startPaidCheckout = useCallback(async (plan: SubscriptionPlanRecord) => {
+    if (!isPaidCheckoutPlanCode(plan.code, plan.monthlyPrice)) {
+      setPhase("error");
+      setMessage("This plan is not available for online checkout.");
+      return;
+    }
 
-      setPhase("processing");
-      setMessage(null);
-      trackEvent("change_plan_checkout_start", {
-        plan_code: plan.code,
-        billing_period: billingPeriod,
-        source_page: "/settings"
-      });
+    setPhase("processing");
+    setMessage(null);
+    setSelectedCode(plan.code);
+    trackEvent("change_plan_checkout_start", {
+      plan_code: plan.code,
+      billing_period: "monthly",
+      source_page: "/settings"
+    });
 
-      try {
-        await redirectToPlanCheckout(plan.code as PlanCheckoutCode, billingPeriod);
-      } catch (e) {
-        setPhase("error");
-        setMessage(e instanceof Error ? e.message : "Could not start checkout.");
-      }
-    },
-    [billingPeriod]
-  );
+    try {
+      await redirectToPlanCheckout(plan.code as PlanCheckoutCode, "monthly");
+    } catch (e) {
+      setPhase("error");
+      setMessage(formatBillingActionError(e, "checkout"));
+      setSelectedCode(null);
+    }
+  }, []);
 
   const applyPlanSelection = useCallback(
     async (planCode: string) => {
-      const plan = plans.find((p) => p.code === planCode);
+      const plan = modalPlans.find((p) => p.code === planCode);
       if (!plan) return;
 
-      if (plan.code === effectiveCurrentCode && subscription?.status !== "pending_payment") {
-        setMessage("You are already on this plan.");
+      const isCurrent =
+        plan.code === currentPlanCodeResolved && subscription?.status !== "pending_payment";
+
+      if (isCurrent) {
         return;
       }
 
-      setSelectedCode(planCode);
       setMessage(null);
 
-      if (plan.monthlyPrice <= 0 || plan.code === "starter") {
+      if (plan.code === "starter") {
+        if (!hasPaidPlan && currentPlanCodeResolved === "starter") {
+          return;
+        }
         setConfirmFreeOpen(true);
         return;
       }
 
       await startPaidCheckout(plan);
     },
-    [effectiveCurrentCode, plans, startPaidCheckout, subscription?.status]
+    [currentPlanCodeResolved, hasPaidPlan, modalPlans, startPaidCheckout, subscription?.status]
   );
 
   const confirmDowngradeToFree = useCallback(async () => {
     setConfirmFreeOpen(false);
     setPhase("processing");
     setMessage(null);
+    setSelectedCode("starter");
 
     try {
       const result = await changeSubscriptionPlan({ planCode: "starter" });
       if (result.action === "downgraded") {
         await refreshSubscription();
         setPhase("success");
-        setMessage("Your plan is now Free. Paid features are locked until you upgrade again.");
+        setMessage("Your plan is now Free.");
         trackEvent("change_plan_downgrade", { plan_code: "starter", source_page: "/settings" });
         return;
       }
@@ -143,7 +189,9 @@ export function ChangePlanModal({
       setMessage("Unexpected response while changing plan.");
     } catch (e) {
       setPhase("error");
-      setMessage(e instanceof Error ? e.message : "Could not change plan.");
+      setMessage(formatBillingActionError(e, "downgrade"));
+    } finally {
+      setSelectedCode(null);
     }
   }, [refreshSubscription]);
 
@@ -155,114 +203,107 @@ export function ChangePlanModal({
         open={open}
         onOpenChange={(next) => (next ? onOpenChange(true) : handleClose())}
         title="Change plan"
-        description="Choose a plan. Upgrades open secure Paystack checkout. Downgrading to Free cancels billing when connected."
-        size="lg"
+        description="Choose the plan that fits your portfolio. Upgrades open secure Paystack checkout."
+        size="xl"
+        className="pg-change-plan-modal"
         closeOnOverlayClick={!busy}
         onClose={handleClose}
-        footer={
-          <div className="pg-app-modal-actions">
-            <Button type="button" variant="soft" onClick={handleClose} disabled={busy}>
-              Close
-            </Button>
-          </div>
-        }
-        footerBorder
+        mobileSheet
       >
-        <div className="pg-settings-subscription-plans">
-          <div
-            className="pg-settings-subscription-plans__billing-toggle"
-            role="group"
-            aria-label="Billing period"
-          >
-            <Button
-              type="button"
-              size="sm"
-              variant={billingPeriod === "monthly" ? "primary" : "secondary"}
-              disabled={busy}
-              onClick={() => setBillingPeriod("monthly")}
-            >
-              Monthly
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant={billingPeriod === "annual" ? "primary" : "secondary"}
-              disabled={busy}
-              onClick={() => setBillingPeriod("annual")}
-            >
-              Annual
-            </Button>
+        <div className="pg-change-plan-modal__inner">
+          <div className="pg-change-plan-modal__summary" role="status">
+            <span className="pg-change-plan-modal__summary-label">Current plan</span>
+            <span className="pg-change-plan-modal__summary-value">{currentPlanLabel}</span>
+            {pendingCheckoutPlanCode ? (
+              <span className="pg-change-plan-modal__summary-pending">
+                Payment pending for{" "}
+                {(() => {
+                  const pendingPlan = modalPlans.find((p) => p.code === pendingCheckoutPlanCode);
+                  return pendingPlan ? planMarketingName(pendingPlan) : pendingCheckoutPlanCode;
+                })()}
+              </span>
+            ) : null}
           </div>
 
           {message ? (
             <div
-              className={`pg-alert${phase === "error" ? " pg-alert-error" : ""}`}
+              className={`pg-change-plan-modal__alert pg-alert${
+                phase === "error" ? " pg-alert-error" : ""
+              }`}
               role="status"
-              style={{ marginBottom: 12 }}
             >
               {message}
             </div>
           ) : null}
 
-          {phase === "processing" ? (
-            <div className="pg-settings-skeleton" style={{ minHeight: 120 }} aria-busy="true" />
+          {subscriptionLoading ? (
+            <div className="pg-change-plan-modal__loading" aria-busy="true">
+              <span className="pg-subscription-result__spinner" aria-hidden />
+              <span>Loading your subscription…</span>
+            </div>
+          ) : busy ? (
+            <div className="pg-change-plan-modal__loading" aria-busy="true">
+              <span className="pg-subscription-result__spinner" aria-hidden />
+              <span>Opening secure checkout…</span>
+            </div>
           ) : (
-            <div className="pg-settings-subscription-plans__grid">
-              {sortedPlans.map((plan) => {
+            <div className="pg-change-plan-grid">
+              {modalPlans.map((plan) => {
                 const isCurrent =
-                  plan.code === effectiveCurrentCode && subscription?.status !== "pending_payment";
-                const isSelectedPending =
-                  subscription?.status === "pending_payment" && subscription.planCode === plan.code;
-                const priceHeadline = planPriceHeadline(plan, billingPeriod);
-                const priceSubline = planPriceSubline(plan, billingPeriod);
+                  plan.code === currentPlanCodeResolved &&
+                  subscription?.status !== "pending_payment";
+                const isPendingCheckout = pendingCheckoutPlanCode === plan.code;
+                const trialNote = planModalTrialNote(plan);
+                const ctaLabel = planModalCtaLabel(plan, {
+                  isCurrent,
+                  isPendingCheckout,
+                  hasPaidPlan
+                });
+                const ctaDisabled =
+                  busy || isCurrent || (plan.code === "starter" && !hasPaidPlan && isCurrent);
 
                 return (
-                  <div
+                  <article
                     key={plan.code}
-                    className={`pg-settings-subscription-plan${
-                      isCurrent || isSelectedPending ? " pg-settings-subscription-plan--current" : ""
-                    }`}
+                    className={`pg-change-plan-card${
+                      isCurrent ? " pg-change-plan-card--current" : ""
+                    }${isPendingCheckout ? " pg-change-plan-card--pending" : ""}`}
                   >
                     {isCurrent ? (
-                      <span className="pg-settings-subscription-plan__tag">Current plan</span>
-                    ) : isSelectedPending ? (
-                      <span className="pg-settings-subscription-plan__tag">Selected</span>
+                      <span className="pg-change-plan-card__badge">Current plan</span>
+                    ) : isPendingCheckout ? (
+                      <span className="pg-change-plan-card__badge pg-change-plan-card__badge--pending">
+                        Selected
+                      </span>
                     ) : null}
-                    <h4 className="pg-settings-subscription-plan__name">{planMarketingName(plan)}</h4>
-                    <p className="pg-settings-subscription-plan__price">
-                      {priceHeadline}
-                      {priceSubline ? (
-                        <span className="pg-settings-subscription-plan__price-sub">
-                          {" "}
-                          · {priceSubline}
-                        </span>
+
+                    <div className="pg-change-plan-card__body">
+                      <h3 className="pg-change-plan-card__name">{planMarketingName(plan)}</h3>
+                      <p className="pg-change-plan-card__price">{planModalPriceLine(plan)}</p>
+                      {trialNote ? (
+                        <p className="pg-change-plan-card__trial">{trialNote}</p>
                       ) : null}
-                    </p>
-                    <ul className="pg-settings-subscription-plan__features">
-                      {planCardFeatureLines(plan).map((line) => (
-                        <li key={line}>{line}</li>
-                      ))}
-                    </ul>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant={isCurrent ? "soft" : "primary"}
-                      disabled={busy || isCurrent}
-                      loading={busy && selectedCode === plan.code}
-                      onClick={() => void applyPlanSelection(plan.code)}
-                    >
-                      {isCurrent
-                        ? "Current plan"
-                        : plan.monthlyPrice <= 0
-                          ? "Switch to Free"
-                          : `Choose ${planMarketingName(plan)}`}
-                    </Button>
-                    {plan.monthlyPrice > 0 && billingPeriod === "monthly" ? (
-                      <p className="pg-settings-subscription-plan__footnote">
-                        {formatPlanPrice(plan.monthlyPrice, plan.currency)} billed monthly
-                      </p>
-                    ) : null}
-                  </div>
+                      <p className="pg-change-plan-card__desc">{planModalShortDescription(plan)}</p>
+                      <ul className="pg-change-plan-card__features">
+                        {planModalFeatureBullets(plan).map((line) => (
+                          <li key={line}>{line}</li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    <div className="pg-change-plan-card__cta">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={isCurrent ? "soft" : "primary"}
+                        disabled={ctaDisabled}
+                        loading={busy && selectedCode === plan.code}
+                        onClick={() => void applyPlanSelection(plan.code)}
+                      >
+                        {ctaLabel}
+                      </Button>
+                    </div>
+                  </article>
                 );
               })}
             </div>
@@ -274,8 +315,8 @@ export function ChangePlanModal({
         open={confirmFreeOpen}
         onOpenChange={setConfirmFreeOpen}
         title="Switch to Free plan?"
-        description="Your paid subscription will be cancelled when billing is connected. You will keep Starter limits immediately."
-        confirmLabel="Switch to Free"
+        description="Your paid subscription will be cancelled when billing is connected. You will keep Free plan limits immediately."
+        confirmLabel="Downgrade to Free"
         destructive
         loading={busy}
         onConfirm={() => void confirmDowngradeToFree()}

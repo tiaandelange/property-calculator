@@ -444,6 +444,7 @@ export function SubscriptionSettingsSection({ freeUsesRemaining: _freeUsesRemain
         plans={plans}
         subscription={subscription}
         currentPlanCode={permissions.planCode}
+        subscriptionLoading={isLoading}
       />
     </div>
   );

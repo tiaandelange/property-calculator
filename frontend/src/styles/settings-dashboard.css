@@ -1022,9 +1022,195 @@
 
 .pg-settings-subscription-cta__hint {
   margin: 0;
-  font-size: 13px;
+  width: 100%;
+  font-size: 12px;
+  line-height: 1.45;
   color: var(--text-secondary);
-  max-width: 42rem;
+}
+
+/* Change plan modal — billing settings */
+.pg-change-plan-modal.pg-app-modal-panel--xl {
+  width: min(1080px, calc(100vw - 48px));
+  max-height: calc(100dvh - 64px);
+  display: flex;
+  flex-direction: column;
+}
+
+.pg-change-plan-modal .pg-app-modal-body {
+  overflow: auto;
+  flex: 1;
+  min-height: 0;
+  padding-bottom: 8px;
+}
+
+.pg-change-plan-modal__inner {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.pg-change-plan-modal__summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-soft);
+  background: color-mix(in srgb, var(--primary) 4%, var(--surface));
+  font-size: 13px;
+}
+
+.pg-change-plan-modal__summary-label {
+  color: var(--text-secondary);
+}
+
+.pg-change-plan-modal__summary-value {
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.pg-change-plan-modal__summary-pending {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.pg-change-plan-modal__alert {
+  margin: 0;
+  padding: 8px 12px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.pg-change-plan-modal__loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 160px;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.pg-change-plan-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  padding-bottom: 4px;
+}
+
+.pg-change-plan-card {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  padding: 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-soft);
+  background: var(--surface);
+}
+
+.pg-change-plan-card--current {
+  border-color: color-mix(in srgb, var(--primary) 40%, var(--border-soft));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary) 15%, transparent);
+}
+
+.pg-change-plan-card--pending {
+  border-color: color-mix(in srgb, var(--warning, #d97706) 35%, var(--border-soft));
+}
+
+.pg-change-plan-card__badge {
+  display: inline-block;
+  align-self: flex-start;
+  margin-bottom: 10px;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+.pg-change-plan-card__badge--pending {
+  background: color-mix(in srgb, var(--warning, #d97706) 12%, var(--surface));
+  color: var(--warning, #d97706);
+}
+
+.pg-change-plan-card__body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 0;
+}
+
+.pg-change-plan-card__name {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.pg-change-plan-card__price {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--text-primary);
+}
+
+.pg-change-plan-card__trial {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--text-secondary);
+}
+
+.pg-change-plan-card__desc {
+  margin: 4px 0 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+.pg-change-plan-card__features {
+  margin: 8px 0 0;
+  padding-left: 1.1rem;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.pg-change-plan-card__features li + li {
+  margin-top: 4px;
+}
+
+.pg-change-plan-card__cta {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-soft);
+}
+
+.pg-change-plan-card__cta .pg-btn {
+  width: 100%;
+}
+
+@media (max-width: 960px) {
+  .pg-change-plan-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .pg-change-plan-modal.pg-app-modal-panel--xl {
+    width: calc(100vw - 24px);
+    max-height: calc(100dvh - 32px);
+  }
+}
+
+@media (min-width: 961px) and (max-width: 1100px) {
+  .pg-change-plan-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .pg-link-button {

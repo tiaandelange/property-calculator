@@ -12,9 +12,16 @@ import { handler as handleSubscriptionAction } from "./_lib/handlers/subscriptio
 
 function pathSegments(req: VercelRequest): string[] {
   const raw = req.query.path;
-  if (Array.isArray(raw)) return raw.map((segment) => String(segment));
-  if (typeof raw === "string" && raw.length > 0) return [raw];
-  return [];
+  let parts: string[];
+  if (Array.isArray(raw)) {
+    parts = raw.map((segment) => String(segment));
+  } else if (typeof raw === "string" && raw.length > 0) {
+    parts = [raw];
+  } else {
+    return [];
+  }
+  // Vercel may pass catch-all as one string ("subscription/checkout") or as segments.
+  return parts.flatMap((segment) => segment.split("/").filter(Boolean));
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
