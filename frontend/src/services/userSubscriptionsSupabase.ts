@@ -108,6 +108,17 @@ export async function getUserSubscriptionForCurrentUser(): Promise<UserSubscript
 }
 
 /**
+ * Ensures the signed-in user has a Starter (free) subscription row.
+ * Idempotent — does not overwrite an existing row.
+ */
+export async function ensureDefaultStarterSubscription(): Promise<{
+  created: boolean;
+  skipped: boolean;
+}> {
+  return ensureUserSubscriptionForPlanCode("starter");
+}
+
+/**
  * Creates `user_subscriptions` for the signed-in user if none exists.
  * Idempotent: does not overwrite an existing row.
  */

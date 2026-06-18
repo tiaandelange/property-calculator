@@ -24,3 +24,25 @@ export async function verifySubscriptionCheckout(reference: string): Promise<{ m
     body: JSON.stringify({ reference })
   }) as Promise<{ message: string }>;
 }
+
+export type ChangeSubscriptionPlanInput = {
+  planCode: string;
+  billingPeriod?: BillingPeriod;
+};
+
+export type ChangeSubscriptionPlanResult =
+  | { action: "downgraded"; planCode: "starter" }
+  | { action: "checkout_required"; planCode: string; billingPeriod: BillingPeriod };
+
+export async function changeSubscriptionPlan(
+  input: ChangeSubscriptionPlanInput
+): Promise<ChangeSubscriptionPlanResult> {
+  return authFetch("/api/subscription/change-plan", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      planCode: input.planCode,
+      billingPeriod: input.billingPeriod ?? "monthly"
+    })
+  }) as Promise<ChangeSubscriptionPlanResult>;
+}

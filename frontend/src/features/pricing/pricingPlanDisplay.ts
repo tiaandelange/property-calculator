@@ -205,7 +205,17 @@ export function isPopularPlan(plan: SubscriptionPlanRecord): boolean {
 }
 
 export function planDisplayName(code: string, plans: SubscriptionPlanRecord[]): string | null {
-  return plans.find((p) => p.code === code)?.name ?? null;
+  const plan = plans.find((p) => p.code === code);
+  if (!plan) return null;
+  return planMarketingName(plan);
+}
+
+/** User-facing plan label (Starter free tier shows as "Free"). */
+export function planMarketingName(plan: SubscriptionPlanRecord): string {
+  if (plan.code === "starter" && plan.monthlyPrice === 0) {
+    return "Free";
+  }
+  return plan.name;
 }
 
 /** True when the plan config includes a time-limited trial before billing. */

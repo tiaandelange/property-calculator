@@ -64,12 +64,18 @@ export async function handleSubscriptionVerify(
   await assertCheckoutReferenceBelongsToUser(reference, userId, "paystack");
 
   const event = await verifyPaystackTransactionReference(reference);
-  if (event.userId && event.userId !== userId) {
+  if (!event.userId) {
+    throw new CheckoutValidationError(
+      "Payment could not be linked to your account. Contact support with your receipt reference.",
+      403
+    );
+  }
+  if (event.userId !== userId) {
     throw new CheckoutValidationError("Payment reference does not belong to this account.", 403);
   }
 
   return processProviderSubscriptionWebhookEvent({
     ...event,
-    userId: event.userId ?? userId
+    userId: event.userId
   });
 }

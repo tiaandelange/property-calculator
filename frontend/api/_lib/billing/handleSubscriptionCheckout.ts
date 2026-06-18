@@ -1,7 +1,7 @@
 import type { VercelRequest } from "@vercel/node";
 import { assertBillingCheckoutConfig, BillingConfigError } from "./billingEnv.js";
 import { getBillingProvider } from "./provider.js";
-import { recordCheckoutAttempt } from "./billingSubscriptionSync.js";
+import { prepareUserSubscriptionForCheckout, recordCheckoutAttempt } from "./billingSubscriptionSync.js";
 import {
   assertCheckoutAllowedForPlan,
   fetchSubscriptionPlanByCode,
@@ -26,6 +26,9 @@ export async function handleSubscriptionCheckout(
 
   const checkoutEmail = requireCheckoutEmail(email);
   assertBillingCheckoutConfig();
+
+  await prepareUserSubscriptionForCheckout(userId, planCode, plan.monthlyPrice);
+
   const provider = getBillingProvider();
 
   const session = await provider.createCheckoutSession({

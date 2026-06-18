@@ -243,6 +243,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         const row = await fetchProfileForUserId(uid);
         if (cancelled) return;
+        if (!row) {
+          console.warn("[auth] profile missing for session user — signing out stale session");
+          logAuthSignOut("AuthContext.profileMissing", "stale_session");
+          if (supabase) {
+            await supabase.auth.signOut();
+          }
+          applySession(null, "profileMissing:signOut");
+          setProfile(null);
+          return;
+        }
         setProfile(row);
       } catch (e) {
         console.warn("[auth] profile load", e instanceof Error ? e.message : e);
@@ -254,7 +264,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [session?.user?.id]);
+  }, [session?.user?.id, applySession]);
 
   const signOut = useCallback(async () => {
     logAuthSignOut("AuthContext.signOut", "user_logout");

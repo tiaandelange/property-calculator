@@ -5,7 +5,7 @@ const STATUS_LABELS: Record<string, string> = {
   active: "Active",
   active_manual: "Active",
   pending_payment: "Pending payment",
-  past_due: "Expired",
+  past_due: "Past due",
   cancelled: "Cancelled",
   expired: "Expired"
 };

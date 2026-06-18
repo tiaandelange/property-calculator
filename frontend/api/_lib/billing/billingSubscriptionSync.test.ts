@@ -11,6 +11,7 @@ const webhookUpsert = vi.fn();
 const webhookUpdate = vi.fn();
 const subscriptionSelect = vi.fn();
 const subscriptionUpdateArgs = vi.fn();
+const subscriptionInsertArgs = vi.fn();
 const checkoutSelect = vi.fn();
 
 function chainMaybeSingle(result: unknown) {
@@ -52,6 +53,10 @@ vi.mock("../supabaseServiceRole", () => ({
             return {
               eq: vi.fn(() => ({ error: null }))
             };
+          }),
+          insert: vi.fn((payload: unknown) => {
+            subscriptionInsertArgs(payload);
+            return { error: null };
           })
         };
       }
@@ -82,6 +87,7 @@ describe("billingSubscriptionSync webhooks", () => {
     webhookUpdate.mockReset();
     subscriptionSelect.mockReset();
     subscriptionUpdateArgs.mockReset();
+    subscriptionInsertArgs.mockReset();
     checkoutSelect.mockReset();
 
     webhookUpsert.mockResolvedValue({ error: null });
@@ -122,6 +128,7 @@ describe("billingSubscriptionSync webhooks", () => {
 
   it("activates user_subscriptions on charge.success with payment fields", async () => {
     webhookSelect.mockReturnValue({ data: null, error: null });
+    subscriptionSelect.mockReturnValue({ data: { id: "sub-row" }, error: null });
 
     const outcome = await processProviderSubscriptionWebhookEvent({
       ...baseEvent,
@@ -143,8 +150,30 @@ describe("billingSubscriptionSync webhooks", () => {
     );
   });
 
+  it("inserts user_subscriptions when activating a user without a row", async () => {
+    webhookSelect.mockReturnValue({ data: null, error: null });
+    subscriptionSelect.mockReturnValue({ data: null, error: null });
+
+    const outcome = await processProviderSubscriptionWebhookEvent({
+      ...baseEvent,
+      currentPeriodStart: "2026-06-04T10:00:00.000Z",
+      currentPeriodEnd: "2026-07-04T10:00:00.000Z"
+    });
+
+    expect(outcome).toEqual({ status: "processed" });
+    expect(subscriptionInsertArgs).toHaveBeenCalledWith(
+      expect.objectContaining({
+        user_id: baseEvent.userId,
+        plan_code: "investor",
+        status: "active",
+        payment_provider: "paystack"
+      })
+    );
+  });
+
   it("marks past_due on invoice.payment_failed", async () => {
     webhookSelect.mockReturnValue({ data: null, error: null });
+    subscriptionSelect.mockReturnValue({ data: { id: "sub-row" }, error: null });
 
     const outcome = await processProviderSubscriptionWebhookEvent({
       ...baseEvent,
@@ -161,6 +190,7 @@ describe("billingSubscriptionSync webhooks", () => {
 
   it("marks cancelled on subscription.disable", async () => {
     webhookSelect.mockReturnValue({ data: null, error: null });
+    subscriptionSelect.mockReturnValue({ data: { id: "sub-row" }, error: null });
 
     const outcome = await processProviderSubscriptionWebhookEvent({
       ...baseEvent,

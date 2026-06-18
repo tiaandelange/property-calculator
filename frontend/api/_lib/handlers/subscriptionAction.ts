@@ -12,12 +12,13 @@ import {
   fetchSubscriptionPlanByCode
 } from "../billing/checkoutValidation.js";
 import { handleSubscriptionCheckout } from "../billing/handleSubscriptionCheckout.js";
+import { handleSubscriptionChangePlan } from "../billing/handleSubscriptionChangePlan.js";
 
-type SubscriptionAction = "cancel" | "verify" | "checkout" | "mock-complete";
+type SubscriptionAction = "cancel" | "verify" | "checkout" | "mock-complete" | "change-plan";
 
 function parseAction(req: VercelRequest): SubscriptionAction | null {
   const raw = String(req.query.action ?? "").trim().toLowerCase();
-  if (raw === "cancel" || raw === "verify" || raw === "checkout" || raw === "mock-complete") {
+  if (raw === "cancel" || raw === "verify" || raw === "checkout" || raw === "mock-complete" || raw === "change-plan") {
     return raw;
   }
   return null;
@@ -96,6 +97,12 @@ export async function handler(req: VercelRequest, res: VercelResponse): Promise<
     if (action === "checkout") {
       const payload = await handleSubscriptionCheckout(req, auth.ctx.uid, auth.ctx.user.email);
       res.status(200).json(payload);
+      return;
+    }
+
+    if (action === "change-plan") {
+      const outcome = await handleSubscriptionChangePlan(req, auth.ctx.uid);
+      res.status(200).json(outcome);
       return;
     }
 

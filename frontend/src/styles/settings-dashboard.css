@@ -839,6 +839,24 @@
   color: var(--text-secondary);
 }
 
+.pg-settings-subscription-plans__billing-toggle {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.pg-settings-subscription-plan__price-sub {
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.pg-settings-subscription-plan__footnote {
+  margin: 8px 0 0;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
 .pg-settings-subscription-plans__grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));

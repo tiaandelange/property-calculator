@@ -1,4 +1,5 @@
 import { createServiceRoleSupabase } from "../supabaseServiceRole.js";
+import { CheckoutValidationError } from "./checkoutValidation.js";
 import type { BillingProviderName, ProviderWebhookEvent } from "./types.js";
 
 export class WebhookProcessingError extends Error {
@@ -112,23 +113,220 @@ export async function markWebhookEventProcessed(
   if (error) throw new Error(error.message);
 }
 
+function calendarMonthIsoBounds(now = new Date()): { start: string; end: string } {
+  const start = new Date(now.getFullYear(), now.getMonth(), 1);
+  const end = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  return { start: start.toISOString(), end: end.toISOString() };
+}
+
+const PLAN_TRIAL_DAYS: Record<string, number> = {
+  starter: 0,
+  investor: 0,
+  portfolio: 14,
+  portfolio_pro: 0
+};
+
+export type SubscriptionRowFields = {
+  plan_code: string;
+  status: string;
+  trial_start: string | null;
+  trial_end: string | null;
+  current_period_start: string | null;
+  current_period_end: string | null;
+};
+
+/** Build initial subscription row fields for a plan (signup / checkout prep). */
+export function buildSubscriptionFieldsForPlan(
+  planCode: string,
+  monthlyPrice: number
+): SubscriptionRowFields {
+  const now = new Date();
+  const trialDays = PLAN_TRIAL_DAYS[planCode] ?? 0;
+
+  if (monthlyPrice <= 0 || planCode === "starter") {
+    const period = calendarMonthIsoBounds(now);
+    return {
+      plan_code: "starter",
+      status: "active",
+      trial_start: null,
+      trial_end: null,
+      current_period_start: period.start,
+      current_period_end: period.end
+    };
+  }
+
+  if (trialDays > 0) {
+    const trialEnd = new Date(now);
+    trialEnd.setDate(trialEnd.getDate() + trialDays);
+    return {
+      plan_code: planCode,
+      status: "trialing",
+      trial_start: now.toISOString(),
+      trial_end: trialEnd.toISOString(),
+      current_period_start: null,
+      current_period_end: null
+    };
+  }
+
+  return {
+    plan_code: planCode,
+    status: "pending_payment",
+    trial_start: null,
+    trial_end: null,
+    current_period_start: null,
+    current_period_end: null
+  };
+}
+
+/**
+ * Ensures a user_subscriptions row exists. Idempotent — does not overwrite an existing row.
+ */
+export async function ensureUserSubscriptionRow(
+  userId: string,
+  planCode = "starter",
+  monthlyPrice = 0
+): Promise<{ created: boolean }> {
+  const sb = requireServiceRole();
+  const { data: existing, error: existingErr } = await sb
+    .from("user_subscriptions")
+    .select("id")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (existingErr) throw new Error(existingErr.message);
+  if (existing) return { created: false };
+
+  const fields = buildSubscriptionFieldsForPlan(planCode, monthlyPrice);
+  const { error: insertErr } = await sb.from("user_subscriptions").insert({
+    user_id: userId,
+    ...fields,
+    payment_provider: null,
+    payment_customer_id: null,
+    payment_subscription_id: null
+  });
+
+  if (insertErr) throw new Error(insertErr.message);
+  return { created: true };
+}
+
+/**
+ * Updates plan selection before hosted checkout (pending_payment / trialing).
+ * Creates the row when missing.
+ */
+export async function prepareUserSubscriptionForCheckout(
+  userId: string,
+  planCode: string,
+  monthlyPrice: number
+): Promise<void> {
+  const sb = requireServiceRole();
+  const fields = buildSubscriptionFieldsForPlan(planCode, monthlyPrice);
+  const now = new Date().toISOString();
+
+  const { data: existing, error: existingErr } = await sb
+    .from("user_subscriptions")
+    .select("id, plan_code, status, payment_provider")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (existingErr) throw new Error(existingErr.message);
+
+  if (
+    existing &&
+    existing.status === "active" &&
+    existing.plan_code === planCode &&
+    existing.payment_provider
+  ) {
+    throw new CheckoutValidationError(`You are already subscribed to ${planCode}.`, 409);
+  }
+
+  if (existing) {
+    const { error } = await sb
+      .from("user_subscriptions")
+      .update({ ...fields, updated_at: now })
+      .eq("user_id", userId);
+    if (error) throw new Error(error.message);
+    return;
+  }
+
+  const { error: insertErr } = await sb.from("user_subscriptions").insert({
+    user_id: userId,
+    ...fields,
+    payment_provider: null,
+    payment_customer_id: null,
+    payment_subscription_id: null
+  });
+  if (insertErr) throw new Error(insertErr.message);
+}
+
+/** Downgrade to the free Starter plan and clear payment provider linkage. */
+export async function downgradeToStarterPlan(userId: string): Promise<void> {
+  const sb = requireServiceRole();
+  const fields = buildSubscriptionFieldsForPlan("starter", 0);
+  const now = new Date().toISOString();
+
+  const { data: existing, error: existingErr } = await sb
+    .from("user_subscriptions")
+    .select("id")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (existingErr) throw new Error(existingErr.message);
+
+  const payload = {
+    ...fields,
+    payment_provider: null,
+    payment_customer_id: null,
+    payment_subscription_id: null,
+    updated_at: now
+  };
+
+  if (existing) {
+    const { error } = await sb.from("user_subscriptions").update(payload).eq("user_id", userId);
+    if (error) throw new Error(error.message);
+    return;
+  }
+
+  const { error: insertErr } = await sb.from("user_subscriptions").insert({
+    user_id: userId,
+    ...payload
+  });
+  if (insertErr) throw new Error(insertErr.message);
+}
+
 export async function activateSubscription(input: ActivateSubscriptionInput): Promise<void> {
   const sb = requireServiceRole();
-  const { error } = await sb
-    .from("user_subscriptions")
-    .update({
-      plan_code: input.planCode,
-      status: "active",
-      payment_provider: input.provider,
-      payment_customer_id: input.customerId ?? null,
-      payment_subscription_id: input.subscriptionId ?? null,
-      current_period_start: input.currentPeriodStart ?? null,
-      current_period_end: input.currentPeriodEnd ?? null,
-      updated_at: new Date().toISOString()
-    })
-    .eq("user_id", input.userId);
+  const payload = {
+    plan_code: input.planCode,
+    status: "active",
+    payment_provider: input.provider,
+    payment_customer_id: input.customerId ?? null,
+    payment_subscription_id: input.subscriptionId ?? null,
+    current_period_start: input.currentPeriodStart ?? null,
+    current_period_end: input.currentPeriodEnd ?? null,
+    updated_at: new Date().toISOString()
+  };
 
-  if (error) throw new Error(error.message);
+  const { data: existing, error: existingErr } = await sb
+    .from("user_subscriptions")
+    .select("id")
+    .eq("user_id", input.userId)
+    .maybeSingle();
+
+  if (existingErr) throw new Error(existingErr.message);
+
+  if (existing) {
+    const { error } = await sb.from("user_subscriptions").update(payload).eq("user_id", input.userId);
+    if (error) throw new Error(error.message);
+    return;
+  }
+
+  const { error: insertErr } = await sb.from("user_subscriptions").insert({
+    user_id: input.userId,
+    trial_start: null,
+    trial_end: null,
+    ...payload
+  });
+  if (insertErr) throw new Error(insertErr.message);
 }
 
 export async function cancelSubscription(input: SubscriptionLifecycleInput): Promise<void> {

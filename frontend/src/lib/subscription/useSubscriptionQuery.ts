@@ -8,7 +8,10 @@ import {
   type SubscriptionPlanRecord
 } from "../../services/subscriptionPlansSupabase";
 import { fetchSubscriptionUsageCounts } from "../../services/subscriptionUsageSupabase";
-import { getUserSubscriptionForCurrentUser } from "../../services/userSubscriptionsSupabase";
+import {
+  ensureDefaultStarterSubscription,
+  getUserSubscriptionForCurrentUser
+} from "../../services/userSubscriptionsSupabase";
 import { useWorkspaceId } from "../../features/queries/useWorkspaceId";
 import { computePlanPermissions } from "./planFeatures";
 import type { PlanPermissionsSnapshot } from "./planTypes";
@@ -20,10 +23,13 @@ export type SubscriptionQueryData = {
 };
 
 async function loadSubscriptionData(): Promise<SubscriptionQueryData> {
-  const [plans, subscription] = await Promise.all([
-    listActiveSubscriptionPlans().catch(() => FALLBACK_SUBSCRIPTION_PLANS),
-    getUserSubscriptionForCurrentUser()
-  ]);
+  const plans = await listActiveSubscriptionPlans().catch(() => FALLBACK_SUBSCRIPTION_PLANS);
+  try {
+    await ensureDefaultStarterSubscription();
+  } catch (e) {
+    console.warn("[subscription] ensure default starter failed", e);
+  }
+  const subscription = await getUserSubscriptionForCurrentUser();
   const usage = await fetchSubscriptionUsageCounts(subscription);
   return { plans, subscription, usage };
 }
