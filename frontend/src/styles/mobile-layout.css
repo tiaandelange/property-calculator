@@ -212,20 +212,17 @@
     z-index: 2;
   }
 
-  /* Contained horizontal scroll (complex editable tables only) —— */
   .pg-mobile-table-scroll {
     width: 100%;
     max-width: 100%;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior-x: contain;
+    overflow-x: hidden;
     border-radius: 12px;
-    box-shadow: inset -8px 0 12px -12px color-mix(in srgb, var(--text-primary) 12%, transparent);
   }
 
   .pg-mobile-table-scroll > table,
   .pg-mobile-table-scroll > .pg-ptable {
-    min-width: 640px;
+    min-width: 0;
+    width: 100%;
   }
 
   /* Property statement: keep editable table with contained scroll (not hidden) */

@@ -58,7 +58,7 @@
 .pg-statement-wrap,
 .pg-tstmt-table-wrap {
   width: 100%;
-  overflow-x: auto;
+  overflow-x: hidden;
   overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
   container-type: inline-size;
@@ -83,7 +83,7 @@
 }
 
 .pg-ptable-wrap--scroll-x {
-  overflow-x: auto;
+  overflow-x: hidden;
 }
 
 .pg-ptable,

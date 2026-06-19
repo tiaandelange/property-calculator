@@ -104,7 +104,7 @@
 }
 
 .pg-invoices-table-wrap {
-  overflow-x: auto;
+  overflow-x: hidden;
   border-radius: 16px;
   border: 1px solid var(--border-soft);
   background: var(--surface);
@@ -112,7 +112,7 @@
 
 @media (min-width: 768px) {
   .pg-invoices-table-wrap:not(.pg-ptable-wrap--scroll-x) {
-    overflow-x: visible;
+    overflow-x: hidden;
   }
 }
 

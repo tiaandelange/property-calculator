@@ -156,7 +156,7 @@
   .pg-tenants-table-wrap:not(.pg-ptable-wrap--scroll-x),
   .pg-leases-table-wrap:not(.pg-ptable-wrap--scroll-x),
   .pg-pfin-table-wrap:not(.pg-ptable-wrap--scroll-x):not(.pg-ptable-wrap) {
-    overflow-x: visible;
+    overflow-x: hidden;
   }
 }
 

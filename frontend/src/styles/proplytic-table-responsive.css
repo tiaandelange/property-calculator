@@ -76,22 +76,8 @@
   }
 }
 
-/* --- Horizontal scroll fallback (desktop narrow) --- */
+/* --- Sticky edge columns (layout only; no horizontal scroll) --- */
 @media (min-width: 768px) {
-  @container ptable (max-width: 999px) {
-    .pg-ptable-wrap--adaptive:not(.pg-ptable-wrap--scroll-x) {
-      overflow-x: auto;
-      scrollbar-gutter: stable;
-    }
-  }
-}
-
-/* --- Sticky edge columns when scrolling --- */
-@media (min-width: 768px) {
-  .pg-ptable-wrap--sticky-edges.pg-ptable-wrap--adaptive:has(.pg-ptable-col--sticky-start) {
-    overflow-x: auto;
-  }
-
   .pg-ptable-wrap--sticky-edges .pg-ptable-col--sticky-start,
   .pg-ptable-wrap--sticky-edges .pg-ptable thead th:first-child,
   .pg-ptable-wrap--sticky-edges .pg-ptable tbody td:first-child {

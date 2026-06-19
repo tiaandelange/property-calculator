@@ -103,7 +103,6 @@ export function PropertyLeasesTable({
             const tenantName = leaseTenantDisplayName(lease, fallbackTenants);
             const tenantHref = leaseTenantHref(lease, fallbackTenants);
             const termLabel = leaseTermTypeLabel(lease);
-            const displayStatus = String(lease.displayStatus ?? lease.status ?? "");
             const lifecycle = deriveLeaseStatus(
               {
                 id: leaseId,
@@ -141,11 +140,9 @@ export function PropertyLeasesTable({
                     sub={
                       coTenants.length > 0 ? (
                         <ProplyticTruncateCell title={coTenants.join(", ")}>
-                          {termLabel} · Co: {coTenants.join(", ")}
+                          Co-tenants: {coTenants.join(", ")}
                         </ProplyticTruncateCell>
-                      ) : (
-                        termLabel
-                      )
+                      ) : undefined
                     }
                     href={tenantHref ?? undefined}
                     avatar={
@@ -176,7 +173,7 @@ export function PropertyLeasesTable({
                 <ProplyticTableCell columnType="status" columnPriority={1}>
                   <ProplyticStatusBadgeGroup>
                     <ProplyticStatusBadge status={lifecycle} />
-                    {displayStatus ? <ProplyticStatusBadge status={displayStatus} /> : null}
+                    <ProplyticStatusBadge status={lease.leaseType ?? "FIXED_TERM"} label={termLabel} />
                   </ProplyticStatusBadgeGroup>
                 </ProplyticTableCell>
                 <ProplyticTableCell columnType="actions" columnPriority={1}>

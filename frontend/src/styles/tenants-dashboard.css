@@ -127,13 +127,13 @@
 }
 
 .pg-tenants-table-wrap {
-  overflow-x: auto;
+  overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
 }
 
 @media (min-width: 768px) {
   .pg-tenants-table-wrap:not(.pg-ptable-wrap--scroll-x) {
-    overflow-x: visible;
+    overflow-x: hidden;
   }
 }
 

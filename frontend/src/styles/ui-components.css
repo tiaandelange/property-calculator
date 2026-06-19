@@ -293,7 +293,7 @@ select.pg-input:focus,
 /* --- Tables --- */
 .pg-table-wrap {
   width: 100%;
-  overflow-x: auto;
+  overflow-x: hidden;
   border: 1px solid var(--border-soft);
   border-radius: var(--ui-control-radius);
   background: var(--surface);

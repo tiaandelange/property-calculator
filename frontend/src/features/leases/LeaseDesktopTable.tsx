@@ -91,7 +91,7 @@ export function LeaseDesktopTable({
                       />
                       <ProplyticTenantCell
                         name={lease.tenantName}
-                        sub={lease.leaseTypeLabel}
+                        sub={lease.tenantEmail || undefined}
                         href={lease.tenantId ? `/tenants/${lease.tenantId}` : undefined}
                         avatar={
                           <span className="pg-leases-avatar" aria-hidden>
@@ -131,7 +131,7 @@ export function LeaseDesktopTable({
                   <ProplyticTableCell columnType="status" columnPriority={1}>
                     <ProplyticStatusBadgeGroup>
                       <ProplyticStatusBadge status={lease.lifecycleStatus} />
-                      <ProplyticStatusBadge status={lease.displayStatus} />
+                      <ProplyticStatusBadge status={lease.leaseType} label={lease.leaseTypeLabel} />
                     </ProplyticStatusBadgeGroup>
                   </ProplyticTableCell>
                   <ProplyticTableCell columnType="actions" columnPriority={1}>

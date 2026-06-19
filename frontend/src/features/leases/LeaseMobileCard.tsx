@@ -1,7 +1,8 @@
 import { Link } from "react-router-dom";
+import { ProplyticStatusBadge } from "../../components/tables";
 import type { LeaseListItem } from "./leaseDirectoryTypes";
 import { fmtZar, formatDateShort, tenantInitialsFromName } from "./leaseDirectoryUtils";
-import { LeaseDisplayStatusBadge, LeaseLifecycleBadge } from "./LeaseStatusBadges";
+import { LeaseLifecycleBadge } from "./LeaseStatusBadges";
 import { LeaseRowActions } from "./LeaseRowActions";
 
 export function LeaseMobileCard({
@@ -45,7 +46,7 @@ export function LeaseMobileCard({
       <div className="pg-leases-mobile-card-foot">
         <div className="pg-leases-mobile-badges">
           <LeaseLifecycleBadge status={lease.lifecycleStatus} />
-          <LeaseDisplayStatusBadge status={lease.displayStatus} />
+          <ProplyticStatusBadge status={lease.leaseType} label={lease.leaseTypeLabel} />
         </div>
         <LeaseRowActions lease={lease} onCancel={onCancelLease} onDelete={onDeleteLease} />
       </div>
