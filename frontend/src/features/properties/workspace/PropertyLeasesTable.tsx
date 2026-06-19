@@ -1,7 +1,8 @@
-import { Link } from "react-router-dom";
 import {
   ProplyticAmountCell,
+  ProplyticLeaseTermCell,
   ProplyticStatusBadge,
+  ProplyticStatusBadgeGroup,
   ProplyticTable,
   ProplyticTableBody,
   ProplyticTableCell,
@@ -9,9 +10,11 @@ import {
   ProplyticTableHeadCell,
   ProplyticTableHeader,
   ProplyticTableRow,
-  ProplyticTableWrap
+  ProplyticTableWrap,
+  ProplyticTenantCell,
+  ProplyticTruncateCell
 } from "../../../components/tables";
-import { fmtZar, formatDateShort, tenantInitialsFromName } from "../../leases/leaseDirectoryUtils";
+import { fmtZar, tenantInitialsFromName } from "../../leases/leaseDirectoryUtils";
 import { deriveLeaseStatus } from "../../tenants/tenantDirectoryAdapter";
 import type { PropertyLeaseCardLease } from "./PropertyLeaseCard";
 import {
@@ -70,14 +73,28 @@ export function PropertyLeasesTable({
       <ProplyticTable>
         <ProplyticTableHeader>
           <ProplyticTableRow>
-            <ProplyticTableHeadCell columnType="text">Tenant</ProplyticTableHeadCell>
-            <ProplyticTableHeadCell columnType="reference">Reference</ProplyticTableHeadCell>
-            <ProplyticTableHeadCell columnType="currency">Monthly rent</ProplyticTableHeadCell>
-            <ProplyticTableHeadCell columnType="date">Lease term</ProplyticTableHeadCell>
-            <ProplyticTableHeadCell columnType="compact">Rent due</ProplyticTableHeadCell>
-            <ProplyticTableHeadCell columnType="currency">Deposit</ProplyticTableHeadCell>
-            <ProplyticTableHeadCell columnType="status">Status</ProplyticTableHeadCell>
-            <ProplyticTableHeadCell columnType="actions" />
+            <ProplyticTableHeadCell columnType="text" columnPriority={1} sticky="start">
+              Tenant
+            </ProplyticTableHeadCell>
+            <ProplyticTableHeadCell columnType="reference" columnPriority={3}>
+              Reference
+            </ProplyticTableHeadCell>
+            <ProplyticTableHeadCell columnType="currency" columnPriority={1}>
+              Monthly rent
+            </ProplyticTableHeadCell>
+            <ProplyticTableHeadCell columnType="date" columnPriority={2}>
+              Lease term
+            </ProplyticTableHeadCell>
+            <ProplyticTableHeadCell columnType="compact" columnPriority={3}>
+              Rent due
+            </ProplyticTableHeadCell>
+            <ProplyticTableHeadCell columnType="currency" columnPriority={3}>
+              Deposit
+            </ProplyticTableHeadCell>
+            <ProplyticTableHeadCell columnType="status" columnPriority={1}>
+              Status
+            </ProplyticTableHeadCell>
+            <ProplyticTableHeadCell columnType="actions" columnPriority={1} />
           </ProplyticTableRow>
         </ProplyticTableHeader>
         <ProplyticTableBody>
@@ -118,60 +135,51 @@ export function PropertyLeasesTable({
                 id={`lease-row-${leaseId}`}
                 className={highlighted ? "pg-ptable__row--highlighted" : undefined}
               >
-                <ProplyticTableCell columnType="text">
-                  <div className="pg-leases-cell-tenant">
-                    <span className="pg-leases-avatar" aria-hidden>
-                      {tenantInitialsFromName(tenantName)}
-                    </span>
-                    <div className="pg-leases-cell-tenant-text">
-                      {tenantHref ? (
-                        <Link className="pg-leases-name" to={tenantHref}>
-                          {tenantName}
-                        </Link>
+                <ProplyticTableCell columnType="text" columnPriority={1} sticky="start">
+                  <ProplyticTenantCell
+                    name={tenantName}
+                    sub={
+                      coTenants.length > 0 ? (
+                        <ProplyticTruncateCell title={coTenants.join(", ")}>
+                          {termLabel} · Co: {coTenants.join(", ")}
+                        </ProplyticTruncateCell>
                       ) : (
-                        <span className="pg-leases-name">{tenantName}</span>
-                      )}
-                      <div className="pg-leases-sub">{termLabel}</div>
-                      {coTenants.length > 0 ? (
-                        <div className="pg-leases-sub">Co-tenants: {coTenants.join(", ")}</div>
-                      ) : null}
-                    </div>
-                  </div>
+                        termLabel
+                      )
+                    }
+                    href={tenantHref ?? undefined}
+                    avatar={
+                      <span className="pg-leases-avatar" aria-hidden>
+                        {tenantInitialsFromName(tenantName)}
+                      </span>
+                    }
+                  />
                 </ProplyticTableCell>
-                <ProplyticTableCell columnType="reference">{leaseReferenceDisplay(lease)}</ProplyticTableCell>
-                <ProplyticTableCell columnType="currency">
+                <ProplyticTableCell columnType="reference" columnPriority={3}>
+                  <ProplyticTruncateCell>{leaseReferenceDisplay(lease)}</ProplyticTruncateCell>
+                </ProplyticTableCell>
+                <ProplyticTableCell columnType="currency" columnPriority={1}>
                   {rent > 0 ? <ProplyticAmountCell>{fmtZar(rent)}</ProplyticAmountCell> : "—"}
                 </ProplyticTableCell>
-                <ProplyticTableCell columnType="date">
-                  {lease.startDate || lease.fixedTermEndDate ? (
-                    <div className="pg-leases-term">
-                      <div>{formatDateShort(lease.startDate != null ? String(lease.startDate) : null)}</div>
-                      <div className="pg-leases-sub">
-                        to{" "}
-                        {lease.fixedTermEndDate
-                          ? formatDateShort(String(lease.fixedTermEndDate))
-                          : "Month-to-month"}
-                      </div>
-                    </div>
-                  ) : (
-                    <span className="pg-leases-sub">—</span>
-                  )}
+                <ProplyticTableCell columnType="date" columnPriority={2}>
+                  <ProplyticLeaseTermCell
+                    start={lease.startDate != null ? String(lease.startDate) : null}
+                    end={lease.fixedTermEndDate != null ? String(lease.fixedTermEndDate) : null}
+                  />
                 </ProplyticTableCell>
-                <ProplyticTableCell columnType="compact">
-                  <div className="pg-leases-due">
-                    {rentDue != null && Number.isFinite(Number(rentDue)) ? `Day ${rentDue}` : "—"}
-                  </div>
+                <ProplyticTableCell columnType="compact" columnPriority={3}>
+                  {rentDue != null && Number.isFinite(Number(rentDue)) ? `Day ${rentDue}` : "—"}
                 </ProplyticTableCell>
-                <ProplyticTableCell columnType="currency">
+                <ProplyticTableCell columnType="currency" columnPriority={3}>
                   {deposit > 0 ? <ProplyticAmountCell>{fmtZar(deposit)}</ProplyticAmountCell> : "—"}
                 </ProplyticTableCell>
-                <ProplyticTableCell columnType="status">
-                  <div className="pg-leases-status-stack">
+                <ProplyticTableCell columnType="status" columnPriority={1}>
+                  <ProplyticStatusBadgeGroup>
                     <ProplyticStatusBadge status={lifecycle} />
                     {displayStatus ? <ProplyticStatusBadge status={displayStatus} /> : null}
-                  </div>
+                  </ProplyticStatusBadgeGroup>
                 </ProplyticTableCell>
-                <ProplyticTableCell columnType="actions">
+                <ProplyticTableCell columnType="actions" columnPriority={1}>
                   <PropertyLeaseRowActions
                     leaseId={leaseId}
                     tenantId={lease.tenantId}

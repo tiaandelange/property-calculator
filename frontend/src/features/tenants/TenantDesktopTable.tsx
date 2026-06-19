@@ -1,6 +1,7 @@
-import { Link } from "react-router-dom";
 import {
   ProplyticAmountCell,
+  ProplyticLeaseTermCell,
+  ProplyticPropertyCell,
   ProplyticStatusBadge,
   ProplyticTable,
   ProplyticTableBody,
@@ -9,12 +10,13 @@ import {
   ProplyticTableHeader,
   ProplyticTableRow,
   ProplyticTableSkeleton,
-  ProplyticTableWrap
+  ProplyticTableWrap,
+  ProplyticTenantCell,
+  ProplyticTruncateCell
 } from "../../components/tables";
 import type { TenantListItem } from "./tenantDirectoryTypes";
 import {
   fmtZar,
-  formatDateShort,
   tenantInitials,
   tenantRowContactEmail,
   tenantRowContactPhone,
@@ -29,6 +31,11 @@ function TenantAvatar({ tenant }: { tenant: TenantListItem }) {
       {tenantInitials(tenant)}
     </span>
   );
+}
+
+function tenantPropertyAddress(t: TenantListItem): string {
+  const parts = [t.propertyAddress, t.unitNumber ? `Unit ${t.unitNumber}` : ""].filter(Boolean);
+  return parts.join(" · ");
 }
 
 export function TenantDesktopTable({
@@ -53,66 +60,73 @@ export function TenantDesktopTable({
       <ProplyticTable>
         <ProplyticTableHeader>
           <ProplyticTableRow>
-            <ProplyticTableHeadCell columnType="text">Tenant</ProplyticTableHeadCell>
-            <ProplyticTableHeadCell columnType="text">Property / Unit</ProplyticTableHeadCell>
-            <ProplyticTableHeadCell columnType="reference">Contact</ProplyticTableHeadCell>
-            <ProplyticTableHeadCell columnType="currency">Monthly Rent</ProplyticTableHeadCell>
-            <ProplyticTableHeadCell columnType="date">Lease Term</ProplyticTableHeadCell>
-            <ProplyticTableHeadCell columnType="status">Payment Status</ProplyticTableHeadCell>
-            <ProplyticTableHeadCell columnType="status">Lease Status</ProplyticTableHeadCell>
-            <ProplyticTableHeadCell columnType="actions" />
+            <ProplyticTableHeadCell columnType="text" columnPriority={1} sticky="start">
+              Tenant
+            </ProplyticTableHeadCell>
+            <ProplyticTableHeadCell columnType="text" columnPriority={2}>
+              Property / Unit
+            </ProplyticTableHeadCell>
+            <ProplyticTableHeadCell columnType="reference" columnPriority={3}>
+              Contact
+            </ProplyticTableHeadCell>
+            <ProplyticTableHeadCell columnType="currency" columnPriority={1}>
+              Monthly Rent
+            </ProplyticTableHeadCell>
+            <ProplyticTableHeadCell columnType="date" columnPriority={2}>
+              Lease Term
+            </ProplyticTableHeadCell>
+            <ProplyticTableHeadCell columnType="status" columnPriority={1}>
+              Payment Status
+            </ProplyticTableHeadCell>
+            <ProplyticTableHeadCell columnType="status" columnPriority={2}>
+              Lease Status
+            </ProplyticTableHeadCell>
+            <ProplyticTableHeadCell columnType="actions" columnPriority={1} />
           </ProplyticTableRow>
         </ProplyticTableHeader>
         <ProplyticTableBody>
           {items.map((t) => (
             <ProplyticTableRow key={t.id}>
-              <ProplyticTableCell columnType="text">
-                <div className="pg-tenants-cell-tenant">
-                  <TenantAvatar tenant={t} />
-                  <div className="pg-tenants-cell-tenant-text">
-                    <Link className="pg-tenants-name" to={`/tenants/${t.id}`}>
-                      {tenantRowDisplayName(t)}
-                    </Link>
-                    <div className="pg-tenants-sub">{tenantRowContactEmail(t) || "No email"}</div>
-                  </div>
-                </div>
+              <ProplyticTableCell columnType="text" columnPriority={1} sticky="start">
+                <ProplyticTenantCell
+                  name={tenantRowDisplayName(t)}
+                  sub={tenantRowContactEmail(t) || "No email"}
+                  href={`/tenants/${t.id}`}
+                  avatar={<TenantAvatar tenant={t} />}
+                />
               </ProplyticTableCell>
-              <ProplyticTableCell columnType="text">
-                <div className="pg-tenants-property">
-                  <strong>{t.propertyName || "No property assigned"}</strong>
-                  <div className="pg-tenants-sub">
-                    {t.propertyAddress || "—"}
-                    {t.unitNumber ? ` · Unit ${t.unitNumber}` : ""}
-                  </div>
-                </div>
+              <ProplyticTableCell columnType="text" columnPriority={2}>
+                <ProplyticPropertyCell
+                  name={t.propertyName || "No property assigned"}
+                  address={tenantPropertyAddress(t)}
+                />
               </ProplyticTableCell>
-              <ProplyticTableCell columnType="reference">
-                <div className="pg-tenants-contact">{tenantRowContactPhone(t) || "No phone"}</div>
+              <ProplyticTableCell columnType="reference" columnPriority={3}>
+                <ProplyticTruncateCell title={tenantRowContactPhone(t) || undefined}>
+                  {tenantRowContactPhone(t) || "No phone"}
+                </ProplyticTruncateCell>
               </ProplyticTableCell>
-              <ProplyticTableCell columnType="currency">
+              <ProplyticTableCell columnType="currency" columnPriority={1}>
                 {t.monthlyRent != null ? (
                   <ProplyticAmountCell>{fmtZar(t.monthlyRent)}</ProplyticAmountCell>
                 ) : (
                   "—"
                 )}
               </ProplyticTableCell>
-              <ProplyticTableCell columnType="date">
+              <ProplyticTableCell columnType="date" columnPriority={2}>
                 {t.leaseStartDate || t.leaseEndDate ? (
-                  <div className="pg-tenants-term">
-                    <div>{formatDateShort(t.leaseStartDate)}</div>
-                    <div className="pg-tenants-sub">to {formatDateShort(t.leaseEndDate)}</div>
-                  </div>
+                  <ProplyticLeaseTermCell start={t.leaseStartDate} end={t.leaseEndDate} />
                 ) : (
-                  <span className="pg-tenants-sub">No active lease</span>
+                  <span className="pg-ptable-muted">No active lease</span>
                 )}
               </ProplyticTableCell>
-              <ProplyticTableCell columnType="status">
+              <ProplyticTableCell columnType="status" columnPriority={1}>
                 <ProplyticStatusBadge status={t.paymentStatus} />
               </ProplyticTableCell>
-              <ProplyticTableCell columnType="status">
+              <ProplyticTableCell columnType="status" columnPriority={2}>
                 <TenantLeaseStatusCell tenant={t} useProplyticBadge />
               </ProplyticTableCell>
-              <ProplyticTableCell columnType="actions">
+              <ProplyticTableCell columnType="actions" columnPriority={1}>
                 <TenantRowActions tenant={t} onDelete={onDelete} />
               </ProplyticTableCell>
             </ProplyticTableRow>

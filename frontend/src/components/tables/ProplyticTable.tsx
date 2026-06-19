@@ -10,6 +10,10 @@ import {
   proplyticTableColumnClass,
   type ProplyticTableColumnType
 } from "./proplyticTableColumnTypes";
+import {
+  proplyticTablePriorityClass,
+  type ProplyticTableColumnPriority
+} from "./proplyticTableColumnPriority";
 
 export type ProplyticTableVariant = "standard" | "financial" | "compact" | "editable";
 export type ProplyticTableLayout = "standard" | "wide";
@@ -57,12 +61,18 @@ export function ProplyticTableWrap({
   className,
   responsive,
   scrollX,
+  adaptive = true,
+  stickyEdges = true,
   tableLayout = "standard",
   ...props
 }: HTMLAttributes<HTMLDivElement> & {
   responsive?: boolean;
   /** @deprecated Prefer tableLayout="wide" */
   scrollX?: boolean;
+  /** Auto density, column priority, and scroll fallback (desktop). */
+  adaptive?: boolean;
+  /** Sticky first column + actions when horizontal scroll is active. */
+  stickyEdges?: boolean;
   tableLayout?: ProplyticTableLayout;
 }) {
   const wide = tableLayout === "wide" || scrollX;
@@ -74,6 +84,8 @@ export function ProplyticTableWrap({
         responsive && "pg-ptable-wrap--responsive",
         wide && "pg-ptable-wrap--scroll-x",
         wide && "pg-ptable-wrap--wide",
+        adaptive && "pg-ptable-wrap--adaptive",
+        stickyEdges && "pg-ptable-wrap--sticky-edges",
         className
       )}
       {...props}
@@ -138,6 +150,8 @@ type CellAlign = "left" | "right" | "center";
 type ProplyticTableCellProps = {
   align?: CellAlign;
   columnType?: ProplyticTableColumnType;
+  columnPriority?: ProplyticTableColumnPriority;
+  sticky?: "start" | "end";
   /** @deprecated Use columnType="currency" | "number" */
   numeric?: boolean;
   /** @deprecated Use columnType="actions" */
@@ -149,12 +163,19 @@ type ProplyticTableCellProps = {
 };
 
 function resolveCellClass(props: ProplyticTableCellProps) {
-  return proplyticTableColumnClass(props.columnType, {
-    numeric: props.numeric,
-    actions: props.actions,
-    compact: props.compact,
-    flex: props.flex
-  });
+  return cn(
+    proplyticTableColumnClass(props.columnType, {
+      numeric: props.numeric,
+      actions: props.actions,
+      compact: props.compact,
+      flex: props.flex
+    }),
+    proplyticTablePriorityClass(props.columnPriority),
+    props.sticky === "start" ? "pg-ptable-col--sticky-start" : undefined,
+    props.sticky === "end" || props.actions || props.columnType === "actions"
+      ? "pg-ptable-col--sticky-end"
+      : undefined
+  );
 }
 
 function resolveCellAlign(props: ProplyticTableCellProps) {
@@ -169,13 +190,15 @@ export function ProplyticTableHeadCell({
   className,
   align,
   columnType,
+  columnPriority,
+  sticky,
   numeric,
   actions,
   compact,
   flex,
   ...props
 }: ThHTMLAttributes<HTMLTableCellElement> & ProplyticTableCellProps) {
-  const cellProps = { align, columnType, numeric, actions, compact, flex };
+  const cellProps = { align, columnType, columnPriority, sticky, numeric, actions, compact, flex };
   const isActions = actions || columnType === "actions";
 
   return (
@@ -198,13 +221,15 @@ export function ProplyticTableCell({
   className,
   align,
   columnType,
+  columnPriority,
+  sticky,
   numeric,
   actions,
   compact,
   flex,
   ...props
 }: TdHTMLAttributes<HTMLTableCellElement> & ProplyticTableCellProps) {
-  const cellProps = { align, columnType, numeric, actions, compact, flex };
+  const cellProps = { align, columnType, columnPriority, sticky, numeric, actions, compact, flex };
 
   return (
     <td
@@ -273,4 +298,5 @@ export function stopTableRowEvent(e: { stopPropagation: () => void }) {
   e.stopPropagation();
 }
 
+export type { ProplyticTableColumnPriority } from "./proplyticTableColumnPriority";
 export type { ProplyticTableColumnType } from "./proplyticTableColumnTypes";

@@ -41,7 +41,7 @@ export function StatementLineItemsEditor({ lineItems, editable, statementType, o
       </h3>
 
       <div className="pg-inv-lines__desktop">
-        <ProplyticTableWrap>
+        <ProplyticTableWrap adaptive={false}>
           <table className="pg-ptable pg-ptable--editable pg-inv-lines__table">
             <thead>
               <tr>

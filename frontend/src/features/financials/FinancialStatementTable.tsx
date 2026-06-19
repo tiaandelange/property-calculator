@@ -144,38 +144,60 @@ export function FinancialStatementTable({
       <ProplyticTable variant="financial" className="pg-fins-statement-table">
         <ProplyticTableHeader>
           <ProplyticTableRow>
-            <ProplyticTableHeadCell columnType="date">Date</ProplyticTableHeadCell>
-            <ProplyticTableHeadCell columnType="text">Property</ProplyticTableHeadCell>
-            <ProplyticTableHeadCell columnType="description">Description</ProplyticTableHeadCell>
-            <ProplyticTableHeadCell columnType="reference">Type</ProplyticTableHeadCell>
-            <ProplyticTableHeadCell columnType="currency">Debit</ProplyticTableHeadCell>
-            <ProplyticTableHeadCell columnType="currency">Credit</ProplyticTableHeadCell>
-            {showRunningBalance ? <ProplyticTableHeadCell columnType="currency">Balance</ProplyticTableHeadCell> : null}
-            <ProplyticTableHeadCell columnType="reference">Source</ProplyticTableHeadCell>
-            <ProplyticTableHeadCell columnType="actions" />
+            <ProplyticTableHeadCell columnType="date" columnPriority={1} sticky="start">
+              Date
+            </ProplyticTableHeadCell>
+            <ProplyticTableHeadCell columnType="text" columnPriority={2}>
+              Property
+            </ProplyticTableHeadCell>
+            <ProplyticTableHeadCell columnType="description" columnPriority={1}>
+              Description
+            </ProplyticTableHeadCell>
+            <ProplyticTableHeadCell columnType="reference" columnPriority={3}>
+              Type
+            </ProplyticTableHeadCell>
+            <ProplyticTableHeadCell columnType="currency" columnPriority={1}>
+              Debit
+            </ProplyticTableHeadCell>
+            <ProplyticTableHeadCell columnType="currency" columnPriority={1}>
+              Credit
+            </ProplyticTableHeadCell>
+            {showRunningBalance ? (
+              <ProplyticTableHeadCell columnType="currency" columnPriority={2}>
+                Balance
+              </ProplyticTableHeadCell>
+            ) : null}
+            <ProplyticTableHeadCell columnType="reference" columnPriority={4}>
+              Source
+            </ProplyticTableHeadCell>
+            <ProplyticTableHeadCell columnType="actions" columnPriority={1} />
           </ProplyticTableRow>
         </ProplyticTableHeader>
         <ProplyticTableBody>
           {items.map((r) => (
             <ProplyticTableRow key={r.id}>
-              <ProplyticTableCell columnType="date">{r.date}</ProplyticTableCell>
-              <ProplyticTableCell columnType="text">
+              <ProplyticTableCell columnType="date" columnPriority={1} sticky="start">
+                {r.date}
+              </ProplyticTableCell>
+              <ProplyticTableCell columnType="text" columnPriority={2}>
                 <Link className="pg-fins-name" to={`/owned-properties/${r.propertyId}?tab=financials&fin=statement`}>
                   {r.propertyName}
                 </Link>
               </ProplyticTableCell>
-              <ProplyticTableCell columnType="description">
+              <ProplyticTableCell columnType="description" columnPriority={1}>
                 <ProplyticDescriptionCell
                   main={r.description}
                   sub={r.invoiceNumber ? `Invoice ${r.invoiceNumber}` : undefined}
                   title={r.description}
                 />
               </ProplyticTableCell>
-              <ProplyticTableCell columnType="reference">{displayType(r)}</ProplyticTableCell>
-              <ProplyticTableCell columnType="currency">
+              <ProplyticTableCell columnType="reference" columnPriority={3}>
+                {displayType(r)}
+              </ProplyticTableCell>
+              <ProplyticTableCell columnType="currency" columnPriority={1}>
                 {r.debit != null ? <ProplyticAmountCell tone="debit">{fmtZar(r.debit)}</ProplyticAmountCell> : "—"}
               </ProplyticTableCell>
-              <ProplyticTableCell columnType="currency">
+              <ProplyticTableCell columnType="currency" columnPriority={1}>
                 {r.credit != null ? (
                   <ProplyticAmountCell tone={creditTone(r)}>{fmtZar(r.credit)}</ProplyticAmountCell>
                 ) : (
@@ -183,12 +205,14 @@ export function FinancialStatementTable({
                 )}
               </ProplyticTableCell>
               {showRunningBalance ? (
-                <ProplyticTableCell columnType="currency">
+                <ProplyticTableCell columnType="currency" columnPriority={2}>
                   {r.balance != null ? <ProplyticAmountCell tone="balance">{fmtZar(r.balance)}</ProplyticAmountCell> : "—"}
                 </ProplyticTableCell>
               ) : null}
-              <ProplyticTableCell columnType="reference">{r.source}</ProplyticTableCell>
-              <ProplyticTableCell columnType="actions">
+              <ProplyticTableCell columnType="reference" columnPriority={4}>
+                {r.source}
+              </ProplyticTableCell>
+              <ProplyticTableCell columnType="actions" columnPriority={1}>
                 <ProplyticTableRowActionsMenu actions={rowActionsFor(r)} />
               </ProplyticTableCell>
             </ProplyticTableRow>

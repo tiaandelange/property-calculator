@@ -103,13 +103,25 @@ export function InvoiceDesktopTable({
       <ProplyticTable variant="financial">
         <ProplyticTableHeader>
           <ProplyticTableRow>
-            <ProplyticTableHeadCell columnType="reference">Invoice #</ProplyticTableHeadCell>
-            <ProplyticTableHeadCell columnType="reference">Reference</ProplyticTableHeadCell>
-            <ProplyticTableHeadCell columnType="text">Tenant</ProplyticTableHeadCell>
-            <ProplyticTableHeadCell columnType="text">Status</ProplyticTableHeadCell>
-            <ProplyticTableHeadCell columnType="date">Due Date</ProplyticTableHeadCell>
-            <ProplyticTableHeadCell columnType="currency">Amount Due</ProplyticTableHeadCell>
-            <ProplyticTableHeadCell columnType="actions" />
+            <ProplyticTableHeadCell columnType="reference" columnPriority={1} sticky="start">
+              Invoice #
+            </ProplyticTableHeadCell>
+            <ProplyticTableHeadCell columnType="reference" columnPriority={3}>
+              Reference
+            </ProplyticTableHeadCell>
+            <ProplyticTableHeadCell columnType="text" columnPriority={1}>
+              Tenant
+            </ProplyticTableHeadCell>
+            <ProplyticTableHeadCell columnType="text" columnPriority={1}>
+              Status
+            </ProplyticTableHeadCell>
+            <ProplyticTableHeadCell columnType="date" columnPriority={2}>
+              Due Date
+            </ProplyticTableHeadCell>
+            <ProplyticTableHeadCell columnType="currency" columnPriority={1}>
+              Amount Due
+            </ProplyticTableHeadCell>
+            <ProplyticTableHeadCell columnType="actions" columnPriority={1} />
           </ProplyticTableRow>
         </ProplyticTableHeader>
         <ProplyticTableBody>
@@ -122,13 +134,15 @@ export function InvoiceDesktopTable({
 
             return (
               <ProplyticTableRow key={row.id} {...(warm ?? {})}>
-                <ProplyticTableCell columnType="reference">
+                <ProplyticTableCell columnType="reference" columnPriority={1} sticky="start">
                   <Link className="pg-invoices-link pg-invoices-num" to={viewHref}>
                     {row.invoiceNumber}
                   </Link>
                 </ProplyticTableCell>
-                <ProplyticTableCell columnType="reference">{row.leaseReference ?? "—"}</ProplyticTableCell>
-                <ProplyticTableCell columnType="text">
+                <ProplyticTableCell columnType="reference" columnPriority={3}>
+                  {row.leaseReference ?? "—"}
+                </ProplyticTableCell>
+                <ProplyticTableCell columnType="text" columnPriority={1}>
                   {row.tenantId ? (
                     <Link className="pg-invoices-link" to={`/tenants/${row.tenantId}`}>
                       {row.tenantName}
@@ -137,14 +151,16 @@ export function InvoiceDesktopTable({
                     row.tenantName
                   )}
                 </ProplyticTableCell>
-                <ProplyticTableCell columnType="text">
+                <ProplyticTableCell columnType="text" columnPriority={1}>
                   <InvoiceStatusBadge status={row.status} />
                 </ProplyticTableCell>
-                <ProplyticTableCell columnType="date">{formatDateShort(row.dueDate)}</ProplyticTableCell>
-                <ProplyticTableCell columnType="currency">
+                <ProplyticTableCell columnType="date" columnPriority={2}>
+                  {formatDateShort(row.dueDate)}
+                </ProplyticTableCell>
+                <ProplyticTableCell columnType="currency" columnPriority={1}>
                   <ProplyticAmountCell tone="balance">{fmtZar(amountDue)}</ProplyticAmountCell>
                 </ProplyticTableCell>
-                <ProplyticTableCell columnType="actions">
+                <ProplyticTableCell columnType="actions" columnPriority={1}>
                   <ProplyticTableRowActionsMenu
                     actions={[
                       {

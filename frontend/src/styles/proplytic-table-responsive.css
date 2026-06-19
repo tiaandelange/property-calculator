@@ -1,0 +1,308 @@
+/* Proplytic table — responsive density, column priority, sticky scroll, expandable rows */
+
+/* --- Adaptive density (container width) --- */
+.pg-ptable-wrap--adaptive .pg-ptable tbody td {
+  min-height: 56px;
+}
+
+@container ptable (max-width: 1399px) {
+  .pg-ptable-wrap--adaptive .pg-ptable {
+    font-size: 13px;
+  }
+
+  .pg-ptable-wrap--adaptive .pg-ptable th,
+  .pg-ptable-wrap--adaptive .pg-ptable td {
+    padding: 9px 10px;
+  }
+
+  .pg-ptable-wrap--adaptive .pg-ptable tbody td {
+    min-height: 50px;
+  }
+}
+
+@container ptable (max-width: 1199px) {
+  .pg-ptable-wrap--adaptive .pg-ptable th,
+  .pg-ptable-wrap--adaptive .pg-ptable td {
+    padding: 8px 9px;
+  }
+
+  .pg-ptable-wrap--adaptive .pg-ptable tbody td {
+    min-height: 46px;
+  }
+
+  .pg-ptable-wrap--adaptive .pg-ptable-tenant-cell__avatar .pg-leases-avatar,
+  .pg-ptable-wrap--adaptive .pg-ptable-tenant-cell__avatar .pg-tenants-avatar {
+    width: 32px;
+    height: 32px;
+    font-size: 11px;
+  }
+}
+
+@container ptable (max-width: 999px) {
+  .pg-ptable-wrap--adaptive .pg-ptable {
+    font-size: 12px;
+  }
+
+  .pg-ptable-wrap--adaptive .pg-ptable th,
+  .pg-ptable-wrap--adaptive .pg-ptable td {
+    padding: 7px 8px;
+  }
+
+  .pg-ptable-wrap--adaptive .pg-ptable tbody td {
+    min-height: 42px;
+  }
+
+  .pg-ptable-wrap--adaptive .pg-ptable-desc__sub {
+    font-size: 11px;
+  }
+}
+
+/* --- Column priority hiding --- */
+@container ptable (max-width: 1200px) {
+  .pg-ptable-wrap--adaptive .pg-ptable-col--priority-4 {
+    display: none;
+  }
+}
+
+@container ptable (max-width: 1000px) {
+  .pg-ptable-wrap--adaptive .pg-ptable-col--priority-3 {
+    display: none;
+  }
+}
+
+@container ptable (max-width: 850px) {
+  .pg-ptable-wrap--adaptive .pg-ptable-col--priority-2 {
+    display: none;
+  }
+}
+
+/* --- Horizontal scroll fallback (desktop narrow) --- */
+@media (min-width: 768px) {
+  @container ptable (max-width: 999px) {
+    .pg-ptable-wrap--adaptive:not(.pg-ptable-wrap--scroll-x) {
+      overflow-x: auto;
+      scrollbar-gutter: stable;
+    }
+  }
+}
+
+/* --- Sticky edge columns when scrolling --- */
+@media (min-width: 768px) {
+  .pg-ptable-wrap--sticky-edges.pg-ptable-wrap--adaptive:has(.pg-ptable-col--sticky-start) {
+    overflow-x: auto;
+  }
+
+  .pg-ptable-wrap--sticky-edges .pg-ptable-col--sticky-start,
+  .pg-ptable-wrap--sticky-edges .pg-ptable thead th:first-child,
+  .pg-ptable-wrap--sticky-edges .pg-ptable tbody td:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    background: var(--surface);
+    box-shadow: 1px 0 0 var(--border-soft);
+  }
+
+  .pg-ptable-wrap--sticky-edges .pg-ptable tbody tr:hover .pg-ptable-col--sticky-start,
+  .pg-ptable-wrap--sticky-edges .pg-ptable tbody tr:hover td:first-child {
+    background: var(--surface-muted);
+  }
+
+  .pg-ptable-wrap--sticky-edges .pg-ptable-col--sticky-end,
+  .pg-ptable-wrap--sticky-edges .pg-ptable-col--actions {
+    position: sticky;
+    right: 0;
+    z-index: 2;
+    background: var(--surface);
+    box-shadow: -1px 0 0 var(--border-soft);
+  }
+
+  .pg-ptable-wrap--sticky-edges .pg-ptable tbody tr:hover .pg-ptable-col--sticky-end,
+  .pg-ptable-wrap--sticky-edges .pg-ptable tbody tr:hover .pg-ptable-col--actions {
+    background: var(--surface-muted);
+  }
+}
+
+/* --- Shared entity / tenant cells --- */
+.pg-ptable-entity-link {
+  font-weight: 600;
+  color: var(--text-primary);
+  text-decoration: none;
+}
+
+.pg-ptable-entity-link:hover {
+  color: var(--primary);
+}
+
+.pg-ptable-entity-link--plain {
+  cursor: default;
+}
+
+.pg-ptable-entity-link--plain:hover {
+  color: var(--text-primary);
+}
+
+.pg-ptable-tenant-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.pg-ptable-tenant-cell__avatar {
+  flex-shrink: 0;
+}
+
+.pg-ptable-tenant-cell__text {
+  min-width: 0;
+  flex: 1;
+}
+
+.pg-ptable-desc__sub--single {
+  margin-top: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pg-ptable-lease-term {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  line-height: 1.3;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.pg-ptable-lease-term__arrow {
+  font-size: 10px;
+  color: var(--text-muted);
+  line-height: 1;
+}
+
+.pg-ptable-lease-term__end {
+  color: var(--text-secondary);
+  font-size: 0.92em;
+}
+
+.pg-ptable-muted {
+  color: var(--text-muted);
+}
+
+/* --- Status badge group (inline) --- */
+.pg-ptable-status-stack {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+}
+
+.pg-ptable-badge--sm {
+  min-height: 18px;
+  padding: 2px 7px;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.15;
+}
+
+/* --- Expandable row details --- */
+.pg-ptable-expand-toggle {
+  display: none;
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  padding: 0;
+}
+
+.pg-ptable-expand-toggle--open svg {
+  transform: rotate(180deg);
+}
+
+@container ptable (max-width: 850px) {
+  .pg-ptable-wrap--adaptive .pg-ptable-expand-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+.pg-ptable__row--expanded td {
+  padding: 0;
+  background: var(--surface-muted);
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.pg-ptable-expanded-cell {
+  padding: 10px 14px 12px !important;
+}
+
+.pg-ptable-expanded-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 10px 16px;
+  margin: 0;
+}
+
+.pg-ptable-expanded-fields__item {
+  min-width: 0;
+}
+
+.pg-ptable-expanded-fields__item dt {
+  margin: 0 0 2px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.pg-ptable-expanded-fields__item dd {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pg-ptable__row--with-expand .pg-ptable-row-leading {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.pg-ptable__row--with-expand .pg-ptable-row-leading .pg-ptable-tenant-cell {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Tighter text columns */
+.pg-ptable-wrap--adaptive .pg-ptable-col--text {
+  max-width: 180px;
+}
+
+@container ptable (max-width: 1199px) {
+  .pg-ptable-wrap--adaptive .pg-ptable-col--text {
+    max-width: 150px;
+  }
+}
+
+@container ptable (max-width: 999px) {
+  .pg-ptable-wrap--adaptive .pg-ptable-col--text {
+    max-width: 130px;
+  }
+}
+
+.pg-ptable-wrap--adaptive .pg-ptable-col--text,
+.pg-ptable-wrap--adaptive .pg-ptable-col--description {
+  white-space: nowrap;
+}
+
+.pg-ptable-wrap--adaptive .pg-ptable-col--text .pg-ptable-desc__main,
+.pg-ptable-wrap--adaptive .pg-ptable-col--text .pg-ptable-desc__sub {
+  -webkit-line-clamp: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+}
