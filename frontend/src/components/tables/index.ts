@@ -13,8 +13,7 @@ export {
   stopTableRowEvent,
   type ProplyticTableVariant,
   type ProplyticTableLayout,
-  type ProplyticTableColumnType,
-  type ProplyticTableColumnPriority
+  type ProplyticTableColumnType
 } from "./ProplyticTable";
 
 export {
