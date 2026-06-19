@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { resolveSettingsSection, settingsSectionPath } from "./settingsSections";
+import {
+  resolveSettingsSection,
+  settingsSectionMobileTitle,
+  settingsSectionPath,
+  getSettingsSection
+} from "./settingsSections";
 
 describe("settingsSections", () => {
   it("defaults unknown sections to general", () => {
@@ -25,5 +30,10 @@ describe("settingsSections", () => {
     expect(settingsSectionPath("invoice-banking", { invoiceBanking: "1" })).toBe(
       "/settings?section=invoice-banking&invoiceBanking=1"
     );
+  });
+
+  it("uses mobile titles when defined", () => {
+    expect(settingsSectionMobileTitle(getSettingsSection("invoice-banking"))).toBe("Invoices");
+    expect(settingsSectionMobileTitle(getSettingsSection("security"))).toBe("Security");
   });
 });

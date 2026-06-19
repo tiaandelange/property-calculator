@@ -1,5 +1,7 @@
 import type { IconName } from "../../components/icons";
 
+export type SettingsMobileGroup = "Account" | "General" | "Communication" | "Data";
+
 export const SETTINGS_SECTION_IDS = [
   "general",
   "account",
@@ -17,6 +19,8 @@ export type SettingsSectionId = (typeof SETTINGS_SECTION_IDS)[number];
 export type SettingsSectionConfig = {
   id: SettingsSectionId;
   title: string;
+  /** Shorter title for mobile section sub-screens. */
+  mobileTitle?: string;
   description: string;
   icon: IconName;
   /** Section edits shared UserSettings draft and shows Save/Cancel footer. */
@@ -28,6 +32,7 @@ export const SETTINGS_SECTIONS: SettingsSectionConfig[] = [
   {
     id: "general",
     title: "General",
+    mobileTitle: "Company / Landlord",
     description: "",
     icon: "sliders",
     supportsSave: true
@@ -35,6 +40,7 @@ export const SETTINGS_SECTIONS: SettingsSectionConfig[] = [
   {
     id: "account",
     title: "Account",
+    mobileTitle: "Profile",
     description: "",
     icon: "profile",
     supportsSave: false
@@ -42,6 +48,7 @@ export const SETTINGS_SECTIONS: SettingsSectionConfig[] = [
   {
     id: "appearance",
     title: "Branding and Appearance",
+    mobileTitle: "Appearance",
     description: "",
     icon: "palette",
     supportsSave: true
@@ -49,6 +56,7 @@ export const SETTINGS_SECTIONS: SettingsSectionConfig[] = [
   {
     id: "subscription",
     title: "Subscription and Billing",
+    mobileTitle: "Subscription",
     description: "",
     icon: "payments",
     supportsSave: false
@@ -56,6 +64,7 @@ export const SETTINGS_SECTIONS: SettingsSectionConfig[] = [
   {
     id: "invoice-banking",
     title: "Invoice and Statement Settings",
+    mobileTitle: "Invoices",
     description: "",
     icon: "invoices",
     supportsSave: true
@@ -63,6 +72,7 @@ export const SETTINGS_SECTIONS: SettingsSectionConfig[] = [
   {
     id: "notifications",
     title: "Email and Notifications",
+    mobileTitle: "Notifications",
     description: "",
     icon: "bell",
     supportsSave: true
@@ -77,6 +87,7 @@ export const SETTINGS_SECTIONS: SettingsSectionConfig[] = [
   {
     id: "data-export",
     title: "Data and Exports",
+    mobileTitle: "Data",
     description: "",
     icon: "reports",
     supportsSave: false
@@ -89,6 +100,10 @@ export const SETTINGS_SECTIONS: SettingsSectionConfig[] = [
     supportsSave: false
   }
 ];
+
+export function settingsSectionMobileTitle(section: SettingsSectionConfig): string {
+  return section.mobileTitle ?? section.title;
+}
 
 const SECTION_BY_ID = new Map(SETTINGS_SECTIONS.map((s) => [s.id, s]));
 

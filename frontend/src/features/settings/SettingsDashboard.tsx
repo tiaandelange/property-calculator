@@ -16,7 +16,10 @@ import { SettingsNav } from "./SettingsNav";
 import { SettingsSectionContent } from "./SettingsSectionContent";
 import { ChangePasswordModal } from "./settingsShared";
 import { SettingsSaveBar } from "./components/SettingsSaveBar";
+import { MobileSettingsHome } from "./MobileSettingsHome";
+import { MobileSettingsScreen } from "./MobileSettingsScreen";
 import type { UserSettings } from "./settingsTypes";
+import { useMobileSettingsSubtitles } from "./useMobileSettingsSubtitles";
 import { previewWorkspaceAppearance } from "../../theme/workspaceAppearance";
 import {
   invalidateSettingsQueries,
@@ -30,6 +33,7 @@ import {
   SETTINGS_SECTIONS,
   getSettingsSection,
   resolveSettingsSection,
+  settingsSectionMobileTitle,
   settingsSectionPath,
   type SettingsSectionId
 } from "./settingsSections";
@@ -64,11 +68,14 @@ export function SettingsDashboard() {
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
   const [invoiceBankingOpen, setInvoiceBankingOpen] = useState(false);
 
+  const rawSectionParam = searchParams.get("section");
+  const mobileShowHome = isMobile && !rawSectionParam;
   const activeSection = useMemo(
-    () => resolveSettingsSection(searchParams.get("section")),
-    [searchParams]
+    () => resolveSettingsSection(rawSectionParam),
+    [rawSectionParam]
   );
   const activeConfig = getSettingsSection(activeSection);
+  const { subtitleForItem, planName } = useMobileSettingsSubtitles(draft, fullName, email);
 
   const settingsLoadError = settingsQuery.error
     ? formatQueryErrorMessage(settingsQuery.error, "Could not load settings.")
@@ -109,7 +116,7 @@ export function SettingsDashboard() {
     const next = new URLSearchParams(searchParams);
     let changed = false;
 
-    if (!next.get("section")) {
+    if (!isMobile && !next.get("section")) {
       next.set("section", "general");
       changed = true;
     }
@@ -125,7 +132,7 @@ export function SettingsDashboard() {
     if (changed) {
       setSearchParams(next, { replace: true });
     }
-  }, [searchParams, setSearchParams]);
+  }, [searchParams, setSearchParams, isMobile]);
 
   useEffect(() => {
     const hash = window.location.hash.replace(/^#/, "");
@@ -224,6 +231,17 @@ export function SettingsDashboard() {
     [searchParams, setSearchParams]
   );
 
+  const goMobileHome = useCallback(() => {
+    const next = new URLSearchParams(searchParams);
+    next.delete("section");
+    next.delete("invoiceBanking");
+    setSearchParams(next, { replace: false });
+  }, [searchParams, setSearchParams]);
+
+  const goDashboard = useCallback(() => {
+    navigate("/owned-properties/dashboard");
+  }, [navigate]);
+
   const sectionNeedsDraft = DRAFT_SECTIONS.includes(activeSection);
   const sectionBlockedBySettings = sectionNeedsDraft && !draft && Boolean(settingsLoadError);
 
@@ -274,81 +292,113 @@ export function SettingsDashboard() {
     </>
   ) : null;
 
+  const sectionContent = sectionBlockedBySettings ? (
+    <QueryErrorCard
+      message={settingsLoadError}
+      onRetry={() => void settingsQuery.refetch()}
+      retrying={settingsQuery.isFetching}
+    />
+  ) : (
+    <SettingsSectionContent
+      sectionId={activeSection}
+      draft={draft}
+      patchDraft={patchDraft}
+      email={email}
+      fullName={fullName}
+      avatarUrl={avatarUrl}
+      avatarIcon={avatarIcon}
+      role={role}
+      freeUsesRemaining={profile?.free_uses_remaining}
+      settingsLoadError={settingsLoadError}
+      profileLoadError={profileLoadError}
+      onRetrySettings={() => void settingsQuery.refetch()}
+      onRetryProfile={() => void profileQuery.refetch()}
+      settingsRetrying={settingsQuery.isFetching}
+      profileRetrying={profileQuery.isFetching}
+      onEditProfile={() => setEditProfileOpen(true)}
+      onOpenInvoiceBanking={() => setInvoiceBankingOpen(true)}
+      onOpenChangePassword={() => setChangePasswordOpen(true)}
+    />
+  );
+
+  const sectionAlerts = (
+    <>
+      {saveError ? <div className="pg-alert pg-alert-error pg-settings-panel-alert">{saveError}</div> : null}
+      {success ? <div className="pg-alert pg-settings-panel-alert">Settings saved.</div> : null}
+    </>
+  );
+
   return (
-    <AppPage variant="settings" className="pg-settings-page">
+    <AppPage
+      variant="settings"
+      className={[
+        "pg-settings-page",
+        isMobile ? "pg-settings-page--mobile" : "",
+        mobileShowHome ? "pg-settings-page--mobile-home" : "",
+        isMobile && !mobileShowHome ? "pg-settings-page--mobile-section" : ""
+      ]
+        .filter(Boolean)
+        .join(" ")}
+    >
       <AppPageContent>
-        <div className="pg-settings-panel-wrap">
-          <div className="pg-settings-panel">
-            <div className="pg-settings-panel__grid">
-              {!isMobile ? (
+        {isMobile && mobileShowHome ? (
+          <MobileSettingsHome
+            fullName={fullName}
+            email={email}
+            avatarUrl={avatarUrl}
+            avatarIcon={avatarIcon}
+            planName={planName}
+            onBack={goDashboard}
+            onSelectSection={selectSection}
+            subtitleForItem={subtitleForItem}
+          />
+        ) : isMobile ? (
+          <MobileSettingsScreen
+            title={settingsSectionMobileTitle(activeConfig)}
+            onBack={goMobileHome}
+            footer={
+              showSaveBar ? (
+                <SettingsSaveBar mobile>{saveBar}</SettingsSaveBar>
+              ) : null
+            }
+          >
+            <div
+              className={[
+                "pg-settings-mobile-section__content",
+                showSaveBar ? "pg-settings-mobile-section__content--save-bar" : ""
+              ]
+                .filter(Boolean)
+                .join(" ")}
+            >
+              {sectionAlerts}
+              {sectionContent}
+            </div>
+          </MobileSettingsScreen>
+        ) : (
+          <div className="pg-settings-panel-wrap">
+            <div className="pg-settings-panel">
+              <div className="pg-settings-panel__grid">
                 <SettingsNav sections={SETTINGS_SECTIONS} activeId={activeSection} onSelect={selectSection} />
-              ) : null}
 
-              <div
-                className={[
-                  "pg-settings-panel__content",
-                  showSaveBar ? "pg-settings-panel__content--save-bar" : ""
-                ]
-                  .filter(Boolean)
-                  .join(" ")}
-              >
-                {isMobile ? (
-                  <SettingsNav
-                    sections={SETTINGS_SECTIONS}
-                    activeId={activeSection}
-                    onSelect={selectSection}
-                    mobile
-                  />
-                ) : null}
+                <div
+                  className={[
+                    "pg-settings-panel__content",
+                    showSaveBar ? "pg-settings-panel__content--save-bar" : ""
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
+                >
+                  <SettingsDetailPanel title={activeConfig.title} badge={activeConfig.badge}>
+                    {sectionAlerts}
+                    {sectionContent}
+                  </SettingsDetailPanel>
 
-                <SettingsDetailPanel title={activeConfig.title} badge={activeConfig.badge}>
-                  {saveError ? (
-                    <div className="pg-alert pg-alert-error pg-settings-panel-alert">{saveError}</div>
-                  ) : null}
-                  {success ? (
-                    <div className="pg-alert pg-settings-panel-alert">Settings saved.</div>
-                  ) : null}
-
-                  {sectionBlockedBySettings ? (
-                    <QueryErrorCard
-                      message={settingsLoadError}
-                      onRetry={() => void settingsQuery.refetch()}
-                      retrying={settingsQuery.isFetching}
-                    />
-                  ) : (
-                    <SettingsSectionContent
-                      sectionId={activeSection}
-                      draft={draft}
-                      patchDraft={patchDraft}
-                      email={email}
-                      fullName={fullName}
-                      avatarUrl={avatarUrl}
-                      avatarIcon={avatarIcon}
-                      role={role}
-                      freeUsesRemaining={profile?.free_uses_remaining}
-                      settingsLoadError={settingsLoadError}
-                      profileLoadError={profileLoadError}
-                      onRetrySettings={() => void settingsQuery.refetch()}
-                      onRetryProfile={() => void profileQuery.refetch()}
-                      settingsRetrying={settingsQuery.isFetching}
-                      profileRetrying={profileQuery.isFetching}
-                      onEditProfile={() => setEditProfileOpen(true)}
-                      onOpenInvoiceBanking={() => setInvoiceBankingOpen(true)}
-                      onOpenChangePassword={() => setChangePasswordOpen(true)}
-                    />
-                  )}
-                </SettingsDetailPanel>
-
-                {saveBar ? (
-                  <>
-                    <SettingsSaveBar mobile={false}>{saveBar}</SettingsSaveBar>
-                    <SettingsSaveBar mobile>{saveBar}</SettingsSaveBar>
-                  </>
-                ) : null}
+                  {saveBar ? <SettingsSaveBar mobile={false}>{saveBar}</SettingsSaveBar> : null}
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        )}
 
         <EditProfileModal
           open={editProfileOpen}
