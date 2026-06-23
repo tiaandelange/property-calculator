@@ -9,6 +9,7 @@ import { handler as handleStatementsSendEmail } from "./_lib/handlers/statements
 import { handler as handleRecurringExpensesRunDue } from "./_lib/handlers/recurringExpensesRunDue.js";
 import { handler as handleReportsGenerate } from "./_lib/handlers/reportsGenerate.js";
 import { handler as handleSubscriptionAction } from "./_lib/handlers/subscriptionAction.js";
+import { handler as handleSyncDueRentInvoices } from "./_lib/handlers/syncDueRentInvoices.js";
 
 function pathSegments(req: VercelRequest): string[] {
   const raw = req.query.path;
@@ -79,6 +80,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     req.query.propertyId = segments[1];
     req.query.action = segments[3];
     await handleBondAction(req, res);
+    return;
+  }
+
+  if (segments.length === 3 && segments[0] === "properties" && segments[2] === "sync-due-rent-invoices") {
+    req.query.propertyId = segments[1];
+    await handleSyncDueRentInvoices(req, res);
     return;
   }
 

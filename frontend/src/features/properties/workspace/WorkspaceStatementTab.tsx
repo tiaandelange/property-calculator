@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useState, type MouseEvent } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { ChevronDown } from "lucide-react";
 import { AppIcon, IconButton } from "../../../components/icons";
@@ -13,6 +13,7 @@ import {
 } from "../../invoices/invoiceStatementUtils";
 import {
   invalidatePropertyQueries,
+  useAuthQueryEnabled,
   usePropertyStatementRangeQuery,
   useSettingsQuery,
   useWorkspaceId
@@ -270,6 +271,8 @@ export function WorkspaceStatementTab({
 }) {
   const navigate = useNavigate();
   const workspaceId = useWorkspaceId();
+  const authReady = useAuthQueryEnabled();
+  const statementSyncKeyRef = useRef<string | null>(null);
   const settingsQuery = useSettingsQuery();
   const [preset, setPreset] = useState<StatementPeriodPreset>("SIX_MONTHS");
   const [presetReady, setPresetReady] = useState(false);
@@ -324,27 +327,38 @@ export function WorkspaceStatementTab({
   }, [settingsQuery.data, settingsQuery.isLoading]);
 
   useEffect(() => {
-    if (!propertyId) return;
+    if (!propertyId || !authReady) return;
+    const syncKey = `${propertyId}`;
+    if (statementSyncKeyRef.current === syncKey) return;
+    statementSyncKeyRef.current = syncKey;
+
     let cancelled = false;
     void (async () => {
       try {
         const result = await syncPropertyStatementLines({ propertyId });
         if (cancelled) return;
         if (result.hadChanges) {
-          setSyncNote("Statement updated from active leases and recurring financial settings.");
+          const created = result.invoicesCreated + result.recurringExpenseLinesCreated;
+          setSyncNote(
+            created > 0
+              ? `Statement updated (${created} new item${created === 1 ? "" : "s"} from active leases and recurring settings).`
+              : "Statement updated from active leases and recurring financial settings."
+          );
           invalidatePropertyQueries({
             workspaceId: workspaceId ?? undefined,
             propertyId
           });
         }
-      } catch {
-        // Sync is best-effort; statement still loads from existing data.
+      } catch (err) {
+        if (import.meta.env.DEV && !cancelled) {
+          console.warn("[WorkspaceStatementTab] statement sync failed:", err);
+        }
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [propertyId, workspaceId]);
+  }, [propertyId, authReady, workspaceId]);
 
   useEffect(() => {
     if (!statusMenuKey) return;
