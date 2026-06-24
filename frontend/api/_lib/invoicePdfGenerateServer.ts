@@ -220,7 +220,8 @@ export async function buildInvoicePdfForUser(
 
   const total = Number(invoice.total_amount ?? invoice.total) || 0;
   const taxTotal = Number(invoice.tax_amount) || 0;
-  const balanceDue = Number(invoice.balance_due ?? Math.max(0, total)) || 0;
+  const paymentsSum = payments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+  const balanceDue = Math.max(0, total - paymentsSum);
   const leaseRef = leaseReferenceFromEmbed(lease);
   const paymentReference = invoicePaymentReferenceForInvoice(leaseRef, invoiceNumber);
 

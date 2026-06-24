@@ -379,10 +379,15 @@ export function InvoiceDetailPanel({
     }
   };
 
-  const displayBalanceDue =
-    payments.length > 0 || (activeId && !fieldsEnabled)
-      ? Math.max(0, Number.isFinite(balanceDue) ? balanceDue : total - paymentsTotal)
-      : total;
+  useEffect(() => {
+    if (!fieldsEnabled) return;
+    setBalanceDue(Math.max(0, total - paymentsTotal));
+  }, [fieldsEnabled, total, paymentsTotal]);
+
+  const displayBalanceDue = Math.max(
+    0,
+    (fieldsEnabled ? total : Number.isFinite(balanceDue) && balanceDue > 0 ? balanceDue : total) - paymentsTotal
+  );
   const saveButtonLabel = draftEditable ? "Save Draft" : "Save";
   const showMarkAsSent = canMarkInvoiceSent(status, sentAt);
 
@@ -415,7 +420,10 @@ export function InvoiceDetailPanel({
       const payload = buildPayload();
       let savedId = activeId;
       if (activeId) {
-        await updateInvoice(activeId, payload);
+        const saved = await updateInvoice(activeId, payload);
+        const savedTotal = Number(saved.totalAmount ?? saved.total ?? total);
+        const savedPayments = sumInvoicePayments(saved.payments);
+        setBalanceDue(Math.max(0, savedTotal - savedPayments));
         invalidateInvoiceQueries({
           queryClient,
           propertyId: propertyId || undefined,

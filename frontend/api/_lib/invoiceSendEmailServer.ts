@@ -5,6 +5,7 @@ import { sendInvoiceEmailWithPdf } from "./invoiceEmail.js";
 import {
   messagePlainTextToHtml,
   normalizeRecipientEmails,
+  resolveCcEmailForSend,
   validateRecipientEmails
 } from "./invoiceEmailValidation.js";
 
@@ -16,14 +17,6 @@ export type InvoiceSendEmailBody = {
 };
 
 const DRAFT_LIKE = new Set(["DRAFT", "GENERATED"]);
-
-function profileCcEmail(details: unknown, userEmail: string): string {
-  if (details && typeof details === "object" && !Array.isArray(details)) {
-    const cc = (details as Record<string, unknown>).ccEmail ?? (details as Record<string, unknown>).cc_email;
-    if (cc != null && String(cc).trim()) return String(cc).trim();
-  }
-  return userEmail.trim();
-}
 
 async function insertEmailLog(
   sb: SupabaseClient,
@@ -101,20 +94,25 @@ export async function processInvoiceSendEmail(
 
   const { data: profile } = await sb
     .from("profiles")
-    .select("full_name, invoice_payment_details")
+    .select("full_name, email, invoice_payment_details")
     .eq("id", uid)
     .maybeSingle();
 
   const cc: string[] = [];
   if (body.copyMe) {
-    const ccEmail = profileCcEmail(profile?.invoice_payment_details, user.email ?? "");
+    const ccEmail = resolveCcEmailForSend(
+      profile?.invoice_payment_details,
+      user.email,
+      profile?.email
+    );
     if (!ccEmail) {
-      return { ok: false, status: 400, error: "Could not resolve your account email for CC." };
+      return {
+        ok: false,
+        status: 400,
+        error: "Could not resolve your account email for CC. Sign in with an email address or set one under Account settings."
+      };
     }
-    if (!validateRecipientEmails([ccEmail])) {
-      return { ok: false, status: 400, error: "Your account CC email is invalid. Update it under Account settings." };
-    }
-    const ccNorm = ccEmail.toLowerCase();
+    const ccNorm = ccEmail;
     if (!to.includes(ccNorm)) {
       cc.push(ccNorm);
     }

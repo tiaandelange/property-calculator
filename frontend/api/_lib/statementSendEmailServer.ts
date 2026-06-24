@@ -4,6 +4,7 @@ import { sendInvoiceEmailWithPdf } from "./invoiceEmail.js";
 import {
   messagePlainTextToHtml,
   normalizeRecipientEmails,
+  resolveCcEmailForSend,
   validateRecipientEmails
 } from "./invoiceEmailValidation.js";
 import { buildStatementPdfForUser, STATEMENTS_BUCKET } from "./statementPdfGenerateServer.js";
@@ -16,14 +17,6 @@ export type StatementSendEmailBody = {
 };
 
 const DRAFT_LIKE = new Set(["DRAFT", "GENERATED"]);
-
-function profileCcEmail(details: unknown, userEmail: string): string {
-  if (details && typeof details === "object" && !Array.isArray(details)) {
-    const cc = (details as Record<string, unknown>).ccEmail ?? (details as Record<string, unknown>).cc_email;
-    if (cc != null && String(cc).trim()) return String(cc).trim();
-  }
-  return userEmail.trim();
-}
 
 export async function processStatementSendEmail(
   sb: SupabaseClient,
@@ -81,8 +74,15 @@ export async function processStatementSendEmail(
       .eq("user_id", uid);
   }
 
-  const { data: profile } = await sb.from("profiles").select("invoice_payment_details").eq("id", uid).maybeSingle();
-  const cc = body.copyMe ? [profileCcEmail(profile?.invoice_payment_details, user.email ?? "")] : [];
+  const { data: profile } = await sb
+    .from("profiles")
+    .select("email, invoice_payment_details")
+    .eq("id", uid)
+    .maybeSingle();
+  const ccEmail = body.copyMe
+    ? resolveCcEmailForSend(profile?.invoice_payment_details, user.email, profile?.email)
+    : "";
+  const cc = ccEmail ? [ccEmail] : [];
 
   const statementNumber = String(statement.statement_number ?? statementId);
   const fileName = `${statementNumber.replace(/[^\w.-]+/g, "_")}.pdf`;

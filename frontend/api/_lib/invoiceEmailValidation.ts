@@ -29,6 +29,25 @@ export function validateRecipientEmails(emails: string[]): string | null {
   return null;
 }
 
+/** CC for invoice/statement send — prefer saved banking CC when valid, else login/profile email. */
+export function resolveCcEmailForSend(
+  paymentDetails: unknown,
+  ...fallbackEmails: Array<string | null | undefined>
+): string {
+  if (paymentDetails && typeof paymentDetails === "object" && !Array.isArray(paymentDetails)) {
+    const raw =
+      (paymentDetails as Record<string, unknown>).ccEmail ??
+      (paymentDetails as Record<string, unknown>).cc_email;
+    const saved = raw != null ? String(raw).trim() : "";
+    if (saved && isValidEmailAddress(saved)) return saved.toLowerCase();
+  }
+  for (const candidate of fallbackEmails) {
+    const email = String(candidate ?? "").trim();
+    if (email && isValidEmailAddress(email)) return email.toLowerCase();
+  }
+  return "";
+}
+
 export function messagePlainTextToHtml(message: string): string {
   const escaped = message
     .replace(/&/g, "&amp;")
