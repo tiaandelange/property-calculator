@@ -22,32 +22,12 @@
       "includeFiles": "assets/fonts/pdfmake/**,public/proplytic*,public/assets/brand/**,api/_lib/propertyCalculator.server.mjs",
       "maxDuration": 60
     },
-    "api/invoices/generate.ts": {
-      "includeFiles": "assets/fonts/pdfmake/**,public/proplytic*,public/assets/brand/**,api/_lib/propertyCalculator.server.mjs",
-      "maxDuration": 60,
-      "memory": 1024
-    },
-    "api/invoices/[id]/download.ts": {
-      "includeFiles": "assets/fonts/pdfmake/**,public/proplytic*,public/assets/brand/**,api/_lib/propertyCalculator.server.mjs",
-      "maxDuration": 60,
-      "memory": 1024
-    },
-    "api/invoices/[id]/send-email.ts": {
-      "includeFiles": "assets/fonts/pdfmake/**,public/proplytic*,public/assets/brand/**,api/_lib/propertyCalculator.server.mjs",
-      "maxDuration": 60,
-      "memory": 1024
-    },
-    "api/properties/[id]/sync-due-rent-invoices.ts": {
-      "maxDuration": 60
-    },
     "api/statements/generate.ts": {
       "includeFiles": "assets/fonts/pdfmake/**,public/proplytic*,public/assets/brand/**,api/_lib/propertyCalculator.server.mjs",
-      "maxDuration": 60,
-      "memory": 1024
+      "maxDuration": 60
     },
     "api/statements/[id]/send-email.ts": {
-      "maxDuration": 60,
-      "memory": 1024
+      "maxDuration": 60
     },
     "api/subscription/webhook.ts": {
       "maxDuration": 60
