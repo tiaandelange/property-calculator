@@ -11,6 +11,9 @@ export async function readVercelError(res: Response): Promise<string> {
 
   const text = await res.text().catch(() => "");
   const cleaned = text.replace(/\s+/g, " ").trim();
+  if (/NOT_FOUND/i.test(cleaned) && cleaned.toLowerCase().includes("page could not be found")) {
+    return "Server route not found. If this persists after a deploy, contact support.";
+  }
   if (cleaned) return cleaned.slice(0, 280);
   return `Request failed (${res.status}).`;
 }

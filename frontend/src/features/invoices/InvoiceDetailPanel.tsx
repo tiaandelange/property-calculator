@@ -19,6 +19,7 @@ import {
 import { fetchPdfBlob, triggerPdfFileDownload } from "../../api/pdfBlob";
 import { queryKeys } from "../../lib/queryKeys";
 import { STALE_TIME_PROPERTIES_MS } from "../../lib/queryClient";
+import { invalidateInvoiceQueries } from "../../lib/queryInvalidation";
 import { useProfileQuery } from "../queries";
 import { invalidatePropertyWorkspace } from "../properties/invalidate";
 import { openInvoicePdfExport, invoicePdfWasStored } from "./invoicePdfExport";
@@ -219,14 +220,17 @@ export function InvoiceDetailPanel({
 
   const [hasPdf, setHasPdf] = useState(false);
 
-  const loadInvoice = useCallback(async (id: string) => {
+  const loadInvoice = useCallback(async (id: string, opts?: { force?: boolean }) => {
     setLoading(true);
     setError("");
     try {
+      if (opts?.force) {
+        await queryClient.invalidateQueries({ queryKey: queryKeys.invoiceDetail(id) });
+      }
       const inv = await queryClient.fetchQuery({
         queryKey: queryKeys.invoiceDetail(id),
         queryFn: () => getInvoice(id),
-        staleTime: STALE_TIME_PROPERTIES_MS
+        staleTime: opts?.force ? 0 : STALE_TIME_PROPERTIES_MS
       });
       setActiveId(String(inv.id));
       setPropertyId(String(inv.propertyId ?? ""));
@@ -236,9 +240,9 @@ export function InvoiceDetailPanel({
       setStatus(String(inv.status ?? "DRAFT"));
       setSentAt(inv.sentAt != null ? String(inv.sentAt) : null);
       dueDateManualRef.current = false;
-      const total = Number(inv.totalAmount ?? inv.total ?? 0);
-      const bal = inv.balanceDue != null ? Number(inv.balanceDue) : total;
-      setBalanceDue(Number.isFinite(bal) ? bal : total);
+      const invoiceTotal = Number(inv.totalAmount ?? inv.total ?? 0);
+      const bal = inv.balanceDue != null ? Number(inv.balanceDue) : invoiceTotal;
+      setBalanceDue(Number.isFinite(bal) ? bal : invoiceTotal);
       setIssueDate(String(inv.issueDate ?? inv.invoiceDate ?? "").slice(0, 10));
       setDueDate(String(inv.dueDate ?? "").slice(0, 10));
       setNotes(String(inv.notes ?? ""));
@@ -261,6 +265,14 @@ export function InvoiceDetailPanel({
       const lines = (inv.lineItems as Array<Record<string, unknown>> | undefined) ?? [];
       if (lines.length) {
         setLineItems(sortInvoiceLineItems(lines.map((l, i) => mapDbLineItem(l, i))));
+      } else {
+        const rentAmt =
+          Number.isFinite(invoiceTotal) && invoiceTotal > 0
+            ? invoiceTotal
+            : defaultRent != null && Number.isFinite(defaultRent)
+              ? defaultRent
+              : 0;
+        setLineItems([emptyInvoiceLine(rentAmt)]);
       }
       setPayments(mapInvoicePayments(inv.payments));
     } catch (e: unknown) {
@@ -268,7 +280,7 @@ export function InvoiceDetailPanel({
     } finally {
       setLoading(false);
     }
-  }, [queryClient]);
+  }, [defaultRent, queryClient]);
 
   useEffect(() => {
     if (activeId) {
@@ -404,6 +416,12 @@ export function InvoiceDetailPanel({
       let savedId = activeId;
       if (activeId) {
         await updateInvoice(activeId, payload);
+        invalidateInvoiceQueries({
+          queryClient,
+          propertyId: propertyId || undefined,
+          tenantId: tenantId || undefined,
+          invoiceId: activeId
+        });
       } else {
         const created = await createPropertyInvoice(propertyId, payload);
         savedId = String(created.id);
@@ -415,7 +433,7 @@ export function InvoiceDetailPanel({
       invalidatePropertyWorkspace(propertyId);
       if (savedId) {
         setSuccess("Invoice saved.");
-        await loadInvoice(savedId);
+        await loadInvoice(savedId, { force: true });
         onSaved?.(savedId);
         return savedId;
       }

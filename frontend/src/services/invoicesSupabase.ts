@@ -337,6 +337,9 @@ export async function updateInvoice(
   if (input.notes !== undefined) pData.notes = input.notes == null ? null : String(input.notes);
   if (input.total !== undefined) pData.total = n(input.total);
   if (input.subtotal !== undefined) pData.subtotal = n(input.subtotal);
+  if (input.taxAmount !== undefined || input.tax_amount !== undefined) {
+    pData.tax_amount = n(input.taxAmount ?? input.tax_amount);
+  }
   if (input.tenantId !== undefined || input.tenant_id !== undefined) {
     const tid = input.tenantId ?? input.tenant_id;
     pData.tenant_id = tid != null && tid !== "" ? String(tid) : null;
@@ -349,6 +352,10 @@ export async function updateInvoice(
   if (hasLineKey) {
     const rpcPayload: Record<string, unknown> = { ...pData };
     if (input.total !== undefined) rpcPayload.total = n(input.total);
+    if (input.subtotal !== undefined) rpcPayload.subtotal = n(input.subtotal);
+    if (input.taxAmount !== undefined || input.tax_amount !== undefined) {
+      rpcPayload.tax_amount = n(input.taxAmount ?? input.tax_amount);
+    }
     const { data, error } = await sb.rpc("update_invoice_with_line_items", {
       p_invoice_id: String(id),
       p_invoice_data: rpcPayload,
