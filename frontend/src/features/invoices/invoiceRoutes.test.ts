@@ -1,10 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { invoiceCreatePath, invoiceDetailPath, tenantInvoiceEditorPath } from "./invoiceRoutes";
 
+const SAMPLE_UUID = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee";
+
 describe("invoiceRoutes", () => {
   it("uses canonical /invoices/:id path", () => {
-    expect(invoiceDetailPath("abc-123")).toBe("/invoices/abc-123");
-    expect(tenantInvoiceEditorPath("tenant-1", "abc-123", "prop-1")).toBe("/invoices/abc-123");
+    expect(invoiceDetailPath(SAMPLE_UUID)).toBe(`/invoices/${SAMPLE_UUID}`);
+    expect(tenantInvoiceEditorPath("tenant-1", SAMPLE_UUID, "prop-1")).toBe(`/invoices/${SAMPLE_UUID}`);
+    expect(invoiceDetailPath("INV-26-0005")).toBe("");
   });
 
   it("builds create path with query params", () => {

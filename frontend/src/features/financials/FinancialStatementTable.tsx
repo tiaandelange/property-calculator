@@ -16,7 +16,7 @@ import {
   type ProplyticTableRowAction
 } from "../../components/tables";
 import { useMediaQuery } from "../../hooks/useMediaQuery";
-import { invoiceStatementCreditClass, invoiceStatementDisplayType } from "../invoices/invoiceStatementUtils";
+import { invoiceStatementCreditClass, invoiceStatementDisplayType, invoiceIdFromStatementRow } from "../invoices/invoiceStatementUtils";
 import { invoiceDetailPath } from "../invoices/invoiceRoutes";
 import type { FinancialStatementRow } from "./financialDirectoryTypes";
 import { fmtZar, propertyFinancialsStatementUrl } from "./financialDirectoryUtils";
@@ -38,7 +38,14 @@ function creditTone(row: FinancialStatementRow): "credit-paid" | "credit-due" | 
 
 function rowActionsFor(r: FinancialStatementRow): ProplyticTableRowAction[] {
   const manageUrl = propertyFinancialsStatementUrl(r.propertyId, finSubForSource(r.source));
-  const invoiceViewUrl = r.source === "INVOICE" && r.invoiceId ? invoiceDetailPath(r.invoiceId) : null;
+  const invoiceViewUrl =
+    r.source === "INVOICE"
+      ? (() => {
+          const id = invoiceIdFromStatementRow(r as unknown as Record<string, unknown>);
+          const path = id ? invoiceDetailPath(id) : "";
+          return path || null;
+        })()
+      : null;
   const rowActions: ProplyticTableRowAction[] = [];
 
   if (r.source !== "INVOICE") {

@@ -77,7 +77,8 @@ function statementRowKey(source: string, sourceId: string): string {
 }
 
 function rowSourceId(r: Record<string, unknown>): string {
-  return r.sourceId != null ? String(r.sourceId) : "";
+  if (r.source === "INVOICE") return invoiceIdFromStatementRow(r);
+  return r.sourceId != null ? String(r.sourceId) : r.source_id != null ? String(r.source_id) : "";
 }
 
 function isExpectedRentRow(r: Record<string, unknown>): boolean {
@@ -544,9 +545,13 @@ export function WorkspaceStatementTab({
   async function openInvoiceForRow(r: Record<string, unknown>) {
     setActionError("");
     try {
-      if (r.source === "INVOICE" && rowSourceId(r)) {
-        navigate(invoiceDetailPath(invoiceIdFromStatementRow(r)));
-        return;
+      if (r.source === "INVOICE") {
+        const invoiceId = invoiceIdFromStatementRow(r);
+        const path = invoiceId ? invoiceDetailPath(invoiceId) : "";
+        if (path) {
+          navigate(path);
+          return;
+        }
       }
       if (isExpectedRentRow(r)) {
         const leaseId = String(r.leaseId).trim();
@@ -852,12 +857,12 @@ export function WorkspaceStatementTab({
                                   }}
                                 />
                               ) : null}
-                              {r.source === "INVOICE" && sourceId ? (
+                              {r.source === "INVOICE" && sourceId && invoiceDetailPath(sourceId) ? (
                                 <IconButton
                                   icon="open"
                                   aria-label="View invoice"
                                   disabled={rowBusy}
-                                  href={invoiceDetailPath(invoiceIdFromStatementRow(r))}
+                                  href={invoiceDetailPath(sourceId)}
                                   onClick={stopRowEvent}
                                 />
                               ) : null}

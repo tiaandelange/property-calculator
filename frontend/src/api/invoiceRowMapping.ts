@@ -72,13 +72,8 @@ export function dbInvoiceToClient(row: Record<string, unknown>): Record<string, 
     paidAt: c.paidAt != null ? coerceIsoDateField(c.paidAt) : c.paidAt,
     archivedAt: c.archivedAt != null ? coerceIsoDateField(c.archivedAt) : c.archivedAt,
     hasPdf,
-    /** Filled with Supabase signed URL in `invoicesSupabase`; legacy Express uses `/api/invoices/:id/download`. */
-    downloadUrl:
-      hasPdf && id != null && storageKey && storageBucket
-        ? null
-        : hasPdf && id != null
-          ? `/api/invoices/${id}/download`
-          : null,
+    /** Filled with Supabase signed URL in `invoicesSupabase`; otherwise use POST /api/invoices/generate. */
+    downloadUrl: null,
     pdfStorageBucket: storageBucket ?? null,
     pdfStorageKey: storageKey ?? null
   };

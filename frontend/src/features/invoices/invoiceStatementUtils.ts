@@ -1,3 +1,6 @@
+const INVOICE_UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 const UNPAID_INVOICE_STATUSES = new Set([
   "GENERATED",
   "DRAFT",
@@ -19,8 +22,24 @@ export function isInvoiceStatementRow(row: Record<string, unknown>): boolean {
   return String(row.source ?? "").toUpperCase() === "INVOICE";
 }
 
+/** Normalize statement/API invoice identifiers to a canonical UUID (or empty when invalid). */
+export function normalizeInvoiceRouteId(raw: unknown): string {
+  if (raw == null) return "";
+  let id = String(raw).trim();
+  if (!id) return "";
+  if (id.toUpperCase().startsWith("INVOICE:")) {
+    id = id.slice("INVOICE:".length).trim();
+  }
+  return INVOICE_UUID_RE.test(id) ? id : "";
+}
+
 export function invoiceIdFromStatementRow(row: Record<string, unknown>): string {
-  return String(row.invoiceId ?? row.invoice_id ?? row.sourceId ?? row.source_id ?? "");
+  const candidates = [row.invoiceId, row.invoice_id, row.sourceId, row.source_id];
+  for (const candidate of candidates) {
+    const id = normalizeInvoiceRouteId(candidate);
+    if (id) return id;
+  }
+  return "";
 }
 
 export function tenantIdFromStatementRow(row: Record<string, unknown>): string {

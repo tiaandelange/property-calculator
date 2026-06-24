@@ -1,6 +1,9 @@
+import { normalizeInvoiceRouteId } from "./invoiceStatementUtils";
+
 /** Canonical invoice detail/edit route — use for all View/Edit navigation. */
 export function invoiceDetailPath(invoiceId: string): string {
-  return `/invoices/${invoiceId}`;
+  const id = normalizeInvoiceRouteId(invoiceId);
+  return id ? `/invoices/${id}` : "";
 }
 
 /** Create-invoice entry (requires tenantId + propertyId query params). */

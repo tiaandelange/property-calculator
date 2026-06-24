@@ -24,6 +24,9 @@ export async function fetchPdfBlob(downloadUrl: string): Promise<Blob> {
       "This report was saved before Supabase Storage. Open the calculator and use Regenerate PDF."
     );
   }
+  if (url.includes("/invoices/") && url.includes("/download")) {
+    throw new Error("Use Download PDF on the invoice page to generate the file.");
+  }
 
   if (url.startsWith("data:")) {
     const res = await fetch(url);

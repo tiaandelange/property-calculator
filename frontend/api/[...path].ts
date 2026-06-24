@@ -3,6 +3,7 @@ import { handler as handleBondAction } from "./_lib/handlers/bondAction.js";
 import { handler as handleContact } from "./_lib/handlers/contact.js";
 import { handler as handleCronRunDue } from "./_lib/handlers/cronRunDue.js";
 import { handler as handleInvoicesGenerate } from "./_lib/handlers/invoicesGenerate.js";
+import { handler as handleInvoicesDownload } from "./_lib/handlers/invoicesDownload.js";
 import { handler as handleInvoicesSendEmail } from "./_lib/handlers/invoicesSendEmail.js";
 import { handler as handleStatementsGenerate } from "./_lib/handlers/statementsGenerate.js";
 import { handler as handleStatementsSendEmail } from "./_lib/handlers/statementsSendEmail.js";
@@ -67,6 +68,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   if (segments.length === 3 && segments[0] === "invoices" && segments[2] === "send-email") {
     req.query.id = segments[1];
     await handleInvoicesSendEmail(req, res);
+    return;
+  }
+
+  if (segments.length === 3 && segments[0] === "invoices" && segments[2] === "download") {
+    req.query.id = segments[1];
+    await handleInvoicesDownload(req, res);
     return;
   }
 

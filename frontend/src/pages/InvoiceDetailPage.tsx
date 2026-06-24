@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { Link, Navigate, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { normalizeInvoiceRouteId } from "../features/invoices/invoiceStatementUtils";
 import { getTenant } from "../api/ownedProperties";
 import { meFinancialDisplayName } from "../api/user";
 import { resolveTenantPropertyId } from "../features/tenants/tenantPropertyContext";
@@ -20,7 +21,11 @@ export function LegacyTenantInvoiceRedirect() {
     if (propertyId) params.set("propertyId", propertyId);
     return <Navigate to={`/invoices/new?${params.toString()}`} replace />;
   }
-  return <Navigate to={invoiceDetailPath(invoiceId)} replace />;
+  const canonicalId = normalizeInvoiceRouteId(invoiceId);
+  if (!canonicalId) {
+    return <Navigate to="/invoices" replace />;
+  }
+  return <Navigate to={invoiceDetailPath(canonicalId)} replace />;
 }
 
 export function InvoiceDetailPage() {
@@ -156,7 +161,17 @@ export function InvoiceDetailPage() {
             </p>
           )
         ) : (
-          <InvoiceDetailPanel invoiceId={invoiceId} onDeleted={handleDeleted} />
+          normalizeInvoiceRouteId(invoiceId) ? (
+            <InvoiceDetailPanel invoiceId={invoiceId} onDeleted={handleDeleted} />
+          ) : (
+            <div className="pg-alert pg-alert-error">
+              Invalid invoice link. Open the invoice from your{" "}
+              <Link className="pg-link" to="/invoices">
+                invoices list
+              </Link>{" "}
+              or property statement.
+            </div>
+          )
         )}
       </AppEditorPage>
     </>

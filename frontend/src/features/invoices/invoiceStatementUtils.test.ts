@@ -2,12 +2,15 @@ import { describe, expect, it } from "vitest";
 import {
   canEditStatementRow,
   invoiceIdFromStatementRow,
+  normalizeInvoiceRouteId,
   invoiceStatementCreditClass,
   invoiceStatementDisplayType,
   invoiceStatementTypeLabel,
   isInvoiceStatementRow,
   tenantIdFromStatementRow
 } from "./invoiceStatementUtils";
+
+const SAMPLE_UUID = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee";
 
 describe("invoiceStatementUtils", () => {
   it("maps invoice statuses to credit classes", () => {
@@ -20,14 +23,17 @@ describe("invoiceStatementUtils", () => {
   it("reads invoice and tenant ids from statement rows", () => {
     const row = {
       source: "INVOICE",
-      invoiceId: "inv-1",
+      invoiceId: SAMPLE_UUID,
       tenantId: "ten-1",
-      sourceId: "fallback"
+      sourceId: "fallback-should-not-win"
     };
     expect(isInvoiceStatementRow(row)).toBe(true);
-    expect(invoiceIdFromStatementRow(row)).toBe("inv-1");
+    expect(invoiceIdFromStatementRow(row)).toBe(SAMPLE_UUID);
     expect(tenantIdFromStatementRow(row)).toBe("ten-1");
-    expect(invoiceIdFromStatementRow({ sourceId: "only-source" })).toBe("only-source");
+    expect(invoiceIdFromStatementRow({ sourceId: SAMPLE_UUID })).toBe(SAMPLE_UUID);
+    expect(invoiceIdFromStatementRow({ source_id: SAMPLE_UUID })).toBe(SAMPLE_UUID);
+    expect(normalizeInvoiceRouteId(`INVOICE:${SAMPLE_UUID}`)).toBe(SAMPLE_UUID);
+    expect(normalizeInvoiceRouteId("INV-26-0005")).toBe("");
   });
 
   it("labels invoice statement types", () => {

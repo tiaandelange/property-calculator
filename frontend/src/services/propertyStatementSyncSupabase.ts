@@ -124,6 +124,8 @@ export async function syncPropertyStatementLines(params: {
       runRentInvoiceSync(propertyId, params.today)
     ]);
 
+    await repairRentInvoices(propertyId).catch(() => undefined);
+
     return mapInvoiceSyncToStatementResult(invoiceResult, recurringResult.createdCount, syncedAt);
   })().finally(() => {
     inflightByProperty.delete(propertyId);
@@ -155,10 +157,22 @@ export async function auditSuspiciousRentInvoices(propertyId?: string): Promise<
   return Array.isArray(data) ? data : [];
 }
 
+/** Dev/audit: repair draft/generated rent invoices missing line items. */
+export async function repairRentInvoices(propertyId?: string): Promise<Record<string, unknown>> {
+  await requireUserId();
+  const sb = getSupabase();
+  const { data, error } = await sb.rpc("repair_rent_invoices", {
+    p_property_id: propertyId ?? null
+  });
+  if (error) throw new Error(error.message);
+  return (data ?? {}) as Record<string, unknown>;
+}
+
 if (import.meta.env.DEV && typeof window !== "undefined") {
   (window as unknown as { proplyticRentInvoiceAudit?: Record<string, unknown> }).proplyticRentInvoiceAudit = {
     auditMissingRentInvoices,
     auditSuspiciousRentInvoices,
+    repairRentInvoices,
     syncPropertyStatementLines
   };
 }
