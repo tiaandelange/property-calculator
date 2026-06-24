@@ -422,7 +422,7 @@ export function InvoiceDetailPanel({
       if (activeId) {
         const saved = await updateInvoice(activeId, payload);
         const savedTotal = Number(saved.totalAmount ?? saved.total ?? total);
-        const savedPayments = sumInvoicePayments(saved.payments);
+        const savedPayments = sumInvoicePayments(mapInvoicePayments(saved.payments));
         setBalanceDue(Math.max(0, savedTotal - savedPayments));
         invalidateInvoiceQueries({
           queryClient,
