@@ -43,9 +43,12 @@ function positiveAmount(value: number | null | undefined): number {
   return value;
 }
 
+/** Upfront cash inputs for CoC ROI — deposit may be zero when transaction costs are paid in cash. */
 export type TotalCashInvestedInput = {
+  /** Pre-computed total upfront cash (property record), when authoritative. */
   explicitTotalCashInvested?: number | null;
   depositPayment?: number | null;
+  /** Alias for deposit / down payment. */
   cashInvested?: number | null;
   closingCosts?: number | null;
   transferCosts?: number | null;
@@ -67,6 +70,10 @@ export type ResolvedTotalCashInvested = {
   otherInitialCashCosts: number;
 };
 
+/**
+ * Cash-on-Cash denominator: all upfront cash paid at acquisition (excludes financed amounts).
+ * Sums deposit + closing/transfer + bond registration + attorney + repairs + other cash costs.
+ */
 export function resolveTotalCashInvested(input: TotalCashInvestedInput): ResolvedTotalCashInvested {
   const depositPayment = positiveAmount(input.depositPayment ?? input.cashInvested);
   const closingCosts = positiveAmount(input.closingCosts);
