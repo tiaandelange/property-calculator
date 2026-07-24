@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { AppChrome } from "./AppChrome";
 import { AuthProvider } from "../contexts/AuthContext";
+import { resetAuthSessionReadCoalescingForTests } from "../lib/authSession";
 
 const { sessionRef, mockSupabaseClient } = vi.hoisted(() => {
   const profileRow = {
@@ -25,7 +26,9 @@ const { sessionRef, mockSupabaseClient } = vi.hoisted(() => {
       onAuthStateChange: vi.fn((callback: (event: string, session: unknown) => void) => {
         Promise.resolve().then(() => callback("INITIAL_SESSION", sessionRef.current));
         return { data: { subscription: { unsubscribe: vi.fn() } } };
-      })
+      }),
+      stopAutoRefresh: vi.fn(),
+      startAutoRefresh: vi.fn()
     },
     from: vi.fn(() => ({
       select: vi.fn(() => ({
@@ -41,7 +44,9 @@ const { sessionRef, mockSupabaseClient } = vi.hoisted(() => {
 vi.mock("../lib/supabaseClient", () => ({
   isSupabaseConfigured: true,
   supabase: mockSupabaseClient,
-  getSupabase: () => mockSupabaseClient
+  getSupabase: () => mockSupabaseClient,
+  stopSupabaseAutoRefresh: vi.fn(),
+  startSupabaseAutoRefresh: vi.fn()
 }));
 
 vi.mock("../services/settingsSupabase", () => ({
@@ -67,11 +72,23 @@ function renderWithAuth(ui: React.ReactElement) {
 
 describe("AppChrome", () => {
   beforeEach(() => {
+    resetAuthSessionReadCoalescingForTests();
     sessionRef.current = null;
+    mockSupabaseClient.auth.getSession.mockImplementation(() =>
+      Promise.resolve({ data: { session: sessionRef.current } })
+    );
   });
 
   afterEach(() => {
-    vi.clearAllMocks();
+    resetAuthSessionReadCoalescingForTests();
+    document.documentElement.removeAttribute("data-theme");
+    document.documentElement.removeAttribute("data-accent");
+    document.documentElement.removeAttribute("data-density");
+    try {
+      localStorage.clear();
+    } catch {
+      /* ignore */
+    }
   });
 
   it("shows workspace navigation when signed in on a workspace route", async () => {
@@ -108,6 +125,28 @@ describe("AppChrome", () => {
       expect(within(screen.getByRole("banner")).getByRole("link", { name: /Proplytic — Home/i })).toBeInTheDocument();
     });
     expect(screen.queryByRole("navigation", { name: /primary workspace/i })).not.toBeInTheDocument();
+  });
+
+  it("renders homepage content immediately even while auth bootstrap is pending", async () => {
+    mockSupabaseClient.auth.getSession.mockImplementation(
+      () =>
+        new Promise(() => {
+          /* never resolves — simulates paused / unreachable Supabase */
+        })
+    );
+
+    renderWithAuth(
+      <MemoryRouter initialEntries={["/"]}>
+        <Routes>
+          <Route element={<AppChrome />}>
+            <Route path="/" element={<div>Home body</div>} />
+          </Route>
+        </Routes>
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByText("Home body")).toBeInTheDocument();
+    expect(within(screen.getByRole("banner")).getByRole("link", { name: /Proplytic — Home/i })).toBeInTheDocument();
   });
 
   it("renders marketing header and footer on /contact while signed out", async () => {
@@ -175,6 +214,7 @@ describe("AppChrome", () => {
 
   it("applies saved workspace appearance on dashboard routes", async () => {
     sessionRef.current = { access_token: "test-at", user: { id: "u1", email: "user@test.example" } };
+    localStorage.setItem("pg-ui-color-scheme", "dark");
 
     renderWithAuth(
       <MemoryRouter initialEntries={["/owned-properties/dashboard"]}>

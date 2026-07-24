@@ -1,10 +1,12 @@
 /**
  * Requires a **Supabase Auth** session (`getSession` / `onAuthStateChange` in `AuthProvider`).
  * Never redirects while auth is still loading or workspace metadata queries are in flight.
+ * When the backend is unreachable, shows a controlled unavailable screen (no redirect loop).
  */
 import type React from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { RouteFallback } from "../ui/RouteFallback";
+import { BackendUnavailable } from "./BackendUnavailable";
 import { logProtectedRoute } from "../../lib/authDebug";
 import { isSupabaseConfigured } from "../../lib/supabaseClient";
 import { useAuth } from "../../contexts/AuthContext";
@@ -37,22 +39,21 @@ function useWorkspaceMetadataLoading(authReady: boolean, userId: string | undefi
 
 export function RequireAuth({ children }: { children: React.ReactElement }) {
   const location = useLocation();
-  const { session, user, initialized, authLoading, isAuthenticated } = useAuth();
-  const authReady = initialized && !authLoading && Boolean(session?.user?.id);
+  const { session, user, status, authLoading, initialized, isAuthenticated, backendAvailable } =
+    useAuth();
+  const authReady = status === "authenticated" && Boolean(session?.user?.id);
   const workspaceMetadataLoading = useWorkspaceMetadataLoading(authReady, session?.user?.id);
 
-  if (!isSupabaseConfigured) {
-    logProtectedRoute("redirect", { reason: "supabase_unconfigured" });
-    return (
-      <Navigate
-        to="/login"
-        replace
-        state={{ from: location.pathname, reason: "supabase_unconfigured" }}
-      />
-    );
+  if (!isSupabaseConfigured || status === "backend-unavailable" || !backendAvailable) {
+    logProtectedRoute("unavailable", {
+      path: location.pathname,
+      reason: !isSupabaseConfigured ? "supabase_unconfigured" : "backend_unavailable",
+      status
+    });
+    return <BackendUnavailable />;
   }
 
-  if (!initialized || authLoading) {
+  if (!initialized || authLoading || status === "checking") {
     logProtectedRoute("loading", {
       path: location.pathname,
       authLoading: true,

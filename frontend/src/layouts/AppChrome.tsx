@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import { AuthenticatedShell } from "./AuthenticatedShell";
-import { RouteFallback } from "../components/ui/RouteFallback";
 import { HomePublicFooter } from "../components/home/HomePublicFooter";
 import { HomePublicHeader } from "../components/home/HomePublicHeader";
 import { DEFAULT_USER_SETTINGS } from "../features/settings/settingsDefaults";
@@ -29,14 +28,25 @@ function readInitialWorkspaceAppearance(): WorkspaceAppearance {
   };
 }
 
+/**
+ * Application chrome. Public and auth routes always render `<Outlet />` immediately —
+ * they must never wait on Supabase session bootstrap. Workspace chrome is used only
+ * when a session is already known on a workspace path; protected gating lives in RequireAuth.
+ */
 export function AppChrome() {
   const location = useLocation();
-  const { session, authLoading, initialized, profile, profileLoading } = useAuth();
-  const authReady = initialized && !authLoading && Boolean(session?.user?.id);
+  const { session, authLoading, status, profile, profileLoading } = useAuth();
+  const authReady = status === "authenticated" && Boolean(session?.user?.id);
   const settingsQuery = useSettingsQuery({ enabled: authReady });
   const [me, setMe] = useState<Me>(null);
 
-  const useWorkspaceChrome = initialized && !authLoading && Boolean(session) && isWorkspacePath(location.pathname);
+  const onWorkspacePath = isWorkspacePath(location.pathname);
+  // Workspace chrome only when a session is known. Public/auth routes never wait on auth.
+  const useWorkspaceChrome = onWorkspacePath && Boolean(session);
+  // Deep-link into the app while bootstrap is still running (or backend is down):
+  // keep the dashboard shell so RequireAuth can show loading / BackendUnavailable.
+  const useWorkspaceShellPending =
+    onWorkspacePath && !session && (authLoading || status === "backend-unavailable");
   const isMarketingHome = location.pathname === "/";
   const isMarketingDarkHeroHub =
     location.pathname === "/calculators" || location.pathname === "/reports";
@@ -75,12 +85,14 @@ export function AppChrome() {
   }, [session, profile, profileLoading]);
 
   useEffect(() => {
-    if (!session || !useWorkspaceChrome) {
-      applyMarketingAppearance();
+    if (useWorkspaceChrome) {
+      applyWorkspaceAppearance(workspaceAppearance);
       return;
     }
-    applyWorkspaceAppearance(workspaceAppearance);
-  }, [session, useWorkspaceChrome, workspaceAppearance]);
+    // Avoid flashing marketing light theme onto a dashboard deep-link during bootstrap.
+    if (useWorkspaceShellPending) return;
+    applyMarketingAppearance();
+  }, [useWorkspaceChrome, useWorkspaceShellPending, workspaceAppearance]);
 
   useEffect(() => {
     if (!useWorkspaceChrome || workspaceAppearance.themePreference !== "system") return;
@@ -89,37 +101,8 @@ export function AppChrome() {
     });
   }, [useWorkspaceChrome, workspaceAppearance.themePreference]);
 
-  if (!initialized || authLoading) {
-    if (isWorkspacePath(location.pathname)) {
-      return (
-        <div className="pg-app">
-          <AuthenticatedShell userRole={null}>
-            <RouteFallback />
-          </AuthenticatedShell>
-        </div>
-      );
-    }
-    if (isAuthFocusShell) {
-      return (
-        <div className="pg-app pg-app--auth-focus">
-          <main className="pg-main pg-main--auth-focus">
-            <RouteFallback />
-          </main>
-        </div>
-      );
-    }
-    return (
-      <div className="pg-app pg-app--marketing-public">
-        <HomePublicHeader />
-        <main className="pg-main pg-main-marketing pg-main-marketing-site">
-          <RouteFallback />
-        </main>
-        <HomePublicFooter />
-      </div>
-    );
-  }
-
-  if (useWorkspaceChrome) {
+  // Never block the Outlet on auth bootstrap — public pages must paint immediately.
+  if (useWorkspaceChrome || useWorkspaceShellPending) {
     return (
       <div className="pg-app">
         <AuthenticatedShell userRole={me?.role ?? null}>

@@ -22,6 +22,7 @@ import { getConfirmEmailRedirectUrl } from "../lib/authRedirect";
 import { formatAuthError } from "../utils/authErrors";
 import { logSignInFlow } from "../lib/authDebug";
 import { useAuth } from "../contexts/AuthContext";
+import { AuthServiceUnavailable } from "../components/auth/AuthServiceUnavailable";
 import { ensureUserSubscriptionForPlanCode } from "../services/userSubscriptionsSupabase";
 import { resolvePublicPageUrl } from "../lib/publicPageSeo";
 import {
@@ -32,17 +33,28 @@ import {
 } from "../features/signup/signupBillingFlow";
 import { isPaidPlan } from "../features/pricing/pricingPlanDisplay";
 import { trackEvent } from "../lib/analytics/analytics";
+import { AUTH_SERVICE_UNAVAILABLE_MESSAGE } from "../lib/authBackendAvailability";
 
 export function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
-  const { session, authLoading, initialized, isAuthenticated, recognizeSession } = useAuth();
+  const {
+    session,
+    authLoading,
+    initialized,
+    isAuthenticated,
+    recognizeSession,
+    backendAvailable,
+    status
+  } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState<null | "login" | "register">(null);
   const [message, setMessage] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
   const [plans, setPlans] = useState<SubscriptionPlanRecord[]>(FALLBACK_SUBSCRIPTION_PLANS);
+  const accountServicesUnavailable =
+    !isSupabaseConfigured || status === "backend-unavailable" || !backendAvailable;
 
   const planCode = searchParams.get("plan")?.trim() ?? "";
   const isSignupEntry = location.pathname === "/signup" || Boolean(planCode);
@@ -63,7 +75,7 @@ export function LoginPage() {
   }, []);
 
   useEffect(() => {
-    if (!initialized || authLoading || loading) return;
+    if (!initialized || authLoading || loading || accountServicesUnavailable) return;
     if (!session?.user?.id || !isAuthenticated) return;
 
     logSignInFlow("redirect-after-session", { hasSession: true });
@@ -99,7 +111,17 @@ export function LoginPage() {
     }
 
     navigate("/owned-properties/dashboard", { replace: true });
-  }, [session, authLoading, initialized, isAuthenticated, loading, location.state, navigate, searchParams]);
+  }, [
+    session,
+    authLoading,
+    initialized,
+    isAuthenticated,
+    loading,
+    accountServicesUnavailable,
+    location.state,
+    navigate,
+    searchParams
+  ]);
 
   useEffect(() => {
     if (!session?.user?.id) return;
@@ -136,10 +158,18 @@ export function LoginPage() {
         source_page: isSignupEntry ? "/signup" : "/login"
       });
     }
+    if (accountServicesUnavailable) {
+      setMessage({
+        kind: "error",
+        text: AUTH_SERVICE_UNAVAILABLE_MESSAGE
+      });
+      setLoading(null);
+      return;
+    }
     if (!isSupabaseConfigured) {
       setMessage({
         kind: "error",
-        text: "Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in frontend/.env.local (see frontend/.env.example)."
+        text: AUTH_SERVICE_UNAVAILABLE_MESSAGE
       });
       setLoading(null);
       return;
@@ -258,14 +288,7 @@ export function LoginPage() {
     }
   };
 
-  const stateReason = (location.state as { reason?: string } | null)?.reason;
-  const configHint =
-    stateReason === "supabase_unconfigured" ? (
-      <div className="pg-login-card__alert pg-login-card__alert--error" style={{ marginBottom: 12 }}>
-        Supabase environment variables are missing. Add them to <code className="pg-code">frontend/.env.local</code>{" "}
-        and reload.
-      </div>
-    ) : null;
+  const configHint = accountServicesUnavailable ? <AuthServiceUnavailable /> : null;
 
   return (
     <div className="pg-login-page">
@@ -298,6 +321,7 @@ export function LoginPage() {
               configHint={configHint}
               plan={signupPlan.plan}
               invalidRequested={signupPlan.invalidRequested}
+              disabled={accountServicesUnavailable}
               onEmailChange={setEmail}
               onPasswordChange={setPassword}
               onSubmit={() => void submit("register")}
@@ -309,6 +333,7 @@ export function LoginPage() {
               loading={loading === "login"}
               message={message}
               configHint={configHint}
+              disabled={accountServicesUnavailable}
               onEmailChange={setEmail}
               onPasswordChange={setPassword}
               onSubmit={() => void submit("login")}

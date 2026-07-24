@@ -29,7 +29,7 @@ export function logAuthSignOut(source: string, reason?: string): void {
 }
 
 export function logProtectedRoute(
-  decision: "loading" | "allow" | "redirect",
+  decision: "loading" | "allow" | "redirect" | "unavailable",
   detail: Record<string, unknown>
 ): void {
   if (!import.meta.env.DEV) return;

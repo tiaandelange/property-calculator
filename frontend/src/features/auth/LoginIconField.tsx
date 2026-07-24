@@ -11,7 +11,8 @@ export function LoginIconField({
   placeholder,
   value,
   onChange,
-  required
+  required,
+  disabled
 }: {
   label: string;
   labelExtra?: ReactNode;
@@ -22,6 +23,7 @@ export function LoginIconField({
   value: string;
   onChange: (value: string) => void;
   required?: boolean;
+  disabled?: boolean;
 }) {
   return (
     <div className="pg-login-field">
@@ -37,6 +39,7 @@ export function LoginIconField({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         required={required}
+        disabled={disabled}
       />
     </div>
   );

@@ -10,6 +10,7 @@ type LoginSignInCardProps = {
   loading: boolean;
   message: { kind: "ok" | "error"; text: string } | null;
   configHint: ReactNode;
+  disabled?: boolean;
   onEmailChange: (value: string) => void;
   onPasswordChange: (value: string) => void;
   onSubmit: () => void;
@@ -21,6 +22,7 @@ export function LoginSignInCard({
   loading,
   message,
   configHint,
+  disabled = false,
   onEmailChange,
   onPasswordChange,
   onSubmit
@@ -50,6 +52,7 @@ export function LoginSignInCard({
         className="pg-login-card__form"
         onSubmit={(e) => {
           e.preventDefault();
+          if (disabled) return;
           onSubmit();
         }}
       >
@@ -62,6 +65,7 @@ export function LoginSignInCard({
           onChange={onEmailChange}
           placeholder="you@example.com"
           required
+          disabled={disabled}
         />
 
         <LoginIconField
@@ -73,6 +77,7 @@ export function LoginSignInCard({
           onChange={onPasswordChange}
           placeholder="••••••••"
           required
+          disabled={disabled}
         />
 
         <Button
@@ -81,6 +86,7 @@ export function LoginSignInCard({
           size="lg"
           fullWidth
           loading={loading}
+          disabled={disabled}
           className="pg-login-card__submit"
         >
           {loading ? "Signing in…" : "Sign in"}

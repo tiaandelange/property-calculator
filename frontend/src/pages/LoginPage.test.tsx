@@ -5,11 +5,23 @@ import { HelmetProvider } from "react-helmet-async";
 import { LoginPage } from "./LoginPage";
 import { AuthProvider } from "../contexts/AuthContext";
 
-const { signInWithPassword, signUp, subscriptionInsert } = vi.hoisted(() => ({
-  signInWithPassword: vi.fn(() => Promise.resolve({ data: { user: {}, session: {} }, error: null })),
-  signUp: vi.fn(() => Promise.resolve({ data: { user: { id: "u1" }, session: { user: { id: "u1" } } }, error: null })),
-  subscriptionInsert: vi.fn(() => Promise.resolve({ error: null }))
-}));
+const { signInWithPassword, signUp, subscriptionInsert, activeSessionRef } = vi.hoisted(() => {
+  const activeSessionRef: { current: { user: { id: string } } | null } = { current: null };
+  return {
+    activeSessionRef,
+    signInWithPassword: vi.fn(() => {
+      const session = { user: { id: "u1" } };
+      activeSessionRef.current = session;
+      return Promise.resolve({ data: { user: session.user, session }, error: null });
+    }),
+    signUp: vi.fn(() => {
+      const session = { user: { id: "u1" } };
+      activeSessionRef.current = session;
+      return Promise.resolve({ data: { user: session.user, session }, error: null });
+    }),
+    subscriptionInsert: vi.fn(() => Promise.resolve({ error: null }))
+  };
+});
 
 const profileChain = {
   select: vi.fn(() => ({
@@ -76,17 +88,18 @@ function fromMock(table: string) {
 
 vi.mock("../lib/supabaseClient", () => ({
   isSupabaseConfigured: true,
+  stopSupabaseAutoRefresh: vi.fn(),
+  startSupabaseAutoRefresh: vi.fn(),
   getSupabase: () => ({
     auth: {
       signInWithPassword,
       signUp,
-      getSession: vi.fn(() =>
-        Promise.resolve({
-          data: { session: { user: { id: "u1" } } },
-          error: null
-        })
+      getSession: vi.fn(() => Promise.resolve({ data: { session: activeSessionRef.current }, error: null })),
+      getUser: vi.fn(() =>
+        Promise.resolve({ data: { user: activeSessionRef.current?.user ?? null }, error: null })
       ),
-      getUser: vi.fn(() => Promise.resolve({ data: { user: { id: "u1" } }, error: null }))
+      stopAutoRefresh: vi.fn(),
+      startAutoRefresh: vi.fn()
     },
     from: vi.fn(fromMock)
   }),
@@ -94,10 +107,14 @@ vi.mock("../lib/supabaseClient", () => ({
     auth: {
       signInWithPassword,
       signUp,
-      getSession: vi.fn(() => Promise.resolve({ data: { session: null } })),
+      getSession: vi.fn(() => Promise.resolve({ data: { session: activeSessionRef.current }, error: null })),
       onAuthStateChange: vi.fn(() => ({ data: { subscription: { unsubscribe: vi.fn() } } })),
       signOut: vi.fn(),
-      getUser: vi.fn(() => Promise.resolve({ data: { user: { id: "u1" } }, error: null }))
+      getUser: vi.fn(() =>
+        Promise.resolve({ data: { user: activeSessionRef.current?.user ?? null }, error: null })
+      ),
+      stopAutoRefresh: vi.fn(),
+      startAutoRefresh: vi.fn()
     },
     from: vi.fn(fromMock)
   }
@@ -117,6 +134,7 @@ function renderLogin() {
 
 describe("LoginPage", () => {
   beforeEach(() => {
+    activeSessionRef.current = null;
     signInWithPassword.mockClear();
     signUp.mockClear();
     subscriptionInsert.mockClear();

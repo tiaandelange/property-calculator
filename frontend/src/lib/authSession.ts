@@ -82,7 +82,15 @@ export async function requireLocalUserId(): Promise<string> {
   return requireUserIdFromSession();
 }
 
-/** Test-only: reset coalescing state between cases. */
+/** Test-only / recovery: reset coalescing state (e.g. after a timed-out bootstrap). */
 export function resetAuthSessionReadCoalescingForTests(): void {
+  inflightSessionRead = null;
+}
+
+/**
+ * Drop a stuck in-flight `getSession` coalescing promise so later reads can proceed.
+ * Safe to call after a bootstrap timeout or confirmed network failure.
+ */
+export function abandonInflightAuthSessionRead(): void {
   inflightSessionRead = null;
 }

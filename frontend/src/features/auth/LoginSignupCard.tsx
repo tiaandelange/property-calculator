@@ -13,6 +13,7 @@ type LoginSignupCardProps = {
   configHint: React.ReactNode;
   plan: SubscriptionPlanRecord;
   invalidRequested: boolean;
+  disabled?: boolean;
   onEmailChange: (value: string) => void;
   onPasswordChange: (value: string) => void;
   onSubmit: () => void;
@@ -26,6 +27,7 @@ export function LoginSignupCard({
   configHint,
   plan,
   invalidRequested,
+  disabled = false,
   onEmailChange,
   onPasswordChange,
   onSubmit
@@ -57,6 +59,7 @@ export function LoginSignupCard({
           className="pg-login-card__form"
           onSubmit={(e) => {
             e.preventDefault();
+            if (disabled) return;
             onSubmit();
           }}
         >
@@ -69,6 +72,7 @@ export function LoginSignupCard({
           onChange={onEmailChange}
           placeholder="you@example.com"
           required
+          disabled={disabled}
         />
 
         <LoginIconField
@@ -80,6 +84,7 @@ export function LoginSignupCard({
           onChange={onPasswordChange}
           placeholder="••••••••"
           required
+          disabled={disabled}
         />
 
         <Button
@@ -88,6 +93,7 @@ export function LoginSignupCard({
           size="lg"
           fullWidth
           loading={loading}
+          disabled={disabled}
           className="pg-login-card__submit"
         >
           {loading ? "Creating account…" : "Create account"}

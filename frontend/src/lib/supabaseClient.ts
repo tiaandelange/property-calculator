@@ -23,6 +23,12 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim() ?? "";
 /** True when both URL and anon key are set (non-empty). */
 export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
 
+if (!isSupabaseConfigured && import.meta.env.DEV) {
+  console.warn(
+    "[supabase] VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY missing — public site works; sign-in and account features are disabled."
+  );
+}
+
 /**
  * **Single browser Supabase client** for the SPA (or `null` if env vars are missing).
  * Do not call `createClient` elsewhere in frontend app code — use {@link getSupabase}
@@ -37,6 +43,24 @@ export const supabase: SupabaseClient | null = isSupabaseConfigured
       }
     })
   : null;
+
+/** Stop library token refresh timers (call when the backend is unreachable). */
+export function stopSupabaseAutoRefresh(): void {
+  try {
+    supabase?.auth.stopAutoRefresh();
+  } catch {
+    // non-fatal — older clients / test mocks may omit the method
+  }
+}
+
+/** Resume library token refresh after a successful connectivity retry. */
+export function startSupabaseAutoRefresh(): void {
+  try {
+    supabase?.auth.startAutoRefresh();
+  } catch {
+    // non-fatal
+  }
+}
 
 /**
  * Returns the configured client or throws with a clear message.
